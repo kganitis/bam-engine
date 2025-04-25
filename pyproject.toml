@@ -6,3 +6,13 @@ build-backend = "setuptools.build_meta"
 name = "bamengine"
 version = "0.0.0"
 requires-python = ">=3.9"
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.1",
+    "ruff>=0.4",
+    "mypy>=1.9",
+    "pytest>=8.3",
+    "numpy>=1.26",
+    "numba<0.61",
+]
