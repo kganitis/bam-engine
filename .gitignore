@@ -8,4 +8,4 @@ __pycache__/
 .idea/
 .vscode/
 # MacOS
-.DS_Store
+**/.DS_Store
