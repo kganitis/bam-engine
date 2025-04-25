@@ -11,6 +11,6 @@ class FirmProduction:
 
     price: FloatA  # current price P_i
     inventory: FloatA  # inventory S_i  (carried from t-1)
-    production_prev: FloatA  # Y_{i,t-1}
+    prev_production: FloatA  # Y_{i,t-1}
     expected_demand: FloatA  # D̂_i  (output, same size)
     desired_production: FloatA  # Yd_i (output, same size)

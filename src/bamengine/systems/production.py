@@ -25,7 +25,7 @@ def decide_desired_production(
     cond_up = (prod.inventory == 0.0) & (prod.price >= p_avg)
     cond_dn = (prod.inventory > 0.0) & (prod.price < p_avg)
 
-    prod.expected_demand[:] = prod.production_prev  # default copy
+    prod.expected_demand[:] = prod.prev_production  # default copy
     prod.expected_demand[cond_up] *= 1.0 + shock[cond_up]
     prod.expected_demand[cond_dn] *= 1.0 - shock[cond_dn]
 

@@ -10,23 +10,15 @@ def test_decide_desired_production():
     prod = FirmProduction(
         price=np.array([2.0, 1.5, 1.0, 1.0, 2.0]),
         inventory=np.array([0.0, 0.0, 5.0, 0.0, 5.0]),
-        production_prev=np.array([10.0, 10.0, 10.0, 10.0, 10.0]),
+        prev_production=np.array([10.0, 10.0, 10.0, 10.0, 10.0]),
         expected_demand=np.zeros(5),
         desired_production=np.zeros(5),
     )
 
     decide_desired_production(prod, p_avg=1.5, h_rho=0.1, rng=rng)
 
-    # Known shocks from seeded RNG
-    expected_shocks = np.array(
-        [
-            0.05118216,  # firm 0: inv=0, price > avg → increase
-            0.09504637,  # firm 1: inv=0, price == avg → increase (since >=)
-            0.01441596,  # firm 2: inv>0, price < avg → decrease
-            0.09912418,  # firm 3: inv=0, price < avg → no update
-            0.02064253,  # firm 4: inv>0, price > avg → no update
-        ]
-    )
+    rng2 = default_rng(seed=1)  # use the same seed to reproduce the shocks
+    expected_shocks = rng2.uniform(0.0, 0.1, 5)
 
     expected = np.array(
         [
