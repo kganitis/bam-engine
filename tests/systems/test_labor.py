@@ -1,13 +1,14 @@
 import numpy as np
+
 from bamengine.components.firm_labor import FirmLabor
 from bamengine.systems.labor import decide_desired_labor
 
 
-def test_decide_desired_labor():
+def test_decide_desired_labor() -> None:
     lab = FirmLabor(
         desired_production=np.array([10.0, 10.0, 10.0, 10.0, 10.0]),
         labor_productivity=np.array([1.0, 0.8, 1.2, 0.5, 2.0]),
-        desired_labor=np.zeros(5, dtype=int),
+        desired_labor=np.zeros(5, dtype=np.int64),
     )
 
     decide_desired_labor(lab)

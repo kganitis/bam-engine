@@ -1,7 +1,7 @@
 from bamengine.scheduler import Scheduler
 
 
-def test_one_period_integration():
+def test_one_period_integration() -> None:
     sched = Scheduler.init_random(n_firms=5, h_rho=0.1, seed=123)
 
     # Run exactly one period

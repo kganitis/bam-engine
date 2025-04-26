@@ -16,3 +16,12 @@ dev = [
     "numpy>=1.26",
     "numba<0.61",
 ]
+
+[tool.ruff]
+fix = true
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.mypy]
+strict = true

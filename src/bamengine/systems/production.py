@@ -1,6 +1,6 @@
 import logging
+
 from numpy.random import Generator
-import numpy as np
 
 from bamengine.components.firm_production import FirmProduction
 
