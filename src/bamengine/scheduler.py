@@ -6,10 +6,10 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.random import Generator, default_rng
 
-from bamengine.components.firm_production import FirmProduction
 from bamengine.components.firm_labor import FirmLabor
-from bamengine.systems.production import decide_desired_production
+from bamengine.components.firm_production import FirmProduction
 from bamengine.systems.labor import decide_desired_labor
+from bamengine.systems.production import decide_desired_production
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ class Scheduler:
     rng: Generator
     prod: FirmProduction
     lab: FirmLabor
-    h_rho: float                     # max growth rate for production
+    h_rho: float  # max growth rate for production
 
     @classmethod
     def init_random(cls, n_firms: int, h_rho: float, seed: int = 0) -> "Scheduler":
@@ -32,7 +32,7 @@ class Scheduler:
         inventory = rng.integers(0, 6, n_firms).astype(float)
         prev_production = np.full(n_firms, 10.0)
 
-        desired_production = np.zeros(n_firms)              # shared ndarray
+        desired_production = np.zeros(n_firms)  # shared ndarray
 
         prod = FirmProduction(
             price=price,
@@ -43,7 +43,7 @@ class Scheduler:
         )
 
         lab = FirmLabor(
-            desired_production=desired_production,          # share!
+            desired_production=desired_production,  # share!
             labor_productivity=np.ones(n_firms),
             desired_labor=np.zeros(n_firms, dtype=np.int64),
         )
