@@ -6,9 +6,8 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.random import Generator, default_rng
 
-from bamengine.components.firm_labor import FirmLabor
-from bamengine.components.firm_production import FirmProduction
-from bamengine.events.plan_production import event_plan_production
+from bamengine.components.firm_plan import FirmLaborPlan, FirmProductionPlan
+from bamengine.events.firms_planning import firms_planning
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +17,8 @@ class Scheduler:
     """Very small driver that owns the component arrays and calls systems."""
 
     rng: Generator
-    prod: FirmProduction
-    lab: FirmLabor
+    prod: FirmProductionPlan
+    lab: FirmLaborPlan
     h_rho: float  # max growth rate for production
 
     @classmethod
@@ -33,7 +32,7 @@ class Scheduler:
 
         desired_production = np.zeros(n_firms)  # shared ndarray
 
-        prod = FirmProduction(
+        prod = FirmProductionPlan(
             price=price,
             inventory=inventory,
             prev_production=prev_production,
@@ -41,7 +40,7 @@ class Scheduler:
             desired_production=desired_production,
         )
 
-        lab = FirmLabor(
+        lab = FirmLaborPlan(
             desired_production=desired_production,  # share!
             labor_productivity=np.ones(n_firms),
             desired_labor=np.zeros(n_firms, dtype=np.int64),
@@ -53,7 +52,7 @@ class Scheduler:
     def step(self) -> None:
         """Run one period with the current systems."""
         p_avg = float(self.prod.price.mean())
-        event_plan_production(self.prod, self.lab, p_avg, self.h_rho, self.rng)
+        firms_planning(self.prod, self.lab, p_avg, self.h_rho, self.rng)
 
         # ---- minimal state advance (stub) --------------------------------
         # For repeated steps we advance prod.prev_production so the next loop
