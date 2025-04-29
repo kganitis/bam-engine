@@ -8,16 +8,17 @@ and verify that high-level invariants still hold.
 
 from __future__ import annotations
 
+from typing import Tuple
+
 import numpy as np
-from numpy.random import default_rng
+from numpy.random import Generator, default_rng
 
 from bamengine.components.firm_plan import (
-    FirmProductionPlan,
     FirmLaborPlan,
+    FirmProductionPlan,
     FirmVacancies,
 )
 from bamengine.events.firms_planning import firms_planning
-
 
 N_FIRMS = 17  # prime → catches shape mix-ups
 SEED = 5678
@@ -25,7 +26,10 @@ H_RHO = 0.1
 P_AVG = 1.4
 
 
-def _make_random_state(n: int, seed: int = 0):
+EconomyState = Tuple[FirmProductionPlan, FirmLaborPlan, FirmVacancies, Generator]
+
+
+def _make_random_state(n: int, seed: int = 0) -> EconomyState:
     """Return prod, lab, vac filled with *plausible* random data."""
     rng = default_rng(seed)
 
