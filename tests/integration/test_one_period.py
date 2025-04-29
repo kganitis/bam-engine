@@ -18,5 +18,8 @@ def test_one_period_integration() -> None:
     # Expected demand and desired production must be equal
     assert (sched.prod.expected_demand == sched.prod.desired_production).all()
 
+    # Optional: check that at least one vacancy is positive
+    assert (sched.vac.n_vacancies >= 1).any()
+
     # Optional: simple invariant
     assert sched.mean_Ld > 0

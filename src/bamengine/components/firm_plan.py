@@ -25,3 +25,12 @@ class FirmLaborPlan:
     desired_production: FloatA  # Yd_i  (read-only here)
     labor_productivity: FloatA  # a_i   (can change with R&D later)
     desired_labor: IntA  # Ld_i  (output)
+
+
+@dataclass(slots=True)
+class FirmVacancies:
+    """Dense state needed for calculating number of vacancies."""
+
+    desired_labor: IntA  # Ld_i  (read-only)
+    current_labor: IntA  # L_i   (input, updated by matching later)
+    n_vacancies: IntA  # V_i   (output)

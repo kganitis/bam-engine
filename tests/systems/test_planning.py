@@ -1,8 +1,16 @@
 import numpy as np
 from numpy.random import default_rng
 
-from bamengine.components.firm_plan import FirmLaborPlan, FirmProductionPlan
-from bamengine.systems.planning import decide_desired_labor, decide_desired_production
+from bamengine.components.firm_plan import (
+    FirmLaborPlan,
+    FirmProductionPlan,
+    FirmVacancies,
+)
+from bamengine.systems.planning import (
+    decide_desired_labor,
+    decide_desired_production,
+    decide_vacancies,
+)
 
 
 def test_decide_desired_production() -> None:
@@ -62,3 +70,13 @@ def test_decide_desired_labor() -> None:
     )
 
     np.testing.assert_array_equal(lab.desired_labor, expected_labor)
+
+
+def test_decide_vacancies() -> None:
+    vac = FirmVacancies(
+        desired_labor=np.array([10, 5, 3, 1]),
+        current_labor=np.array([7, 5, 4, 0]),
+        n_vacancies=np.zeros(4, dtype=np.int64),
+    )
+    decide_vacancies(vac)
+    np.testing.assert_array_equal(vac.n_vacancies, [3, 0, 0, 1])
