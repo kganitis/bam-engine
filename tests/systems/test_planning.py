@@ -31,8 +31,7 @@ def test_decide_desired_production() -> None:
     assert prod.desired_production.shape == (5,), "Desired production shape mismatch"
 
     # ---- Compute expected manually with identical RNG
-    rng2 = default_rng(seed=1)
-    shocks = rng2.uniform(0.0, 0.1, 5)
+    shocks = default_rng(seed=1).uniform(0.0, 0.1, 5)
 
     expected = np.array(
         [

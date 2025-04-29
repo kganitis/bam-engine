@@ -2,7 +2,7 @@ from bamengine.scheduler import Scheduler
 
 
 def test_one_period_integration() -> None:
-    sched = Scheduler.init_random(n_firms=5, h_rho=0.1, seed=123)
+    sched = Scheduler.init(n_firms=5, h_rho=0.1, seed=123)
 
     # Run exactly one period
     sched.step()
@@ -19,7 +19,7 @@ def test_one_period_integration() -> None:
     assert (sched.prod.expected_demand == sched.prod.desired_production).all()
 
     # Optional: check that at least one vacancy is positive
-    assert (sched.vac.n_vacancies >= 1).any()
+    assert (sched.vac.n_vacancies > 0).any()
 
     # Optional: simple invariant
     assert sched.mean_Ld > 0
