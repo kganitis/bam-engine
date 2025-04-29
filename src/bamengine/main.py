@@ -25,11 +25,7 @@ def main() -> None:
     )
     log = logging.getLogger(__name__)
 
-    sched = Scheduler.init_random(
-        n_firms=args.firms,
-        h_rho=args.h_rho,
-        seed=args.seed,
-    )
+    sched = Scheduler.init(n_firms=args.firms, h_rho=args.h_rho, seed=args.seed)
 
     for t in range(1, args.steps + 1):
         log.info("=== PERIOD %d ===", t)

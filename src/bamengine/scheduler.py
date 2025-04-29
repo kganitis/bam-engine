@@ -27,35 +27,38 @@ class Scheduler:
     vac: FirmVacancies
 
     @classmethod
-    def init_random(cls, n_firms: int, h_rho: float, seed: int = 0) -> "Scheduler":
+    def init(cls, n_firms: int, h_rho: float, seed: int = 0) -> "Scheduler":
         rng = default_rng(seed)
 
         # ---- create shared / independent arrays ---------------------------
-        price = np.full(n_firms, 1.5)
-        inventory = rng.integers(0, 6, n_firms).astype(float)
-        prev_production = np.full(n_firms, 10.0)
-        current_labor = np.zeros(n_firms, dtype=np.int64)
+        # fundamental arrays
+        price = np.full(n_firms, 1.5)  # currency units (float32)
+        production = np.ones(n_firms)  # product units (float32)
+        labor = np.zeros(n_firms, dtype=np.int64)  # worker units (int64)
 
-        desired_production = np.zeros(n_firms)  # shared ndarray
+        inventory = np.zeros_like(production)
+        expected_demand = np.ones_like(production)
+        desired_production = np.zeros_like(production)
+        labor_productivity = np.ones_like(production)
+        desired_labor = np.zeros_like(labor)
+        n_vacancies = np.zeros_like(labor)
 
         prod = FirmProductionPlan(
             price=price,
             inventory=inventory,
-            prev_production=prev_production,
-            expected_demand=np.zeros(n_firms),
+            prev_production=production,
+            expected_demand=expected_demand,
             desired_production=desired_production,
         )
-
         lab = FirmLaborPlan(
-            desired_production=desired_production,  # share!
-            labor_productivity=np.ones(n_firms),
-            desired_labor=np.zeros(n_firms, dtype=np.int64),
+            desired_production=desired_production,
+            labor_productivity=labor_productivity,
+            desired_labor=desired_labor,
         )
-
         vac = FirmVacancies(
-            desired_labor=lab.desired_labor,
-            current_labor=current_labor,
-            n_vacancies=np.zeros(n_firms, dtype=np.int64),
+            desired_labor=desired_labor,
+            current_labor=labor,
+            n_vacancies=n_vacancies,
         )
 
         return cls(rng=rng, prod=prod, lab=lab, vac=vac, h_rho=h_rho)
