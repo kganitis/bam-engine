@@ -13,10 +13,10 @@ def test_event_firms_planning() -> None:
     rng = default_rng(seed=99)
 
     price = np.array([1.0, 1.5, 2.0])
-    prod = np.array([10.0, 10.0, 10.0])
+    production = np.array([10.0, 10.0, 10.0])
     labor = np.array([10, 10, 10])
 
-    inv = np.array([0.0, 5.0, 10.0])
+    inventory = np.array([0.0, 5.0, 10.0])
     expected_demand = np.array([12.0, 10.0, 8.0])
     desired_prod = np.zeros(3)
     labor_prod = np.ones(3)
@@ -25,8 +25,8 @@ def test_event_firms_planning() -> None:
 
     prod = FirmProductionPlan(
         price=price,
-        inventory=inv,
-        prev_production=prod,
+        inventory=inventory,
+        prev_production=production,
         expected_demand=expected_demand,
         desired_production=desired_prod,
     )
