@@ -3,9 +3,13 @@ import logging
 import numpy as np
 from numpy.random import Generator
 
-from bamengine.components.firm_plan import FirmLaborPlan, FirmProductionPlan
+from bamengine.components.firm_plan import (
+    FirmLaborPlan,
+    FirmProductionPlan,
+    FirmVacancies,
+)
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 def decide_desired_production(
@@ -38,7 +42,7 @@ def decide_desired_production(
     prod.desired_production[:] = prod.expected_demand
 
     # ── logging (vector summary) ─────────────────────────────────────────────
-    logger.debug(
+    log.debug(
         "decide_desired_production: n=%d  p̄=%.3f  up=%d  down=%d  mean_shock=%.4f",
         prod.price.size,
         p_avg,
@@ -58,7 +62,7 @@ def decide_desired_labor(lab: FirmLaborPlan) -> None:
     np.ceil(ratio, out=ratio)
     lab.desired_labor[:] = ratio.astype(np.int64)
 
-    logger.debug(
+    log.debug(
         "decide_desired_labor: n=%d  avg_prod=%.2f  avg_a=%.2f  "
         "avg_Ld=%.2f  max_Ld=%d",
         lab.desired_production.size,
@@ -66,4 +70,22 @@ def decide_desired_labor(lab: FirmLaborPlan) -> None:
         lab.labor_productivity.mean(),
         lab.desired_labor.mean(),
         int(lab.desired_labor.max()),
+    )
+
+
+def decide_vacancies(vac: FirmVacancies) -> None:
+    """
+    Vector rule: V_i = max( Ld_i – L_i , 0 )
+    """
+    # in-place subtraction → tmp array not allocated
+    np.subtract(
+        vac.desired_labor, vac.current_labor, out=vac.n_vacancies, dtype=np.int64
+    )
+    np.maximum(vac.n_vacancies, 0, out=vac.n_vacancies)
+
+    log.debug(
+        "decide_vacancies: n=%d  mean_V=%.2f  openings=%d",
+        vac.n_vacancies.size,
+        vac.n_vacancies.mean(),
+        int((vac.n_vacancies > 0).sum()),
     )
