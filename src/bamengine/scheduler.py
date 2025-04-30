@@ -1,3 +1,5 @@
+"""BAM Engine – tiny driver that wires components ↔ systems for 1 period."""
+
 from __future__ import annotations
 
 import logging
@@ -7,59 +9,98 @@ import numpy as np
 from numpy.random import Generator, default_rng
 
 from bamengine.components.economy import Economy
-from bamengine.components.firm_labor import FirmWageOffer
+from bamengine.components.firm_labor import FirmHiring, FirmWageOffer
 from bamengine.components.firm_plan import (
     FirmLaborPlan,
     FirmProductionPlan,
     FirmVacancies,
 )
-from bamengine.systems.labor_market import adjust_minimum_wage, decide_wage_offer
+from bamengine.components.worker_job import WorkerJobSearch
+from bamengine.systems.labor_market import (
+    adjust_minimum_wage,
+    decide_wage_offer,
+    firms_hire,
+    workers_prepare_applications,
+    workers_send_one_round,
+)
 from bamengine.systems.planning import (
     decide_desired_labor,
     decide_desired_production,
     decide_vacancies,
 )
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
 class Scheduler:
-    """Very small driver that owns the component arrays and calls systems."""
+    """Owns all arrays and calls the systems in canonical BAM order."""
 
     rng: Generator
     ec: Economy
+
     prod: FirmProductionPlan
     lab: FirmLaborPlan
-    h_rho: float  # max growth rate for production
     vac: FirmVacancies
-    fw: FirmWageOffer
 
+    fw: FirmWageOffer
+    ws: WorkerJobSearch
+    fh: FirmHiring
+
+    # global parameters
+    h_rho: float  # max output-growth shock
+    h_xi: float  # max wage-growth shock
+    max_M: int  # applications per employed worker
+    theta: int  # contract length (not yet stored per worker)
+
+    # --------------------------------------------------------------------- #
+    #                            constructor                                #
+    # --------------------------------------------------------------------- #
     @classmethod
-    def init(cls, n_firms: int, h_rho: float, seed: int = 0) -> "Scheduler":
+    def init(
+        cls,
+        *,
+        n_firms: int,
+        n_workers: int,
+        h_rho: float = 0.1,
+        h_xi: float = 0.05,
+        max_M: int = 4,
+        theta: int = 8,
+        seed: int = 0,
+    ) -> "Scheduler":
         rng = default_rng(seed)
 
-        # ---- create shared / independent arrays ---------------------------
-        # fundamental arrays
-        price = np.full(n_firms, 1.5)  # currency units (float32)
-        production = np.ones(n_firms)  # product units (float32)
-        labor = np.zeros(n_firms, dtype=np.int64)  # worker units (int64)
-
+        price = np.full(n_firms, 1.5)
+        production = np.ones(n_firms)
         inventory = np.zeros_like(production)
+
         expected_demand = np.ones_like(production)
         desired_production = np.zeros_like(production)
-        labor_productivity = np.ones_like(production)
-        desired_labor = np.zeros_like(labor)
-        n_vacancies = np.zeros_like(labor)
+        labour_productivity = np.ones_like(production)
+        desired_labor = np.zeros(n_firms, dtype=np.int64)
+        current_labor = np.zeros_like(desired_labor)
+        n_vacancies = np.zeros_like(desired_labor)
 
-        wage_prev = np.full(n_firms, 1.0)  # whatever baseline you like
-        wage_offer = np.zeros_like(price)  # same dtype/shape
+        wage_prev = np.full(n_firms, 1.0)
+        wage_offer = np.zeros_like(price)
 
+        employed = np.zeros(n_workers, dtype=np.int64)
+        employer_prev = np.full(n_workers, -1, dtype=np.int64)
+        contract_expired = np.zeros_like(employed)
+        fired = np.zeros_like(employed)
+
+        apps_head = np.full(n_workers, -1, dtype=np.int64)
+        apps_targets = np.full((n_workers, max_M), -1, dtype=np.int64)
+        recv_apps_head = np.full(n_firms, -1, dtype=np.int64)
+        recv_apps = np.full((n_firms, max_M), -1, dtype=np.int64)
+
+        # ---------- wrap into components ----------------------------------
         ec = Economy(
             min_wage=1.0,
-            avg_mrkt_price_history=np.array([1.5]),
             min_wage_rev_period=4,
+            avg_mrkt_price_history=np.array([1.5]),
         )
+
         prod = FirmProductionPlan(
             price=price,
             inventory=inventory,
@@ -68,63 +109,88 @@ class Scheduler:
             desired_production=desired_production,
         )
         lab = FirmLaborPlan(
-            desired_production=desired_production,
-            labor_productivity=labor_productivity,
+            desired_production=desired_production,  # shared view
+            labor_productivity=labour_productivity,
             desired_labor=desired_labor,
         )
         vac = FirmVacancies(
-            desired_labor=desired_labor,
-            current_labor=labor,
+            desired_labor=desired_labor,  # shared view
+            current_labor=current_labor,
             n_vacancies=n_vacancies,
         )
         fw = FirmWageOffer(
             wage_prev=wage_prev,
-            n_vacancies=n_vacancies,  # shared view!
+            n_vacancies=n_vacancies,  # shared view
             wage_offer=wage_offer,
         )
+        ws = WorkerJobSearch(
+            employed=employed,
+            employer_prev=employer_prev,
+            contract_expired=contract_expired,
+            fired=fired,
+            apps_head=apps_head,
+            apps_targets=apps_targets,
+        )
+        fh = FirmHiring(
+            wage_offer=wage_offer,  # shared view
+            n_vacancies=n_vacancies,  # shared view
+            recv_apps_head=recv_apps_head,
+            recv_apps=recv_apps,
+        )
 
-        return cls(rng=rng, ec=ec, prod=prod, lab=lab, vac=vac, h_rho=h_rho, fw=fw)
+        return cls(
+            rng=rng,
+            ec=ec,
+            prod=prod,
+            lab=lab,
+            vac=vac,
+            fw=fw,
+            ws=ws,
+            fh=fh,
+            h_rho=h_rho,
+            h_xi=h_xi,
+            max_M=max_M,
+            theta=theta,
+        )
 
-    # ---------------------------------------------------------------------
-
+    # --------------------------------------------------------------------- #
+    #                               one step                                #
+    # --------------------------------------------------------------------- #
     def step(self) -> None:
-        """Run one period with the current systems."""
+        """Advance the economy by one period."""
+
+        # ===== Event 1 – firms plan =======================================
         p_avg = float(self.prod.price.mean())
 
-        # -------- Event 1 (Firms planning production) -----------------
         decide_desired_production(self.prod, p_avg, self.h_rho, self.rng)
         decide_desired_labor(self.lab)
         decide_vacancies(self.vac)
-        decide_wage_offer(
-            self.fw,
-            w_min=self.ec.min_wage,
-            h_xi=0.05,  # example: max +5 %
-            rng=self.rng,
-        )
+        decide_wage_offer(self.fw, w_min=self.ec.min_wage, h_xi=self.h_xi, rng=self.rng)
 
-        # -------- Event 2 (Labor market opens) -------------------------
+        # ===== Event 2 – labour-market ===
         adjust_minimum_wage(self.ec)
+        workers_prepare_applications(self.ws, self.fh, max_M=self.max_M, rng=self.rng)
+        for _ in range(self.max_M):  # round‐robin M times
+            workers_send_one_round(self.ws, self.fh)
+            firms_hire(self.ws, self.fh, contract_theta=self.theta)
 
-        # -------- Event 4 (Production) ---------------------------------
+        # ===== Event 4 stub – end-of-period bookkeeping ===================
         self.ec.avg_mrkt_price_history = np.append(
             self.ec.avg_mrkt_price_history, p_avg
         )
 
-        # ---- minimal state advance (stub) --------------------------------
-        # For repeated steps we advance prod.prev_production so the next loop
-        # sees updated baseline output. We also jitter price/inventory so
-        # the conditions vary between periods.
+        # very lightweight state advance so tests can call step() again
         self.prod.prev_production[:] = self.prod.desired_production
-        self.prod.inventory[:] = self.rng.integers(0, 6, self.prod.inventory.shape)
-        self.prod.price[:] *= self.rng.uniform(0.98, 1.02, self.prod.price.shape)
+        self.prod.inventory[:] = self.rng.integers(0, 6, size=self.prod.inventory.shape)
+        self.prod.price[:] *= self.rng.uniform(0.98, 1.02, size=self.prod.price.shape)
 
-    # ---------------------------------------------------------------------
-
-    # Convenience getters for tests / reports
+    # ------------------------------------------------------------------ #
+    # convenience                                                       #
+    # ------------------------------------------------------------------ #
     @property
-    def mean_Yd(self) -> float:
+    def mean_Yd(self) -> float:  # noqa: D401
         return float(self.prod.desired_production.mean())
 
     @property
-    def mean_Ld(self) -> float:
+    def mean_Ld(self) -> float:  # noqa: D401
         return float(self.lab.desired_labor.mean())

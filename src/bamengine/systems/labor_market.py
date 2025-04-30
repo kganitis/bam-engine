@@ -4,7 +4,8 @@ import numpy as np
 from numpy.random import Generator
 
 from bamengine.components.economy import Economy
-from bamengine.components.firm_labor import FirmWageOffer
+from bamengine.components.firm_labor import FirmHiring, FirmWageOffer
+from bamengine.components.worker_job import WorkerJobSearch
 
 log = logging.getLogger(__name__)
 
@@ -13,7 +14,7 @@ def adjust_minimum_wage(ec: Economy) -> None:
     """
     Every `min_wage_rev_period` periods update ŵ_t by realised inflation:
 
-        π = (P̅_{t-1} - P̅_{t-m}) / P̅_{t-m}
+        π = (P_{t-1} - P_{t-m}) / P_{t-m}
         ŵ_t = ŵ_{t-1} * (1 + π)
     """
     m = ec.min_wage_rev_period
@@ -67,3 +68,88 @@ def decide_wage_offer(
         fw.wage_prev.mean(),
         fw.wage_offer.mean(),
     )
+
+
+def workers_prepare_applications(
+    ws: WorkerJobSearch, fh: FirmHiring, *, max_M: int, rng: Generator
+) -> None:
+    n_firms = fh.wage_offer.size
+    unem = np.where(ws.employed == 0)[0]  # id of each unemployed worker
+    if unem.size == 0:
+        ws.apps_head[:] = -1
+        return
+
+    # -------- sample M random firms per worker --------------------
+    sample = rng.integers(0, n_firms, size=(unem.size, max_M), dtype=np.int64)
+
+    loyal = (
+        (ws.contract_expired[unem] == 1)
+        & (ws.fired[unem] == 0)
+        & (ws.employer_prev[unem] >= 0)
+    )
+    if loyal.any():
+        sample[loyal, 0] = ws.employer_prev[unem[loyal]]
+
+    # -------- wage-descending sort --------------------------------
+    order = np.argsort(-fh.wage_offer[sample], axis=1, kind="stable")
+    sorted_sample = np.take_along_axis(sample, order, axis=1)
+
+    # -------- write to global buffers -----------------------------
+    stride = max_M
+    ws.apps_targets.fill(-1)
+    ws.apps_head.fill(-1)
+
+    for k, w in enumerate(unem):  # w = real worker id
+        ws.apps_targets[w, :stride] = sorted_sample[k]  # row index = worker id
+        ws.apps_head[w] = w * stride  # pointer into its own row
+
+    # reset flags
+    ws.contract_expired[unem] = 0
+    ws.fired[unem] = 0
+
+
+def workers_send_one_round(ws: WorkerJobSearch, fh: FirmHiring) -> None:
+    stride = ws.apps_targets.shape[1]
+
+    for w in np.where(ws.employed == 0)[0]:
+        h = ws.apps_head[w]
+        if h < 0:
+            continue
+        row, col = divmod(h, stride)
+        firm_idx = ws.apps_targets[row, col]
+        if firm_idx < 0:  # exhausted list
+            ws.apps_head[w] = -1
+            continue
+
+        # push into firm's queue (bounded)
+        ptr = fh.recv_apps_head[firm_idx] + 1
+        if ptr >= fh.recv_apps.shape[1]:
+            continue  # queue full, drop application
+        fh.recv_apps_head[firm_idx] = ptr
+        fh.recv_apps[firm_idx, ptr] = w
+
+        # advance pointer & clear slot
+        ws.apps_head[w] = h + 1
+        ws.apps_targets[row, col] = -1
+
+
+def firms_hire(ws: WorkerJobSearch, fh: FirmHiring, *, contract_theta: int) -> None:
+    for i in np.where(fh.n_vacancies > 0)[0]:
+        n_recv = fh.recv_apps_head[i] + 1
+        if n_recv <= 0:
+            continue
+
+        n_hire = int(min(n_recv, fh.n_vacancies[i]))
+        hires = fh.recv_apps[i, :n_hire]
+        hires = hires[hires >= 0]  # drop empty / duplicate slots
+        if hires.size == 0:
+            continue
+
+        ws.employed[hires] = 1
+        ws.apps_head[hires] = -1
+        ws.employer_prev[hires] = i
+        # TODO: store wage & contract_theta arrays if needed
+
+        fh.n_vacancies[i] -= hires.size
+        fh.recv_apps_head[i] = -1
+        fh.recv_apps[i, :n_recv] = -1  # hygiene

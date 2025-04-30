@@ -92,7 +92,7 @@ def test_random_state_one_step() -> None:
 
     assert (lab.desired_labor > 0).all()
 
-    # vacancies respect bounds: 0 ≤ V_i ≤ Ld_i
+    # n_vacancies respect bounds: 0 ≤ V_i ≤ Ld_i
     assert (vac.n_vacancies >= 0).all()
     assert (vac.n_vacancies <= lab.desired_labor).all()
 
