@@ -7,12 +7,13 @@ import numpy as np
 from numpy.random import Generator, default_rng
 
 from bamengine.components.economy import Economy
+from bamengine.components.firm_labor import FirmWageOffer
 from bamengine.components.firm_plan import (
     FirmLaborPlan,
     FirmProductionPlan,
     FirmVacancies,
 )
-from bamengine.systems.labor_market import adjust_minimum_wage
+from bamengine.systems.labor_market import adjust_minimum_wage, decide_wage_offer
 from bamengine.systems.planning import (
     decide_desired_labor,
     decide_desired_production,
@@ -32,6 +33,7 @@ class Scheduler:
     lab: FirmLaborPlan
     h_rho: float  # max growth rate for production
     vac: FirmVacancies
+    fw: FirmWageOffer
 
     @classmethod
     def init(cls, n_firms: int, h_rho: float, seed: int = 0) -> "Scheduler":
@@ -49,6 +51,9 @@ class Scheduler:
         labor_productivity = np.ones_like(production)
         desired_labor = np.zeros_like(labor)
         n_vacancies = np.zeros_like(labor)
+
+        wage_prev = np.full(n_firms, 1.0)  # whatever baseline you like
+        wage_offer = np.zeros_like(price)  # same dtype/shape
 
         ec = Economy(
             min_wage=1.0,
@@ -72,8 +77,13 @@ class Scheduler:
             current_labor=labor,
             n_vacancies=n_vacancies,
         )
+        fw = FirmWageOffer(
+            wage_prev=wage_prev,
+            n_vacancies=n_vacancies,  # shared view!
+            wage_offer=wage_offer,
+        )
 
-        return cls(rng=rng, ec=ec, prod=prod, lab=lab, vac=vac, h_rho=h_rho)
+        return cls(rng=rng, ec=ec, prod=prod, lab=lab, vac=vac, h_rho=h_rho, fw=fw)
 
     # ---------------------------------------------------------------------
 
@@ -85,6 +95,12 @@ class Scheduler:
         decide_desired_production(self.prod, p_avg, self.h_rho, self.rng)
         decide_desired_labor(self.lab)
         decide_vacancies(self.vac)
+        decide_wage_offer(
+            self.fw,
+            w_min=self.ec.min_wage,
+            h_xi=0.05,  # example: max +5 %
+            rng=self.rng,
+        )
 
         # -------- Event 2 (Labor market opens) -------------------------
         adjust_minimum_wage(self.ec)
