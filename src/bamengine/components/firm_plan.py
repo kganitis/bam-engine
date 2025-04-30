@@ -29,7 +29,7 @@ class FirmLaborPlan:
 
 @dataclass(slots=True)
 class FirmVacancies:
-    """Dense state needed for calculating number of vacancies."""
+    """Dense state needed for calculating number of n_vacancies."""
 
     desired_labor: IntA  # Ld_i  (read-only)
     current_labor: IntA  # L_i   (input, updated by matching later)
