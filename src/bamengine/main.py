@@ -27,7 +27,10 @@ def main() -> None:
     log = logging.getLogger(__name__)
 
     sched = Scheduler.init(
-        n_firms=args.firms, n_workers=args.households, h_rho=args.h_rho, seed=args.seed
+        n_firms=args.firms,
+        n_households=args.households,
+        h_rho=args.h_rho,
+        seed=args.seed,
     )
 
     for t in range(1, args.steps + 1):

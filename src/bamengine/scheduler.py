@@ -61,7 +61,7 @@ class Scheduler:
         cls,
         *,
         n_firms: int,
-        n_workers: int,
+        n_households: int,
         h_rho: float = 0.1,
         h_xi: float = 0.05,
         max_M: int = 4,
@@ -84,13 +84,13 @@ class Scheduler:
         wage_prev = np.full(n_firms, 1.0)
         wage_offer = np.zeros_like(price)
 
-        employed = np.zeros(n_workers, dtype=np.int64)
-        employer_prev = np.full(n_workers, -1, dtype=np.int64)
+        employed = np.zeros(n_households, dtype=np.int64)
+        employer_prev = np.full(n_households, -1, dtype=np.int64)
         contract_expired = np.zeros_like(employed)
         fired = np.zeros_like(employed)
 
-        apps_head = np.full(n_workers, -1, dtype=np.int64)
-        apps_targets = np.full((n_workers, max_M), -1, dtype=np.int64)
+        apps_head = np.full(n_households, -1, dtype=np.int64)
+        apps_targets = np.full((n_households, max_M), -1, dtype=np.int64)
         recv_apps_head = np.full(n_firms, -1, dtype=np.int64)
         recv_apps = np.full((n_firms, max_M), -1, dtype=np.int64)
 
