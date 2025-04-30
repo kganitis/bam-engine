@@ -70,16 +70,22 @@ def decide_wage_offer(
     )
 
 
+# ---------------------------------------------------------------------
 def workers_prepare_applications(
-    ws: WorkerJobSearch, fh: FirmHiring, *, max_M: int, rng: Generator
+    ws: WorkerJobSearch,
+    fh: FirmHiring,
+    *,
+    max_M: int,
+    rng: Generator,
 ) -> None:
     n_firms = fh.wage_offer.size
-    unem = np.where(ws.employed == 0)[0]  # id of each unemployed worker
-    if unem.size == 0:
-        ws.apps_head[:] = -1
+    unem = np.where(ws.employed == 0)[0]  # unemployed ids
+
+    if unem.size == 0:  # early-exit → nothing to do
+        ws.apps_head.fill(-1)
         return
 
-    # -------- sample M random firms per worker --------------------
+    # -------- sample M random firms per worker -----------------------
     sample = rng.integers(0, n_firms, size=(unem.size, max_M), dtype=np.int64)
 
     loyal = (
@@ -90,26 +96,36 @@ def workers_prepare_applications(
     if loyal.any():
         sample[loyal, 0] = ws.employer_prev[unem[loyal]]
 
-    # -------- wage-descending sort --------------------------------
+    # -------- wage-descending sort -----------------------------------
     order = np.argsort(-fh.wage_offer[sample], axis=1, kind="stable")
     sorted_sample = np.take_along_axis(sample, order, axis=1)
 
-    # -------- write to global buffers -----------------------------
+    # -------- write to global buffers --------------------------------
     stride = max_M
     ws.apps_targets.fill(-1)
     ws.apps_head.fill(-1)
 
-    for k, w in enumerate(unem):  # w = real worker id
-        ws.apps_targets[w, :stride] = sorted_sample[k]  # row index = worker id
-        ws.apps_head[w] = w * stride  # pointer into its own row
+    for k, w in enumerate(unem):
+        ws.apps_targets[w, :stride] = sorted_sample[k]
+        ws.apps_head[w] = w * stride  # first slot of that row
 
     # reset flags
     ws.contract_expired[unem] = 0
     ws.fired[unem] = 0
 
+    # -------- logging ------------------------------------------------
+    log.debug(
+        "workers_prepare_applications: U=%d  loyal=%d  avg_apps_per_U=%.1f",
+        unem.size,
+        int(loyal.sum()),
+        float((ws.apps_head[unem] >= 0).sum()) / unem.size * max_M,
+    )
 
+
+# ---------------------------------------------------------------------
 def workers_send_one_round(ws: WorkerJobSearch, fh: FirmHiring) -> None:
     stride = ws.apps_targets.shape[1]
+    sent = 0
 
     for w in np.where(ws.employed == 0)[0]:
         h = ws.apps_head[w]
@@ -121,19 +137,33 @@ def workers_send_one_round(ws: WorkerJobSearch, fh: FirmHiring) -> None:
             ws.apps_head[w] = -1
             continue
 
-        # push into firm's queue (bounded)
+        # bounded queue
         ptr = fh.recv_apps_head[firm_idx] + 1
         if ptr >= fh.recv_apps.shape[1]:
-            continue  # queue full, drop application
+            continue  # queue full – drop
         fh.recv_apps_head[firm_idx] = ptr
         fh.recv_apps[firm_idx, ptr] = w
+        sent += 1
 
         # advance pointer & clear slot
         ws.apps_head[w] = h + 1
         ws.apps_targets[row, col] = -1
 
+    log.debug(
+        "workers_send_one_round: sent=%d  firms_receiving=%d",
+        sent,
+        int((fh.recv_apps_head >= 0).sum()),
+    )
 
-def firms_hire(ws: WorkerJobSearch, fh: FirmHiring, *, contract_theta: int) -> None:
+
+# ---------------------------------------------------------------------
+def firms_hire(
+    ws: WorkerJobSearch,
+    fh: FirmHiring,
+    *,
+    contract_theta: int,
+) -> None:
+    total_hires = 0
     for i in np.where(fh.n_vacancies > 0)[0]:
         n_recv = fh.recv_apps_head[i] + 1
         if n_recv <= 0:
@@ -141,15 +171,21 @@ def firms_hire(ws: WorkerJobSearch, fh: FirmHiring, *, contract_theta: int) -> N
 
         n_hire = int(min(n_recv, fh.n_vacancies[i]))
         hires = fh.recv_apps[i, :n_hire]
-        hires = hires[hires >= 0]  # drop empty / duplicate slots
+        hires = hires[hires >= 0]
         if hires.size == 0:
             continue
 
         ws.employed[hires] = 1
         ws.apps_head[hires] = -1
         ws.employer_prev[hires] = i
-        # TODO: store wage & contract_theta arrays if needed
+        # (wage / contract arrays would be updated here)
 
         fh.n_vacancies[i] -= hires.size
         fh.recv_apps_head[i] = -1
-        fh.recv_apps[i, :n_recv] = -1  # hygiene
+        fh.recv_apps[i, :n_recv] = -1
+        total_hires += hires.size
+
+    log.debug(
+        "firms_hire: hires=%d",
+        total_hires,
+    )
