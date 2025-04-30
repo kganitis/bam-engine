@@ -6,17 +6,18 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.random import Generator, default_rng
 
+from bamengine.components.economy import Economy
 from bamengine.components.firm_plan import (
     FirmLaborPlan,
     FirmProductionPlan,
     FirmVacancies,
 )
+from bamengine.systems.labor_market import adjust_minimum_wage
 from bamengine.systems.planning import (
     decide_desired_labor,
     decide_desired_production,
     decide_vacancies,
 )
-from bamengine.components.economy import Economy
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,7 @@ class Scheduler:
     """Very small driver that owns the component arrays and calls systems."""
 
     rng: Generator
+    ec: Economy
     prod: FirmProductionPlan
     lab: FirmLaborPlan
     h_rho: float  # max growth rate for production
@@ -48,6 +50,11 @@ class Scheduler:
         desired_labor = np.zeros_like(labor)
         n_vacancies = np.zeros_like(labor)
 
+        ec = Economy(
+            min_wage=1.0,
+            avg_mrkt_price_history=np.array([1.5]),
+            min_wage_rev_period=4,
+        )
         prod = FirmProductionPlan(
             price=price,
             inventory=inventory,
@@ -66,7 +73,7 @@ class Scheduler:
             n_vacancies=n_vacancies,
         )
 
-        return cls(rng=rng, prod=prod, lab=lab, vac=vac, h_rho=h_rho)
+        return cls(rng=rng, ec=ec, prod=prod, lab=lab, vac=vac, h_rho=h_rho)
 
     # ---------------------------------------------------------------------
 
@@ -74,9 +81,18 @@ class Scheduler:
         """Run one period with the current systems."""
         p_avg = float(self.prod.price.mean())
 
+        # -------- Event 1 (Firms planning production) -----------------
         decide_desired_production(self.prod, p_avg, self.h_rho, self.rng)
         decide_desired_labor(self.lab)
         decide_vacancies(self.vac)
+
+        # -------- Event 2 (Labor market opens) -------------------------
+        adjust_minimum_wage(self.ec)
+
+        # -------- Event 4 (Production) ---------------------------------
+        self.ec.avg_mrkt_price_history = np.append(
+            self.ec.avg_mrkt_price_history, p_avg
+        )
 
         # ---- minimal state advance (stub) --------------------------------
         # For repeated steps we advance prod.prev_production so the next loop
