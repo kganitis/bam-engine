@@ -17,6 +17,7 @@ def test_one_period_integration() -> None:
 
     assert (sched.lab.desired_labor > 0).all()
 
+    # vacancies respect bounds: 0 ≤ V_i ≤ Ld_i
     assert (sched.vac.n_vacancies >= 0).all()
     assert (sched.vac.n_vacancies > 0).any()
     assert (sched.vac.n_vacancies <= sched.lab.desired_labor).all()

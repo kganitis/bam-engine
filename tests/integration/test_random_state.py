@@ -18,7 +18,11 @@ from bamengine.components.firm_plan import (
     FirmProductionPlan,
     FirmVacancies,
 )
-from bamengine.events.firms_planning import firms_planning
+from bamengine.systems.planning import (
+    decide_desired_labor,
+    decide_desired_production,
+    decide_vacancies,
+)
 
 N_FIRMS = 17  # prime → catches shape mix-ups
 SEED = 5678
@@ -72,7 +76,9 @@ def _make_random_state(n: int, seed: int = 0) -> EconomyState:
 def test_random_state_one_step() -> None:
     prod, lab, vac, rng = _make_random_state(N_FIRMS, SEED)
 
-    firms_planning(prod, lab, vac, p_avg=P_AVG, h_rho=H_RHO, rng=rng)
+    decide_desired_production(prod, P_AVG, H_RHO, rng)
+    decide_desired_labor(lab)
+    decide_vacancies(vac)
 
     # ---------- invariants -------------------------------------------------
     # shapes / dtypes

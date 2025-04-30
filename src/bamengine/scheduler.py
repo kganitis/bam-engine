@@ -11,7 +11,12 @@ from bamengine.components.firm_plan import (
     FirmProductionPlan,
     FirmVacancies,
 )
-from bamengine.events.firms_planning import firms_planning
+from bamengine.systems.planning import (
+    decide_desired_labor,
+    decide_desired_production,
+    decide_vacancies,
+)
+from bamengine.components.economy import Economy
 
 logger = logging.getLogger(__name__)
 
@@ -68,9 +73,10 @@ class Scheduler:
     def step(self) -> None:
         """Run one period with the current systems."""
         p_avg = float(self.prod.price.mean())
-        firms_planning(
-            self.prod, self.lab, self.vac, p_avg=p_avg, h_rho=self.h_rho, rng=self.rng
-        )
+
+        decide_desired_production(self.prod, p_avg, self.h_rho, self.rng)
+        decide_desired_labor(self.lab)
+        decide_vacancies(self.vac)
 
         # ---- minimal state advance (stub) --------------------------------
         # For repeated steps we advance prod.prev_production so the next loop
