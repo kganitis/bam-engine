@@ -37,7 +37,7 @@ def adjust_minimum_wage(ec: Economy) -> None:
     )
 
 
-def decide_wage_offer(
+def firms_decide_wage_offer(
     fw: FirmWageOffer,
     *,
     w_min: float,
@@ -73,12 +73,12 @@ def decide_wage_offer(
 # ---------------------------------------------------------------------
 def workers_prepare_applications(
     ws: WorkerJobSearch,
-    fh: FirmHiring,
+    fw: FirmWageOffer,
     *,
     max_M: int,
     rng: Generator,
 ) -> None:
-    n_firms = fh.wage_offer.size
+    n_firms = fw.wage_offer.size
     unem = np.where(ws.employed == 0)[0]  # unemployed ids
 
     if unem.size == 0:  # early-exit → nothing to do
@@ -97,7 +97,7 @@ def workers_prepare_applications(
         sample[loyal, 0] = ws.employer_prev[unem[loyal]]
 
     # -------- wage-descending sort -----------------------------------
-    order = np.argsort(-fh.wage_offer[sample], axis=1, kind="stable")
+    order = np.argsort(-fw.wage_offer[sample], axis=1, kind="stable")
     sorted_sample = np.take_along_axis(sample, order, axis=1)
 
     # -------- write to global buffers --------------------------------
@@ -157,7 +157,7 @@ def workers_send_one_round(ws: WorkerJobSearch, fh: FirmHiring) -> None:
 
 
 # ---------------------------------------------------------------------
-def firms_hire(
+def firms_hire_workers(
     ws: WorkerJobSearch,
     fh: FirmHiring,
     *,

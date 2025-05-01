@@ -1,7 +1,11 @@
-from .planning import decide_desired_labor, decide_desired_production, decide_vacancies
+from .planning import (
+    firms_decide_desired_labor,
+    firms_decide_desired_production,
+    firms_decide_vacancies,
+)
 
 __all__ = [
-    "decide_desired_production",
-    "decide_desired_labor",
-    "decide_vacancies",
+    "firms_decide_desired_production",
+    "firms_decide_desired_labor",
+    "firms_decide_vacancies",
 ]
