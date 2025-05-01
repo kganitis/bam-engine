@@ -12,7 +12,7 @@ from bamengine.components.firm_plan import (
 log = logging.getLogger(__name__)
 
 
-def decide_desired_production(
+def firms_decide_desired_production(
     prod: FirmProductionPlan,
     p_avg: float,
     h_rho: float,
@@ -52,12 +52,14 @@ def decide_desired_production(
     )
 
 
-def decide_desired_labor(lab: FirmLaborPlan) -> None:
+def firms_decide_desired_labor(lab: FirmLaborPlan) -> None:
     """
     Desired labor demand (vectorised):
 
         Ld_i = ceil(Yd_i / a_i)
     """
+    if (lab.labor_productivity <= 0).any():
+        raise ValueError("labor_productivity must be > 0")
     ratio = lab.desired_production / lab.labor_productivity
     np.ceil(ratio, out=ratio)
     lab.desired_labor[:] = ratio.astype(np.int64)
@@ -73,7 +75,7 @@ def decide_desired_labor(lab: FirmLaborPlan) -> None:
     )
 
 
-def decide_vacancies(vac: FirmVacancies) -> None:
+def firms_decide_vacancies(vac: FirmVacancies) -> None:
     """
     Vector rule: V_i = max( Ld_i – L_i , 0 )
     """

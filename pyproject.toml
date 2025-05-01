@@ -15,6 +15,7 @@ dev = [
     "pytest>=8.3",
     "numpy>=1.26",
     "numba<0.61",
+    "hypothesis>=6.131.9"
 ]
 
 [tool.ruff]

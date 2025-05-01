@@ -4,6 +4,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.egg-info/
+*.hypothesis/
 # IDE
 .idea/
 .vscode/

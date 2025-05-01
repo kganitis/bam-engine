@@ -18,15 +18,15 @@ from bamengine.components.firm_plan import (
 from bamengine.components.worker_job import WorkerJobSearch
 from bamengine.systems.labor_market import (
     adjust_minimum_wage,
-    decide_wage_offer,
-    firms_hire,
+    firms_decide_wage_offer,
+    firms_hire_workers,
     workers_prepare_applications,
     workers_send_one_round,
 )
 from bamengine.systems.planning import (
-    decide_desired_labor,
-    decide_desired_production,
-    decide_vacancies,
+    firms_decide_desired_labor,
+    firms_decide_desired_production,
+    firms_decide_vacancies,
 )
 
 log = logging.getLogger(__name__)
@@ -162,25 +162,45 @@ class Scheduler:
         # ===== Event 1 – firms plan =======================================
         p_avg = float(self.prod.price.mean())
 
-        decide_desired_production(self.prod, p_avg, self.h_rho, self.rng)
-        decide_desired_labor(self.lab)
-        decide_vacancies(self.vac)
-        decide_wage_offer(self.fw, w_min=self.ec.min_wage, h_xi=self.h_xi, rng=self.rng)
+        firms_decide_desired_production(self.prod, p_avg, self.h_rho, self.rng)
+        firms_decide_desired_labor(self.lab)
+        firms_decide_vacancies(self.vac)
 
-        # ===== Event 2 – labour-market ===
+        # ===== Event 2 – labour-market =====================================
         adjust_minimum_wage(self.ec)
-        workers_prepare_applications(self.ws, self.fh, max_M=self.max_M, rng=self.rng)
+        firms_decide_wage_offer(
+            self.fw, w_min=self.ec.min_wage, h_xi=self.h_xi, rng=self.rng
+        )
+        workers_prepare_applications(self.ws, self.fw, max_M=self.max_M, rng=self.rng)
         for _ in range(self.max_M):  # round‐robin M times
             workers_send_one_round(self.ws, self.fh)
-            firms_hire(self.ws, self.fh, contract_theta=self.theta)
+            firms_hire_workers(self.ws, self.fh, contract_theta=self.theta)
 
-        # ===== Event 4 stub – end-of-period bookkeeping ===================
+        self._advance_stub_state(p_avg)
+
+    # --------------------------------------------------------------------- #
+    #                         stub state advance                            #
+    # --------------------------------------------------------------------- #
+    def _advance_stub_state(self, p_avg: float) -> None:
+        """
+        Temporary helper used while future events are not implemented.
+
+        It performs three minimal tasks so the simulation can run multiple
+        periods and the tests have fresh – but *plausible* – arrays:
+
+        1. Append the realised average market price to the global series.
+        2. Roll `prev_production` forward to last period’s `desired_production`.
+        3. Jitter inventory and price so future periods don’t see constants.
+        """
+        # add price to history (needed for minimum-wage inflation rule)
         self.ec.avg_mrkt_price_history = np.append(
             self.ec.avg_mrkt_price_history, p_avg
         )
 
-        # very lightweight state advance so tests can call step() again
+        # carry forward production level
         self.prod.prev_production[:] = self.prod.desired_production
+
+        # stub: random new inventory and mild price noise
         self.prod.inventory[:] = self.rng.integers(0, 6, size=self.prod.inventory.shape)
         self.prod.price[:] *= self.rng.uniform(0.98, 1.02, size=self.prod.price.shape)
 
