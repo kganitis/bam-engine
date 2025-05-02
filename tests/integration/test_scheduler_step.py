@@ -4,6 +4,8 @@ Smoke integration test: one `Scheduler.step()` covering Events 1 + 2.
 The goal is **not** to retest algebra already covered by unit tests, but to
 confirm that the driver glues the systems together correctly and keeps basic
 state invariants intact.
+
+Its job is to answer “Did anything explode when I call step()?”
 """
 
 import numpy as np

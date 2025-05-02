@@ -54,14 +54,16 @@ def test_adjust_minimum_wage_revision() -> None:
 
 
 @pytest.mark.parametrize(
-    "prices,expect_change",
+    "prices,delta_sign",
     [
-        (np.array([1.0, 1.1, 1.2, 1.3, 1.4]), True),  # revision at t = 4
-        (np.array([1.0, 1.1, 1.2]), False),  # too short (< m+1)
+        # (price path, expected sign of Δŵ)
+        (np.array([1.0, 1.1, 1.2, 1.3, 1.4]), "up"),  # inflation
+        (np.array([1.0, 0.9, 0.8, 0.8, 0.8]), "down"),  # deflation
+        (np.array([1.0, 1.1, 1.2]), "none"),  # < m+1, no revision
     ],
 )
-def test_adjust_minimum_wage_edges(prices: FloatA, expect_change: bool) -> None:
-    """Guard array bounds & deflation: floor must never decrease."""
+def test_adjust_minimum_wage_edges(prices: FloatA, delta_sign: str) -> None:
+    """Guard array bounds; min wage may go **up or down** depending on inflation."""
     ec = Economy(
         min_wage=1.0,
         avg_mrkt_price_history=prices,
@@ -69,8 +71,10 @@ def test_adjust_minimum_wage_edges(prices: FloatA, expect_change: bool) -> None:
     )
     old = ec.min_wage
     adjust_minimum_wage(ec)
-    if expect_change:
+    if delta_sign == "up":
         assert ec.min_wage > old
+    elif delta_sign == "down":
+        assert ec.min_wage < old
     else:
         assert ec.min_wage == pytest.approx(old)
 

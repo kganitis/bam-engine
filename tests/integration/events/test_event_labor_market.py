@@ -11,6 +11,7 @@ and asserts cross-component invariants that no single unit test can see.
 """
 
 import numpy as np
+import pytest
 
 from bamengine.scheduler import Scheduler
 from bamengine.systems.labor_market import (
@@ -65,8 +66,15 @@ def test_event_labor_market(tiny_sched: Scheduler) -> None:
     # Assertions – cross-component invariants
     # ------------------------------------------------------------------ #
 
-    # 1. Minimum wage never decreases
-    assert sch.ec.min_wage >= prev_floor
+    # 1. Wage floor matches rule outcome (may rise, fall, or stay)
+    m = sch.ec.min_wage_rev_period
+    hist = sch.ec.avg_mrkt_price_history
+    if hist.size > m and (hist.size - 1) % m == 0:
+        p_now, p_prev = hist[-2], hist[-m - 1]
+        expected_floor = prev_floor * (1 + (p_now - p_prev) / p_prev)
+        assert sch.ec.min_wage == pytest.approx(expected_floor)
+    else:
+        assert sch.ec.min_wage == pytest.approx(prev_floor)
 
     # 2. Every wage offer respects the (possibly revised) floor
     assert (sch.fw.wage_offer >= sch.ec.min_wage).all()
