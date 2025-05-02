@@ -161,31 +161,41 @@ def firms_hire_workers(
     ws: WorkerJobSearch,
     fh: FirmHiring,
     *,
-    contract_theta: int,
+    contract_theta: int,  # not used yet but kept for future extension
 ) -> None:
+    """Match firms with queued applicants and update all related state.
+
+    Side‑effects
+    ------------
+    * ws.employed, ws.apps_head, ws.employer_prev
+    * fh.n_vacancies, fh.recv_apps_head / recv_apps
+    * fh.current_labor ← increments by the number of hires
+    """
     total_hires = 0
+
     for i in np.where(fh.n_vacancies > 0)[0]:
-        n_recv = fh.recv_apps_head[i] + 1
+        n_recv = fh.recv_apps_head[i] + 1  # queue length (−1 ⇒ 0)
         if n_recv <= 0:
             continue
 
         n_hire = int(min(n_recv, fh.n_vacancies[i]))
         hires = fh.recv_apps[i, :n_hire]
-        hires = hires[hires >= 0]
+        hires = hires[hires >= 0]  # drop sentinel slots
         if hires.size == 0:
             continue
 
+        # ---- worker‑side updates ----------------------------------------
         ws.employed[hires] = 1
         ws.apps_head[hires] = -1
         ws.employer_prev[hires] = i
         # (wage / contract arrays would be updated here)
 
+        # ---- firm‑side updates ------------------------------------------
+        fh.current_labor[i] += hires.size  # NEW: keep labour stock
         fh.n_vacancies[i] -= hires.size
-        fh.recv_apps_head[i] = -1
+
+        fh.recv_apps_head[i] = -1  # clear queue
         fh.recv_apps[i, :n_recv] = -1
         total_hires += hires.size
 
-    log.debug(
-        "firms_hire: hires=%d",
-        total_hires,
-    )
+    log.debug("firms_hire: hires=%d", total_hires)

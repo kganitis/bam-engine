@@ -42,6 +42,7 @@ def test_event_labor_market(tiny_sched: Scheduler) -> None:
 
     original_vacancies = sch.vac.n_vacancies.copy()
     original_employed = sch.ws.employed.copy()
+    original_labor = sch.fh.current_labor.copy()
 
     # ------------------------------------------------------------------ #
     # --------------------  EVENT-2  ----------------------------------- #
@@ -79,13 +80,14 @@ def test_event_labor_market(tiny_sched: Scheduler) -> None:
     # 2. Every wage offer respects the (possibly revised) floor
     assert (sch.fw.wage_offer >= sch.ec.min_wage).all()
 
-    # 3. Employment flags are boolean (0/1) and monotone non-decreasing
+    # 3. Employment flags and hires
     assert set(np.unique(sch.ws.employed)).issubset({0, 1})
     assert (sch.ws.employed >= original_employed).all()
+    hires = sch.ws.employed.sum() - original_employed.sum()
+    assert hires == (sch.fh.current_labor.sum() - original_labor.sum())
 
     # 4. Vacancies never go negative and decrease by ≤ hires
     assert (sch.fh.n_vacancies >= 0).all()
-    hires = sch.ws.employed.sum() - original_employed.sum()
     vac_reduction = original_vacancies.sum() - sch.fh.n_vacancies.sum()
     assert hires == vac_reduction
 

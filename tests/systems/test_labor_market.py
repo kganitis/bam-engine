@@ -11,7 +11,7 @@ The structure is:
 * Wage-offer decision               – floor & shock edge cases
 * Application preparation           – unemployed mix, loyalty, buffer limits
 * One-round message passing         – queue boundaries
-* Hiring                            – vacancies / pointer invariants
+* Hiring                            – vacancies / current labor / pointer invariants
 """
 
 from typing import Tuple
@@ -125,7 +125,7 @@ def test_decide_wage_offer_floor_and_shock() -> None:
 #  Shared helpers for application / hiring tests
 # --------------------------------------------------------------------------- #
 def _mini_state() -> Tuple[FirmWageOffer, WorkerJobSearch, FirmHiring, Generator, int]:
-    """Return a deterministic tiny labour-market state (6 workers × 3 firms)."""
+    """Return a deterministic tiny labor-market state (6 workers × 3 firms)."""
     rng = default_rng(seed=1)
     n_workers, n_firms, M = 6, 3, 2
 
@@ -143,8 +143,9 @@ def _mini_state() -> Tuple[FirmWageOffer, WorkerJobSearch, FirmHiring, Generator
         apps_targets=np.full((n_workers, M), -1, dtype=np.int64),
     )
     fh = FirmHiring(
-        wage_offer=np.array([1.2, 1.5, 1.3]),
-        n_vacancies=np.array([2, 1, 0], dtype=np.int64),
+        wage_offer=fw.wage_offer,
+        n_vacancies=fw.n_vacancies,
+        current_labor=np.array([1, 0, 2], dtype=np.int64),
         recv_apps_head=np.full(n_firms, -1, dtype=np.int64),
         recv_apps=np.full((n_firms, M), -1, dtype=np.int64),
     )
@@ -262,7 +263,7 @@ def test_workers_send_one_round_queue_bounds() -> None:
 
 
 # --------------------------------------------------------------------------- #
-#  firms_hire
+#  firms_hire_workers
 # --------------------------------------------------------------------------- #
 def test_firms_hire_no_vacancies() -> None:
     """
@@ -270,13 +271,18 @@ def test_firms_hire_no_vacancies() -> None:
     hiring anyone and without crashing.
     """
     _, ws, fh, _, _ = _mini_state()
+    start_labor = fh.current_labor.copy()
+
     fh.n_vacancies[:] = 0  # nobody hiring
     fh.recv_apps_head[1] = 0
     fh.recv_apps[1, 0] = 2
+
     firms_hire_workers(ws, fh, contract_theta=8)
 
     # the application must *not* result in a hire
+    np.testing.assert_array_equal(fh.current_labor, start_labor)
     assert ws.employed[2] == 0
+
     # pointer stays where it was (0) — queue ignored, not flushed
     assert fh.recv_apps_head[1] == 0
 
@@ -287,11 +293,15 @@ def test_firms_hire_exact_fit() -> None:
     is cleared.
     """
     _, ws, fh, _, _ = _mini_state()
+    start_labor = fh.current_labor.copy()
+
     fh.recv_apps_head[0] = 1
     fh.recv_apps[0, :2] = [0, 2]
+
     firms_hire_workers(ws, fh, contract_theta=8)
 
     assert fh.n_vacancies[0] == 0
+    assert fh.current_labor[0] == start_labor[0] + 2
     assert (fh.recv_apps[0] == -1).all()
     assert ws.employed[[0, 2]].sum() == 2  # both hired
 
@@ -307,12 +317,14 @@ def test_full_round() -> None:
     * no dangling head pointers for hired workers.
     """
     fw, ws, fh, rng, M = _mini_state()
-    workers_prepare_applications(ws, fw, max_M=M, rng=rng)
+    start_labor = fh.current_labor.copy()
 
+    workers_prepare_applications(ws, fw, max_M=M, rng=rng)
     for _ in range(M):
         workers_send_one_round(ws, fh)
         firms_hire_workers(ws, fh, contract_theta=8)
 
     assert (fh.n_vacancies >= 0).all()
     assert ws.employed.sum() >= 1
+    assert fh.current_labor.sum() >= start_labor.sum()
     assert (ws.apps_head[ws.employed == 1] == -1).all()
