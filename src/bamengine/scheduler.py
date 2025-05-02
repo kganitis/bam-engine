@@ -10,6 +10,7 @@ from typing import TypeAlias
 import numpy as np
 from numpy.random import Generator, default_rng
 
+import testing
 from bamengine.components.economy import Economy
 from bamengine.components.firm_labor import FirmHiring, FirmWageOffer
 from bamengine.components.firm_plan import (
@@ -207,37 +208,12 @@ class Scheduler:
         if after_labor_market is not None:
             after_labor_market(self)
 
-        self._advance_stub_state(p_avg)
+        # Stub state advance
+        testing.advance_stub_state(self, avg_mrkt_price)
 
         # Final hook – deterministic tweaks that must survive into t+1
         if after_stub is not None:
             after_stub(self)
-
-    # --------------------------------------------------------------------- #
-    #                         stub state advance                            #
-    # --------------------------------------------------------------------- #
-    def _advance_stub_state(self, p_avg: float) -> None:
-        """
-        Temporary helper used while future events are not implemented.
-
-        It performs three minimal tasks so the simulation can run multiple
-        periods and the tests have fresh – but *plausible* – arrays:
-
-        1. Append the realised average market price to the global series.
-        2. Roll `prev_production` forward to last period’s `desired_production`.
-        3. Jitter inventory and price so future periods don’t see constants.
-        """
-        # add price to history (needed for minimum-wage inflation rule)
-        self.ec.avg_mrkt_price_history = np.append(
-            self.ec.avg_mrkt_price_history, p_avg
-        )
-
-        # carry forward production level
-        self.prod.prev_production[:] = self.prod.desired_production
-
-        # stub: random new inventory and mild price noise
-        self.prod.inventory[:] = self.rng.integers(0, 6, size=self.prod.inventory.shape)
-        self.prod.price[:] *= self.rng.uniform(0.98, 1.02, size=self.prod.price.shape)
 
     # ------------------------------------------------------------------ #
     # convenience                                                       #
