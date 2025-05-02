@@ -157,8 +157,28 @@ class Scheduler:
     # --------------------------------------------------------------------- #
     #                               one step                                #
     # --------------------------------------------------------------------- #
-    def step(self) -> None:
-        """Advance the economy by one period."""
+    def step(
+        self,
+        *,
+        before_planning: callable | None = None,
+        after_labor_market: callable | None = None,
+        after_stub: callable | None = None,
+    ) -> None:
+        """Advance the economy by one period.
+
+        Parameters
+        ----------
+        before_planning : callable(self) | None, optional
+            Called **before** planning systems run.
+        after_labor_market  : callable(self) | None, optional
+            Called **after** labor market systems finish.
+        after_stub:  callable(self) | None, optional
+            Called **after** stub bookkeeping.
+        """
+
+        # Optional hook
+        if before_planning is not None:
+            before_planning(self)
 
         # ===== Event 1 – firms plan =======================================
         p_avg = float(self.prod.price.mean())
@@ -177,7 +197,15 @@ class Scheduler:
             workers_send_one_round(self.ws, self.fh)
             firms_hire_workers(self.ws, self.fh, contract_theta=self.theta)
 
+        # Optional hook
+        if after_labor_market is not None:
+            after_labor_market(self)
+
         self._advance_stub_state(p_avg)
+
+        # Final hook – deterministic tweaks that must survive into t+1
+        if after_stub is not None:
+            after_stub(self)
 
     # --------------------------------------------------------------------- #
     #                         stub state advance                            #
