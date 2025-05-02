@@ -23,10 +23,12 @@ class FirmWageOffer:
 
 @dataclass(slots=True)
 class FirmHiring:
-    """All hiring-related state in dense form."""
+    """All hiring‑related state in dense form."""
 
-    wage_offer: FloatA  # w_i^b (current period offer)
-    n_vacancies: IntA  # V_i   (posted this period, already from planning)
+    wage_offer: FloatA  # w_i^b
+    n_vacancies: IntA  # V_i   (remaining for this period)
+    current_labor: IntA  # L_i   (shared view with FirmVacancies)
+
     # scratch queues
-    recv_apps_head: IntA  # head ptr into recv_apps array (–1 => empty)
+    recv_apps_head: IntA  # head ptr into recv_apps (−1 ⇒ empty)
     recv_apps: IntA  # flat buffer of worker indices

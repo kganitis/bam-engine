@@ -134,6 +134,7 @@ class Scheduler:
         fh = FirmHiring(
             wage_offer=wage_offer,  # shared view
             n_vacancies=n_vacancies,  # shared view
+            current_labor=current_labor,  # shared view
             recv_apps_head=recv_apps_head,
             recv_apps=recv_apps,
         )
@@ -166,7 +167,7 @@ class Scheduler:
         firms_decide_desired_labor(self.lab)
         firms_decide_vacancies(self.vac)
 
-        # ===== Event 2 – labour-market =====================================
+        # ===== Event 2 – labor-market =====================================
         adjust_minimum_wage(self.ec)
         firms_decide_wage_offer(
             self.fw, w_min=self.ec.min_wage, h_xi=self.h_xi, rng=self.rng

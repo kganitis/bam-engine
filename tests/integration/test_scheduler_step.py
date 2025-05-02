@@ -28,15 +28,15 @@ def test_scheduler_step_event1_event2(tiny_sched: Scheduler) -> None:
     # ------------------------------------------------------------------ #
     # Invariants
     # ------------------------------------------------------------------ #
-    # 1. Vacancies
+    # Vacancies
     assert (sch.fh.n_vacancies >= 0).all()
 
-    # 2. Wage floor
+    # Wage floor
     assert (sch.fw.wage_offer >= sch.ec.min_wage).all()
 
-    # 3. Employment flags ∈ {0,1}
+    # Employment flags ∈ {0,1}
     uniq = np.unique(sch.ws.employed)
     assert set(uniq).issubset({0, 1})
 
-    # 4. No over-hiring: Σ employed ≤ Σ desired labour
-    assert sch.ws.employed.sum() <= sch.lab.desired_labor.sum()
+    # Every employed worker is counted in current_labor, and vice‑versa
+    assert sch.ws.employed.sum() == sch.fh.current_labor.sum()
