@@ -103,6 +103,7 @@ class Scheduler:
         ec = Economy(
             min_wage=1.0,
             min_wage_rev_period=4,
+            avg_mrkt_price=1.5,
             avg_mrkt_price_history=np.array([1.5]),
         )
 
@@ -186,9 +187,9 @@ class Scheduler:
             before_planning(self)
 
         # ===== Event 1 – firms plan =======================================
-        p_avg = float(self.prod.price.mean())
+        avg_mrkt_price = float(self.prod.price.mean())
 
-        firms_decide_desired_production(self.prod, p_avg, self.h_rho, self.rng)
+        firms_decide_desired_production(self.prod, avg_mrkt_price, self.h_rho, self.rng)
         firms_decide_desired_labor(self.lab)
         firms_decide_vacancies(self.vac)
 
