@@ -167,9 +167,9 @@ def firms_hire_workers(
 
     Side‑effects
     ------------
-    * ws.employed, ws.apps_head, ws.employer_prev
-    * fh.n_vacancies, fh.recv_apps_head / recv_apps
-    * fh.current_labor ← increments by the number of hires
+    * `ws.employed`, `ws.apps_head`, `ws.employer_prev`
+    * `fh.n_vacancies`, `fh.recv_apps_head` / `recv_apps`
+    * `fh.current_labor` ← increments by the number of hires
     """
     total_hires = 0
 
