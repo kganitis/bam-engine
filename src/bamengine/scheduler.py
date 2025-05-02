@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import TypeAlias
 
 import numpy as np
 from numpy.random import Generator, default_rng
@@ -30,6 +32,9 @@ from bamengine.systems.planning import (
 )
 
 log = logging.getLogger(__name__)
+
+# A hook function that receives the Scheduler and returns nothing
+SchedulerHook: TypeAlias = Callable[["Scheduler"], None] | None
 
 
 @dataclass(slots=True)
@@ -160,19 +165,19 @@ class Scheduler:
     def step(
         self,
         *,
-        before_planning: callable | None = None,
-        after_labor_market: callable | None = None,
-        after_stub: callable | None = None,
+        before_planning: SchedulerHook = None,
+        after_labor_market: SchedulerHook = None,
+        after_stub: SchedulerHook = None,
     ) -> None:
         """Advance the economy by one period.
 
         Parameters
         ----------
-        before_planning : callable(self) | None, optional
+        before_planning : callable(self), optional
             Called **before** planning systems run.
-        after_labor_market  : callable(self) | None, optional
+        after_labor_market: callable(self), optional
             Called **after** labor market systems finish.
-        after_stub:  callable(self) | None, optional
+        after_stub: callable(self), optional
             Called **after** stub bookkeeping.
         """
 

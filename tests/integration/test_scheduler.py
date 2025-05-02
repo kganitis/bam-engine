@@ -1,0 +1,65 @@
+import pytest
+from helpers.invariants import assert_basic_invariants
+from hypothesis import given, settings
+from hypothesis import strategies as st
+
+from bamengine.scheduler import Scheduler
+
+
+def test_scheduler_step(tiny_sched: Scheduler) -> None:
+    """
+    Smoke integration test: one `Scheduler.step()`.
+
+    The goal is **not** to retest algebra already covered by unit tests, but to
+    confirm that the driver glues the systems together correctly and keeps basic
+    state invariants intact.
+
+    Its job is to answer “Did anything explode when I call step()?”
+    """
+    tiny_sched.step()
+    assert_basic_invariants(tiny_sched)
+
+
+@pytest.mark.parametrize("steps", [10])
+def test_scheduler_state_stable_over_time(steps: int) -> None:
+    """
+    Multi‑period smoke test: run consecutive Scheduler steps on a medium‑sized
+    economy and assert that key invariants hold after **each** period.
+
+    This catches state‑advancement bugs that single‑step tests can miss.
+    """
+    # Medium‑sized economy
+    sch = Scheduler.init(
+        n_firms=50,
+        n_households=200,
+        seed=9,
+        # keep default shocks for realism
+    )
+
+    for _ in range(steps):
+        prev_labor = sch.fh.current_labor.sum()
+        sch.step()
+
+        assert_basic_invariants(sch)
+
+        # multi‑period–specific extras
+        assert sch.fh.current_labor.sum() >= prev_labor  # no firing yet
+
+
+@given(
+    n_firms=st.integers(5, 20),
+    n_households=st.integers(20, 100),
+    seed=st.integers(0, 2**32 - 1),
+)
+@settings(max_examples=50)  # keeps CI fast; can raise for more fuzzing
+def test_scheduler_step_properties(n_firms: int, n_households: int, seed: int) -> None:
+    """
+    Property‑based smoke test for a single `Scheduler.step()`.
+
+    Hypothesis varies the economy's size (5‑20 firms, 20‑100 households) and a
+    random seed.  We assert only the most fundamental invariants that should
+    hold *regardless of parameter values*.
+    """
+    sch = Scheduler.init(n_firms=n_firms, n_households=n_households, seed=seed)
+    sch.step()
+    assert_basic_invariants(sch)
