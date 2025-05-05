@@ -2,6 +2,7 @@ import logging
 
 import numpy as np
 from numpy.random import Generator
+from numpy.typing import NDArray
 
 from bamengine.components.economy import Economy
 from bamengine.components.firm_labor import FirmHiring, FirmWageOffer
@@ -70,6 +71,23 @@ def firms_decide_wage_offer(
     )
 
 
+# --------------------------------------------------------------------------- #
+def _topk_indices_desc(values: NDArray[np.float64], k: int) -> NDArray[np.intp]:
+    """
+    Indices of the *k* largest elements along the last axis, **unsorted**.
+
+    Complexity
+    ----------
+    * argpartition  → O(n)  (find the split point)
+    * slicing k     → O(k)
+    Total           → O(n + k)          vs.   full argsort O(n log n)
+    """
+    if k >= values.shape[-1]:  # degenerate: keep all
+        return np.argpartition(values, kth=0, axis=-1)
+    part = np.argpartition(values, kth=k - 1, axis=-1)  # top‑k to the left
+    return part[..., :k]  # [:, :k] for 2‑D case
+
+
 # ---------------------------------------------------------------------
 def workers_prepare_applications(
     ws: WorkerJobSearch,
@@ -96,9 +114,25 @@ def workers_prepare_applications(
     if loyal.any():
         sample[loyal, 0] = ws.employer_prev[unem[loyal]]
 
-    # -------- wage-descending sort -----------------------------------
-    order = np.argsort(-fw.wage_offer[sample], axis=1, kind="stable")
-    sorted_sample = np.take_along_axis(sample, order, axis=1)
+    # -------- wage‑descending *partial* sort ----------------------------
+    topk = _topk_indices_desc(fw.wage_offer[sample], k=max_M)
+    sorted_sample = np.take_along_axis(sample, topk, axis=1)
+
+    #
+    # -------- loyalty: ensure previous employer is always in column 0 ---
+    if loyal.any():
+        # indices of loyal workers in the `unem` array
+        loyal_rows = np.where(loyal)[0]
+
+        # swap previous‑employer into col 0 when it got shuffled away
+        for r in loyal_rows:
+            prev = ws.employer_prev[unem[r]]
+            row = sorted_sample[r]
+
+            if row[0] != prev:
+                # find where prev employer ended up (guaranteed to exist)
+                j = np.where(row == prev)[0][0]
+                row[0], row[j] = row[j], row[0]
 
     # -------- write to global buffers --------------------------------
     stride = max_M
