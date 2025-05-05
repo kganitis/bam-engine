@@ -1,10 +1,11 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 from numpy.typing import NDArray
 
 FloatA = NDArray[np.float64]
 IntA = NDArray[np.int64]
+BoolA = NDArray[np.bool_]
 
 
 @dataclass(slots=True)
@@ -16,6 +17,11 @@ class FirmProductionPlan:
     prev_production: FloatA  # Y_{i,t-1}
     expected_demand: FloatA  # D̂_i  (output, same size)
     desired_production: FloatA  # Yd_i (output, same size)
+
+    # ---- permanent scratch buffers (allocated once, reused forever) ----
+    work_shock: FloatA | None = field(default=None, repr=False)
+    work_mask_up: BoolA | None = field(default=None, repr=False)
+    work_mask_dn: BoolA | None = field(default=None, repr=False)
 
 
 @dataclass(slots=True)
