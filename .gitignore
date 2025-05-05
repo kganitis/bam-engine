@@ -1,12 +1,58 @@
-# project
+# Python virtual environments
+.venv/
 venv/
+
+# Byte-compiled / cache
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
+*.pyd
+
+# Distribution / packaging
+build/
+dist/
 *.egg-info/
-*.hypothesis/
-# IDE
+.eggs/
+*.whl
+*.manifest
+*.spec
+
+# Test and coverage
+.hypothesis/
+.cache/
+.tox/
+.coverage
+coverage.xml
+htmlcov/
+
+# IDEs
 .idea/
 .vscode/
-# MacOS
-**/.DS_Store
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and local state
+*.log
+*.pid
+
+# MyPy
+.mypy_cache/
+
+# Ruff
+.ruff_cache/
+
+# Pyright / Pylance
+.pyrightcache/
+
+# PyCharm settings (redundant with .idea/, but just in case)
+*.iml
+
+# Backup / temp
+*.bak
+*.swp
+*.tmp
