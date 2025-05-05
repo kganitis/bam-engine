@@ -133,6 +133,28 @@ def test_shock_off_no_change() -> None:
     assert np.isclose(prod.desired_production[0], 8.0)
 
 
+def test_reuses_internal_buffers() -> None:
+    rng = default_rng(0)
+    prod = FirmProductionPlan(
+        price=np.array([2.0, 2.0]),
+        inventory=np.zeros(2),
+        prev_production=np.ones(2),
+        expected_demand=np.zeros(2),
+        desired_production=np.zeros(2),
+    )
+    # pre‑allocate internal buffers once
+    buf0 = prod.work_shock
+    mask_up0 = prod.work_mask_up
+    mask_dn0 = prod.work_mask_dn
+
+    decide_desired_production(prod, p_avg=1.5, h_rho=0.05, rng=rng)
+
+    # same Python objects → same id / “is”
+    assert buf0 is prod.work_shock
+    assert mask_up0 is prod.work_mask_up
+    assert mask_dn0 is prod.work_mask_dn
+
+
 # --------------------------------------------------------------------------- #
 # 3. desired labour – deterministic test & zero-productivity guard           #
 # --------------------------------------------------------------------------- #
