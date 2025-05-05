@@ -100,6 +100,10 @@ class Scheduler:
         recv_apps_head = np.full(n_firms, -1, dtype=np.int64)
         recv_apps = np.full((n_firms, max_M), -1, dtype=np.int64)
 
+        work_shock = np.empty_like(price, dtype=np.float64)
+        work_mask_up = np.empty_like(price, dtype=np.bool_)
+        work_mask_dn = np.empty_like(price, dtype=np.bool_)
+
         # ---------- wrap into components ----------------------------------
         ec = Economy(
             min_wage=1.0,
@@ -114,6 +118,9 @@ class Scheduler:
             prev_production=production,
             expected_demand=expected_demand,
             desired_production=desired_production,
+            work_shock=work_shock,
+            work_mask_up=work_mask_up,
+            work_mask_dn=work_mask_dn,
         )
         lab = FirmLaborPlan(
             desired_production=desired_production,  # shared view

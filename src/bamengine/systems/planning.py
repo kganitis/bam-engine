@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Optional, cast
 
 import numpy as np
 from numpy.random import Generator
@@ -62,10 +62,10 @@ def firms_decide_desired_production(  # noqa: C901  (still quite short)
     n: int = prod.price.size
     shape = prod.price.shape
 
-    # ── 1. ensure work buffers ------------------------------------------------
+    # ── 1. re‑use or fall back to caller‑provided work buffers ---------------
     if shock_buf is None or shock_buf.shape != shape:
         shock_buf = np.empty(shape, dtype=np.float64)
-    shock_buf[:] = rng.uniform(0.0, h_rho, size=shape)  # fill buffer
+    shock_buf[:] = rng.uniform(0.0, h_rho, size=shape)
 
     if up_mask is None or up_mask.shape != shape:
         up_mask = np.empty(shape, dtype=np.bool_)
@@ -74,6 +74,11 @@ def firms_decide_desired_production(  # noqa: C901  (still quite short)
     if dn_mask is None or dn_mask.shape != shape:
         dn_mask = np.empty(shape, dtype=np.bool_)
     np.logical_and(prod.inventory > 0.0, prod.price < p_avg, out=dn_mask)
+
+    # Tell mypy the optionals are now concrete ndarrays
+    shock_buf = cast(FloatA, shock_buf)
+    up_mask = cast(BoolA, up_mask)
+    dn_mask = cast(BoolA, dn_mask)
 
     # ── 2. core computation ---------------------------------------------------
     prod.expected_demand[:] = prod.prev_production
