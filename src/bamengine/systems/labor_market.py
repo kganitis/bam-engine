@@ -132,7 +132,7 @@ def workers_prepare_applications(
             prev = ws.employer_prev[unem[r]]
             row = sorted_sample[r]
 
-            if row[0] != prev:
+            if row[0] != prev:  # not covered by tests
                 # find where prev employer ended up (guaranteed to exist)
                 j = np.where(row == prev)[0][0]
                 row[0], row[j] = row[j], row[0]
