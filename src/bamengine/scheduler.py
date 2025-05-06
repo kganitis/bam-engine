@@ -5,12 +5,11 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TypeAlias
+from typing import Dict, TypeAlias
 
 import numpy as np
 from numpy.random import Generator, default_rng
 
-import _testing
 from bamengine.components.economy import Economy
 from bamengine.components.firm_labor import FirmHiring, FirmWageOffer
 from bamengine.components.firm_plan import (
@@ -31,6 +30,7 @@ from bamengine.systems.planning import (
     firms_decide_desired_production,
     firms_decide_vacancies,
 )
+from bamengine.typing import FloatA, IntA
 
 __all__ = [
     "Scheduler",
@@ -222,11 +222,38 @@ class Scheduler:
             after_labor_market(self)
 
         # Stub state advance
+        import _testing
+
         _testing.advance_stub_state(self, avg_mrkt_price)
 
         # Final hook – deterministic tweaks that must survive into t+1
         if after_stub is not None:
             after_stub(self)
+
+    # --------------------------------------------------------------------- #
+    #                               snapshot                                #
+    # --------------------------------------------------------------------- #
+    def snapshot(self, *, deep: bool = False) -> Dict[str, FloatA | IntA | float]:
+        """ "
+        Return a read‑only view (or copy) of key state arrays.
+
+        Parameters
+        ----------
+        deep : bool, default False
+            * False – return **views**; cheap but mutation‑unsafe.
+            * True  – return **copies** so the caller can mutate freely.
+        """
+        cp = np.copy if deep else lambda x: x  # cheap inline helper
+
+        return {
+            "price": cp(self.prod.price),
+            "inventory": cp(self.prod.inventory),
+            "desired_production": cp(self.prod.desired_production),
+            "desired_labor": cp(self.lab.desired_labor),
+            "current_labor": cp(self.fh.current_labor),
+            "min_wage": float(self.ec.min_wage),
+            "avg_price": float(self.ec.avg_mrkt_price),
+        }
 
     # ------------------------------------------------------------------ #
     # convenience                                                       #
