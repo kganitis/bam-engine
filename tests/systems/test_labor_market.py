@@ -226,6 +226,11 @@ def test_prepare_applications_loyalty_to_employer() -> None:
     assert first_choice == 1  # loyalty preserved
 
 
+@pytest.mark.xfail(reason="Cover loyalty‑swap branch later")
+def test_prepare_applications_loyalty_swap() -> None:  # pragma: no cover
+    raise NotImplementedError
+
+
 def test_prepare_applications_one_trial() -> None:
     """Edge case M = 1 (single application per worker)."""
     rng = default_rng(4)
