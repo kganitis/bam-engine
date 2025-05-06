@@ -1,11 +1,6 @@
 from dataclasses import dataclass, field
 
-import numpy as np
-from numpy.typing import NDArray
-
-FloatA = NDArray[np.float64]
-IntA = NDArray[np.int64]
-BoolA = NDArray[np.bool_]
+from bamengine.typing import BoolA, FloatA, IntA
 
 
 @dataclass(slots=True)

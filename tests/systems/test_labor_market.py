@@ -23,7 +23,7 @@ from numpy.typing import NDArray
 
 from bamengine.components.economy import Economy
 from bamengine.components.firm_labor import FirmHiring, FirmWageOffer
-from bamengine.components.worker_job import WorkerJobSearch
+from bamengine.components.worker_labor import WorkerJobSearch
 from bamengine.systems.labor_market import (
     adjust_minimum_wage,
     firms_decide_wage_offer,

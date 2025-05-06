@@ -1,10 +1,6 @@
 from dataclasses import dataclass
 
-import numpy as np
-from numpy.typing import NDArray
-
-IntA = NDArray[np.int64]
-FloatA = NDArray[np.float64]
+from bamengine.typing import IntA, FloatA
 
 
 @dataclass(slots=True)
@@ -20,3 +16,11 @@ class WorkerJobSearch:
     # output / scratch (reset every period)
     apps_head: IntA  # index into `apps_targets`, -1 when no apps
     apps_targets: IntA  # flat array of firm indices (size = max_M * N_workers)
+
+
+@dataclass(slots=True)
+class WorkerContract:
+    """Future‑proof container: wage grid + periods left per worker."""
+
+    wage: FloatA  # shape (N_workers,)
+    periods_left: IntA  # shape (N_workers,)

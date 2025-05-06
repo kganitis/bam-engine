@@ -6,7 +6,7 @@ from numpy.typing import NDArray
 
 from bamengine.components.economy import Economy
 from bamengine.components.firm_labor import FirmHiring, FirmWageOffer
-from bamengine.components.worker_job import WorkerJobSearch
+from bamengine.components.worker_labor import WorkerJobSearch
 
 log = logging.getLogger(__name__)
 
