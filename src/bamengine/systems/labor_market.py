@@ -2,11 +2,11 @@ import logging
 
 import numpy as np
 from numpy.random import Generator
-from numpy.typing import NDArray
 
 from bamengine.components.economy import Economy
 from bamengine.components.firm_labor import FirmHiring, FirmWageOffer
 from bamengine.components.worker_labor import WorkerJobSearch
+from bamengine.typing import FloatA, IdxA
 
 log = logging.getLogger(__name__)
 
@@ -72,20 +72,21 @@ def firms_decide_wage_offer(
 
 
 # --------------------------------------------------------------------------- #
-def _topk_indices_desc(values: NDArray[np.float64], k: int) -> NDArray[np.intp]:
+def _topk_indices_desc(values: FloatA, k: int) -> IdxA:
     """
-    Indices of the *k* largest elements along the last axis, **unsorted**.
+    Return indices of the *k* largest elements along the last axis
+    (unsorted, descending).
 
     Complexity
     ----------
-    * argpartition  → O(n)  (find the split point)
-    * slicing k     → O(k)
-    Total           → O(n + k)          vs.   full argsort O(n log n)
+    argpartition : O(n)   – finds the split position
+    slicing      : O(k)   – keeps only the first k
+    Total        : O(n + k)  vs. full argsort O(n logn)
     """
     if k >= values.shape[-1]:  # degenerate: keep all
         return np.argpartition(values, kth=0, axis=-1)
     part = np.argpartition(values, kth=k - 1, axis=-1)  # top‑k to the left
-    return part[..., :k]  # [:, :k] for 2‑D case
+    return part[..., :k]  # [:, :k] for 2‑D case, same ndim as input
 
 
 # ---------------------------------------------------------------------
