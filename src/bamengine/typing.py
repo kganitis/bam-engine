@@ -1,8 +1,10 @@
+from typing import Any, TypeAlias
+
 import numpy as np
-from numpy.typing import NDArray
 
-FloatA = NDArray[np.float64]
-IntA = NDArray[np.int64]
-BoolA = NDArray[np.bool_]
+FloatA: TypeAlias = np.ndarray[Any, np.dtype[np.float64]]
+IntA: TypeAlias = np.ndarray[Any, np.dtype[np.int64]]
+BoolA: TypeAlias = np.ndarray[Any, np.dtype[np.bool_]]
+IdxA: TypeAlias = np.ndarray[Any, np.dtype[np.intp]]
 
-__all__ = ["FloatA", "IntA", "BoolA"]
+__all__ = ["FloatA", "IntA", "BoolA", "IdxA"]

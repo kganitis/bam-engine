@@ -30,11 +30,6 @@ I focused on three lenses — **performance**, **library/packaging concerns*
 | Versioning                 | You already have `0.0.0`. Adopt **semver** mindset: bump MINOR for new public functions, PATCH for bug‑fixes.                            |
 | NumPy typing               | Drop bare `NDArray` in favour of `np.ndarray[Any, np.float64]` when you’re ready, or add a `typing_extensions` alias.                    |
 
-### Extensibility
-
-* **Contracts & wages** are commented out; maybe create `@dataclass ContractArray` so wage grids + expiry can be swapped later without rewiring the systems.
-* **Pluggable RNG**: accept a `np.random.Generator` in `Scheduler.init()` to allow deterministic seeding upstream (e.g. for web demos).
-
 ---
 
 ## 3  Testability
