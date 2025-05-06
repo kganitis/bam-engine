@@ -1,4 +1,5 @@
 import logging
+from typing import cast
 
 import numpy as np
 from numpy.random import Generator
@@ -54,7 +55,7 @@ def firms_decide_wage_offer(
     Works fully in-place, no temporary allocations.
     """
     # Draw one shock per firm, then mask where V_i==0.
-    shock = rng.uniform(0.0, h_xi, size=fw.wage_prev.shape)
+    shock: FloatA = cast(FloatA, rng.uniform(0.0, h_xi, size=fw.wage_prev.shape))
     shock[fw.n_vacancies == 0] = 0.0
 
     np.multiply(fw.wage_prev, 1.0 + shock, out=fw.wage_offer)
@@ -79,13 +80,14 @@ def _topk_indices_desc(values: FloatA, k: int) -> IdxA:
 
     Complexity
     ----------
-    argpartition : O(n)   – finds the split position
+    argpartition : O(n)   – finds the split position,
+                          - ascending -> we call it on **‑values**
     slicing      : O(k)   – keeps only the first k
     Total        : O(n + k)  vs. full argsort O(n logn)
     """
     if k >= values.shape[-1]:  # degenerate: keep all
-        return np.argpartition(values, kth=0, axis=-1)
-    part = np.argpartition(values, kth=k - 1, axis=-1)  # top‑k to the left
+        return np.argpartition(-values, kth=0, axis=-1)
+    part = np.argpartition(-values, kth=k - 1, axis=-1)  # top‑k to the left
     return part[..., :k]  # [:, :k] for 2‑D case, same ndim as input
 
 

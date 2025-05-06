@@ -1,3 +1,5 @@
+"""Command‑line demo runner for BAM Engine."""
+
 from __future__ import annotations
 
 import argparse

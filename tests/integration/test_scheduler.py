@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 from helpers.invariants import assert_basic_invariants
 from hypothesis import given, settings
@@ -33,7 +34,6 @@ def test_scheduler_state_stable_over_time(steps: int) -> None:
         n_firms=50,
         n_households=200,
         seed=9,
-        # keep default shocks for realism
     )
 
     for _ in range(steps):
@@ -63,3 +63,26 @@ def test_scheduler_step_properties(n_firms: int, n_households: int, seed: int) -
     sch = Scheduler.init(n_firms=n_firms, n_households=n_households, seed=seed)
     sch.step()
     assert_basic_invariants(sch)
+
+
+def test_scheduler_means() -> None:
+    sch = Scheduler.init(n_firms=3, n_households=3)
+    sch.prod.desired_production = np.array([1.0, 2.0, 3.0])
+    sch.lab.desired_labor = np.array([10, 20, 30])
+    assert np.isclose(sch.mean_Yd, 2.0)
+    assert sch.mean_Ld == 20
+
+
+def test_scheduler_hooks_called() -> None:
+    called = {"pre": False, "post": False}
+
+    def _pre(s: Scheduler) -> None:
+        called["pre"] = True
+
+    def _post(s: Scheduler) -> None:
+        called["post"] = True
+
+    sch = Scheduler.init(n_firms=3, n_households=6, seed=0)
+    sch.step(before_planning=_pre, after_labor_market=_post)
+
+    assert called == {"pre": True, "post": True}
