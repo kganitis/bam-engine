@@ -25,6 +25,7 @@ from bamengine.components.economy import Economy
 from bamengine.components.firm_labor import FirmHiring, FirmWageOffer
 from bamengine.components.worker_labor import WorkerJobSearch
 from bamengine.systems.labor_market import (
+    _topk_indices_desc,
     adjust_minimum_wage,
     firms_decide_wage_offer,
     firms_hire_workers,
@@ -157,6 +158,23 @@ def _mini_state() -> Tuple[FirmWageOffer, WorkerJobSearch, FirmHiring, Generator
 # --------------------------------------------------------------------------- #
 #  workers_prepare_applications
 # --------------------------------------------------------------------------- #
+def test__topk_indices_desc_partial_sort() -> None:
+    """
+    Requesting k < n should hit the argpartition ↦ slice branch.
+    We verify that the returned (unsorted) indices are exactly the k
+    positions of the largest elements.
+    """
+    vals = np.array([[5.0, 1.0, 3.0, 4.0]], dtype=np.float64)
+    k = 2
+    idx = _topk_indices_desc(vals, k=k)
+
+    # Extract the values referenced by idx and check they are the two maxima.
+    top_vals = vals[0, idx[0]]
+    assert set(top_vals) == {5.0, 4.0}
+    # Shape must be preserved (unsorted, but length == k)
+    assert idx.shape == (1, k)
+
+
 def test_prepare_applications_basic() -> None:
     """
     Unemployed workers must obtain a valid apps_head and targets within bounds.
@@ -264,6 +282,62 @@ def test_workers_send_one_round_queue_bounds() -> None:
     assert fh.recv_apps_head[0] >= -1  # still valid pointer
 
 
+def test_worker_with_empty_list_is_skipped() -> None:
+    fw, ws, fh, rng, M = _mini_state()
+    # worker‑0: unemployed but apps_head = -1  => should be ignored
+    ws.employed[0] = 0
+    ws.apps_head[0] = -1
+    workers_send_one_round(ws, fh)
+    # queue heads unchanged
+    assert (fh.recv_apps_head == -1).all()
+
+
+def test_firm_queue_full_drops_application() -> None:
+    fw, ws, fh, rng, M = _mini_state()
+    fh.recv_apps_head[0] = M - 1  # already full
+    fh.recv_apps[0] = 99  # dummy
+    workers_prepare_applications(ws, fw, max_M=M, rng=rng)
+    workers_send_one_round(ws, fh)
+    # still full, nothing overwritten
+    assert fh.recv_apps_head[0] == M - 1
+    assert (fh.recv_apps[0] == 99).all()
+
+
+def test_workers_send_one_round_exhausted_target() -> None:
+    """
+    When the current target has already been set to -1 *before* the call,
+    the branch `firm_idx < 0` must trigger and clear apps_head to -1.
+    """
+    # --- minimal 1‑worker 1‑firm state -----------------------------------
+    M = 1
+    fw = FirmWageOffer(
+        wage_prev=np.array([1.0]),
+        n_vacancies=np.array([1]),
+        wage_offer=np.array([1.0]),
+    )
+    ws = WorkerJobSearch(
+        employed=np.array([0], dtype=np.int64),
+        employer_prev=np.array([-1], dtype=np.int64),
+        contract_expired=np.array([0], dtype=np.int64),
+        fired=np.array([0], dtype=np.int64),
+        apps_head=np.array([0], dtype=np.int64),  # points to first cell
+        apps_targets=np.array([[-1]], dtype=np.int64),  # *already* exhausted
+    )
+    fh = FirmHiring(
+        wage_offer=fw.wage_offer,
+        n_vacancies=fw.n_vacancies,
+        current_labor=np.array([0], dtype=np.int64),
+        recv_apps_head=np.array([-1], dtype=np.int64),
+        recv_apps=np.full((1, M), -1, dtype=np.int64),
+    )
+
+    workers_send_one_round(ws, fh)
+
+    # apps_head must be cleared; nothing should be queued
+    assert ws.apps_head[0] == -1
+    assert fh.recv_apps_head[0] == -1
+
+
 # --------------------------------------------------------------------------- #
 #  firms_hire_workers
 # --------------------------------------------------------------------------- #
@@ -306,6 +380,18 @@ def test_firms_hire_exact_fit() -> None:
     assert fh.current_labor[0] == start_labor[0] + 2
     assert (fh.recv_apps[0] == -1).all()
     assert ws.employed[[0, 2]].sum() == 2  # both hired
+
+
+def test_hire_workers_skips_invalid_slots() -> None:
+    _, ws, fh, _, _ = _mini_state()
+    fh.n_vacancies[:] = 1
+    fh.recv_apps_head[0] = 1
+    fh.recv_apps[0] = [-1, -1]  # all sentinels → size==0
+    start = fh.current_labor.copy()
+    firms_hire_workers(ws, fh, contract_theta=8)
+    # nothing hired, vacancies unchanged
+    np.testing.assert_array_equal(fh.current_labor, start)
+    assert fh.n_vacancies[0] == 1
 
 
 # --------------------------------------------------------------------------- #
