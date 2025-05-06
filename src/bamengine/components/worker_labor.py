@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from bamengine.typing import IntA, FloatA
+from bamengine.typing import FloatA, IntA
 
 
 @dataclass(slots=True)

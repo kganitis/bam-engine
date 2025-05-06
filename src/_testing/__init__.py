@@ -1,3 +1,8 @@
+"""
+Private helpers used by the test‑suite only.
+NOT part of the public API.
+"""
+
 from typing import TYPE_CHECKING
 
 import numpy as np
