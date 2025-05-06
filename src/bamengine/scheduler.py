@@ -10,7 +10,7 @@ from typing import TypeAlias
 import numpy as np
 from numpy.random import Generator, default_rng
 
-import testing
+import _testing
 from bamengine.components.economy import Economy
 from bamengine.components.firm_labor import FirmHiring, FirmWageOffer
 from bamengine.components.firm_plan import (
@@ -18,7 +18,7 @@ from bamengine.components.firm_plan import (
     FirmProductionPlan,
     FirmVacancies,
 )
-from bamengine.components.worker_job import WorkerJobSearch
+from bamengine.components.worker_labor import WorkerJobSearch
 from bamengine.systems.labor_market import (
     adjust_minimum_wage,
     firms_decide_wage_offer,
@@ -32,6 +32,10 @@ from bamengine.systems.planning import (
     firms_decide_vacancies,
 )
 
+__all__ = [
+    "Scheduler",
+]
+
 log = logging.getLogger(__name__)
 
 # A hook function that receives the Scheduler and returns nothing
@@ -40,7 +44,9 @@ SchedulerHook: TypeAlias = Callable[["Scheduler"], None] | None
 
 @dataclass(slots=True)
 class Scheduler:
-    """Owns all arrays and calls the systems in canonical BAM order."""
+    """
+    Facade that drives a BAM economy for one or more periods.
+    """
 
     rng: Generator
     ec: Economy
@@ -72,9 +78,9 @@ class Scheduler:
         h_xi: float = 0.05,
         max_M: int = 4,
         theta: int = 8,
-        seed: int = 0,
+        seed: int | np.random.Generator = 0,
     ) -> "Scheduler":
-        rng = default_rng(seed)
+        rng = seed if isinstance(seed, np.random.Generator) else default_rng(seed)
 
         price = np.full(n_firms, 1.5)
         production = np.ones(n_firms)
@@ -216,7 +222,7 @@ class Scheduler:
             after_labor_market(self)
 
         # Stub state advance
-        testing.advance_stub_state(self, avg_mrkt_price)
+        _testing.advance_stub_state(self, avg_mrkt_price)
 
         # Final hook – deterministic tweaks that must survive into t+1
         if after_stub is not None:

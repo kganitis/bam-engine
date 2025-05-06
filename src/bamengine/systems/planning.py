@@ -5,19 +5,15 @@ from typing import Optional, cast
 
 import numpy as np
 from numpy.random import Generator
-from numpy.typing import NDArray
 
 from bamengine.components.firm_plan import (
     FirmLaborPlan,
     FirmProductionPlan,
     FirmVacancies,
 )
+from bamengine.typing import BoolA, FloatA
 
 log = logging.getLogger(__name__)
-
-
-FloatA = NDArray[np.float64]
-BoolA = NDArray[np.bool_]
 
 
 def firms_decide_desired_production(  # noqa: C901  (still quite short)
