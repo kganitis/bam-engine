@@ -1,22 +1,20 @@
 
-## Testability
+## Documentation
 
-| Level                      | Observation                                                                       | Next action                                                                                                                            |
-| -------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| **Unit**                   | Coverage is excellent for pure functions; property‑based tests ensure invariants. | Run **`pytest --cov`** soon to identify blind spots (e.g. edge cases in `workers_send_one_round`).                                     |
-
----
-
-## Early clean‑ups worth doing now
-
-2. **Docstrings**: adopt the *NumPy docstring standard* everywhere and mark `out` parameters (`← out`) consistently (your planning docstrings already follow this).
-4. **Lint noise**: Ruff config selects only `E, F, W, I`. Consider adding `D` (docstring) once code stabilises.
+1. **Docstrings**: adopt the *NumPy docstring standard* everywhere and mark `out` parameters (`← out`) consistently (your planning docstrings already follow this).
+2. **Lint noise**: Ruff config selects only `E, F, W, I`. Consider adding `D` (docstring) once code stabilises.
 
 ---
 
-## “Later, but keep in mind”
+## Performance quick-wins
 
-* **Parallel execution**: When n\_firms >> 1 M, you’ll want *threaded* NumPy or distribute firms across processes. Design data layout (SoA vs AoS) accordingly.
+* `workers_prepare_applications`: use permanent scratch buffers
+
+---
+
+## Later, but keep in mind
+
+* **Parallel execution**: When n\_firms >> 1M, you’ll want *threaded* NumPy or distribute firms across processes. Design data layout (SoA vs AoS) accordingly.
 * **Streaming / State IO**: Provide `Scheduler.to_dict()` / `from_dict()` for checkpoint‑restart (important when running hundreds of Monte‑Carlo paths).
 * **Interfaces**: Expose a light **`pandas` view** (DataFrame per component) only for *read‑only* downstream analysis; keep core arrays untouched.
 * **Policy experiments**: The hook mechanism can evolve into **event bus**; consider `Plugin` objects with `on_event(self, scheduler, tag)` for user‑defined rules.

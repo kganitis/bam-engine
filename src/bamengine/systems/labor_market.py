@@ -1,5 +1,4 @@
 import logging
-from typing import cast
 
 import numpy as np
 from numpy.random import Generator
@@ -54,8 +53,14 @@ def firms_decide_wage_offer(
 
     Works fully in-place, no temporary allocations.
     """
+    shape = fw.wage_offer.shape
+
+    shock = fw.wage_shock
+    if shock is None or shock.shape != shape:
+        shock = np.empty(shape, dtype=np.float64)
+
     # Draw one shock per firm, then mask where V_i==0.
-    shock: FloatA = cast(FloatA, rng.uniform(0.0, h_xi, size=fw.wage_prev.shape))
+    shock[:] = rng.uniform(0.0, h_xi, size=shape)
     shock[fw.n_vacancies == 0] = 0.0
 
     np.multiply(fw.wage_prev, 1.0 + shock, out=fw.wage_offer)

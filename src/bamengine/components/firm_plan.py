@@ -13,10 +13,10 @@ class FirmProductionPlan:
     expected_demand: FloatA  # D̂_i  (output, same size)
     desired_production: FloatA  # Yd_i (output, same size)
 
-    # ---- permanent scratch buffers (allocated once, reused forever) ----
-    work_shock: FloatA | None = field(default=None, repr=False)
-    work_mask_up: BoolA | None = field(default=None, repr=False)
-    work_mask_dn: BoolA | None = field(default=None, repr=False)
+    # ---- permanent scratch buffers ----
+    prod_shock: FloatA | None = field(default=None, repr=False)
+    prod_mask_up: BoolA | None = field(default=None, repr=False)
+    prod_mask_dn: BoolA | None = field(default=None, repr=False)
 
 
 @dataclass(slots=True)

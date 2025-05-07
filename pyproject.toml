@@ -24,7 +24,7 @@ fix = true
 line-length = 88
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I"]
+select = ["E", "F", "W", "I", "NPY"]
 
 [tool.mypy]
 python_version = "3.12"

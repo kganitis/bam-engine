@@ -36,7 +36,7 @@ def test_event_labor_market(tiny_sched: Scheduler) -> None:
     )
 
     p_avg = float(sch.prod.price.mean())
-    firms_decide_desired_production(sch.prod, p_avg, sch.h_rho, sch.rng)
+    firms_decide_desired_production(sch.prod, p_avg=p_avg, h_rho=sch.h_rho, rng=sch.rng)
     firms_decide_desired_labor(sch.lab)
     firms_decide_vacancies(sch.vac)
 

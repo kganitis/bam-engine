@@ -68,7 +68,7 @@ def test_production_branches(
         expected_demand=np.zeros(1),
         desired_production=np.zeros(1),
     )
-    decide_desired_production(prod, p_avg, h_rho=0.1, rng=rng)
+    decide_desired_production(prod, p_avg=p_avg, h_rho=0.1, rng=rng)
     yd = prod.desired_production[0]
 
     if branch == "up":
@@ -143,16 +143,16 @@ def test_reuses_internal_buffers() -> None:
         desired_production=np.zeros(2),
     )
     # pre‑allocate internal buffers once
-    buf0 = prod.work_shock
-    mask_up0 = prod.work_mask_up
-    mask_dn0 = prod.work_mask_dn
+    buf0 = prod.prod_shock
+    mask_up0 = prod.prod_mask_up
+    mask_dn0 = prod.prod_mask_dn
 
     decide_desired_production(prod, p_avg=1.5, h_rho=0.05, rng=rng)
 
     # same Python objects → same id / “is”
-    assert buf0 is prod.work_shock
-    assert mask_up0 is prod.work_mask_up
-    assert mask_dn0 is prod.work_mask_dn
+    assert buf0 is prod.prod_shock
+    assert mask_up0 is prod.prod_mask_up
+    assert mask_dn0 is prod.prod_mask_dn
 
 
 # --------------------------------------------------------------------------- #
