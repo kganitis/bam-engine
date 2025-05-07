@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from bamengine.typing import FloatA, IntA
 
@@ -15,6 +15,8 @@ class FirmWageOffer:
     wage_prev: FloatA  # w_{i,t-1}
     n_vacancies: IntA  # V_i  (read-only)
     wage_offer: FloatA  # w_i^b (output)
+    # ---- permanent scratch buffers ----
+    wage_shock: FloatA | None = field(default=None, repr=False)
 
 
 @dataclass(slots=True)

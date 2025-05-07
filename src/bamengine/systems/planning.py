@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional, cast
 
 import numpy as np
 from numpy.random import Generator
@@ -11,20 +10,16 @@ from bamengine.components.firm_plan import (
     FirmProductionPlan,
     FirmVacancies,
 )
-from bamengine.typing import BoolA, FloatA
 
 log = logging.getLogger(__name__)
 
 
 def firms_decide_desired_production(  # noqa: C901  (still quite short)
-    prod: FirmProductionPlan,
+    fp: FirmProductionPlan,
+    *,
     p_avg: float,
     h_rho: float,
     rng: Generator,
-    *,
-    shock_buf: Optional[FloatA] = None,
-    up_mask: Optional[BoolA] = None,
-    dn_mask: Optional[BoolA] = None,
 ) -> None:
     """
     Update `prod.expected_demand` and `prod.desired_production` **in‑place**.
@@ -34,62 +29,41 @@ def firms_decide_desired_production(  # noqa: C901  (still quite short)
       if S_i == 0 and P_i ≥ p̄   → raise   by (1 + shock)
       if S_i  > 0 and P_i < p̄   → cut     by (1 − shock)
       otherwise                 → keep previous level
-
-    Performance hooks
-    -----------------
-    `shock_buf`, `up_mask`, `dn_mask` let the caller pass pre‑allocated
-    arrays that **must** have ``shape == prod.price.shape`` and matching
-    dtypes:
-
-    * ``shock_buf``  – float64 (same as `prod.price`)
-    * ``up_mask``    – bool
-    * ``dn_mask``    – bool
-
-    When *None* (default) a fresh temporary array is created, preserving the
-    old behaviour.
-
-    Notes
-    -----
-    Arrays mutated **in‑place** (NumPy ``out=`` semantics):
-
-    * ``prod.expected_demand   ← out``
-    * ``prod.desired_production ← out``
     """
-    n: int = prod.price.size
-    shape = prod.price.shape
+    shape = fp.price.shape
 
-    # ── 1. re‑use or fall back to caller‑provided work buffers ---------------
-    if shock_buf is None or shock_buf.shape != shape:
-        shock_buf = np.empty(shape, dtype=np.float64)
-    shock_buf[:] = rng.uniform(0.0, h_rho, size=shape)
+    # ── 1. permanent scratches ---------------
+    shock = fp.prod_shock
+    if shock is None or shock.shape != shape:
+        shock = np.empty(shape, dtype=np.float64)
 
+    up_mask = fp.prod_mask_up
     if up_mask is None or up_mask.shape != shape:
         up_mask = np.empty(shape, dtype=np.bool_)
-    np.logical_and(prod.inventory == 0.0, prod.price >= p_avg, out=up_mask)
 
+    dn_mask = fp.prod_mask_dn
     if dn_mask is None or dn_mask.shape != shape:
         dn_mask = np.empty(shape, dtype=np.bool_)
-    np.logical_and(prod.inventory > 0.0, prod.price < p_avg, out=dn_mask)
 
-    # Tell mypy the optionals are now concrete ndarrays
-    shock_buf = cast(FloatA, shock_buf)
-    up_mask = cast(BoolA, up_mask)
-    dn_mask = cast(BoolA, dn_mask)
+    # ── 2. fill buffers in‑place ---------------
+    shock[:] = rng.uniform(0.0, h_rho, size=shape)
+    np.logical_and(fp.inventory == 0.0, fp.price >= p_avg, out=up_mask)
+    np.logical_and(fp.inventory > 0.0, fp.price < p_avg, out=dn_mask)
 
-    # ── 2. core computation ---------------------------------------------------
-    prod.expected_demand[:] = prod.prev_production
-    prod.expected_demand[up_mask] *= 1.0 + shock_buf[up_mask]
-    prod.expected_demand[dn_mask] *= 1.0 - shock_buf[dn_mask]
-    prod.desired_production[:] = prod.expected_demand
+    # ── 3. core rule ----------------------------------
+    fp.expected_demand[:] = fp.prev_production
+    fp.expected_demand[up_mask] *= 1.0 + shock[up_mask]
+    fp.expected_demand[dn_mask] *= 1.0 - shock[dn_mask]
+    fp.desired_production[:] = fp.expected_demand
 
     # ── 3. logging ------------------------------------------------------------
     log.debug(
         "decide_desired_production: n=%d  p̄=%.3f  up=%d  down=%d  mean_shock=%.4f",
-        n,
+        fp.price.size,
         p_avg,
         int(up_mask.sum()),
         int(dn_mask.sum()),
-        float(shock_buf.mean()),
+        float(shock.mean()),
     )
 
 

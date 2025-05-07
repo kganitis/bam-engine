@@ -22,6 +22,6 @@ def test_hook_after_stub_forces_no_inventory() -> None:
     p_avg = float(sch.prod.price.mean())
     from bamengine.systems.planning import firms_decide_desired_production
 
-    firms_decide_desired_production(sch.prod, p_avg, sch.h_rho, sch.rng)
+    firms_decide_desired_production(sch.prod, p_avg=p_avg, h_rho=sch.h_rho, rng=sch.rng)
 
     assert (sch.prod.desired_production >= sch.prod.prev_production).all()

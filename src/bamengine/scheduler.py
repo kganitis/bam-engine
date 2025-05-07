@@ -106,9 +106,11 @@ class Scheduler:
         recv_apps_head = np.full(n_firms, -1, dtype=np.int64)
         recv_apps = np.full((n_firms, max_M), -1, dtype=np.int64)
 
-        work_shock = np.empty_like(price, dtype=np.float64)
-        work_mask_up = np.empty_like(price, dtype=np.bool_)
-        work_mask_dn = np.empty_like(price, dtype=np.bool_)
+        prod_shock = np.empty_like(price, dtype=np.float64)
+        prod_mask_up = np.empty_like(price, dtype=np.bool_)
+        prod_mask_dn = np.empty_like(price, dtype=np.bool_)
+
+        wage_shock = np.empty_like(wage_offer)
 
         # ---------- wrap into components ----------------------------------
         ec = Economy(
@@ -124,9 +126,9 @@ class Scheduler:
             prev_production=production,
             expected_demand=expected_demand,
             desired_production=desired_production,
-            work_shock=work_shock,
-            work_mask_up=work_mask_up,
-            work_mask_dn=work_mask_dn,
+            prod_shock=prod_shock,
+            prod_mask_up=prod_mask_up,
+            prod_mask_dn=prod_mask_dn,
         )
         lab = FirmLaborPlan(
             desired_production=desired_production,  # shared view
@@ -142,6 +144,7 @@ class Scheduler:
             wage_prev=wage_prev,
             n_vacancies=n_vacancies,  # shared view
             wage_offer=wage_offer,
+            wage_shock=wage_shock,
         )
         ws = WorkerJobSearch(
             employed=employed,
@@ -203,7 +206,9 @@ class Scheduler:
         # ===== Event 1 – firms plan =======================================
         avg_mrkt_price = float(self.prod.price.mean())
 
-        firms_decide_desired_production(self.prod, avg_mrkt_price, self.h_rho, self.rng)
+        firms_decide_desired_production(
+            self.prod, p_avg=avg_mrkt_price, h_rho=self.h_rho, rng=self.rng
+        )
         firms_decide_desired_labor(self.lab)
         firms_decide_vacancies(self.vac)
 
