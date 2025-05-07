@@ -204,10 +204,10 @@ class Scheduler:
             before_planning(self)
 
         # ===== Event 1 – firms plan =======================================
-        avg_mrkt_price = float(self.prod.price.mean())
+        avg_mkt_price = float(self.prod.price.mean())
 
         firms_decide_desired_production(
-            self.prod, p_avg=avg_mrkt_price, h_rho=self.h_rho, rng=self.rng
+            self.prod, p_avg=avg_mkt_price, h_rho=self.h_rho, rng=self.rng
         )
         firms_decide_desired_labor(self.lab)
         firms_decide_vacancies(self.vac)
@@ -229,7 +229,7 @@ class Scheduler:
         # Stub state advance
         import _testing
 
-        _testing.advance_stub_state(self, avg_mrkt_price)
+        _testing.advance_stub_state(self, avg_mkt_price)
 
         # Final hook – deterministic tweaks that must survive into t+1
         if after_stub is not None:
