@@ -18,7 +18,7 @@ from bamengine.systems.labor_market import (
     adjust_minimum_wage,
     firms_decide_wage_offer,
     firms_hire_workers,
-    workers_prepare_applications,
+    workers_prepare_job_applications,
     workers_send_one_round,
 )
 
@@ -57,7 +57,7 @@ def test_event_labor_market(tiny_sched: Scheduler) -> None:
         rng=sch.rng,
     )
 
-    workers_prepare_applications(sch.ws, sch.fw, max_M=sch.max_M, rng=sch.rng)
+    workers_prepare_job_applications(sch.ws, sch.fw, max_M=sch.max_M, rng=sch.rng)
 
     for _ in range(sch.max_M):
         workers_send_one_round(sch.ws, sch.fh)

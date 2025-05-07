@@ -90,7 +90,7 @@ Both keep the *permanent‑buffer* ethos: allocate once in `Scheduler.init()`.
 ### Quick patch if you already need the cash field
 
 ```python
-# in FirmCreditPlan
+# in FirmCreditDemand
 cash: FloatA                # total_funds in the OOP code
 ```
 

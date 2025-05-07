@@ -97,7 +97,7 @@ def _topk_indices_desc(values: FloatA, k: int) -> IdxA:
 
 
 # ---------------------------------------------------------------------
-def workers_prepare_applications(
+def workers_prepare_job_applications(
     ws: WorkerJobSearch,
     fw: FirmWageOffer,
     *,
@@ -167,7 +167,6 @@ def workers_prepare_applications(
 # ---------------------------------------------------------------------
 def workers_send_one_round(ws: WorkerJobSearch, fh: FirmHiring) -> None:
     stride = ws.apps_targets.shape[1]
-    sent = 0
 
     for w in np.where(ws.employed == 0)[0]:
         h = ws.apps_head[w]
@@ -185,17 +184,10 @@ def workers_send_one_round(ws: WorkerJobSearch, fh: FirmHiring) -> None:
             continue  # queue full – drop
         fh.recv_apps_head[firm_idx] = ptr
         fh.recv_apps[firm_idx, ptr] = w
-        sent += 1
 
         # advance pointer & clear slot
         ws.apps_head[w] = h + 1
         ws.apps_targets[row, col] = -1
-
-    log.debug(
-        "workers_send_one_round: sent=%d  firms_receiving=%d",
-        sent,
-        int((fh.recv_apps_head >= 0).sum()),
-    )
 
 
 # ---------------------------------------------------------------------

@@ -1,10 +1,11 @@
+# src/bamengine/components/firm_credit.py
 from dataclasses import dataclass, field
 
 from bamengine.typing import FloatA, IntA, BoolA
 
 
 @dataclass(slots=True)
-class FirmCreditPlan:
+class FirmCreditDemand:
     """
     Dense finance state for *all* firms (one row per firm).
 
@@ -15,11 +16,25 @@ class FirmCreditPlan:
     # persistent inputs
     net_worth: FloatA          # A_i
     wage_bill: FloatA          # W_i  (should be L_i * wage_i)
-
-    # outputs (reset every period)
     credit_demand: FloatA      # B_i           ← out
-    loan_apps_head: IntA       # ptr into loan_apps_targets
-    loan_apps_targets: IntA    # shape (N_firms, H)
 
     # ── permanent scratch buffers ──────────────────────────────────────
-    apply_mask: BoolA  | None = field(default=None, repr=False)
+    apply_mask: BoolA | None = field(default=None, repr=False)
+
+
+@dataclass(slots=True)
+class FirmLoanApplication:
+    """
+    """
+    credit_demand: FloatA  # B_i           ← input
+
+    # output / scratch (reset every period)
+    loan_apps_head: IntA  # ptr into loan_apps_targets
+    loan_apps_targets: IntA  # shape (N_firms, H)
+
+
+@dataclass(slots=True)
+class FirmLoan:
+    """
+    """
+    credit_demand: FloatA

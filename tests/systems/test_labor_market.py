@@ -29,7 +29,7 @@ from bamengine.systems.labor_market import (
     adjust_minimum_wage,
     firms_decide_wage_offer,
     firms_hire_workers,
-    workers_prepare_applications,
+    workers_prepare_job_applications,
     workers_send_one_round,
 )
 
@@ -180,7 +180,7 @@ def test_prepare_applications_basic() -> None:
     Unemployed workers must obtain a valid apps_head and targets within bounds.
     """
     fw, ws, _, rng, M = _mini_state()
-    workers_prepare_applications(ws, fw, max_M=M, rng=rng)
+    workers_prepare_job_applications(ws, fw, max_M=M, rng=rng)
 
     heads = ws.apps_head[ws.employed == 0]
     assert (heads >= 0).all()
@@ -206,7 +206,7 @@ def test_prepare_applications_no_unemployed() -> None:
         apps_head=np.full(3, -1, dtype=np.int64),
         apps_targets=np.full((3, 2), -1, dtype=np.int64),
     )
-    workers_prepare_applications(ws, fw, max_M=2, rng=default_rng(0))
+    workers_prepare_job_applications(ws, fw, max_M=2, rng=default_rng(0))
     assert (ws.apps_head == -1).all()
 
 
@@ -220,7 +220,7 @@ def test_prepare_applications_loyalty_to_employer() -> None:
     # worker-idx 0 just finished contract at firm-idx 1
     ws.employer_prev[0] = 1
     ws.contract_expired[0] = 1
-    workers_prepare_applications(ws, fw, max_M=M, rng=rng)
+    workers_prepare_job_applications(ws, fw, max_M=M, rng=rng)
 
     first_choice = ws.apps_targets[0, 0]
     assert first_choice == 1  # loyalty preserved
@@ -237,7 +237,7 @@ def test_prepare_applications_one_trial() -> None:
     fw, ws, _, _, _ = _mini_state()
     M = 1
     ws.apps_targets = np.full((ws.employed.size, M), -1, dtype=np.int64)
-    workers_prepare_applications(ws, fw, max_M=M, rng=rng)
+    workers_prepare_job_applications(ws, fw, max_M=M, rng=rng)
 
     assert (ws.apps_head[ws.employed == 0] % M == 0).all()
     assert (ws.apps_targets >= -1).all()  # buffer still valid
@@ -263,7 +263,7 @@ def test_prepare_applications_large_unemployment() -> None:
         apps_head=np.full(n_workers, -1, dtype=np.int64),
         apps_targets=np.full((n_workers, M), -1, dtype=np.int64),
     )
-    workers_prepare_applications(ws, fw, max_M=M, rng=rng)
+    workers_prepare_job_applications(ws, fw, max_M=M, rng=rng)
     assert (ws.apps_targets[ws.apps_targets >= 0] < n_firms).all()
 
 
@@ -280,7 +280,7 @@ def test_workers_send_one_round_queue_bounds() -> None:
     fh.recv_apps_head[0] = M - 2
     fh.recv_apps[0, : M - 1] = [0, 2][: M - 1]
 
-    workers_prepare_applications(ws, fw, max_M=M, rng=default_rng(6))
+    workers_prepare_job_applications(ws, fw, max_M=M, rng=default_rng(6))
     workers_send_one_round(ws, fh)
 
     assert fh.recv_apps_head[0] <= M - 1
@@ -301,7 +301,7 @@ def test_firm_queue_full_drops_application() -> None:
     fw, ws, fh, rng, M = _mini_state()
     fh.recv_apps_head[0] = M - 1  # already full
     fh.recv_apps[0] = 99  # dummy
-    workers_prepare_applications(ws, fw, max_M=M, rng=rng)
+    workers_prepare_job_applications(ws, fw, max_M=M, rng=rng)
     workers_send_one_round(ws, fh)
     # still full, nothing overwritten
     assert fh.recv_apps_head[0] == M - 1
@@ -412,7 +412,7 @@ def test_full_round() -> None:
     fw, ws, fh, rng, M = _mini_state()
     start_labor = fh.current_labor.copy()
 
-    workers_prepare_applications(ws, fw, max_M=M, rng=rng)
+    workers_prepare_job_applications(ws, fw, max_M=M, rng=rng)
     for _ in range(M):
         workers_send_one_round(ws, fh)
         firms_hire_workers(ws, fh, contract_theta=8)
