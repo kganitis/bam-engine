@@ -32,9 +32,6 @@ class BankReceiveLoanApplication:
     recv_apps_head: IntA  # ptr (−1 ⇒ empty)
     recv_apps: IdxA  # shape (N_banks, H)
 
-    # scratch
-    contract_rate: FloatA | None = field(default=None, repr=False)  # temp per bank
-
 
 @dataclass(slots=True)
 class BankProvideLoan:

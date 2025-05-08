@@ -55,6 +55,7 @@ def banks_decide_interest_rate(
     shock = banks.credit_shock
     if shock is None or shock.shape != shape:
         shock = np.empty(shape, dtype=np.float64)
+        banks.credit_shock = shock
 
     # fill buffer in-place
     shock[:] = rng.uniform(0.0, h_phi, size=shape)
@@ -168,11 +169,16 @@ def firms_send_one_loan_app(
 def _ensure_capacity(book: LoanBook, extra: int) -> None:
     if book.size + extra <= book.capacity:
         return
+
     new_cap = max(book.capacity * 2, book.size + extra, 32)
-    for arr_name in ("firm", "bank", "principal", "rate", "interest", "debt"):
-        arr = getattr(book, arr_name)
-        arr.resize(new_cap, refcheck=False)       # O(1) amortised
+
+    for name in ("firm", "bank", "principal", "rate", "interest", "debt"):
+        arr = getattr(book, name)
+        new_arr = np.resize(arr, new_cap)  # returns *new* ndarray; O(1) amortized
+        setattr(book, name, new_arr)
+
     book.capacity = new_cap
+
 
 
 def _append_loan(book: LoanBook,
@@ -201,11 +207,8 @@ def banks_provide_loans(
 
         • contractual r_ik = r_bar * (1 + frag_i)
         • satisfy queues until each bank’s credit_supply is exhausted
-        • update both firm credit-demand **and** ledger aggregates
+        • update both firm credit-demand **and** edge-list ledger
     """
-    total_loans = 0.0
-    frag = firms.fragility  # pre-computed by previous system
-    B = firms.credit_demand
     for k in np.where(banks.credit_supply > 0.0)[0]:
         n_recv = banks.recv_apps_head[k] + 1
         if n_recv <= 0:
@@ -213,34 +216,21 @@ def banks_provide_loans(
         queue = banks.recv_apps[k, :n_recv]
         queue = queue[queue >= 0]
 
-        for f in queue:  # still branch-y but tiny loop
+        for f in queue:
             if banks.credit_supply[k] <= 0.0:
                 break
-            amount = min(B[f], banks.credit_supply[k])
+            amount = min(firms.credit_demand[f], banks.credit_supply[k])
             if amount <= 0.0:
                 continue
 
-            rate = r_bar * (1.0 + frag[f])  # μ·lev already computed
-            # ----- firm-side ledger ------------------------------------
-            ledger.loan_amount[f] += amount
-            # running weighted average of contractual rates
-            prev_L = ledger.loan_amount[f] - amount
-            if prev_L > 0:
-                ledger.contractual_rate[f] = (
-                        (prev_L * ledger.contractual_rate[f] + amount * rate)
-                        / (prev_L + amount)
-                )
-            else:
-                ledger.contractual_rate[f] = rate
-            ledger.interest_amount[f] += amount * rate
-            ledger.debt[f] += amount * (1.0 + rate)
+            rate = r_bar * (1.0 + firms.projected_fragility[f])
+
+            # ----- update ledger ------------------------------------
+            _append_loan(ledger, f, k, amount, rate)
 
             # ----- balances --------------------------------------------
-            B[f] -= amount
+            firms.credit_demand[f] -= amount
             banks.credit_supply[k] -= amount
-            total_loans += amount
 
         banks.recv_apps_head[k] = -1
         banks.recv_apps[k, :n_recv] = -1
-
-    log.debug("banks_provide_loans: total_L=%.2f", total_loans)

@@ -58,6 +58,7 @@ def firms_decide_wage_offer(
     shock = fw.wage_shock
     if shock is None or shock.shape != shape:
         shock = np.empty(shape, dtype=np.float64)
+        fw.wage_shock = shock
 
     # Draw one shock per firm, then mask where V_i==0.
     shock[:] = rng.uniform(0.0, h_xi, size=shape)
