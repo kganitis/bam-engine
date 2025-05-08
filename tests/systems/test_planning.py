@@ -142,14 +142,18 @@ def test_reuses_internal_buffers() -> None:
         expected_demand=np.zeros(2),
         desired_production=np.zeros(2),
     )
-    # pre‑allocate internal buffers once
+
+    # --- first call allocates the scratch arrays ----------------------
+    decide_desired_production(prod, p_avg=1.5, h_rho=0.05, rng=rng)
+
+    # capture the objects *after* they’ve been created
     buf0 = prod.prod_shock
     mask_up0 = prod.prod_mask_up
     mask_dn0 = prod.prod_mask_dn
 
+    # --- second call must reuse the very same objects -----------------
     decide_desired_production(prod, p_avg=1.5, h_rho=0.05, rng=rng)
 
-    # same Python objects → same id / “is”
     assert buf0 is prod.prod_shock
     assert mask_up0 is prod.prod_mask_up
     assert mask_dn0 is prod.prod_mask_dn
