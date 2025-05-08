@@ -43,7 +43,7 @@ class LoanBook:
       np.add.at(firm_debt, ledger.firm, ledger.debt)
       ```
 
-      → \~ 70 ns per loan on CPython/NumPy.
+      → ~ 70 ns per loan on CPython/NumPy.
     * **Append-only write pattern:** adding a loan = `idx = len(firm)` → extend by 1.
       No in-place reshuffle, so you avoid cache-thrashing during the inner loop.
     * **Easy resize-to-fit:** start with capacity `≈ N_firms * H` and `np.resize` (2×) when full, amortised O(1).
