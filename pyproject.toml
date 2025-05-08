@@ -25,6 +25,7 @@ line-length = 88
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "NPY"]
+extend-select = ["E501"]  # Enforce line-length violations
 
 [tool.mypy]
 python_version = "3.12"

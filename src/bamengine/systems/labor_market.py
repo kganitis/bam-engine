@@ -6,7 +6,7 @@ from numpy.random import Generator
 from bamengine.components.economy import Economy
 from bamengine.components.firm_labor import FirmHiring, FirmWageOffer
 from bamengine.components.worker_labor import WorkerJobSearch
-from bamengine.typing import FloatA, IdxA
+from bamengine.typing import Float1D, Idx1D
 
 log = logging.getLogger(__name__)
 
@@ -55,6 +55,7 @@ def firms_decide_wage_offer(
     """
     shape = fw.wage_offer.shape
 
+    # permanent scratch
     shock = fw.wage_shock
     if shock is None or shock.shape != shape:
         shock = np.empty(shape, dtype=np.float64)
@@ -64,6 +65,7 @@ def firms_decide_wage_offer(
     shock[:] = rng.uniform(0.0, h_xi, size=shape)
     shock[fw.n_vacancies == 0] = 0.0
 
+    # core rule
     np.multiply(fw.wage_prev, 1.0 + shock, out=fw.wage_offer)
     np.maximum(fw.wage_offer, w_min, out=fw.wage_offer)
 
@@ -79,7 +81,7 @@ def firms_decide_wage_offer(
 
 
 # --------------------------------------------------------------------------- #
-def _topk_indices_desc(values: FloatA, k: int) -> IdxA:
+def _topk_indices_desc(values: Float1D, k: int) -> Idx1D:
     """
     Return indices of the *k* largest elements along the last axis
     (unsorted, descending).

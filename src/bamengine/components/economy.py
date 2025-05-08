@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from bamengine.typing import FloatA
+from bamengine.typing import Float1D
 
 
 @dataclass(slots=True)
@@ -8,6 +8,6 @@ class Economy:
     """Global, mutable scalars & time-series."""
 
     avg_mrkt_price: float
-    avg_mrkt_price_history: FloatA  # P_0 … P_t   (append-only)
+    avg_mrkt_price_history: Float1D  # P_0 … P_t   (append-only)
     min_wage: float  # ŵ_t
     min_wage_rev_period: int  # constant (e.g. 4)

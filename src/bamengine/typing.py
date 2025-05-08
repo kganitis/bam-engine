@@ -1,13 +1,19 @@
 from typing import Any, TypeAlias
 
 import numpy as np
+from numpy.typing import NDArray
 
-FloatA: TypeAlias = np.ndarray[Any, np.dtype[np.float64]]
-IntA: TypeAlias = np.ndarray[Any, np.dtype[np.int64]]
-BoolA: TypeAlias = np.ndarray[Any, np.dtype[np.bool_]]
-IdxA: TypeAlias = np.ndarray[Any, np.dtype[np.intp]]
+Float1D: TypeAlias = NDArray[np.float64]
+Int1D: TypeAlias = np.ndarray[Any, np.dtype[np.int64]]
+Bool1D: TypeAlias = np.ndarray[Any, np.dtype[np.bool_]]
+Idx1D: TypeAlias = np.ndarray[Any, np.dtype[np.intp]]
 
-__all__ = ["FloatA", "IntA", "BoolA", "IdxA"]
+FloatA = Float1D
+IntA = Int1D
+BoolA = Bool1D
+IdxA = Idx1D
+
+__all__ = ["FloatA", "IntA", "BoolA", "IdxA", "Float1D", "Int1D", "Bool1D", "Idx1D"]
 
 # ------------------------------------------------------------------ #
 # Back‑compat shim – will disappear in v0.2                          #

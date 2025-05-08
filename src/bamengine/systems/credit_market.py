@@ -14,17 +14,18 @@ from bamengine.components.bank_credit import (
     BankCreditSupply,
     BankInterestRate,
     BankProvideLoan,
-    BankReceiveLoanApplication,
 )
 from bamengine.components.credit import LoanBook
 from bamengine.components.firm_credit import (
     FirmCreditDemand,
-    FirmLoan,
-    FirmLoanApplication, FirmFinancialFragility,
+    FirmCreditMetrics,
+    FirmLoanApplication,
 )
-from bamengine.typing import FloatA, IdxA
+from bamengine.typing import Float1D, Idx1D
 
 log = logging.getLogger(__name__)
+
+CAP_FRAG = 1.0e6  # fragility cap when net worth is zero
 
 
 # ─────────────────────── banks: vacancies & rate ───────────────────────
@@ -72,33 +73,31 @@ def firms_decide_credit_demand(firms: FirmCreditDemand) -> None:
     np.maximum(firms.credit_demand, 0.0, out=firms.credit_demand)
 
 
-def firms_calc_financial_fragility(firms: FirmFinancialFragility) -> None:
-    """Populate `projected_leverage` and `projected_fragility` in-place."""
+def firms_calc_credit_metrics(firms: FirmCreditMetrics) -> None:
+    """
+    projected_fragility[i] = μ_i · B_i / A_i
+    """
     shape = firms.net_worth.shape
 
-    # ensure / reuse leverage buffer
-    plv = firms.projected_leverage
-    if plv is None or plv.shape != shape:
-        plv = np.empty(shape, dtype=np.float64)
-        firms.projected_leverage = plv
-
-    # avoid division by zero via `where=`
-    np.divide(
-        firms.credit_demand, firms.net_worth,
-        out=plv,
-        where=firms.net_worth > 0.0,
-    )
-
-    # ensure / reuse fragility buffer
     frag = firms.projected_fragility
     if frag is None or frag.shape != shape:
         frag = np.empty(shape, dtype=np.float64)
         firms.projected_fragility = frag
 
-    np.multiply(plv, firms.rnd_intensity_mu, out=frag)
+    # frag ←  B_i / A_i  (safe divide)
+    np.divide(
+        firms.credit_demand,
+        firms.net_worth,
+        out=frag,
+        where=firms.net_worth > 0.0,
+    )
+    frag[firms.net_worth == 0.0] = CAP_FRAG
+
+    # frag *= μ_i
+    np.multiply(frag, firms.rnd_intensity_mu, out=frag)
 
 
-def _topk_lowest_rate(values: FloatA, k: int) -> IdxA:
+def _topk_lowest_rate(values: Float1D, k: int) -> Idx1D:
     """
     argpartition on **+rate** (cheapest first)
     """
@@ -139,9 +138,7 @@ def firms_prepare_loan_applications(
         firms.loan_apps_head[f] = f * stride  # start of that row
 
 
-def firms_send_one_loan_app(
-    firms: FirmLoanApplication, banks: BankReceiveLoanApplication
-) -> None:
+def firms_send_one_loan_app(firms: FirmLoanApplication, banks: BankProvideLoan) -> None:
     """ """
     stride = firms.loan_apps_targets.shape[1]
 
@@ -167,36 +164,44 @@ def firms_send_one_loan_app(
 
 
 def _ensure_capacity(book: LoanBook, extra: int) -> None:
-    if book.size + extra <= book.capacity:
+
+    needed = book.size + extra
+    if needed <= book.capacity:
         return
 
-    new_cap = max(book.capacity * 2, book.size + extra, 32)
+    new_cap = max(book.capacity * 2, needed, 128)
 
     for name in ("firm", "bank", "principal", "rate", "interest", "debt"):
         arr = getattr(book, name)
-        new_arr = np.resize(arr, new_cap)  # returns *new* ndarray; O(1) amortized
+        new_arr = np.resize(arr, new_cap)  # returns *new* ndarray; O(1) amortized;
+        # large simulations should pre-allocate capacity = n_firms * H
         setattr(book, name, new_arr)
 
     book.capacity = new_cap
 
 
+def _append_loans(
+    ledger: LoanBook,
+    borrowers: Idx1D,
+    lender: int,
+    amount: Float1D,
+    rate: Float1D,
+) -> None:
+    _ensure_capacity(ledger, amount.size)
+    start, stop = ledger.size, ledger.size + amount.size
 
-def _append_loan(book: LoanBook,
-                 i: int, k: int,
-                 amount: float, r: float) -> None:
-    _ensure_capacity(book, 1)
-    j = book.size
-    book.firm[j]      = i
-    book.bank[j]      = k
-    book.principal[j] = amount
-    book.rate[j]      = r
-    book.interest[j]  = amount * r
-    book.debt[j]      = amount * (1.0 + r)
-    book.size += 1
+    ledger.firm[start:stop] = borrowers
+    ledger.bank[start:stop] = lender  # ← scalar broadcast
+    ledger.principal[start:stop] = amount
+    ledger.rate[start:stop] = rate
+    ledger.interest[start:stop] = amount * rate
+    ledger.debt[start:stop] = amount * (1.0 + rate)
+
+    ledger.size = stop
 
 
 def banks_provide_loans(
-    firms: FirmLoan,
+    firms: FirmLoanApplication,
     ledger: LoanBook,
     banks: BankProvideLoan,
     *,
@@ -213,24 +218,42 @@ def banks_provide_loans(
         n_recv = banks.recv_apps_head[k] + 1
         if n_recv <= 0:
             continue
+
         queue = banks.recv_apps[k, :n_recv]
-        queue = queue[queue >= 0]
+        queue = queue[queue >= 0]  # compact valid requests
 
-        for f in queue:
-            if banks.credit_supply[k] <= 0.0:
-                break
-            amount = min(firms.credit_demand[f], banks.credit_supply[k])
-            if amount <= 0.0:
-                continue
+        if queue.size == 0:
+            continue
 
-            rate = r_bar * (1.0 + firms.projected_fragility[f])
+        # --- gather data ------------------------------------------------
+        cd = firms.credit_demand[queue]
+        frag = firms.projected_fragility[queue]
+        max_grant = np.minimum(cd, banks.credit_supply[k])
 
-            # ----- update ledger ------------------------------------
-            _append_loan(ledger, f, k, amount, rate)
+        # amount actually granted (zero once the pot is empty)
+        cum = np.cumsum(max_grant, dtype=np.float64)
+        cut = cum > banks.credit_supply[k]
+        if cut.any():
+            first_exceed = cut.argmax()
+            max_grant[first_exceed] -= cum[first_exceed] - banks.credit_supply[k]
+            max_grant[first_exceed + 1 :] = 0.0
 
-            # ----- balances --------------------------------------------
-            firms.credit_demand[f] -= amount
-            banks.credit_supply[k] -= amount
+        mask = max_grant > 0.0
+        if not mask.any():
+            continue
 
+        amount = max_grant[mask]
+        borrowers = queue[mask]
+        rate = r_bar * (1.0 + frag[mask])
+
+        # --- update ledger (vectorised append) ---------------------------------
+        _append_loans(ledger, borrowers, k, amount, rate)
+
+        # --- balances ---------------------------------------------------
+        firms.credit_demand[borrowers] -= amount
+        banks.credit_supply[k] -= amount.sum()
+        assert (firms.credit_demand >= -1e-12).all(), "negative credit_demand"
+
+        # reset queue
         banks.recv_apps_head[k] = -1
         banks.recv_apps[k, :n_recv] = -1
