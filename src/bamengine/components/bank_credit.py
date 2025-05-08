@@ -1,7 +1,7 @@
 # src/bamengine/components/bank_credit.py
 from dataclasses import dataclass, field
 
-from bamengine.typing import FloatA, IdxA, IntA
+from bamengine.typing import Float1D, Idx1D, Int1D
 
 
 @dataclass(slots=True)
@@ -10,8 +10,8 @@ class BankCreditSupply:
     Dense credit‑supply state (one row per bank).
     """
 
-    equity_base: FloatA  # E_k   (constant for now)
-    credit_supply: FloatA  # C_k   ← out
+    equity_base: Float1D  # E_k   (constant for now)
+    credit_supply: Float1D  # C_k   ← out
 
 
 @dataclass(slots=True)
@@ -20,24 +20,16 @@ class BankInterestRate:
     Dense nominal interest rate state (one row per bank).
     """
 
-    interest_rate: FloatA  # r_k   ← out
-    credit_shock: FloatA | None = field(default=None, repr=False)  # scratch
-
-
-@dataclass(slots=True)
-class BankReceiveLoanApplication:
-    """ """
-
-    # bounded FIFO queue of firm indices that applied this round
-    recv_apps_head: IntA  # ptr (−1 ⇒ empty)
-    recv_apps: IdxA  # shape (N_banks, H)
+    interest_rate: Float1D  # r_k   ← out
+    credit_shock: Float1D | None = field(default=None, repr=False)  # scratch
 
 
 @dataclass(slots=True)
 class BankProvideLoan:
     """ """
 
-    credit_supply: FloatA
-    recv_apps_head: IntA
-    recv_apps: IdxA
+    credit_supply: Float1D  # (shared view)
 
+    # bounded FIFO queue of firm indices that applied this round
+    recv_apps_head: Int1D  # ptr (−1 ⇒ empty)
+    recv_apps: Idx1D  # shape (N_banks, H)

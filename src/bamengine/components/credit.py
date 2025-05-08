@@ -1,59 +1,80 @@
 # src/bamengine/components/credit.py
 from dataclasses import dataclass, field
+
 import numpy as np
-from bamengine.typing import FloatA, IntA
+
+from bamengine.typing import Float1D, Int1D
+
 
 @dataclass(slots=True)
 class LoanBook:
     """
-    Edge-list ledger of *active* loans.
-    Grows automatically; no per-step allocations in hot loops.
+    Edge-list ledger for storing and managing *active* loans.
 
-    ---
+    This structure maintains a sparse representation of firm-bank loan contracts
+    using a **Coordinate List (COO) format**. It efficiently tracks lending
+    relationships without the need for a dense `(N_firms × N_banks)` matrix,
+    reducing memory consumption and enhancing vectorized operations.
 
-    **Designing loan ledger system**
+    The `LoanBook` is designed to grow automatically, with amortized O(1) complexity
+    for append operations, avoiding per-step allocations during hot loops.
 
-    ### You want **per-loan detail** ( *who* ↔ *whom* ↔ *how much* ↔ *rate* ).
+    Attributes
+    ----------
+    firm : Int1D
+        Array of firm indices (`int64`) representing borrowers.
+        Size: `M`, where `M` is the number of active loans.
+    bank : Int1D
+        Array of bank indices (`int64`) representing lenders.
+        Size: `M`.
+    principal : Float1D
+        Array of principal amounts (`float64`) for each loan.
+        This is the original loan amount at the time of signing.
+    rate : Float1D
+        Array of contractual interest rates (`float64`) for each loan.
+    interest : Float1D
+        Cached interest amounts (`float64`) calculated as `rate * principal`.
+        This enables O(1) aggregation without recomputation.
+    debt : Float1D
+        Cached total debt amounts (`float64`) calculated as `principal * (1 + rate)`.
+    capacity : int, optional
+        The current physical storage capacity of the ledger (default is 128).
+        This represents the allocated space, not the number of active rows.
+    size : int, optional
+        The number of currently active loans in the ledger (default is 0).
 
-    A dense `(N_firms × N_banks)` matrix explodes in RAM and is awkward to update, so the usual remedy is an **edge-list ledger** that sits *once* in memory and is shared by all credit-market systems.
+    Notes
+    -----
+    The `LoanBook` is structured as a *sparse edge-list*, where only active
+    loan relationships are recorded. The edge list grows as new loans are issued
+    and is only resized when capacity is exhausted, ensuring optimal memory usage.
 
-    ---
+    The six columns are 1-D NumPy arrays of equal length `M`, where `M` is the
+    number of active loans. Operations such as aggregation and updates are
+    efficiently vectorized. For example, to sum all debt per firm:
 
-    ## Data-layout: a flat “COO” edge list
+    >>> firm_debt = np.zeros(N)
+    >>> np.add.at(firm_debt, ledger.firm, ledger.debt)
 
-    | field name  | dtype     | meaning                               | remarks                                                  |
-    | ----------- | --------- | ------------------------------------- | -------------------------------------------------------- |
-    | `firm`      | `int64`   | index *i* of borrowing firm           | 0 … N-1                                                  |
-    | `bank`      | `int64`   | index *k* of lending bank             | 0 … K-1                                                  |
-    | `principal` | `float64` | original loan amount *L<sub>ik</sub>* | cumulative top-ups simply **append** new rows            |
-    | `rate`      | `float64` | contractual *r<sub>ik</sub>*          | immutable after signing                                  |
-    | `interest`  | `float64` | *r · L* (cached)                      | lets you sum interests in **O(1)** without recalculation |
-    | `debt`      | `float64` | *L × (1 + r)*                         | idem                                                     |
-
-    *All six columns are 1-D NumPy arrays of equal length **M** (number of active loans).*
-
-    ### Why this layout?
-
-    * **Sparse:** you store only existing contracts – memory ∝ *loans*, not *firms × banks*.
-      `M ≪ N·K` in almost every macro model.
-    * **Vectorisable:** aggregations are `np.bincount` or `np.ufunc.at`, e.g.
-
-      ```python
-      firm_debt = np.zeros(N)
-      np.add.at(firm_debt, ledger.firm, ledger.debt)
-      ```
-
-      → ~ 70 ns per loan on CPython/NumPy.
-    * **Append-only write pattern:** adding a loan = `idx = len(firm)` → extend by 1.
-      No in-place reshuffle, so you avoid cache-thrashing during the inner loop.
-    * **Easy resize-to-fit:** start with capacity `≈ N_firms * H` and `np.resize` (2×) when full, amortised O(1).
-
+    Advantages of the edge-list design:
+    - **Sparse Representation:** Memory usage scales with the number of active loans,
+    not the full firm-bank matrix.
+    - **Vectorized Operations:** Supports fast aggregations using `np.bincount` and
+    `np.ufunc.at`.
+    - **Append-Only Write Pattern:** New loans are appended in constant time,
+    avoiding cache-thrashing.
+    - **Dynamic Resize:** Automatically doubles capacity when full,
+    ensuring amortized O(1) append complexity.
     """
-    firm:      IntA     = field(default_factory=lambda: np.empty(0, np.int64))
-    bank:      IntA     = field(default_factory=lambda: np.empty(0, np.int64))
-    principal: FloatA   = field(default_factory=lambda: np.empty(0, np.float64))
-    rate:      FloatA   = field(default_factory=lambda: np.empty(0, np.float64))
-    interest:  FloatA   = field(default_factory=lambda: np.empty(0, np.float64))
-    debt:      FloatA   = field(default_factory=lambda: np.empty(0, np.float64))
-    capacity:  int      = 128        # current physical length
-    size:      int      = 0          # number of *filled* rows
+
+    def __len__(self) -> int:
+        return self.size
+
+    firm: Int1D = field(default_factory=lambda: np.empty(0, np.int64))
+    bank: Int1D = field(default_factory=lambda: np.empty(0, np.int64))
+    principal: Float1D = field(default_factory=lambda: np.empty(0, np.float64))
+    rate: Float1D = field(default_factory=lambda: np.empty(0, np.float64))
+    interest: Float1D = field(default_factory=lambda: np.empty(0, np.float64))
+    debt: Float1D = field(default_factory=lambda: np.empty(0, np.float64))
+    capacity: int = 128  # current physical length
+    size: int = 0  # number of *filled* rows

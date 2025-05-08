@@ -30,7 +30,7 @@ from bamengine.systems.planning import (
     firms_decide_desired_production,
     firms_decide_vacancies,
 )
-from bamengine.typing import FloatA, IntA
+from bamengine.typing import Float1D, Int1D
 
 __all__ = [
     "Scheduler",
@@ -230,7 +230,7 @@ class Scheduler:
     # --------------------------------------------------------------------- #
     #                               snapshot                                #
     # --------------------------------------------------------------------- #
-    def snapshot(self, *, copy: bool = False) -> Dict[str, FloatA | IntA | float]:
+    def snapshot(self, *, copy: bool = False) -> Dict[str, Float1D | Int1D | float]:
         """ "
         Return a read‑only view (or copy) of key state arrays.
 
