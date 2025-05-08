@@ -36,14 +36,17 @@ def firms_decide_desired_production(  # noqa: C901  (still quite short)
     shock = fp.prod_shock
     if shock is None or shock.shape != shape:
         shock = np.empty(shape, dtype=np.float64)
+        fp.prod_shock = shock
 
     up_mask = fp.prod_mask_up
     if up_mask is None or up_mask.shape != shape:
         up_mask = np.empty(shape, dtype=np.bool_)
+        fp.prod_mask_up = up_mask
 
     dn_mask = fp.prod_mask_dn
     if dn_mask is None or dn_mask.shape != shape:
         dn_mask = np.empty(shape, dtype=np.bool_)
+        fp.prod_mask_dn = dn_mask
 
     # ── 2. fill buffers in‑place ---------------
     shock[:] = rng.uniform(0.0, h_rho, size=shape)

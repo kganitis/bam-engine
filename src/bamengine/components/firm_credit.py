@@ -48,6 +48,3 @@ class FirmLoan:
     """ """
     credit_demand: FloatA
     projected_fragility: FloatA
-
-    # scratch
-    contract_rate: FloatA | None = field(default=None, repr=False)

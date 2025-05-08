@@ -1,3 +1,4 @@
+# src/bamengine/components/credit.py
 from dataclasses import dataclass, field
 import numpy as np
 from bamengine.typing import FloatA, IntA
@@ -54,5 +55,5 @@ class LoanBook:
     rate:      FloatA   = field(default_factory=lambda: np.empty(0, np.float64))
     interest:  FloatA   = field(default_factory=lambda: np.empty(0, np.float64))
     debt:      FloatA   = field(default_factory=lambda: np.empty(0, np.float64))
-    capacity:  int      = 0          # current physical length
+    capacity:  int      = 128        # current physical length
     size:      int      = 0          # number of *filled* rows
