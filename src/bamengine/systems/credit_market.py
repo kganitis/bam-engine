@@ -10,16 +10,25 @@ import logging
 import numpy as np
 from numpy.random import Generator
 
-from bamengine.components.bank_credit import BankCreditSupply, BankInterestRate, \
-    BankReceiveLoanApplication, BankProvideLoan
-from bamengine.components.firm_credit import FirmCreditDemand, FirmLoanApplication, \
-    FirmLoan
+from bamengine.components.bank_credit import (
+    BankCreditSupply,
+    BankInterestRate,
+    BankProvideLoan,
+    BankReceiveLoanApplication,
+)
+from bamengine.components.credit import LoanBook
+from bamengine.components.firm_credit import (
+    FirmCreditDemand,
+    FirmLoan,
+    FirmLoanApplication, FirmFinancialFragility,
+)
 from bamengine.typing import FloatA, IdxA
 
 log = logging.getLogger(__name__)
 
 
 # ─────────────────────── banks: vacancies & rate ───────────────────────
+
 
 def banks_decide_credit_supply(banks: BankCreditSupply, *, v: float) -> None:
     """
@@ -60,6 +69,32 @@ def firms_decide_credit_demand(firms: FirmCreditDemand) -> None:
     """
     np.subtract(firms.wage_bill, firms.net_worth, out=firms.credit_demand)
     np.maximum(firms.credit_demand, 0.0, out=firms.credit_demand)
+
+
+def firms_calc_financial_fragility(firms: FirmFinancialFragility) -> None:
+    """Populate `projected_leverage` and `projected_fragility` in-place."""
+    shape = firms.net_worth.shape
+
+    # ensure / reuse leverage buffer
+    plv = firms.projected_leverage
+    if plv is None or plv.shape != shape:
+        plv = np.empty(shape, dtype=np.float64)
+        firms.projected_leverage = plv
+
+    # avoid division by zero via `where=`
+    np.divide(
+        firms.credit_demand, firms.net_worth,
+        out=plv,
+        where=firms.net_worth > 0.0,
+    )
+
+    # ensure / reuse fragility buffer
+    frag = firms.projected_fragility
+    if frag is None or frag.shape != shape:
+        frag = np.empty(shape, dtype=np.float64)
+        firms.projected_fragility = frag
+
+    np.multiply(plv, firms.rnd_intensity_mu, out=frag)
 
 
 def _topk_lowest_rate(values: FloatA, k: int) -> IdxA:
@@ -104,11 +139,9 @@ def firms_prepare_loan_applications(
 
 
 def firms_send_one_loan_app(
-    firms: FirmLoanApplication,
-    banks: BankReceiveLoanApplication
+    firms: FirmLoanApplication, banks: BankReceiveLoanApplication
 ) -> None:
-    """
-    """
+    """ """
     stride = firms.loan_apps_targets.shape[1]
 
     for f in np.where(firms.credit_demand > 0.0)[0]:
@@ -132,8 +165,33 @@ def firms_send_one_loan_app(
         firms.loan_apps_targets[row, col] = -1
 
 
+def _ensure_capacity(book: LoanBook, extra: int) -> None:
+    if book.size + extra <= book.capacity:
+        return
+    new_cap = max(book.capacity * 2, book.size + extra, 32)
+    for arr_name in ("firm", "bank", "principal", "rate", "interest", "debt"):
+        arr = getattr(book, arr_name)
+        arr.resize(new_cap, refcheck=False)       # O(1) amortised
+    book.capacity = new_cap
+
+
+def _append_loan(book: LoanBook,
+                 i: int, k: int,
+                 amount: float, r: float) -> None:
+    _ensure_capacity(book, 1)
+    j = book.size
+    book.firm[j]      = i
+    book.bank[j]      = k
+    book.principal[j] = amount
+    book.rate[j]      = r
+    book.interest[j]  = amount * r
+    book.debt[j]      = amount * (1.0 + r)
+    book.size += 1
+
+
 def banks_provide_loans(
     firms: FirmLoan,
+    ledger: LoanBook,
     banks: BankProvideLoan,
     *,
     r_bar: float,
@@ -141,35 +199,47 @@ def banks_provide_loans(
     """
     Process queued applications **in‑place**:
 
-        • grant up to available credit_supply
-        • contractual rate  = r̄ · (1 + frag_i)   (frag placeholder = 0)
-        • reduce firm's credit_demand and bank's credit_supply
+        • contractual r_ik = r_bar * (1 + frag_i)
+        • satisfy queues until each bank’s credit_supply is exhausted
+        • update both firm credit-demand **and** ledger aggregates
     """
     total_loans = 0.0
+    frag = firms.fragility  # pre-computed by previous system
+    B = firms.credit_demand
     for k in np.where(banks.credit_supply > 0.0)[0]:
         n_recv = banks.recv_apps_head[k] + 1
         if n_recv <= 0:
             continue
+        queue = banks.recv_apps[k, :n_recv]
+        queue = queue[queue >= 0]
 
-        firms_ = banks.recv_apps[k, :n_recv]
-        firms_ = firms_[firms_ >= 0]
-
-        for f in firms_:
+        for f in queue:  # still branch-y but tiny loop
             if banks.credit_supply[k] <= 0.0:
                 break
-
-            # to ChatGPT: shouldn't contractual rate be calculated here based on firm's fincancial fragility?
-            amount = min(firms.credit_demand[f], banks.credit_supply[k])
+            amount = min(B[f], banks.credit_supply[k])
             if amount <= 0.0:
                 continue
 
-            # update balances
-            # to ChatGPT: shouldn't the loan data (along with the contractual rate) be kept somewhere?
-            firms.credit_demand[f] -= amount
+            rate = r_bar * (1.0 + frag[f])  # μ·lev already computed
+            # ----- firm-side ledger ------------------------------------
+            ledger.loan_amount[f] += amount
+            # running weighted average of contractual rates
+            prev_L = ledger.loan_amount[f] - amount
+            if prev_L > 0:
+                ledger.contractual_rate[f] = (
+                        (prev_L * ledger.contractual_rate[f] + amount * rate)
+                        / (prev_L + amount)
+                )
+            else:
+                ledger.contractual_rate[f] = rate
+            ledger.interest_amount[f] += amount * rate
+            ledger.debt[f] += amount * (1.0 + rate)
+
+            # ----- balances --------------------------------------------
+            B[f] -= amount
             banks.credit_supply[k] -= amount
             total_loans += amount
 
-        # flush queue
         banks.recv_apps_head[k] = -1
         banks.recv_apps[k, :n_recv] = -1
 

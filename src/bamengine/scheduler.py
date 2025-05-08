@@ -217,7 +217,9 @@ class Scheduler:
         firms_decide_wage_offer(
             self.fw, w_min=self.ec.min_wage, h_xi=self.h_xi, rng=self.rng
         )
-        workers_prepare_job_applications(self.ws, self.fw, max_M=self.max_M, rng=self.rng)
+        workers_prepare_job_applications(
+            self.ws, self.fw, max_M=self.max_M, rng=self.rng
+        )
         for _ in range(self.max_M):  # round‐robin M times
             workers_send_one_round(self.ws, self.fh)
             firms_hire_workers(self.ws, self.fh, contract_theta=self.theta)
