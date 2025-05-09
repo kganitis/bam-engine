@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from bamengine.components.credit import LoanBook
+from bamengine.components.economy import LoanBook
 
 
 def create_empty_ledger(n_init: int = 128) -> LoanBook:
