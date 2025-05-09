@@ -21,7 +21,7 @@ class BankInterestRate:
     """
 
     interest_rate: Float1D  # r_k   ← out
-    credit_shock: Float1D | None = field(default=None, repr=False)  # scratch
+    opex_shock: Float1D | None = field(default=None, repr=False)  # scratch
 
 
 @dataclass(slots=True)

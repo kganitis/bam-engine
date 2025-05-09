@@ -69,7 +69,7 @@ def test_event_labor_market(tiny_sched: Scheduler) -> None:
 
     # 1. Wage floor matches rule outcome (may rise, fall, or stay)
     m = sch.ec.min_wage_rev_period
-    hist = sch.ec.avg_mrkt_price_history
+    hist = sch.ec.avg_mkt_price_history
     if hist.size > m and (hist.size - 1) % m == 0:
         p_now, p_prev = hist[-2], hist[-m - 1]
         expected_floor = prev_floor * (1 + (p_now - p_prev) / p_prev)

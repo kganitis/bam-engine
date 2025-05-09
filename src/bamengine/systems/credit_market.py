@@ -34,6 +34,8 @@ CAP_FRAG = 1.0e6  # fragility cap when net worth is zero
 def banks_decide_credit_supply(banks: BankCreditSupply, *, v: float) -> None:
     """
     C_k = E_k · v
+
+    v : capital requirement coefficient
     """
     np.multiply(banks.equity_base, v, out=banks.credit_supply)
 
@@ -53,10 +55,10 @@ def banks_decide_interest_rate(
     shape = banks.interest_rate.shape
 
     # permanent scratch
-    shock = banks.credit_shock
+    shock = banks.opex_shock
     if shock is None or shock.shape != shape:
         shock = np.empty(shape, dtype=np.float64)
-        banks.credit_shock = shock
+        banks.opex_shock = shock
 
     # fill buffer in-place
     shock[:] = rng.uniform(0.0, h_phi, size=shape)
@@ -94,7 +96,7 @@ def firms_calc_credit_metrics(firms: FirmCreditMetrics) -> None:
     frag[firms.net_worth == 0.0] = CAP_FRAG
 
     # frag *= μ_i
-    np.multiply(frag, firms.rnd_intensity_mu, out=frag)
+    np.multiply(frag, firms.rnd_intensity, out=frag)
 
 
 def _topk_lowest_rate(values: Float1D, k: int) -> Idx1D:

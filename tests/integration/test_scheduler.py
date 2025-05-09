@@ -83,6 +83,6 @@ def test_scheduler_hooks_called() -> None:
         called["post"] = True
 
     sch = Scheduler.init(n_firms=3, n_households=6, seed=0)
-    sch.step(before_planning=_pre, after_labor_market=_post)
+    sch.step(before_planning=_pre, before_credit_market=_post)
 
     assert called == {"pre": True, "post": True}

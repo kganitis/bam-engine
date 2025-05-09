@@ -23,7 +23,7 @@ def advance_stub_state(sched: "Scheduler", p_avg: float) -> None:
     3. Jitter inventory and price so future periods don’t see constants.
     """
     # add price to history (needed for minimum-wage inflation rule)
-    sched.ec.avg_mrkt_price_history = np.append(sched.ec.avg_mrkt_price_history, p_avg)
+    sched.ec.avg_mkt_price_history = np.append(sched.ec.avg_mkt_price_history, p_avg)
 
     # carry forward production level
     sched.prod.prev_production[:] = sched.prod.desired_production
@@ -31,3 +31,5 @@ def advance_stub_state(sched: "Scheduler", p_avg: float) -> None:
     # stub: random new inventory and mild price noise
     sched.prod.inventory[:] = sched.rng.integers(0, 6, size=sched.prod.inventory.shape)
     sched.prod.price[:] *= sched.rng.uniform(0.98, 1.02, size=sched.prod.price.shape)
+
+    sched.fw.wage_prev[:] = sched.wb.wage

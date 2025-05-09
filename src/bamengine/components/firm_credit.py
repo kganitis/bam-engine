@@ -1,5 +1,5 @@
 # src/bamengine/components/firm_credit.py
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from bamengine.typing import Float1D, Int1D
 
@@ -28,7 +28,7 @@ class FirmCreditMetrics:
 
     credit_demand: Float1D  # B_i   (shared view)
     net_worth: Float1D  # A_i   (shared view)
-    rnd_intensity_mu: Float1D  # μ_i   (constant or slowly changing)
+    rnd_intensity: Float1D  # μ_i   (constant or slowly changing)
     projected_fragility: Float1D  # φ̂_i           ← out
 
 

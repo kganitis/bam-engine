@@ -46,9 +46,10 @@ def test_adjust_minimum_wage_revision() -> None:
     """
     ec = Economy(
         min_wage=1.0,
-        avg_mrkt_price=1.15,
-        avg_mrkt_price_history=np.array([1.0, 1.05, 1.10, 1.12, 1.15]),  # t = 4
+        avg_mkt_price=1.15,
+        avg_mkt_price_history=np.array([1.0, 1.05, 1.10, 1.12, 1.15]),  # t = 4
         min_wage_rev_period=4,
+        r_bar=0.07
     )
     adjust_minimum_wage(ec)
     # Inflation between P0 and P3: (1.12 − 1.00) / 1.00 = 0.12
@@ -68,8 +69,8 @@ def test_adjust_minimum_wage_edges(prices: FloatA, delta_sign: str) -> None:
     """Guard array bounds; min wage may go **up or down** depending on inflation."""
     ec = Economy(
         min_wage=1.0,
-        avg_mrkt_price=float(prices[-1]),
-        avg_mrkt_price_history=prices,
+        avg_mkt_price=float(prices[-1]),
+        avg_mkt_price_history=prices,
         min_wage_rev_period=4,
     )
     old = ec.min_wage
