@@ -88,7 +88,7 @@ class Scheduler:
     ir: BankInterestRate
     pl: BankProvideLoan
 
-    ledger: LoanBook
+    lb: LoanBook
 
     # global parameters
     h_rho: float  # max production-growth shock
@@ -122,16 +122,14 @@ class Scheduler:
         price = np.full(n_firms, 1.5)
         production = np.ones(n_firms)
         inventory = np.zeros_like(production)
+        labor = np.zeros(n_firms, dtype=np.int64)
         wage = np.ones(n_firms)
 
         expected_demand = np.ones_like(production)
         desired_production = np.zeros_like(production)
-        labour_productivity = np.ones_like(production)
-        desired_labor = np.zeros(n_firms, dtype=np.int64)
-        current_labor = np.zeros_like(desired_labor)
+        labor_productivity = np.ones_like(production)
+        desired_labor = np.zeros_like(labor)
         n_vacancies = np.zeros_like(desired_labor)
-
-        wage_prev = np.copy(wage)
         wage_bill = np.zeros_like(wage)
 
         employed = np.zeros(n_households, dtype=np.int64)
@@ -176,16 +174,15 @@ class Scheduler:
         )
         lab = FirmLaborPlan(
             desired_production=desired_production,  # shared view
-            labor_productivity=labour_productivity,
+            labor_productivity=labor_productivity,
             desired_labor=desired_labor,
         )
         vac = FirmVacancies(
             desired_labor=desired_labor,  # shared view
-            current_labor=current_labor,
+            current_labor=labor,
             n_vacancies=n_vacancies,
         )
         fw = FirmWageOffer(
-            wage_prev=wage_prev,
             n_vacancies=n_vacancies,  # shared view
             wage_offer=wage,
         )
@@ -200,12 +197,12 @@ class Scheduler:
         fh = FirmHiring(
             wage_offer=wage,  # shared view
             n_vacancies=n_vacancies,  # shared view
-            current_labor=current_labor,  # shared view
+            current_labor=labor,  # shared view
             recv_apps_head=recv_job_apps_head,
             recv_apps=recv_job_apps,
         )
         wb = FirmWageBill(
-            current_labor=current_labor,
+            current_labor=labor,
             wage=wage,
             wage_bill=wage_bill,
         )
@@ -238,7 +235,7 @@ class Scheduler:
             recv_apps_head=recv_loan_apps_head,
             recv_apps=recv_loan_apps,
         )
-        ledger = LoanBook()
+        lb = LoanBook()
 
         return cls(
             rng=rng,
@@ -256,7 +253,7 @@ class Scheduler:
             cs=cs,
             ir=ir,
             pl=pl,
-            ledger=ledger,
+            lb=lb,
             h_rho=h_rho,
             h_xi=h_xi,
             h_phi=h_phi,
@@ -339,7 +336,7 @@ class Scheduler:
         )
         for _ in range(self.max_H):  # round‐robin H times
             firms_send_one_loan_app(self.la, self.pl)
-            banks_provide_loans(self.la, self.ledger, self.pl, r_bar=self.ec.r_bar)
+            banks_provide_loans(self.la, self.lb, self.pl, r_bar=self.ec.r_bar)
         # ==================================================================
 
         # Stub state advance
@@ -370,17 +367,13 @@ class Scheduler:
             "net_worth": cp(self.cm.net_worth),
             "price": cp(self.prod.price),
             "inventory": cp(self.prod.inventory),
-            "desired_production": cp(self.prod.desired_production),
-            "desired_labor": cp(self.lab.desired_labor),
-            "current_labor": cp(self.fh.current_labor),
-            "wage": cp(self.wb.wage),
+            "labor": cp(self.fh.current_labor),
             "min_wage": float(self.ec.min_wage),
-            "avg_price": float(self.ec.avg_mkt_price),
-            "credit_demand": cp(self.cd.credit_demand),
-            "proj_fragility": cp(self.cm.projected_fragility),
-            "interest_rate": cp(self.ir.interest_rate),
-            "credit_supply": cp(self.cs.credit_supply),
-            "loanbook_size": int(len(self.ledger)),
+            "wage": cp(self.wb.wage),
+            "wage_bill": cp(self.wb.wage_bill),
+            "employed": cp(self.ws.employed),
+            "debt": cp(self.lb.debt),
+            "avg_mkt_price": float(self.ec.avg_mkt_price),
         }
 
     # ------------------------------------------------------------------ #
@@ -401,4 +394,4 @@ class Scheduler:
 
     @property
     def total_loans(self) -> float:  # outstanding principal
-        return float(self.ledger.principal[: self.ledger.size].sum())
+        return float(self.lb.principal[: self.lb.size].sum())

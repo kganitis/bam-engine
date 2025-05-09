@@ -129,10 +129,11 @@ def firms_prepare_loan_applications(
     topk = _topk_lowest_rate(banks.interest_rate[sample], k=max_H)
     sorted_sample = np.take_along_axis(sample, topk, axis=1)
 
-    stride = max_H
+    # flush vectors
     firms.loan_apps_targets.fill(-1)
     firms.loan_apps_head.fill(-1)
 
+    stride = max_H
     for k, f in enumerate(borrowers):
         firms.loan_apps_targets[f, :stride] = sorted_sample[k]
         firms.loan_apps_head[f] = f * stride  # start of that row
@@ -178,6 +179,10 @@ def _ensure_capacity(book: LoanBook, extra: int) -> None:
         setattr(book, name, new_arr)
 
     book.capacity = new_cap
+    assert all(
+        getattr(book, n).size == new_cap
+        for n in ("firm", "bank", "principal", "rate", "interest", "debt")
+    )
 
 
 def _append_loans(

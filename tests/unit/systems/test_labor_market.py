@@ -96,11 +96,11 @@ def test_decide_wage_offer_basic() -> None:
     """
     rng = default_rng(seed=42)
     fw = FirmWageOffer(
-        wage_prev=np.array([1.0, 1.2, 1.1, 1.3]),
         n_vacancies=np.array([3, 0, 2, 0]),
-        wage_offer=np.zeros(4),
+        wage_offer=np.array([1.0, 1.2, 1.1, 1.3]),
     )
 
+    wage_prev = np.copy(fw.wage_offer)
     firms_decide_wage_offer(fw, w_min=1.05, h_xi=0.1, rng=rng)
 
     # Non-hiring firms keep their previous wage (already ≥ w_min)
@@ -108,7 +108,7 @@ def test_decide_wage_offer_basic() -> None:
     assert np.isclose(fw.wage_offer[3], 1.3)
 
     # Hiring firms obey floor and non-decreasing rule
-    assert (fw.wage_offer[fw.n_vacancies > 0] >= fw.wage_prev[fw.n_vacancies > 0]).all()
+    assert (fw.wage_offer[fw.n_vacancies > 0] >= wage_prev[fw.n_vacancies > 0]).all()
     assert (fw.wage_offer >= 1.05).all()
 
 
@@ -119,9 +119,8 @@ def test_decide_wage_offer_floor_and_shock() -> None:
     """
     rng = default_rng(2)
     fw = FirmWageOffer(
-        wage_prev=np.array([0.8, 1.2]),
         n_vacancies=np.array([0, 3]),
-        wage_offer=np.zeros(2),
+        wage_offer=np.array([0.8, 1.2]),
     )
     firms_decide_wage_offer(fw, w_min=1.0, h_xi=0.1, rng=rng)
     assert fw.wage_offer[0] == pytest.approx(1.0)  # floor
@@ -137,9 +136,8 @@ def _mini_state() -> Tuple[FirmWageOffer, WorkerJobSearch, FirmHiring, Generator
     n_workers, n_firms, M = 6, 3, 2
 
     fw = FirmWageOffer(
-        wage_prev=np.array([1.0, 1.5, 1.2]),
         n_vacancies=np.array([2, 1, 0]),
-        wage_offer=np.array([1.2, 1.5, 1.3]),
+        wage_offer=np.array([1.0, 1.5, 1.2]),
     )
     ws = WorkerJobSearch(
         employed=np.array([0, 0, 0, 1, 0, 1], dtype=np.int64),
@@ -198,9 +196,8 @@ def test_prepare_applications_basic() -> None:
 def test_prepare_applications_no_unemployed() -> None:
     """If everyone is employed no application pointers should be set."""
     fw = FirmWageOffer(
-        wage_prev=np.array([1.0, 1.5, 1.2]),
         n_vacancies=np.array([2, 1, 0]),
-        wage_offer=np.array([1.2, 1.5, 1.3]),
+        wage_offer=np.array([1.0, 1.5, 1.2]),
     )
     ws = WorkerJobSearch(
         employed=np.ones(3, dtype=np.int64),
@@ -255,9 +252,8 @@ def test_prepare_applications_large_unemployment() -> None:
     rng = default_rng(5)
     n_workers, n_firms, M = 20, 3, 2
     fw = FirmWageOffer(
-        wage_prev=np.array([1.0, 1.5, 1.2]),
         n_vacancies=np.array([2, 1, 0]),
-        wage_offer=np.array([1.2, 1.5, 1.3]),
+        wage_offer=np.array([1.0, 1.5, 1.2]),
     )
     ws = WorkerJobSearch(
         employed=np.zeros(n_workers, dtype=np.int64),
@@ -320,7 +316,6 @@ def test_workers_send_one_round_exhausted_target() -> None:
     # --- minimal 1‑worker 1‑firm state -----------------------------------
     M = 1
     fw = FirmWageOffer(
-        wage_prev=np.array([1.0]),
         n_vacancies=np.array([1]),
         wage_offer=np.array([1.0]),
     )
