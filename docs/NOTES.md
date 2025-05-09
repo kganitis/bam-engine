@@ -33,12 +33,12 @@
 | **`np.ceil` optimisation in `decide_desired_labor`** | Only 10 µs for 100 k firms.            | Implement the branch‑free floor‑divide trick when you measure >5% runtime there.   |
 | **Checkpoint I/O (`snapshot()`)**                    | Not needed until you run long Monte‑Carlo batches.   | Design a simple `dict`/NPZ serialiser later.                                       |
 
+---
 
 ## `sign_loan_with_bank` implementation
 
-
-Good catch — that *signature* logic hasn’t vanished; it’s just been **pared‑down** to the absolute minimum required for the
-next step.
+Good catch — that *signature* logic hasn’t vanished;
+it’s just been **pared‑down** to the absolute minimum required for the next step.
 
 ### Where it went
 
@@ -46,10 +46,10 @@ next step.
   firm:
 
   | purpose                  | field updated               |
-  | ------------------------ | --------------------------- |
+  | ------------------------ |-----------------------------|
   | book‑keeping of the deal | `loan_data[bank] = {…}`     |
-  | reduce unmet demand      | `credit_demand_B -= amount` |
-  | raise cash               | `total_funds += amount`     |
+  | reduce unmet demand      | `credit_demand_B -= amount` |
+  | raise cash               | `total_funds += amount`     |
   | logging                  | side‑effect                 |
 
 * In the ECS draft, `banks_grant_loans(…)` **already performs the second point** (it decreases `fp.credit_demand` and
@@ -102,12 +102,11 @@ fp.cash[f] += amount
 
 That restores the most urgent side‑effect without designing the ledger yet.
 
----
-
 **TL;DR** – the “sign” side‑effects are deliberately trimmed; we’ll extend them
 when we implement accounting. Let me know which ledger style you prefer and
 I’ll wire it up.
 
+---
 
 ## Review of the “DTO‑per‑system” component style
 
@@ -132,3 +131,63 @@ for a public library I’d recommend a *hybrid*:
 That gives you the \**performance* of thin structs (they’re just
 `__slots__` objects pointing at the same NumPy buffers) **and** the
 **ergonomics** of a stable public datamodel.
+
+
+---
+
+1.1.1 By updating self.ec.avg_mkt_price we're essentially updating a component without the use of a system. Is this correct? Maybe we should have one system that updates all the global economy scalars at the end of a period, or more if needed? Maybe not the end but even between events. For the time being I'm thinking of adding such updates to the advance_stub_state. Also where should the wage_prev field be updated? Or other fields that hold historic data?
+
+1.1.2 Why clear only these application queues and not all the others? Maybe clean them all here, or clean them all centrally somewhere in general.
+
+1.1.3. Maybe the snapshot should include ALL of the scheduler's state arrays? With what criterion do we choose what to include?
+
+1.2 What about this approach? Also please update the docstring.
+```
+# src/_testing/__init__.py
+"""
+Private helpers used by the test‑suite only.
+NOT part of the public API.
+"""
+
+from typing import TYPE_CHECKING
+
+import numpy as np
+
+if TYPE_CHECKING:
+    from bamengine.scheduler import Scheduler
+
+
+def advance_stub_state(sched: "Scheduler") -> None:
+    """
+    Temporary helper used while future events are not implemented.
+
+    It performs three minimal tasks so the simulation can run multiple
+    periods and the tests have fresh – but *plausible* – arrays:
+
+    1. Append the realised average market price to the global series.
+    2. Roll `prev_production` forward to last period’s `desired_production`.
+    3. Jitter inventory and price so future periods don’t see constants.
+    """
+
+    # store wage
+    sched.fw.wage_prev[:] = sched.wb.wage
+
+    # mock production
+    sched.prod.prev_production[:] *= sched.rng.uniform(
+        0.7, 1.0, size=sched.prod.desired_production.shape
+    )
+
+    # mock new prices
+    sched.prod.price[:] *= sched.rng.uniform(0.95, 1.05, size=sched.prod.price.shape)
+    sched.ec.avg_mkt_price = float(sched.prod.price.mean())
+    sched.ec.avg_mkt_price_history = np.append(
+        sched.ec.avg_mkt_price_history, sched.ec.avg_mkt_price
+    )
+
+    # mock goods market
+    sched.prod.inventory[:] = sched.rng.integers(0, 6, size=sched.prod.inventory.shape)
+```
+
+3.1 I won't yet implement bankruptcy as we do not touch net worth for the time being anyway.
+3.2 We will add helpers if needed. For now, write one or two for example.
+3.3 Write this assertion for me.
