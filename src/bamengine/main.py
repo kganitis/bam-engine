@@ -12,6 +12,7 @@ def _cli() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Run minimal BAM Engine demo.")
     p.add_argument("--firms", type=int, default=10, help="Number of firms")
     p.add_argument("--households", type=int, default=50, help="Number of households")
+    p.add_argument("--banks", type=int, default=50, help="Number of banks")
     p.add_argument("--steps", type=int, default=3, help="Simulation periods")
     p.add_argument("--seed", type=int, default=42, help="RNG seed")
     p.add_argument("--h-rho", type=float, default=0.10, help="Max quantity shock")
@@ -31,6 +32,7 @@ def main() -> None:
     sched = Scheduler.init(
         n_firms=args.firms,
         n_households=args.households,
+        n_banks=args.banks,
         h_rho=args.h_rho,
         seed=args.seed,
     )

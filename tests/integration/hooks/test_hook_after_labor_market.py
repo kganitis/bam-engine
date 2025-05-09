@@ -9,7 +9,7 @@ def zero_out_inventory(sched: Scheduler) -> None:
 
 
 def test_hook_after_stub_forces_no_inventory() -> None:
-    sch = Scheduler.init(n_firms=10, n_households=40, seed=123)
+    sch = Scheduler.init(n_firms=10, n_households=40, n_banks=5, seed=123)
 
     # --- period t --------------------------------------------------------
     sch.step(after_stub=zero_out_inventory)  # <-- new hook name

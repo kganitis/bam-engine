@@ -1,3 +1,4 @@
+# src/bamengine/scheduler.py
 """BAM Engine – tiny driver that wires components ↔ systems for 1 period."""
 
 from __future__ import annotations
@@ -15,29 +16,35 @@ from bamengine.components.bank_credit import (
     BankInterestRate,
     BankProvideLoan,
 )
-from bamengine.components.credit import LoanBook
-from bamengine.components.economy import Economy
+from bamengine.components.economy import Economy, LoanBook
 from bamengine.components.firm_credit import (
     FirmCreditDemand,
     FirmCreditMetrics,
     FirmLoanApplication,
 )
-from bamengine.components.firm_labor import FirmHiring, FirmWageOffer, FirmWageBill
+from bamengine.components.firm_labor import FirmHiring, FirmWageBill, FirmWageOffer
 from bamengine.components.firm_plan import (
     FirmLaborPlan,
     FirmProductionPlan,
     FirmVacancies,
 )
 from bamengine.components.worker_labor import WorkerJobSearch
-from bamengine.systems.credit_market import banks_decide_credit_supply, \
-    banks_decide_interest_rate, firms_decide_credit_demand, firms_calc_credit_metrics, \
-    firms_prepare_loan_applications, firms_send_one_loan_app, banks_provide_loans
+from bamengine.systems.credit_market import (
+    banks_decide_credit_supply,
+    banks_decide_interest_rate,
+    banks_provide_loans,
+    firms_calc_credit_metrics,
+    firms_decide_credit_demand,
+    firms_prepare_loan_applications,
+    firms_send_one_loan_app,
+)
 from bamengine.systems.labor_market import (
     adjust_minimum_wage,
+    firms_calc_wage_bill,
     firms_decide_wage_offer,
     firms_hire_workers,
     workers_prepare_job_applications,
-    workers_send_one_round, firms_calc_wage_bill,
+    workers_send_one_round,
 )
 from bamengine.systems.planning import (
     firms_decide_desired_labor,
@@ -149,7 +156,6 @@ class Scheduler:
         loan_apps_targets = np.full((n_firms, max_H), -1, dtype=np.int64)
         recv_loan_apps_head = np.full(n_banks, -1, dtype=np.int64)
         recv_loan_apps = np.full((n_banks, max_H), -1, dtype=np.int64)
-
 
         # ---------- wrap into components ----------------------------------
         ec = Economy(
@@ -289,10 +295,8 @@ class Scheduler:
             before_planning(self)
 
         # ===== Event 1 – firms plan =======================================
-        avg_mkt_price = float(self.prod.price.mean())
-
         firms_decide_desired_production(
-            self.prod, p_avg=avg_mkt_price, h_rho=self.h_rho, rng=self.rng
+            self.prod, p_avg=self.ec.avg_mkt_price, h_rho=self.h_rho, rng=self.rng
         )
         firms_decide_desired_labor(self.lab)
         firms_decide_vacancies(self.vac)
@@ -323,7 +327,10 @@ class Scheduler:
         # ===== Event 3 – credit-market ====================================
         banks_decide_credit_supply(self.cs, v=self.ec.v)
         banks_decide_interest_rate(
-            self.ir, r_bar=self.ec.r_bar, h_phi=self.h_phi, rng=self.rng,
+            self.ir,
+            r_bar=self.ec.r_bar,
+            h_phi=self.h_phi,
+            rng=self.rng,
         )
         firms_decide_credit_demand(self.cd)
         firms_calc_credit_metrics(self.cm)
@@ -337,7 +344,8 @@ class Scheduler:
 
         # Stub state advance
         import _testing
-        _testing.advance_stub_state(self, avg_mkt_price)
+
+        _testing.advance_stub_state(self)
 
         # Final hook – deterministic tweaks that must survive into t+1
         if after_stub is not None:
@@ -359,13 +367,20 @@ class Scheduler:
         cp = np.copy if copy else lambda x: x  # cheap inline helper
 
         return {
+            "net_worth": cp(self.cm.net_worth),
             "price": cp(self.prod.price),
             "inventory": cp(self.prod.inventory),
             "desired_production": cp(self.prod.desired_production),
             "desired_labor": cp(self.lab.desired_labor),
             "current_labor": cp(self.fh.current_labor),
+            "wage": cp(self.wb.wage),
             "min_wage": float(self.ec.min_wage),
             "avg_price": float(self.ec.avg_mkt_price),
+            "credit_demand": cp(self.cd.credit_demand),
+            "proj_fragility": cp(self.cm.projected_fragility),
+            "interest_rate": cp(self.ir.interest_rate),
+            "credit_supply": cp(self.cs.credit_supply),
+            "loanbook_size": int(len(self.ledger)),
         }
 
     # ------------------------------------------------------------------ #
@@ -378,3 +393,12 @@ class Scheduler:
     @property
     def mean_Ld(self) -> float:  # noqa: D401
         return float(self.lab.desired_labor.mean())
+
+    # credit convenience
+    @property
+    def mean_B(self) -> float:  # average credit demand
+        return float(self.cd.credit_demand.mean())
+
+    @property
+    def total_loans(self) -> float:  # outstanding principal
+        return float(self.ledger.principal[: self.ledger.size].sum())
