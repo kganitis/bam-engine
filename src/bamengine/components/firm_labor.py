@@ -30,3 +30,12 @@ class FirmHiring:
     # scratch queues
     recv_apps_head: Int1D  # head ptr into recv_apps (−1 ⇒ empty)
     recv_apps: Int1D  # flat buffer of worker indices
+
+
+@dataclass(slots=True)
+class FirmWageBill:
+    """ """
+
+    current_labor: Int1D  # L_i
+    wage: Float1D  # w_i
+    wage_bill: Float1D  # W_i           ← out
