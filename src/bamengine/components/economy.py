@@ -66,7 +66,7 @@ class LoanBook:
     efficiently vectorized. For example, to sum all debt per firm:
 
     >>> firm_debt = np.zeros(N)
-    >>> np.add.at(firm_debt, ledger.firm, ledger.debt)
+    >>> np.add.at(firm_debt, lb.firm, lb.debt)
 
     Advantages of the edge-list design:
     - **Sparse Representation:** Memory usage scales with the number of active loans,
@@ -90,3 +90,16 @@ class LoanBook:
     debt: Float1D = field(default_factory=lambda: np.empty(0, np.float64))
     capacity: int = 128  # current physical length
     size: int = 0  # number of *filled* rows
+
+    # ------------------------------------------------------------------ #
+    # fast aggregations                                                  #
+    # ------------------------------------------------------------------ #
+    def debt_per_firm(self, n_firms: int) -> Float1D:
+        out = np.zeros(n_firms, dtype=np.float64)
+        np.add.at(out, self.firm[: self.size], self.debt[: self.size])
+        return out
+
+    def debt_per_bank(self, n_banks: int) -> Float1D:
+        out = np.zeros(n_banks, dtype=np.float64)
+        np.add.at(out, self.bank[: self.size], self.debt[: self.size])
+        return out

@@ -66,16 +66,14 @@ def firms_decide_wage_offer(
     shock[fw.n_vacancies == 0] = 0.0
 
     # core rule
-    np.multiply(fw.wage_prev, 1.0 + shock, out=fw.wage_offer)
+    np.multiply(fw.wage_offer, 1.0 + shock, out=fw.wage_offer)
     np.maximum(fw.wage_offer, w_min, out=fw.wage_offer)
 
     log.debug(
-        "decide_wage_offer: n=%d  w_min=%.3f  h_xi=%.3f  "
-        "mean_w_prev=%.3f  mean_w_offer=%.3f",
-        fw.wage_prev.size,
+        "decide_wage_offer: n=%d  w_min=%.3f  h_xi=%.3f  mean_w_offer=%.3f",
+        fw.wage_offer.size,
         w_min,
         h_xi,
-        fw.wage_prev.mean(),
         fw.wage_offer.mean(),
     )
 
@@ -145,11 +143,11 @@ def workers_prepare_job_applications(
                 j = np.where(row == prev)[0][0]
                 row[0], row[j] = row[j], row[0]
 
-    # -------- write to global buffers --------------------------------
-    stride = max_M
+    # -------- flush vectors --------------------------------
     ws.apps_targets.fill(-1)
     ws.apps_head.fill(-1)
 
+    stride = max_M
     for k, w in enumerate(unem):
         ws.apps_targets[w, :stride] = sorted_sample[k]
         ws.apps_head[w] = w * stride  # first slot of that row
