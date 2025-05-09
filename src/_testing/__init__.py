@@ -1,3 +1,4 @@
+# src/_testing/__init__.py
 """
 Private helpers used by the test‑suite only.
 NOT part of the public API.
@@ -11,7 +12,7 @@ if TYPE_CHECKING:
     from bamengine.scheduler import Scheduler
 
 
-def advance_stub_state(sched: "Scheduler", p_avg: float) -> None:
+def advance_stub_state(sched: "Scheduler") -> None:
     """
     Temporary helper used while future events are not implemented.
 
@@ -22,14 +23,21 @@ def advance_stub_state(sched: "Scheduler", p_avg: float) -> None:
     2. Roll `prev_production` forward to last period’s `desired_production`.
     3. Jitter inventory and price so future periods don’t see constants.
     """
-    # add price to history (needed for minimum-wage inflation rule)
-    sched.ec.avg_mkt_price_history = np.append(sched.ec.avg_mkt_price_history, p_avg)
 
-    # carry forward production level
-    sched.prod.prev_production[:] = sched.prod.desired_production
-
-    # stub: random new inventory and mild price noise
-    sched.prod.inventory[:] = sched.rng.integers(0, 6, size=sched.prod.inventory.shape)
-    sched.prod.price[:] *= sched.rng.uniform(0.98, 1.02, size=sched.prod.price.shape)
-
+    # store wage
     sched.fw.wage_prev[:] = sched.wb.wage
+
+    # mock production
+    sched.prod.prev_production[:] *= sched.rng.uniform(
+        0.7, 1.0, size=sched.prod.desired_production.shape
+    )
+
+    # mock new prices
+    sched.prod.price[:] *= sched.rng.uniform(0.95, 1.05, size=sched.prod.price.shape)
+    sched.ec.avg_mkt_price = float(sched.prod.price.mean())
+    sched.ec.avg_mkt_price_history = np.append(
+        sched.ec.avg_mkt_price_history, sched.ec.avg_mkt_price
+    )
+
+    # mock goods market
+    sched.prod.inventory[:] = sched.rng.integers(0, 6, size=sched.prod.inventory.shape)

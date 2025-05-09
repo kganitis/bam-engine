@@ -15,7 +15,7 @@ from bamengine.components.bank_credit import (
     BankInterestRate,
     BankProvideLoan,
 )
-from bamengine.components.credit import LoanBook
+from bamengine.components.economy import LoanBook
 from bamengine.components.firm_credit import (
     FirmCreditDemand,
     FirmCreditMetrics,
@@ -100,9 +100,7 @@ def firms_calc_credit_metrics(firms: FirmCreditMetrics) -> None:
 
 
 def _topk_lowest_rate(values: Float1D, k: int) -> Idx1D:
-    """
-    argpartition on **+rate** (cheapest first)
-    """
+    """Return indices of the *k* cheapest elements (unsorted)."""
     if k >= values.shape[-1]:
         return np.argpartition(values, kth=0, axis=-1)
     part = np.argpartition(values, kth=k - 1, axis=-1)

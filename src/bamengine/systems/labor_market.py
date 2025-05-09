@@ -4,7 +4,7 @@ import numpy as np
 from numpy.random import Generator
 
 from bamengine.components.economy import Economy
-from bamengine.components.firm_labor import FirmHiring, FirmWageOffer, FirmWageBill
+from bamengine.components.firm_labor import FirmHiring, FirmWageBill, FirmWageOffer
 from bamengine.components.worker_labor import WorkerJobSearch
 from bamengine.typing import Float1D, Idx1D
 

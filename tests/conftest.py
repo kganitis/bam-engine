@@ -9,6 +9,7 @@ def tiny_sched() -> Scheduler:
     return Scheduler.init(
         n_firms=4,
         n_households=10,
+        n_banks=2,
         seed=123,
         # keep default‐ish parameters explicit
         h_rho=0.1,
