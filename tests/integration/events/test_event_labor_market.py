@@ -18,7 +18,7 @@ from bamengine.systems.labor_market import (
     adjust_minimum_wage,
     firms_decide_wage_offer,
     firms_hire_workers,
-    workers_prepare_job_applications,
+    workers_decide_firms_to_apply,
     workers_send_one_round,
 )
 
@@ -57,7 +57,7 @@ def test_event_labor_market(tiny_sched: Scheduler) -> None:
         rng=sch.rng,
     )
 
-    workers_prepare_job_applications(sch.ws, sch.fw, max_M=sch.max_M, rng=sch.rng)
+    workers_decide_firms_to_apply(sch.ws, sch.fw, max_M=sch.max_M, rng=sch.rng)
 
     for _ in range(sch.max_M):
         workers_send_one_round(sch.ws, sch.fh)
@@ -92,4 +92,4 @@ def test_event_labor_market(tiny_sched: Scheduler) -> None:
     assert hires == vac_reduction
 
     # 5. No hired worker keeps an active application pointer
-    assert (sch.ws.apps_head[sch.ws.employed == 1] == -1).all()
+    assert (sch.ws.job_apps_head[sch.ws.employed == 1] == -1).all()

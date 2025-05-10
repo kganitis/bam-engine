@@ -23,9 +23,9 @@ class LoanBook:
     """
     Edge-list ledger for storing and managing *active* loans.
 
-    This structure maintains a sparse representation of firm-bank loan contracts
+    This structure maintains a sparse representation of loan contracts
     using a **Coordinate List (COO) format**. It efficiently tracks lending
-    relationships without the need for a dense `(N_firms × N_banks)` matrix,
+    relationships without the need for a dense `(N_borrowers × N_lenders)` matrix,
     reducing memory consumption and enhancing vectorized operations.
 
     The `LoanBook` is designed to grow automatically, with amortized O(1) complexity
@@ -33,11 +33,11 @@ class LoanBook:
 
     Attributes
     ----------
-    firm : Int1D
-        Array of firm indices (`int64`) representing borrowers.
+    borrower : Int1D
+        Array of indices (`int64`) representing borrowers.
         Size: `M`, where `M` is the number of active loans.
-    bank : Int1D
-        Array of bank indices (`int64`) representing lenders.
+    lender : Int1D
+        Array of indices (`int64`) representing lenders.
         Size: `M`.
     principal : Float1D
         Array of principal amounts (`float64`) for each loan.
@@ -63,10 +63,10 @@ class LoanBook:
 
     The six columns are 1-D NumPy arrays of equal length `M`, where `M` is the
     number of active loans. Operations such as aggregation and updates are
-    efficiently vectorized. For example, to sum all debt per firm:
+    efficiently vectorized. For example, to sum all debt per borrower:
 
-    >>> firm_debt = np.zeros(N)
-    >>> np.add.at(firm_debt, lb.firm, lb.debt)
+    >>> borrower_debt = np.zeros(N)
+    >>> np.add.at(borrower_debt, lb.borrower, lb.debt)
 
     Advantages of the edge-list design:
     - **Sparse Representation:** Memory usage scales with the number of active loans,
@@ -82,8 +82,8 @@ class LoanBook:
     def __len__(self) -> int:
         return self.size
 
-    firm: Int1D = field(default_factory=lambda: np.empty(0, np.int64))
-    bank: Int1D = field(default_factory=lambda: np.empty(0, np.int64))
+    borrower: Int1D = field(default_factory=lambda: np.empty(0, np.int64))
+    lender: Int1D = field(default_factory=lambda: np.empty(0, np.int64))
     principal: Float1D = field(default_factory=lambda: np.empty(0, np.float64))
     rate: Float1D = field(default_factory=lambda: np.empty(0, np.float64))
     interest: Float1D = field(default_factory=lambda: np.empty(0, np.float64))
@@ -94,12 +94,12 @@ class LoanBook:
     # ------------------------------------------------------------------ #
     # fast aggregations                                                  #
     # ------------------------------------------------------------------ #
-    def debt_per_firm(self, n_firms: int) -> Float1D:
-        out = np.zeros(n_firms, dtype=np.float64)
-        np.add.at(out, self.firm[: self.size], self.debt[: self.size])
+    def debt_per_borrower(self, n_borrowers: int) -> Float1D:
+        out = np.zeros(n_borrowers, dtype=np.float64)
+        np.add.at(out, self.borrower[: self.size], self.debt[: self.size])
         return out
 
-    def debt_per_bank(self, n_banks: int) -> Float1D:
-        out = np.zeros(n_banks, dtype=np.float64)
-        np.add.at(out, self.bank[: self.size], self.debt[: self.size])
+    def debt_per_lender(self, n_lenders: int) -> Float1D:
+        out = np.zeros(n_lenders, dtype=np.float64)
+        np.add.at(out, self.lender[: self.size], self.debt[: self.size])
         return out

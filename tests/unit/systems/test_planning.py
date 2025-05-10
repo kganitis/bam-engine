@@ -23,10 +23,10 @@ from hypothesis import strategies as st
 from numpy.random import default_rng
 from numpy.typing import NDArray
 
-from bamengine.components.firm_plan import (
-    FirmLaborPlan,
-    FirmProductionPlan,
-    FirmVacancies,
+from bamengine.components.producer import (
+    Producer,
+    Producer,
+    Producer,
 )
 from bamengine.systems.planning import (
     firms_decide_desired_labor as decide_desired_labor,
@@ -61,7 +61,7 @@ def test_production_branches(
     Check that each branch of the BAM rule moves Yd in the correct direction.
     """
     rng = default_rng(5)
-    prod = FirmProductionPlan(
+    prod = Producer(
         price=np.array([price]),
         inventory=np.array([inventory]),
         prev_production=np.array([10.0]),
@@ -88,7 +88,7 @@ def test_decide_desired_production_vector() -> None:
     (identical RNG seed).
     """
     rng = default_rng(1)
-    prod = FirmProductionPlan(
+    prod = Producer(
         price=np.array([2.0, 1.5, 1.0, 1.0, 2.0]),
         inventory=np.array([0.0, 0.0, 5.0, 0.0, 5.0]),
         prev_production=np.full(5, 10.0),
@@ -122,7 +122,7 @@ def test_shock_off_no_change() -> None:
     """
     With hᵨ = 0 the rule must leave Yd unchanged, regardless of conditions.
     """
-    prod = FirmProductionPlan(
+    prod = Producer(
         price=np.array([1.6]),
         inventory=np.array([0.0]),
         prev_production=np.array([8.0]),
@@ -135,7 +135,7 @@ def test_shock_off_no_change() -> None:
 
 def test_reuses_internal_buffers() -> None:
     rng = default_rng(0)
-    prod = FirmProductionPlan(
+    prod = Producer(
         price=np.array([2.0, 2.0]),
         inventory=np.zeros(2),
         prev_production=np.ones(2),
@@ -164,7 +164,7 @@ def test_reuses_internal_buffers() -> None:
 # --------------------------------------------------------------------------- #
 def test_decide_desired_labor_vector() -> None:
     """Labour demand must equal ceil(Yd / aᵢ) element-wise."""
-    lab = FirmLaborPlan(
+    lab = Producer(
         desired_production=np.full(5, 10.0),
         labor_productivity=np.array([1.0, 0.8, 1.2, 0.5, 2.0]),
         desired_labor=np.zeros(5, dtype=np.int64),
@@ -178,7 +178,7 @@ def test_zero_productivity_guard() -> None:
     """
     Productivity aᵢ ≤ 0 is invalid – the rule must fail fast to avoid NaNs.
     """
-    lab = FirmLaborPlan(
+    lab = Producer(
         desired_production=np.array([10.0]),
         labor_productivity=np.array([0.0]),
         desired_labor=np.zeros(1, dtype=np.int64),
@@ -191,7 +191,7 @@ def test_zero_productivity_guard() -> None:
 # 4. vacancies – simple deterministic check                                  #
 # --------------------------------------------------------------------------- #
 def test_decide_vacancies_vector() -> None:
-    vac = FirmVacancies(
+    vac = Producer(
         desired_labor=np.array([10, 5, 3, 1]),
         current_labor=np.array([7, 5, 4, 0]),
         n_vacancies=np.zeros(4, dtype=np.int64),
@@ -222,14 +222,14 @@ def test_labor_and_vacancy_properties(data) -> None:  # type: ignore[no-untyped-
       Vᵢ = max( ceil(Ydᵢ / aᵢ) − Lᵢ , 0 )   for all i
     """
     desired, prod, current = map(np.asarray, data)
-    lab = FirmLaborPlan(
+    lab = Producer(
         desired_production=desired.astype(np.float64),
         labor_productivity=prod.astype(np.float64),
         desired_labor=np.zeros_like(desired, dtype=np.int64),
     )
     decide_desired_labor(lab)
 
-    vac = FirmVacancies(
+    vac = Producer(
         desired_labor=lab.desired_labor,
         current_labor=current.astype(np.int64),
         n_vacancies=np.zeros_like(current, dtype=np.int64),
