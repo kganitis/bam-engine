@@ -19,7 +19,7 @@ def advance_stub_state(sched: "Scheduler") -> None:
     """
 
     # 1. --- mock production ---------------------------------------
-    sched.prod.prev_production[:] *= sched.rng.uniform(
+    sched.prod.production[:] *= sched.rng.uniform(
         0.7, 1.0, size=sched.prod.desired_production.shape
     )
 
