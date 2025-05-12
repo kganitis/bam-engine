@@ -1,7 +1,7 @@
 # src/bamengine/components/producer.py
 from dataclasses import dataclass, field
 
-from bamengine.typing import Bool1D, Float1D, Int1D
+from bamengine.typing import Bool1D, Float1D
 
 
 @dataclass(slots=True)

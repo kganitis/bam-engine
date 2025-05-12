@@ -10,7 +10,7 @@ import logging
 import numpy as np
 from numpy.random import Generator
 
-from bamengine.components import Borrower, Lender, LoanBook, Employer, Worker
+from bamengine.components import Borrower, Employer, Lender, LoanBook, Worker
 from bamengine.typing import Float1D, Idx1D
 
 log = logging.getLogger(__name__)
@@ -140,7 +140,7 @@ def firms_send_one_loan_app(bor: Borrower, lend: Lender) -> None:
             bor.loan_apps_head[f] = -1
             continue
 
-        # bounded queue – reuse recv_job_apps_head logic
+        # bounded queue
         ptr = lend.recv_apps_head[bank_idx] + 1
         if ptr >= lend.recv_apps.shape[1]:
             continue
@@ -159,16 +159,16 @@ def _ensure_capacity(book: LoanBook, extra: int) -> None:
 
     new_cap = max(book.capacity * 2, needed, 128)
 
-    for name in ("firm", "bank", "principal", "rate", "interest", "debt"):
+    for name in ("borrower", "lender", "principal", "rate", "interest", "debt"):
         arr = getattr(book, name)
         new_arr = np.resize(arr, new_cap)  # returns *new* ndarray; O(1) amortized;
-        # large simulations should pre-allocate capacity = n_firms * H
+        # large simulations should pre-allocate capacity = n_borrowers * H
         setattr(book, name, new_arr)
 
     book.capacity = new_cap
     assert all(
         getattr(book, n).size == new_cap
-        for n in ("firm", "bank", "principal", "rate", "interest", "debt")
+        for n in ("borrower", "lender", "principal", "rate", "interest", "debt")
     )
 
 
@@ -266,7 +266,6 @@ def firms_fire_workers(
     Workers are picked **uniformly at random** from the current workforce.
     """
     n_firms = emp.current_labor.size
-    stride = emp.wage_offer.shape          # view, no alloc
 
     for i in range(n_firms):
         gap = emp.wage_bill[i] - emp.total_funds[i]
@@ -284,9 +283,7 @@ def firms_fire_workers(
             continue
 
         # choose victims uniformly
-        workforce = np.where(
-            (wrk.employed == 1) & (wrk.employer == i)
-        )[0]
+        workforce = np.where((wrk.employed == 1) & (wrk.employer == i))[0]
         if workforce.size == 0:
             continue
         victims = rng.choice(workforce, size=n_fire, replace=False)
@@ -294,7 +291,7 @@ def firms_fire_workers(
         # --- worker-side -------------------------------------------
         wrk.employed[victims] = 0
         wrk.fired[victims] = 1
-        wrk.contract_expired[victims] = 0   # explicit: this was a firing
+        wrk.contract_expired[victims] = 0  # explicit: this was a firing
 
         # --- firm-side ---------------------------------------------
         emp.current_labor[i] -= n_fire
