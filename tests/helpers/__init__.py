@@ -11,8 +11,8 @@ def create_empty_ledger(n_init: int = 128) -> LoanBook:
     a handful of loans without triggering a resize.
     """
     led = LoanBook(
-        firm=np.empty(n_init, np.int64),
-        bank=np.empty(n_init, np.int64),
+        borrower=np.empty(n_init, np.int64),
+        lender=np.empty(n_init, np.int64),
         principal=np.empty(n_init, np.float64),
         rate=np.empty(n_init, np.float64),
         interest=np.empty(n_init, np.float64),

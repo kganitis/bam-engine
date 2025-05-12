@@ -11,24 +11,16 @@ from typing import Dict, TypeAlias
 import numpy as np
 from numpy.random import Generator, default_rng
 
-from bamengine.components.bank_credit import (
-    BankCreditSupply,
-    BankInterestRate,
-    BankProvideLoan,
+from bamengine.components import (
+    Economy,
+    Producer,
+    Employer,
+    Worker,
+    Borrower,
+    Lender,
+    LoanBook,
 )
-from bamengine.components.economy import Economy, LoanBook
-from bamengine.components.firm_credit import (
-    FirmCreditDemand,
-    FirmCreditMetrics,
-    FirmLoanApplication,
-)
-from bamengine.components.firm_labor import FirmHiring, FirmWageBill, FirmWageOffer
-from bamengine.components.firm_plan import (
-    FirmLaborPlan,
-    FirmProductionPlan,
-    FirmVacancies,
-)
-from bamengine.components.worker_labor import WorkerJobSearch
+
 from bamengine.systems.credit_market import (
     banks_decide_credit_supply,
     banks_decide_interest_rate,
@@ -36,14 +28,14 @@ from bamengine.systems.credit_market import (
     firms_calc_credit_metrics,
     firms_decide_credit_demand,
     firms_prepare_loan_applications,
-    firms_send_one_loan_app,
+    firms_send_one_loan_app, firms_fire_workers,
 )
 from bamengine.systems.labor_market import (
     adjust_minimum_wage,
     firms_calc_wage_bill,
     firms_decide_wage_offer,
     firms_hire_workers,
-    workers_prepare_job_applications,
+    workers_decide_firms_to_apply,
     workers_send_one_round,
 )
 from bamengine.systems.planning import (
@@ -51,7 +43,7 @@ from bamengine.systems.planning import (
     firms_decide_desired_production,
     firms_decide_vacancies,
 )
-from bamengine.typing import Float1D, Int1D
+from bamengine.typing import Float1D, Int1D, Bool1D
 
 __all__ = [
     "Scheduler",
@@ -71,24 +63,12 @@ class Scheduler:
 
     rng: Generator
     ec: Economy
-
-    prod: FirmProductionPlan
-    lab: FirmLaborPlan
-    vac: FirmVacancies
-
-    fw: FirmWageOffer
-    ws: WorkerJobSearch
-    fh: FirmHiring
-    wb: FirmWageBill
-
-    cd: FirmCreditDemand
-    cm: FirmCreditMetrics
-    la: FirmLoanApplication
-    cs: BankCreditSupply
-    ir: BankInterestRate
-    pl: BankProvideLoan
-
-    ledger: LoanBook
+    prod: Producer
+    wrk: Worker
+    emp: Employer
+    bor: Borrower
+    lend: Lender
+    lb: LoanBook
 
     # global parameters
     h_rho: float  # max production-growth shock
@@ -118,42 +98,50 @@ class Scheduler:
     ) -> "Scheduler":
         rng = seed if isinstance(seed, np.random.Generator) else default_rng(seed)
 
+        # finance vectors
         net_worth = np.full(n_firms, 10.0)
-        price = np.full(n_firms, 1.5)
+        total_funds = np.copy(net_worth)
+        rnd_intensity = np.ones(n_firms)
+
+        # procucer vectors
         production = np.ones(n_firms)
         inventory = np.zeros_like(production)
-        wage = np.ones(n_firms)
-
         expected_demand = np.ones_like(production)
         desired_production = np.zeros_like(production)
-        labour_productivity = np.ones_like(production)
-        desired_labor = np.zeros(n_firms, dtype=np.int64)
-        current_labor = np.zeros_like(desired_labor)
+        labor_productivity = np.ones_like(production)
+
+        price = np.full(n_firms, 1.5)
+
+        # employer vectors
+        labor = np.zeros(n_firms, dtype=np.int64)
+        desired_labor = np.zeros_like(labor)
+        wage_offer = np.ones(n_firms)
+        wage_bill = np.zeros_like(wage_offer)
         n_vacancies = np.zeros_like(desired_labor)
-
-        wage_prev = np.copy(wage)
-        wage_bill = np.zeros_like(wage)
-
-        employed = np.zeros(n_households, dtype=np.int64)
-        employer_prev = np.full(n_households, -1, dtype=np.int64)
-        contract_expired = np.zeros_like(employed)
-        fired = np.zeros_like(employed)
-
-        job_apps_head = np.full(n_households, -1, dtype=np.int64)
-        job_apps_targets = np.full((n_households, max_M), -1, dtype=np.int64)
         recv_job_apps_head = np.full(n_firms, -1, dtype=np.int64)
         recv_job_apps = np.full((n_firms, max_M), -1, dtype=np.int64)
 
-        credit_demand = np.zeros_like(net_worth)
-        rnd_intensity = np.ones(n_firms)
-        projected_fragility = np.zeros(n_firms)
+        # worker vectors
+        employed = np.zeros(n_households, dtype=np.bool_)
+        employer = np.full(n_households, -1, dtype=np.int64)
+        employer_prev = np.full_like(employer, -1)
+        periods_left = np.zeros(n_households, dtype=np.int64)
+        contract_expired = np.zeros_like(employed)
+        fired = np.zeros_like(employed)
+        wage = np.zeros(n_households)
+        job_apps_head = np.full(n_households, -1, dtype=np.int64)
+        job_apps_targets = np.full((n_households, max_M), -1, dtype=np.int64)
 
+        # borrower vectors
+        credit_demand = np.zeros_like(net_worth)
+        projected_fragility = np.zeros(n_firms)
+        loan_apps_head = np.full(n_firms, -1, dtype=np.int64)
+        loan_apps_targets = np.full((n_firms, max_H), -1, dtype=np.int64)
+
+        # lender vectors
         equity_base = np.full(n_banks, 10_000.00)
         credit_supply = np.zeros_like(equity_base)
         interest_rate = np.zeros(n_banks)
-
-        loan_apps_head = np.full(n_firms, -1, dtype=np.int64)
-        loan_apps_targets = np.full((n_firms, max_H), -1, dtype=np.int64)
         recv_loan_apps_head = np.full(n_banks, -1, dtype=np.int64)
         recv_loan_apps = np.full((n_banks, max_H), -1, dtype=np.int64)
 
@@ -166,97 +154,63 @@ class Scheduler:
             r_bar=0.07,
             v=0.23,
         )
-
-        prod = FirmProductionPlan(
+        prod = Producer(
             price=price,
+            production=production,
             inventory=inventory,
-            prev_production=production,
             expected_demand=expected_demand,
             desired_production=desired_production,
+            labor_productivity=labor_productivity,
         )
-        lab = FirmLaborPlan(
-            desired_production=desired_production,  # shared view
-            labor_productivity=labour_productivity,
-            desired_labor=desired_labor,
-        )
-        vac = FirmVacancies(
-            desired_labor=desired_labor,  # shared view
-            current_labor=current_labor,
-            n_vacancies=n_vacancies,
-        )
-        fw = FirmWageOffer(
-            wage_prev=wage_prev,
-            n_vacancies=n_vacancies,  # shared view
-            wage_offer=wage,
-        )
-        ws = WorkerJobSearch(
+        wrk = Worker(
             employed=employed,
+            employer=employer,
             employer_prev=employer_prev,
+            wage=wage,
+            periods_left=periods_left,
             contract_expired=contract_expired,
             fired=fired,
-            apps_head=job_apps_head,
-            apps_targets=job_apps_targets,
+            job_apps_head=job_apps_head,
+            job_apps_targets=job_apps_targets,
         )
-        fh = FirmHiring(
-            wage_offer=wage,  # shared view
-            n_vacancies=n_vacancies,  # shared view
-            current_labor=current_labor,  # shared view
-            recv_apps_head=recv_job_apps_head,
-            recv_apps=recv_job_apps,
-        )
-        wb = FirmWageBill(
-            current_labor=current_labor,
-            wage=wage,
+        emp = Employer(
+            desired_labor=desired_labor,
+            current_labor=labor,
+            wage_offer=wage_offer,
             wage_bill=wage_bill,
+            n_vacancies=n_vacancies,
+            total_funds=total_funds,
+            recv_job_apps_head=recv_job_apps_head,
+            recv_job_apps=recv_job_apps,
         )
-        cd = FirmCreditDemand(
+        bor = Borrower(
             net_worth=net_worth,
+            total_funds=total_funds,
             wage_bill=wage_bill,
             credit_demand=credit_demand,
-        )
-        cm = FirmCreditMetrics(
-            credit_demand=credit_demand,
-            net_worth=net_worth,
             rnd_intensity=rnd_intensity,
-            projected_fragility=projected_fragility,
-        )
-        la = FirmLoanApplication(
-            credit_demand=credit_demand,
             projected_fragility=projected_fragility,
             loan_apps_head=loan_apps_head,
             loan_apps_targets=loan_apps_targets,
         )
-        cs = BankCreditSupply(
+        lend = Lender(
             equity_base=equity_base,
             credit_supply=credit_supply,
-        )
-        ir = BankInterestRate(
             interest_rate=interest_rate,
-        )
-        pl = BankProvideLoan(
-            credit_supply=credit_supply,
             recv_apps_head=recv_loan_apps_head,
             recv_apps=recv_loan_apps,
         )
-        ledger = LoanBook()
+        lb = LoanBook()
 
         return cls(
             rng=rng,
             ec=ec,
             prod=prod,
-            lab=lab,
-            vac=vac,
-            fw=fw,
-            ws=ws,
-            fh=fh,
-            wb=wb,
-            cd=cd,
-            cm=cm,
-            la=la,
-            cs=cs,
-            ir=ir,
-            pl=pl,
-            ledger=ledger,
+            wrk=wrk,
+            emp=emp,
+            bor=bor,
+            lend=lend,
+            lb=lb,
             h_rho=h_rho,
             h_xi=h_xi,
             h_phi=h_phi,
@@ -298,48 +252,49 @@ class Scheduler:
         firms_decide_desired_production(
             self.prod, p_avg=self.ec.avg_mkt_price, h_rho=self.h_rho, rng=self.rng
         )
-        firms_decide_desired_labor(self.lab)
-        firms_decide_vacancies(self.vac)
+        firms_decide_desired_labor(self.prod, self.emp)
+        firms_decide_vacancies(self.emp)
         # ==================================================================
 
         # Optional hook
         if before_labor_market is not None:
             before_labor_market(self)
 
-        # ===== Event 2 – labor-market =====================================
+        # ===== Event 2 – labor market =====================================
         adjust_minimum_wage(self.ec)
         firms_decide_wage_offer(
-            self.fw, w_min=self.ec.min_wage, h_xi=self.h_xi, rng=self.rng
+            self.emp, w_min=self.ec.min_wage, h_xi=self.h_xi, rng=self.rng
         )
-        workers_prepare_job_applications(
-            self.ws, self.fw, max_M=self.max_M, rng=self.rng
+        workers_decide_firms_to_apply(
+            self.wrk, self.emp, max_M=self.max_M, rng=self.rng
         )
         for _ in range(self.max_M):  # round‐robin M times
-            workers_send_one_round(self.ws, self.fh)
-            firms_hire_workers(self.ws, self.fh, contract_theta=self.theta)
-        firms_calc_wage_bill(self.wb)
+            workers_send_one_round(self.wrk, self.emp)
+            firms_hire_workers(self.wrk, self.emp, theta=self.theta)
+        firms_calc_wage_bill(self.emp)
         # ==================================================================
 
         # Optional hook
         if before_credit_market is not None:
             before_credit_market(self)
 
-        # ===== Event 3 – credit-market ====================================
-        banks_decide_credit_supply(self.cs, v=self.ec.v)
+        # ===== Event 3 – credit market ====================================
+        banks_decide_credit_supply(self.lend, v=self.ec.v)
         banks_decide_interest_rate(
-            self.ir,
+            self.lend,
             r_bar=self.ec.r_bar,
             h_phi=self.h_phi,
             rng=self.rng,
         )
-        firms_decide_credit_demand(self.cd)
-        firms_calc_credit_metrics(self.cm)
+        firms_decide_credit_demand(self.bor)
+        firms_calc_credit_metrics(self.bor)
         firms_prepare_loan_applications(
-            self.la, self.ir, max_H=self.max_H, rng=self.rng
+            self.bor, self.lend, max_H=self.max_H, rng=self.rng
         )
         for _ in range(self.max_H):  # round‐robin H times
-            firms_send_one_loan_app(self.la, self.pl)
-            banks_provide_loans(self.la, self.ledger, self.pl, r_bar=self.ec.r_bar)
+            firms_send_one_loan_app(self.bor, self.lend)
+            banks_provide_loans(self.bor, self.lb, self.lend, r_bar=self.ec.r_bar)
+        firms_fire_workers(self.emp, self.wrk, rng=self.rng)
         # ==================================================================
 
         # Stub state advance
@@ -354,7 +309,9 @@ class Scheduler:
     # --------------------------------------------------------------------- #
     #                               snapshot                                #
     # --------------------------------------------------------------------- #
-    def snapshot(self, *, copy: bool = False) -> Dict[str, Float1D | Int1D | float]:
+    def snapshot(
+        self, *, copy: bool = False
+    ) -> Dict[str, Float1D | Int1D | Bool1D | float]:
         """ "
         Return a read‑only view (or copy) of key state arrays.
 
@@ -367,20 +324,16 @@ class Scheduler:
         cp = np.copy if copy else lambda x: x  # cheap inline helper
 
         return {
-            "net_worth": cp(self.cm.net_worth),
+            "net_worth": cp(self.bor.net_worth),
             "price": cp(self.prod.price),
             "inventory": cp(self.prod.inventory),
-            "desired_production": cp(self.prod.desired_production),
-            "desired_labor": cp(self.lab.desired_labor),
-            "current_labor": cp(self.fh.current_labor),
-            "wage": cp(self.wb.wage),
+            "labor": cp(self.emp.current_labor),
             "min_wage": float(self.ec.min_wage),
-            "avg_price": float(self.ec.avg_mkt_price),
-            "credit_demand": cp(self.cd.credit_demand),
-            "proj_fragility": cp(self.cm.projected_fragility),
-            "interest_rate": cp(self.ir.interest_rate),
-            "credit_supply": cp(self.cs.credit_supply),
-            "loanbook_size": int(len(self.ledger)),
+            "wage": cp(self.wrk.wage),
+            "wage_bill": cp(self.emp.wage_bill),
+            "employed": cp(self.wrk.employed),
+            "debt": cp(self.lb.debt),
+            "avg_mkt_price": float(self.ec.avg_mkt_price),
         }
 
     # ------------------------------------------------------------------ #
@@ -392,13 +345,13 @@ class Scheduler:
 
     @property
     def mean_Ld(self) -> float:  # noqa: D401
-        return float(self.lab.desired_labor.mean())
+        return float(self.emp.desired_labor.mean())
 
     # credit convenience
     @property
     def mean_B(self) -> float:  # average credit demand
-        return float(self.cd.credit_demand.mean())
+        return float(self.bor.credit_demand.mean())
 
     @property
     def total_loans(self) -> float:  # outstanding principal
-        return float(self.ledger.principal[: self.ledger.size].sum())
+        return float(self.lb.principal[: self.lb.size].sum())
