@@ -1,16 +1,19 @@
-"""
-Internal dataclass bundles.
+# src/bamengine/components/__init__.py
+"""Internal dataclass bundles."""
 
-Nothing here is guaranteed stable – import sub‑modules directly if needed:
-
->>> from bamengine.components.firm_plan import FirmProductionPlan
-"""
+from bamengine.components.economy import Economy, LoanBook
+from bamengine.components.employer import Employer
+from bamengine.components.producer import Producer
+from bamengine.components.worker import Worker
+from bamengine.components.borrower import Borrower
+from bamengine.components.lender import Lender
 
 __all__ = [
-    "FirmProductionPlan",
-    "FirmLaborPlan",
-    "FirmVacancies",
-    "FirmWageOffer",
-    "FirmHiring",
-    "WorkerJobSearch",
+    "Economy",
+    "Producer",
+    "Employer",
+    "Worker",
+    "Borrower",
+    "Lender",
+    "LoanBook",
 ]
