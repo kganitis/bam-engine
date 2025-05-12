@@ -12,23 +12,23 @@ import numpy as np
 from numpy.random import Generator, default_rng
 
 from bamengine.components import (
-    Economy,
-    Producer,
-    Employer,
-    Worker,
     Borrower,
+    Economy,
+    Employer,
     Lender,
     LoanBook,
+    Producer,
+    Worker,
 )
-
 from bamengine.systems.credit_market import (
     banks_decide_credit_supply,
     banks_decide_interest_rate,
     banks_provide_loans,
     firms_calc_credit_metrics,
     firms_decide_credit_demand,
+    firms_fire_workers,
     firms_prepare_loan_applications,
-    firms_send_one_loan_app, firms_fire_workers,
+    firms_send_one_loan_app,
 )
 from bamengine.systems.labor_market import (
     adjust_minimum_wage,
@@ -43,7 +43,7 @@ from bamengine.systems.planning import (
     firms_decide_desired_production,
     firms_decide_vacancies,
 )
-from bamengine.typing import Float1D, Int1D, Bool1D
+from bamengine.typing import Bool1D, Float1D, Int1D
 
 __all__ = [
     "Scheduler",

@@ -1,7 +1,7 @@
 # src/bamengine/components/borrower.py
 from dataclasses import dataclass
 
-from bamengine.typing import Float1D, Int1D
+from bamengine.typing import Float1D, Idx1D, Idx2D
 
 
 @dataclass(slots=True)
@@ -18,5 +18,5 @@ class Borrower:
     projected_fragility: Float1D  # φ̂_i
 
     # scratch arrays (reset every period)
-    loan_apps_head: Int1D  # queue pointer  (-1 ⇒ empty)
-    loan_apps_targets: Int1D  # shape (N_firms, H)  index buffer
+    loan_apps_head: Idx1D  # queue pointer  (-1 ⇒ empty)
+    loan_apps_targets: Idx2D  # shape (N_firms, H)  index buffer

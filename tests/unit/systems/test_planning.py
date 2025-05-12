@@ -1,17 +1,10 @@
+# src/tests/unit/systems/test_planning.py
 """
 Planning-system unit tests
 
 These tests verify that the three pure functions in
 `bamengine.systems.planning` behave correctly for all economically
 relevant branches:
-
-* desired production (Event-1 rule)
-* desired labour     (ceil(Yd / aᵢ))
-* vacancies          (max(Ld − L, 0))
-
-Notation used in comments:
-  Sᵢ inventory, Pᵢ price, p̄ average price, Ydᵢ desired production,
-  Ldᵢ desired labour, Vᵢ vacancies
 """
 
 from __future__ import annotations
@@ -23,23 +16,14 @@ from hypothesis import strategies as st
 from numpy.random import default_rng
 from numpy.typing import NDArray
 
-from bamengine.components.producer import (
-    Producer,
-    Producer,
-    Producer,
-)
+from bamengine.components import Producer, Employer
 from bamengine.systems.planning import (
-    firms_decide_desired_labor as decide_desired_labor,
+    firms_decide_desired_labor,
+    firms_decide_desired_production,
+    firms_decide_vacancies,
+    CAP_LAB_PROD,
 )
-from bamengine.systems.planning import (
-    firms_decide_desired_production as decide_desired_production,
-)
-from bamengine.systems.planning import (
-    firms_decide_vacancies as decide_vacancies,
-)
-
-FloatA = NDArray[np.float64]
-IntA = NDArray[np.int64]
+from bamengine.typing import FloatA, IntA
 
 
 # --------------------------------------------------------------------------- #
@@ -62,13 +46,14 @@ def test_production_branches(
     """
     rng = default_rng(5)
     prod = Producer(
-        price=np.array([price]),
+        production=np.array([10.0]),
         inventory=np.array([inventory]),
-        prev_production=np.array([10.0]),
         expected_demand=np.zeros(1),
         desired_production=np.zeros(1),
+        labor_productivity=np.ones(1),
+        price=np.array([price]),
     )
-    decide_desired_production(prod, p_avg=p_avg, h_rho=0.1, rng=rng)
+    firms_decide_desired_production(prod, p_avg=p_avg, h_rho=0.1, rng=rng)
     yd = prod.desired_production[0]
 
     if branch == "up":
@@ -89,13 +74,14 @@ def test_decide_desired_production_vector() -> None:
     """
     rng = default_rng(1)
     prod = Producer(
-        price=np.array([2.0, 1.5, 1.0, 1.0, 2.0]),
+        production=np.full(5, 10.0),
         inventory=np.array([0.0, 0.0, 5.0, 0.0, 5.0]),
-        prev_production=np.full(5, 10.0),
         expected_demand=np.zeros(5),
         desired_production=np.zeros(5),
+        labor_productivity=np.ones(5),
+        price=np.array([2.0, 1.5, 1.0, 1.0, 2.0]),
     )
-    decide_desired_production(prod, p_avg=1.5, h_rho=0.1, rng=rng)
+    firms_decide_desired_production(prod, p_avg=1.5, h_rho=0.1, rng=rng)
 
     # shapes must be preserved
     assert prod.expected_demand.shape == (5,)
@@ -110,8 +96,7 @@ def test_decide_desired_production_vector() -> None:
             10.0 * (1 - shocks[2]),  # cond_down
             10.0,  # unchanged
             10.0,  # unchanged
-        ],
-        dtype=np.float64,
+        ]
     )
     np.testing.assert_allclose(prod.desired_production, expected, rtol=1e-6)
     # guard against negative output
@@ -123,28 +108,30 @@ def test_shock_off_no_change() -> None:
     With hᵨ = 0 the rule must leave Yd unchanged, regardless of conditions.
     """
     prod = Producer(
-        price=np.array([1.6]),
+        production=np.array([8.0]),
         inventory=np.array([0.0]),
-        prev_production=np.array([8.0]),
         expected_demand=np.zeros(1),
         desired_production=np.zeros(1),
+        labor_productivity=np.ones(1),
+        price=np.array([1.6]),
     )
-    decide_desired_production(prod, p_avg=1.5, h_rho=0.0, rng=default_rng(7))
+    firms_decide_desired_production(prod, p_avg=1.5, h_rho=0.0, rng=default_rng(7))
     assert np.isclose(prod.desired_production[0], 8.0)
 
 
 def test_reuses_internal_buffers() -> None:
     rng = default_rng(0)
     prod = Producer(
-        price=np.array([2.0, 2.0]),
+        production=np.ones(2),
         inventory=np.zeros(2),
-        prev_production=np.ones(2),
         expected_demand=np.zeros(2),
         desired_production=np.zeros(2),
+        labor_productivity=np.ones(2),
+        price=np.array([2.0, 2.0]),
     )
 
     # --- first call allocates the scratch arrays ----------------------
-    decide_desired_production(prod, p_avg=1.5, h_rho=0.05, rng=rng)
+    firms_decide_desired_production(prod, p_avg=1.5, h_rho=0.05, rng=rng)
 
     # capture the objects *after* they’ve been created
     buf0 = prod.prod_shock
@@ -152,7 +139,7 @@ def test_reuses_internal_buffers() -> None:
     mask_dn0 = prod.prod_mask_dn
 
     # --- second call must reuse the very same objects -----------------
-    decide_desired_production(prod, p_avg=1.5, h_rho=0.05, rng=rng)
+    firms_decide_desired_production(prod, p_avg=1.5, h_rho=0.05, rng=rng)
 
     assert buf0 is prod.prod_shock
     assert mask_up0 is prod.prod_mask_up
@@ -164,77 +151,140 @@ def test_reuses_internal_buffers() -> None:
 # --------------------------------------------------------------------------- #
 def test_decide_desired_labor_vector() -> None:
     """Labour demand must equal ceil(Yd / aᵢ) element-wise."""
-    lab = Producer(
+    prod = Producer(
+        production=np.ones(5),
+        inventory=np.zeros(5),
+        expected_demand=np.zeros(5),
         desired_production=np.full(5, 10.0),
         labor_productivity=np.array([1.0, 0.8, 1.2, 0.5, 2.0]),
-        desired_labor=np.zeros(5, dtype=np.int64),
+        price=np.ones(5),
     )
-    decide_desired_labor(lab)
+    emp = Employer(
+        desired_labor=np.zeros(5, dtype=np.int64),
+        current_labor=np.ones(5, dtype=np.int64),
+        wage_offer=np.ones(5),
+        wage_bill=np.full(5, 5.0),
+        n_vacancies=np.zeros(5, dtype=np.int64),
+        total_funds=np.full(5, 5.0),
+        recv_job_apps_head=np.full(5, -1, dtype=np.int64),
+        recv_job_apps=np.full((5, 4), -1, dtype=np.int64),
+    )
+    firms_decide_desired_labor(prod, emp)
     expected = np.array([10, 13, 9, 20, 5])
-    np.testing.assert_array_equal(lab.desired_labor, expected)
+    np.testing.assert_array_equal(emp.desired_labor, expected)
 
 
 def test_zero_productivity_guard() -> None:
     """
     Productivity aᵢ ≤ 0 is invalid – the rule must fail fast to avoid NaNs.
     """
-    lab = Producer(
+    prod = Producer(
+        production=np.ones(1),
+        inventory=np.zeros(1),
+        expected_demand=np.zeros(1),
         desired_production=np.array([10.0]),
         labor_productivity=np.array([0.0]),
-        desired_labor=np.zeros(1, dtype=np.int64),
+        price=np.ones(1),
     )
-    with pytest.raises(ValueError):
-        decide_desired_labor(lab)
-
+    emp = Employer(
+        desired_labor=np.zeros(1, dtype=np.int64),
+        current_labor=np.ones(1, dtype=np.int64),
+        wage_offer=np.ones(1),
+        wage_bill=np.full(1, 5.0),
+        n_vacancies=np.zeros(1, dtype=np.int64),
+        total_funds=np.full(1, 5.0),
+        recv_job_apps_head=np.full(1, -1, dtype=np.int64),
+        recv_job_apps=np.full((1, 4), -1, dtype=np.int64),
+    )
+    firms_decide_desired_labor(prod, emp)
+    np.testing.assert_array_equal(prod.labor_productivity, [CAP_LAB_PROD])
 
 # --------------------------------------------------------------------------- #
 # 4. vacancies – simple deterministic check                                  #
 # --------------------------------------------------------------------------- #
 def test_decide_vacancies_vector() -> None:
-    vac = Producer(
-        desired_labor=np.array([10, 5, 3, 1]),
-        current_labor=np.array([7, 5, 4, 0]),
+    emp = Employer(
+        desired_labor=np.array([10, 5, 3, 1], dtype=np.int64),
+        current_labor=np.array([7, 5, 4, 0], dtype=np.int64),
+        wage_offer=np.ones(4),
+        wage_bill=np.full(4, 5.0),
         n_vacancies=np.zeros(4, dtype=np.int64),
+        total_funds=np.full(4, 5.0),
+        recv_job_apps_head=np.full(4, -1, dtype=np.int64),
+        recv_job_apps=np.full((4, 4), -1, dtype=np.int64),
     )
-    decide_vacancies(vac)
-    np.testing.assert_array_equal(vac.n_vacancies, [3, 0, 0, 1])
+    firms_decide_vacancies(emp)
+    np.testing.assert_array_equal(emp.n_vacancies, [3, 0, 0, 1])
 
 
 # --------------------------------------------------------------------------- #
-# 5. Property-based checks (random vectors)                                   #
+# 5. Property-based check (random vectors)                                    #
 # --------------------------------------------------------------------------- #
 @given(
-    st.integers(min_value=1, max_value=30).flatmap(
+    st.integers(min_value=1, max_value=40).flatmap(          # random N
         lambda n: st.tuples(
-            # production > 0
-            st.lists(st.floats(0.01, 200.0), min_size=n, max_size=n),
-            # productivity > 0
-            st.lists(st.floats(0.01, 10.0), min_size=n, max_size=n),
-            # current labour ≥ 0
-            st.lists(st.integers(0, 400), min_size=n, max_size=n),
+            # desired production  Ydᵢ  > 0
+            st.lists(st.floats(0.01, 500.0), min_size=n, max_size=n),
+            # labour productivity aᵢ  (can be ≤ 0 to hit the CAP branch)
+            st.lists(
+                st.floats(-5.0, 20.0)  # allow aᵢ ≤ 0 so we exercise the guard
+                .filter(lambda x: not np.isnan(x) and not np.isinf(x)),
+                min_size=n,
+                max_size=n,
+            ),
+            # current labour      Lᵢ ≥ 0
+            st.lists(st.integers(0, 800), min_size=n, max_size=n),
         )
     )
 )
 def test_labor_and_vacancy_properties(data) -> None:  # type: ignore[no-untyped-def]
     """
-    Property-level invariant:
+    Invariant (vector form) that **must** hold after running the two rules:
 
-      Vᵢ = max( ceil(Ydᵢ / aᵢ) − Lᵢ , 0 )   for all i
+        Vᵢ == max( ceil(Ydᵢ / âᵢ) − Lᵢ , 0 )
+
+    where
+
+        âᵢ = aᵢ               if  aᵢ > 0
+             CAP_LAB_PROD      otherwise
     """
-    desired, prod, current = map(np.asarray, data)
-    lab = Producer(
-        desired_production=desired.astype(np.float64),
-        labor_productivity=prod.astype(np.float64),
-        desired_labor=np.zeros_like(desired, dtype=np.int64),
-    )
-    decide_desired_labor(lab)
+    # ------------------------------------------------------------------ #
+    # 1.  build random, *typed* numpy vectors                             #
+    # ------------------------------------------------------------------ #
+    yd_raw, a_raw, L_raw = map(np.asarray, data)
 
-    vac = Producer(
-        desired_labor=lab.desired_labor,
-        current_labor=current.astype(np.int64),
-        n_vacancies=np.zeros_like(current, dtype=np.int64),
-    )
-    decide_vacancies(vac)
+    _f64 = lambda x: np.asarray(x, dtype=np.float64)
+    _i64 = lambda x: np.asarray(x, dtype=np.int64)
 
-    expected = np.maximum(lab.desired_labor - current, 0)
-    assert (vac.n_vacancies == expected).all()
+    prod_cmp = _ProducerCMP(
+        desired_production=_f64(yd_raw),
+        labor_productivity=_f64(a_raw),
+    )
+    emp_cmp = _EmployerCMP(
+        desired_labor=_i64(np.zeros_like(yd_raw)),
+        current_labor=_i64(L_raw),
+        n_vacancies=_i64(np.zeros_like(L_raw)),
+    )
+
+    # ------------------------------------------------------------------ #
+    # 2.  run the two systems                                            #
+    # ------------------------------------------------------------------ #
+    firms_decide_desired_labor(prod_cmp, emp_cmp)
+    firms_decide_vacancies(emp_cmp)
+
+    # ------------------------------------------------------------------ #
+    # 3.  reproduce the algorithm in pure NumPy                          #
+    # ------------------------------------------------------------------ #
+    a_eff = np.where(a_raw > 0.0, a_raw, CAP_LAB_PROD)
+    desired_labor_expected = np.ceil(yd_raw / a_eff).astype(np.int64)
+    vacancies_expected = np.maximum(desired_labor_expected - L_raw, 0)
+
+    # ------------------------------------------------------------------ #
+    # 4.  assertions                                                     #
+    # ------------------------------------------------------------------ #
+    np.testing.assert_array_equal(
+        emp_cmp.desired_labor, desired_labor_expected, err_msg="Ld mismatch"
+    )
+    np.testing.assert_array_equal(
+        emp_cmp.n_vacancies, vacancies_expected, err_msg="V mismatch"
+    )

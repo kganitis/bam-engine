@@ -149,7 +149,7 @@ def workers_send_one_round(wrk: Worker, emp: Employer) -> None:
         row, col = divmod(h, stride)
         firm_idx = wrk.job_apps_targets[row, col]
         if firm_idx < 0:  # exhausted list
-            wrk.job_apps_head[wrk] = -1
+            wrk.job_apps_head[w] = -1
             continue
 
         # bounded queue
@@ -186,7 +186,10 @@ def firms_hire_workers(
         # ---- worker‑side updates ----------------------------------------
         wrk.employed[hires] = 1
         wrk.employer[hires] = i  # update contract
+
+        # if wages become worker-specific replace with np.put(…) / gather logic
         wrk.wage[hires] = emp.wage_offer[i]
+
         wrk.periods_left[hires] = theta
         wrk.contract_expired[hires] = 0
         wrk.fired[hires] = 0
