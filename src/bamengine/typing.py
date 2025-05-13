@@ -3,7 +3,6 @@ from typing import TypeAlias
 import numpy as np
 from numpy.typing import NDArray
 
-
 Float1D: TypeAlias = NDArray[np.float64]
 Int1D: TypeAlias = NDArray[np.int64]
 Bool1D: TypeAlias = NDArray[np.bool_]

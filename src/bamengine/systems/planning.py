@@ -67,6 +67,7 @@ def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
         Ld_i = ceil(Yd_i / a_i)
     """
     if (prod.labor_productivity <= 0).any():
+        log.warning("labour productivity ≤ 0 detected – clamped to CAP_LAB_PROD")
         prod.labor_productivity[:] = CAP_LAB_PROD
     ratio = prod.desired_production / prod.labor_productivity
     np.ceil(ratio, out=ratio)
@@ -78,6 +79,10 @@ def firms_decide_vacancies(emp: Employer) -> None:
     Vector rule: V_i = max( Ld_i – L_i , 0 )
     """
     np.subtract(
-        emp.desired_labor, emp.current_labor, out=emp.n_vacancies, dtype=np.int64
+        emp.desired_labor,
+        emp.current_labor,
+        out=emp.n_vacancies,
+        dtype=np.int64,
+        casting="unsafe",  # makes MyPy/NumPy on Windows happy
     )
     np.maximum(emp.n_vacancies, 0, out=emp.n_vacancies)

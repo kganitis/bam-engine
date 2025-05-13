@@ -1,8 +1,16 @@
-# tests/helpers/__init__.py
+# tests/__init__.py
 
 import numpy as np
 
 from bamengine.components.economy import LoanBook
+from tests.helpers.factories import mock_employer, mock_producer
+from tests.helpers.invariants import assert_basic_invariants
+
+__all__ = [
+    "mock_producer",
+    "mock_employer",
+    "assert_basic_invariants",
+]
 
 
 def create_empty_ledger(n_init: int = 128) -> LoanBook:

@@ -1,10 +1,10 @@
 import numpy as np
 import pytest
-from helpers.invariants import assert_basic_invariants
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from bamengine.scheduler import Scheduler
+from tests import assert_basic_invariants
 
 
 def test_scheduler_step(tiny_sched: Scheduler) -> None:
