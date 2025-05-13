@@ -22,7 +22,7 @@ from numpy.random import Generator, default_rng
 from numpy.typing import NDArray
 
 from bamengine.components.economy import Economy
-from bamengine.components.employer import Employer, Employer
+from bamengine.components.employer import Employer
 from bamengine.components.worker import Worker
 from bamengine.systems.labor_market import (
     _topk_indices_desc,

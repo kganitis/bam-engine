@@ -1,7 +1,7 @@
 # src/bamengine/components/employer.py
 from dataclasses import dataclass, field
 
-from bamengine.typing import Float1D, Int1D, Idx1D, Idx2D
+from bamengine.typing import Float1D, Idx1D, Idx2D, Int1D
 
 
 @dataclass(slots=True)
