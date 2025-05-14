@@ -1,13 +1,10 @@
 # tests/unit/systems/test_labor_market.py
 """
-Labour-market unit tests
+Labor-market unit tests
 
 These tests exercise every pure function in `bamengine.systems.labor_market`
 under the extreme or economically-interesting scenarios that are possible
 after the component refactor.
-
-The tiny helpers from  `tests.helpers.factories`  hide all boiler-plate
-array construction so each test can focus on *behaviour* instead of setup.
 """
 
 from __future__ import annotations
@@ -262,6 +259,9 @@ def test_prepare_applications_large_unemployment() -> None:
 # --------------------------------------------------------------------------- #
 #  workers_send_one_round
 # --------------------------------------------------------------------------- #
+
+# TODO No basic case
+
 def test_workers_send_one_round_queue_bounds() -> None:
     """
     When a firm’s queue is almost full, the next application must be dropped
@@ -332,6 +332,9 @@ def test_workers_send_one_round_exhausted_target() -> None:
 # --------------------------------------------------------------------------- #
 #  firms_hire_workers
 # --------------------------------------------------------------------------- #
+
+# TODO No basic case
+
 def test_firms_hire_no_vacancies() -> None:
     """
     Applications sent to a firm with zero vacancies should be cleared

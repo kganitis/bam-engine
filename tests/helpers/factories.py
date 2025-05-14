@@ -18,7 +18,14 @@ from typing import Any
 
 import numpy as np
 
-from bamengine.components import Economy, Employer, Producer, Worker
+from bamengine.components import (
+    Economy,
+    Producer,
+    Employer,
+    Worker,
+    Borrower,
+    Lender,
+)
 
 # ───────────────────────── default dictionaries ────────────────────────── #
 
@@ -77,8 +84,30 @@ def _worker_defaults(n: int, *, queue_w: int) -> dict[str, Any]:
     )
 
 
-# ───────────────────────── public factory helpers ──────────────────────── #
+def _borrower_defaults(n: int, *, queue_h: int) -> dict[str, Any]:
+    return dict(
+        net_worth=np.full(n, 10.0, dtype=np.float64),
+        total_funds=np.full(n, 10.0, dtype=np.float64),
+        wage_bill=np.zeros(n, dtype=np.float64),
+        credit_demand=np.zeros(n, dtype=np.float64),
+        rnd_intensity=np.ones(n, dtype=np.float64),
+        projected_fragility=np.zeros(n, dtype=np.float64),
+        loan_apps_head=np.full(n, -1, dtype=np.int64),
+        loan_apps_targets=np.full((n, queue_h), -1, dtype=np.int64),
+    )
 
+
+def _lender_defaults(n: int, *, queue_h: int) -> dict[str, Any]:
+    return dict(
+        equity_base=np.full(n, 10_000.0, dtype=np.float64),
+        credit_supply=np.zeros(n, dtype=np.float64),
+        interest_rate=np.zeros(n, dtype=np.float64),
+        recv_apps_head=np.full(n, -1, dtype=np.int64),
+        recv_apps=np.full((n, queue_h), -1, dtype=np.int64),
+        opex_shock=None,  # scratch
+    )
+
+# ───────────────────────── public factory helpers ──────────────────────── #
 
 def mock_economy(
     **overrides: Any,
@@ -170,3 +199,47 @@ def mock_worker(
     """
     cfg = _worker_defaults(n, queue_w=queue_w) | overrides
     return Worker(**cfg)
+
+
+def mock_borrower(
+    n: int = 1,
+    *,
+    queue_h: int = 2,
+    **overrides: Any,
+) -> Borrower:
+    """
+    Return a fully-typed `Borrower`.
+
+    Parameters
+    ----------
+    n
+        Number of borrowers.
+    queue_h
+        Width of the outbound loan-application queue (`loan_apps_targets.shape[1]`).
+    **overrides
+        Field-value pairs that overwrite defaults.
+    """
+    cfg = _borrower_defaults(n, queue_h=queue_h) | overrides
+    return Borrower(**cfg)
+
+
+def mock_lender(
+    n: int = 1,
+    *,
+    queue_h: int = 2,
+    **overrides: Any,
+) -> Lender:
+    """
+    Return a fully-typed `Lender`.
+
+    Parameters
+    ----------
+    n
+        Number of lenders.
+    queue_h
+        Width of the inbound loan queue (`recv_apps.shape[1]`).
+    **overrides
+        Field-value pairs that overwrite defaults.
+    """
+    cfg = _lender_defaults(n, queue_h=queue_h) | overrides
+    return Lender(**cfg)

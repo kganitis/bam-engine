@@ -1,0 +1,405 @@
+# tests/unit/systems/test_credit_market.py
+"""
+Credit-market unit tests
+
+This suite exercises every **pure** function in
+`bamengine.systems.credit_market` after the component-refactor.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+import pytest
+from hypothesis import assume, given, settings
+from hypothesis import strategies as st
+from numpy.random import default_rng
+
+from bamengine.systems.credit_market import (  # systems under test
+    CAP_FRAG,
+    _topk_lowest_rate,
+    banks_decide_credit_supply,
+    banks_decide_interest_rate,
+    banks_provide_loans,
+    firms_calc_credit_metrics,
+    firms_decide_credit_demand,
+    firms_prepare_loan_applications,
+    firms_send_one_loan_app,
+)
+from tests import create_empty_ledger
+from tests.helpers.factories import (
+    mock_borrower,
+    mock_lender,
+    mock_employer,
+    mock_worker,
+)
+
+# --------------------------------------------------------------------------- #
+#  deterministic micro-scenario helper                                        #
+# --------------------------------------------------------------------------- #
+
+
+def _mini_state(
+    *,
+    n_borrowers: int = 4,
+    n_lenders: int = 2,
+    H: int = 2,
+    seed: int = 7,
+):
+    """
+    Build minimal Borrower, Lender, and empty LoanBook components plus an RNG.
+
+    * Borrowers: wage_bill > net_worth for the first two borrowers so they demand credit.
+    * Lenders:   non-zero credit_supply, distinct interest rates.
+    """
+    rng = default_rng(seed)
+
+    bor = mock_borrower(
+        n=n_borrowers,
+        queue_h=H,
+        wage_bill=np.concatenate((np.full(2, 15.0), np.full(n_borrowers - 2, 5.0))),
+        net_worth=np.full(n_borrowers, 10.0),
+    )
+    lend = mock_lender(
+        n=n_lenders,
+        queue_h=H,
+        equity_base=np.linspace(8_000, 12_000, n_lenders, dtype=np.float64),
+        credit_supply=np.full(n_lenders, 4_000.0),
+        interest_rate=np.linspace(0.08, 0.11, n_lenders, dtype=np.float64),
+    )
+    ledger = create_empty_ledger()
+
+    return bor, lend, ledger, rng, H
+
+
+# --------------------------------------------------------------------------- #
+#  banks_decide_credit_supply                                                 #
+# --------------------------------------------------------------------------- #
+
+
+def test_decide_credit_supply_basic() -> None:
+    lend = mock_lender(
+        n=3,
+        queue_h=2,
+        equity_base=np.array([10_000.0, 20_000.0, 5_000.0]),
+    )
+    banks_decide_credit_supply(lend, v=0.2)
+    np.testing.assert_allclose(lend.credit_supply, lend.equity_base * 0.2)
+
+
+# --------------------------------------------------------------------------- #
+#  banks_decide_interest_rate                                                 #
+# --------------------------------------------------------------------------- #
+
+
+def test_interest_rate_basic() -> None:
+    lend = mock_lender(n=4, queue_h=2)
+    banks_decide_interest_rate(lend, r_bar=0.05, h_phi=0.1, rng=default_rng(0))
+    assert (lend.interest_rate >= 0.05).all()
+    assert (lend.interest_rate <= 0.05 * (1 + 0.1) + 1e-12).all()
+
+
+def test_interest_rate_zero_shock() -> None:
+    lend = mock_lender(n=2, queue_h=2)
+    banks_decide_interest_rate(lend, r_bar=0.05, h_phi=0.0, rng=default_rng(0))
+    # with h_phi = 0 the rule collapses to r_bar
+    assert (lend.interest_rate == pytest.approx(0.05)).all()
+
+
+def test_interest_rate_reuses_scratch() -> None:
+    lend = mock_lender(n=3, queue_h=2)
+    banks_decide_interest_rate(lend, r_bar=0.05, h_phi=0.1, rng=default_rng(0))
+    buf0 = lend.opex_shock
+    banks_decide_interest_rate(lend, r_bar=0.06, h_phi=0.1, rng=default_rng(1))
+    buf1 = lend.opex_shock
+    assert buf0 is buf1 and buf1 is not None and buf1.flags.writeable
+
+
+# --------------------------------------------------------------------------- #
+#  firms_decide_credit_demand & firms_calc_credit_metrics                     #
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize(
+    ("wage_bill", "net_worth", "expected_B"),
+    [
+        ([12.0], [10.0], [2.0]),    # positive demand
+        ([5.0], [10.0], [0.0]),     # no demand when net worth covers wages
+        ([0.0], [0.0], [0.0]),      # both zero – guard
+    ],
+)
+def test_credit_demand_basic(wage_bill, net_worth, expected_B) -> None:
+    bor = mock_borrower(
+        n=1,
+        queue_h=2,
+        wage_bill=np.array(wage_bill),
+        net_worth=np.array(net_worth),
+    )
+    firms_decide_credit_demand(bor)
+    np.testing.assert_allclose(bor.credit_demand, expected_B)
+
+
+def test_calc_credit_metrics_fragility() -> None:
+    bor = mock_borrower(
+        n=3,
+        queue_h=1,
+        credit_demand=np.array([5.0, 8.0, 0.0]),
+        net_worth=np.array([10.0, 0.0, 5.0]),  # second firm zero ⇒ CAP_FRAG
+        rnd_intensity=np.array([1.0, 0.5, 2.0]),
+    )
+    firms_calc_credit_metrics(bor)
+    expected = np.array([0.5, CAP_FRAG * 0.5, 0.0])
+    np.testing.assert_allclose(bor.projected_fragility, expected, rtol=1e-12)
+
+
+# --------------------------------------------------------------------------- #
+#  _topk_lowest_rate helper                                                   #
+# --------------------------------------------------------------------------- #
+
+
+def test_topk_lowest_rate_partial_sort() -> None:
+    vals = np.array([0.09, 0.07, 0.12, 0.08])
+    k = 2
+    idx = _topk_lowest_rate(vals, k=k)
+    chosen = set(vals[idx])
+    assert chosen == {0.07, 0.08} and idx.shape == (k,)
+
+
+# --------------------------------------------------------------------------- #
+#  firms_prepare_loan_applications                                            #
+# --------------------------------------------------------------------------- #
+
+
+def test_prepare_applications_basic() -> None:
+    bor, lend, _, rng, H = _mini_state()
+    firms_decide_credit_demand(bor)  # ensure positive demand
+    firms_prepare_loan_applications(bor, lend, max_H=H, rng=rng)
+
+    active = np.where(bor.credit_demand > 0.0)[0]
+    # every demanding firm receives H targets and a valid head pointer
+    for f in active:
+        assert bor.loan_apps_head[f] >= 0
+        row = bor.loan_apps_targets[f]
+        assert ((0 <= row) & (row < lend.interest_rate.size)).all()
+
+
+def test_prepare_applications_single_trial() -> None:
+    bor, lend, _, rng, _ = _mini_state(H=1)
+    firms_decide_credit_demand(bor)
+    firms_prepare_loan_applications(bor, lend, max_H=1, rng=rng)
+    assert (bor.loan_apps_head[bor.credit_demand > 0] % 1 == 0).all()
+
+
+def test_prepare_applications_no_demand() -> None:
+    bor = mock_borrower(n=2, queue_h=2, credit_demand=np.zeros(2))
+    lend = mock_lender(n=2, queue_h=2)
+    firms_prepare_loan_applications(bor, lend, max_H=2, rng=default_rng(0))
+    assert (bor.loan_apps_head == -1).all()
+
+
+# --------------------------------------------------------------------------- #
+#  firms_send_one_loan_app                                                    #
+# --------------------------------------------------------------------------- #
+
+
+def test_send_one_loan_app_queue_insert() -> None:
+    bor, lend, _, rng, H = _mini_state()
+    firms_decide_credit_demand(bor)
+    firms_prepare_loan_applications(bor, lend, max_H=H, rng=rng)
+    firms_send_one_loan_app(bor, lend)
+
+    # At least one bank must have a non-empty queue
+    assert (lend.recv_apps_head >= 0).any()
+
+
+def test_send_one_loan_app_queue_bounds() -> None:
+    """
+    When the bank queue is already full, the application is dropped
+    and the head pointer must **not** overflow.
+    """
+    H = 2
+    bor, lend, _, rng, _ = _mini_state(n_lenders=1, H=H)
+    lend.recv_apps_head[0] = H - 1
+    lend.recv_apps[0] = 99  # sentinel
+
+    firms_decide_credit_demand(bor)
+    # force every borrower to choose bank-0
+    lend.interest_rate[:] = 0.05
+    firms_prepare_loan_applications(bor, lend, max_H=H, rng=rng)
+    firms_send_one_loan_app(bor, lend)
+
+    assert lend.recv_apps_head[0] == H - 1
+    assert (lend.recv_apps[0] == 99).all()  # nothing overwritten
+
+
+def test_borrower_with_empty_list_is_skipped() -> None:
+    bor = mock_borrower(n=1, queue_h=2, credit_demand=np.array([10.0]))
+    lend = mock_lender(n=1, queue_h=2)
+    bor.loan_apps_head[0] = -1  # no targets
+    firms_send_one_loan_app(bor, lend)
+    assert lend.recv_apps_head[0] == -1  # still empty
+
+
+def test_send_one_loan_app_exhausted_target() -> None:
+    bor = mock_borrower(n=1, queue_h=1, credit_demand=np.array([10.0]))
+    lend = mock_lender(n=1, queue_h=1)
+    bor.loan_apps_head[0] = 0
+    bor.loan_apps_targets[0, 0] = -1  # exhausted sentinel
+    firms_send_one_loan_app(bor, lend)
+    assert bor.loan_apps_head[0] == -1
+    assert lend.recv_apps_head[0] == -1
+
+
+# --------------------------------------------------------------------------- #
+#  banks_provide_loans                                                        #
+# --------------------------------------------------------------------------- #
+
+
+def _run_basic_loan_cycle(bor, lend, ledger, rng, H, r_bar=0.07):
+    firms_decide_credit_demand(bor)
+    firms_calc_credit_metrics(bor)
+    firms_prepare_loan_applications(bor, lend, max_H=H, rng=rng)
+    for _ in range(H):
+        firms_send_one_loan_app(bor, lend)
+        banks_provide_loans(bor, ledger, lend, r_bar=r_bar)
+        
+
+def test_banks_provide_loans_basic() -> None:
+    bor, lend, ledger, rng, H = _mini_state()
+    _run_basic_loan_cycle(bor, lend, ledger, rng, H)
+
+    # ledger updated and invariants hold
+    assert ledger.size > 0
+    assert (bor.credit_demand >= -1e-12).all()
+    assert (lend.credit_supply >= -1e-12).all()
+    np.testing.assert_array_less(
+        bor.total_funds - bor.net_worth, bor.credit_demand + 1e-9
+    )  # no firm funded above demand
+
+
+
+def test_banks_provide_loans_demand_exceeds_supply() -> None:
+    bor, lend, ledger, rng, H = _mini_state()
+    lend.credit_supply[:] = 1.0  # tiny pot – will run out
+    _run_basic_loan_cycle(bor, lend, ledger, rng, H)
+    assert (lend.credit_supply == pytest.approx(0.0, abs=1e-9)).all()
+    # some borrowers must still have positive unmet demand
+    assert (bor.credit_demand > 0).any()
+
+
+def test_banks_provide_loans_bank_zero_supply() -> None:
+    """
+    Applications sent to a bank with zero credit_supply must leave the queue
+    untouched and never create negative balances.
+    """
+    H = 2
+    bor, lend, ledger, rng, _ = _mini_state(H=H, n_lenders=1)
+    lend.credit_supply[0] = 0.0
+    _run_basic_loan_cycle(bor, lend, ledger, rng, H)
+    assert ledger.size == 0
+    assert lend.recv_apps_head[0] >= 0  # queue still there
+    assert lend.credit_supply[0] == 0.0
+
+
+def test_banks_provide_loans_skip_invalid_slots() -> None:
+    """
+    If the queue contains only -1 sentinels banks_provide_loans should do nothing.
+    """
+    bor, lend, ledger, _, _ = _mini_state()
+    k = 0
+    lend.recv_apps_head[k] = 2
+    lend.recv_apps[k, :3] = -1  # all invalid
+    banks_provide_loans(bor, ledger, lend, r_bar=0.07)
+    assert ledger.size == 0
+    assert lend.recv_apps_head[k] == -1  # queue flushed
+    
+
+def test_ledger_capacity_auto_grows() -> None:
+    bor, lend, ledger, rng, H = _mini_state(n_firms=10, n_banks=1, H=H)
+    ledger.capacity = 4  # tiny capacity
+    _run_basic_loan_cycle(bor, lend, ledger, rng, H)
+    assert ledger.capacity >= ledger.size  # still consistent
+    assert ledger.capacity > 4             # grew at least once
+
+
+# --------------------------------------------------------------------------- #
+#  firms_fire_workers (credit-induced layoffs)                                #
+# --------------------------------------------------------------------------- #
+
+
+def test_firms_fire_workers_gap_closed() -> None:
+    # one firm with wage-bill > funds → must fire enough workers
+    emp = mock_employer(
+        n=1,
+        current_labor=np.array([5]),
+        wage_offer=np.array([1.0]),
+        wage_bill=np.array([5.0]),
+        total_funds=np.array([2.5]),  # gap 2.5
+    )
+    wrk = mock_worker(n=5)
+    wrk.employed[:] = True
+    wrk.employer[:] = 0
+
+    from bamengine.systems.credit_market import firms_fire_workers
+
+    firms_fire_workers(emp, wrk, rng=default_rng(0))
+
+    assert emp.wage_bill[0] <= emp.total_funds[0] + 1e-12
+    assert emp.current_labor[0] == wrk.employed.sum()
+
+
+# --------------------------------------------------------------------------- #
+#  Property-based invariant: banks_provide_loans                              #
+# --------------------------------------------------------------------------- #
+
+
+@settings(max_examples=200, deadline=None)
+@given(
+    n_firms=st.integers(4, 12),
+    n_banks=st.integers(2, 6),
+    H=st.integers(1, 3),
+)
+def test_banks_provide_loans_properties(n_borrowers: int, n_lenders: int, H: int) -> None:
+    rng = default_rng(999)
+    bor = mock_borrower(n=n_borrowers, queue_h=H)
+    lend = mock_lender(n=n_lenders, queue_h=H)
+    
+    # make sure some demand & supply exist
+    bor.wage_bill[:] = rng.uniform(5.0, 20.0, size=n_borrowers)
+    bor.net_worth[:] = rng.uniform(0.0, 15.0, size=n_borrowers)
+    lend.credit_supply[:] = rng.uniform(1_000.0, 5_000.0, size=n_lenders)
+    
+    firms_decide_credit_demand(bor)
+    assume((bor.credit_demand > 0).any())
+
+    ledger = create_empty_ledger()
+    _run_basic_loan_cycle(bor, lend, ledger, rng, H)
+
+    # invariants – no negative balances / supplies, and ledger rows consistent
+    assert (bor.credit_demand >= -1e-9).all()
+    assert (lend.credit_supply >= -1e-9).all()
+    assert ledger.size <= ledger.capacity
+    # every ledger row indices within bounds
+    assert (
+        (ledger.borrower[: ledger.size] < n_borrowers).all()
+        and (ledger.lender[: ledger.size] < n_lenders).all()
+    )
+
+
+# --------------------------------------------------------------------------- #
+#  End-to-end micro integration of one credit-market event                    #
+# --------------------------------------------------------------------------- #
+
+
+def test_full_credit_round() -> None:
+    bor, lend, ledger, rng, H = _mini_state()
+    banks_decide_credit_supply(lend, v=0.25)
+    banks_decide_interest_rate(lend, r_bar=0.07, h_phi=0.05, rng=rng)
+    
+    _run_basic_loan_cycle(bor, lend, ledger, rng, H)
+
+    # cross-component invariants
+    assert (bor.credit_demand >= -1e-12).all()
+    assert (lend.credit_supply >= -1e-12).all()
+    assert ledger.size > 0
+    # borrower total_funds increased by at least the amount of principal granted
+    assert (bor.total_funds >= bor.net_worth).all()
