@@ -1,3 +1,4 @@
+# src/bamengine/systems/labor_market.py
 import logging
 
 import numpy as np
@@ -24,8 +25,8 @@ def adjust_minimum_wage(ec: Economy) -> None:
     if (ec.avg_mkt_price_history.size - 1) % m != 0:
         return  # not a revision step
 
-    p_now = ec.avg_mkt_price_history[-2]  # price of period t-1
-    p_prev = ec.avg_mkt_price_history[-m - 1]  # price of period t-m
+    p_now = ec.avg_mkt_price_history[-1]  # price of period t-1
+    p_prev = ec.avg_mkt_price_history[-m-1]  # price of period t-m
     inflation = (p_now - p_prev) / p_prev
 
     ec.min_wage *= 1.0 + inflation

@@ -21,7 +21,7 @@ from bamengine.systems.planning import (
     firms_decide_vacancies,
 )
 from bamengine.typing import FloatA
-from tests import mock_employer, mock_producer
+from tests.helpers.factories import mock_employer, mock_producer
 
 
 # --------------------------------------------------------------------------- #
