@@ -18,9 +18,10 @@ from typing import Any
 
 import numpy as np
 
-from bamengine.components import Economy, Producer, Employer, Worker
+from bamengine.components import Economy, Employer, Producer, Worker
 
 # ───────────────────────── default dictionaries ────────────────────────── #
+
 
 def _economy_defaults() -> dict[str, Any]:
     return dict(
@@ -75,7 +76,9 @@ def _worker_defaults(n: int, *, queue_w: int) -> dict[str, Any]:
         job_apps_targets=np.full((n, queue_w), -1, dtype=np.intp),
     )
 
+
 # ───────────────────────── public factory helpers ──────────────────────── #
+
 
 def mock_economy(
     **overrides: Any,
