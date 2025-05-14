@@ -34,3 +34,7 @@ Use permanent scratch buffers in
 | **Logging cost in tight loops**                      | Overhead ≈ ms at current sizes.                      | Guard heavy `log.debug(...)` blocks with `if log.isEnabledFor(...)`.                |
 | **`np.ceil` optimisation in `decide_desired_labor`** | Only 10 µs for 100k firms.                           | Implement the branch‑free floor‑divide trick when you measure >5% runtime there.    |
 | **Checkpoint I/O (`snapshot()`)**                    | Not needed until you run long Monte‑Carlo batches.   | Design a simple `dict`/NPZ serialiser later.                                        |
+
+
+Can you write the randomised property test over random queue/vacancy shapes for the hire rule?
+ 

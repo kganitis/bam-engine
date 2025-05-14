@@ -17,18 +17,20 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
-from numpy.random import default_rng
-from numpy.typing import NDArray
 
-from bamengine.components import Employer, Producer
-
-Float1D = NDArray[np.float64]
-Int1D = NDArray[np.int64]
-
-# deterministic RNG for *test helpers only*  –– do *not* use the global bit-gen
-_rng = default_rng(0)
+from bamengine.components import Economy, Producer, Employer, Worker
 
 # ───────────────────────── default dictionaries ────────────────────────── #
+
+def _economy_defaults() -> dict[str, Any]:
+    return dict(
+        avg_mkt_price=1.15,
+        avg_mkt_price_history=np.array([1.0, 1.05, 1.10, 1.15]),
+        min_wage=1.0,
+        min_wage_rev_period=4,
+        r_bar=0.07,
+        v=0.23,
+    )
 
 
 def _producer_defaults(n: int, *, queue_w: int) -> dict[str, Any]:
@@ -38,7 +40,7 @@ def _producer_defaults(n: int, *, queue_w: int) -> dict[str, Any]:
         expected_demand=np.zeros(n, dtype=np.float64),
         desired_production=np.full(n, 10.0, dtype=np.float64),
         labor_productivity=np.ones(n, dtype=np.float64),
-        price=_rng.uniform(1.3, 1.7, size=n),  # deterministic but non-constant
+        price=np.full(n, 1.5, dtype=np.float64),
         # scratch (allocated lazily by production rule unless eager=True)
         prod_shock=None,
         prod_mask_up=None,
@@ -60,7 +62,34 @@ def _employer_defaults(n: int, *, queue_w: int) -> dict[str, Any]:
     )
 
 
+def _worker_defaults(n: int, *, queue_w: int) -> dict[str, Any]:
+    return dict(
+        employed=np.zeros(n, dtype=np.bool_),
+        employer=np.full(n, -1, dtype=np.intp),
+        employer_prev=np.full(n, -1, dtype=np.intp),
+        wage=np.zeros(n, dtype=np.float64),
+        periods_left=np.zeros(n, dtype=np.int64),
+        contract_expired=np.zeros(n, dtype=np.bool_),
+        fired=np.zeros(n, dtype=np.bool_),
+        job_apps_head=np.full(n, -1, dtype=np.intp),
+        job_apps_targets=np.full((n, queue_w), -1, dtype=np.intp),
+    )
+
 # ───────────────────────── public factory helpers ──────────────────────── #
+
+def mock_economy(
+    **overrides: Any,
+) -> Economy:
+    """
+    Return a fully-typed `Economy`.
+
+    Parameters
+    ----------
+    **overrides
+        Field-value pairs that overwrite defaults.
+    """
+    cfg = _economy_defaults() | overrides
+    return Economy(**cfg)
 
 
 def mock_producer(
@@ -116,3 +145,25 @@ def mock_employer(
     """
     cfg = _employer_defaults(n, queue_w=queue_w) | overrides
     return Employer(**cfg)
+
+
+def mock_worker(
+    n: int = 1,
+    *,
+    queue_w: int = 4,
+    **overrides: Any,
+) -> Worker:
+    """
+    Return a fully-typed `Worker`.
+
+    Parameters
+    ----------
+    n
+        Number of workers.
+    queue_w
+        Width of the application queue (`job_apps_targets.shape[1]`).
+    **overrides
+        Field-value pairs that overwrite defaults.
+    """
+    cfg = _worker_defaults(n, queue_w=queue_w) | overrides
+    return Worker(**cfg)

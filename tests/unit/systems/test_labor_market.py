@@ -1,30 +1,26 @@
+# tests/unit/systems/test_labor_market.py
 """
 Labour-market unit tests
 
-These tests exercise every pure function in
-`bamengine.systems.labor_market` under corner-case scenarios that matter both
-mathematically and economically.
+These tests exercise every pure function in `bamengine.systems.labor_market`
+under the extreme or economically-interesting scenarios that are possible
+after the component refactor.
 
-The structure is:
-
-* Minimum-wage adjustment           – inflation edge cases
-* Wage-offer decision               – floor & shock edge cases
-* Application preparation           – unemployed mix, loyalty, buffer limits
-* One-round message passing         – queue boundaries
-* Hiring                            – vacancies / current labor / pointer invariants
+The tiny helpers from  `tests.helpers.factories`  hide all boiler-plate
+array construction so each test can focus on *behaviour* instead of setup.
 """
 
-from typing import Tuple
+from __future__ import annotations
 
 import numpy as np
 import pytest
+from hypothesis import assume, given, settings
+from hypothesis import strategies as st
 from numpy.random import Generator, default_rng
 from numpy.typing import NDArray
 
-from bamengine.components.economy import Economy
-from bamengine.components.employer import Employer
-from bamengine.components.worker import Worker
-from bamengine.systems.labor_market import (
+from bamengine.components import Employer, Worker
+from bamengine.systems.labor_market import (  # system under test
     _topk_indices_desc,
     adjust_minimum_wage,
     firms_decide_wage_offer,
@@ -32,199 +28,197 @@ from bamengine.systems.labor_market import (
     workers_decide_firms_to_apply,
     workers_send_one_round,
 )
+from tests.helpers.factories import (
+    mock_economy,
+    mock_employer,
+    mock_worker,
+)
 
-FloatA = NDArray[np.float64]
+# --------------------------------------------------------------------------- #
+#  deterministic micro-scenario helper                                        #
+# --------------------------------------------------------------------------- #
+def _mini_state(
+    *,
+    n_workers: int = 6,
+    n_employers: int = 3,
+    M: int = 2,
+    seed: int = 1,
+) -> tuple[Employer, Worker, Generator, int]:
+    """
+    Build **one** fully-featured Employer and one Worker component,
+    plus an RNG and queue width *M*.
 
+    * Firms: wage-offers [1.0, 1.5, 1.2], vacancies [2, 1, 0],
+             current labour [1, 0, 2]  ⇒ mix of hiring / non-hiring.
+    * Workers: 4 unemployed, 2 employed – the unemployed span every branch
+      of the application logic.
+    """
+    assert M > 0
+    rng = default_rng(seed)
+    emp = mock_employer(
+        n=n_employers,
+        queue_w=M,
+        wage_offer=np.array([1.0, 1.5, 1.2]),
+        n_vacancies=np.array([2, 1, 0]),
+        current_labor=np.array([1, 0, 2], dtype=np.int64),
+    )
+    wrk = mock_worker(
+        n=n_workers,
+        queue_w=M,
+        employed=np.array([False, False, False, True, False, True]),
+        employer_prev=np.full(n_workers, -1, dtype=np.intp),
+        contract_expired=np.zeros(n_workers, dtype=np.bool_),
+        fired=np.zeros(n_workers, dtype=np.bool_),
+    )
+
+    return emp, wrk, rng, M
 
 # --------------------------------------------------------------------------- #
 #  Minimum-wage inflation rule
 # --------------------------------------------------------------------------- #
 def test_adjust_minimum_wage_revision() -> None:
-    """
-    At a revision step (len = m+1), min_wage should increase by realised
-    inflation between t-m and t-1.
-    """
-    ec = Economy(
+    """Exact revision step (len = m+1) – floor must move by realised inflation."""
+    ec = mock_economy(
         min_wage=1.0,
-        avg_mkt_price=1.15,
-        avg_mkt_price_history=np.array([1.0, 1.05, 1.10, 1.12, 1.15]),  # t = 4
+        avg_mkt_price_history=np.array([1.00, 1.05, 1.10, 1.15, 1.20]),  # t = 4 (len = 5)
         min_wage_rev_period=4,
-        r_bar=0.07,
-        v=0.23,
     )
     adjust_minimum_wage(ec)
-    # Inflation between P0 and P3: (1.12 − 1.00) / 1.00 = 0.12
-    assert np.isclose(ec.min_wage, 1.0 * 1.12)
+    assert ec.min_wage == pytest.approx(1.20)  # +20 % inflation
 
 
 @pytest.mark.parametrize(
-    "prices,delta_sign",
+    ("prices", "direction"),
     [
-        # (price path, expected sign of Δŵ)
-        (np.array([1.0, 1.1, 1.2, 1.3, 1.4]), "up"),  # inflation
-        (np.array([1.0, 0.9, 0.8, 0.8, 0.8]), "down"),  # deflation
-        (np.array([1.0, 1.1, 1.2]), "none"),  # < m+1, no revision
+        (np.array([1.00, 1.05, 1.10, 1.15, 1.20]), "up"),  # inflation
+        (np.array([1.00, 0.95, 0.90, 0.85, 0.80]), "down"),  # deflation
+        (np.array([1.00, 1.10, 1.20, 1.30]), "flat"),  # = m  → no change
+        (np.array([1.00, 1.10, 1.20]), "flat"),  # < m  → no change
     ],
 )
-def test_adjust_minimum_wage_edges(prices: FloatA, delta_sign: str) -> None:
+def test_adjust_minimum_wage_edges(prices: NDArray[np.float64], direction: str) -> None:
     """Guard array bounds; min wage may go **up or down** depending on inflation."""
-    ec = Economy(
-        min_wage=1.0,
-        avg_mkt_price=float(prices[-1]),
+    ec = mock_economy(
+        min_wage=2.0,
         avg_mkt_price_history=prices,
         min_wage_rev_period=4,
-        r_bar=0.07,
-        v=0.23,
     )
     old = ec.min_wage
     adjust_minimum_wage(ec)
-    if delta_sign == "up":
+    if direction == "up":
         assert ec.min_wage > old
-    elif delta_sign == "down":
+    elif direction == "down":
         assert ec.min_wage < old
-    else:
+    else:  # no revision
         assert ec.min_wage == pytest.approx(old)
 
-
 # --------------------------------------------------------------------------- #
-#  Wage-offer decision rule
+#  firms_decide_wage_offer                                                    #
 # --------------------------------------------------------------------------- #
 def test_decide_wage_offer_basic() -> None:
-    """
-    Firms with vacancies receive a stochastic mark-up; non-hiring emp’
-    offers are simply clipped at the minimum wage.
-    """
-    rng = default_rng(seed=42)
-    fw = Employer(
+    """Hiring firms get a stochastic mark-up, non-hiring firms keep their offer."""
+    rng = default_rng(0)
+    emp = mock_employer(
+        n=4,
         n_vacancies=np.array([3, 0, 2, 0]),
         wage_offer=np.array([1.0, 1.2, 1.1, 1.3]),
     )
+    prev = emp.wage_offer.copy()
+    firms_decide_wage_offer(emp, w_min=1.05, h_xi=0.1, rng=rng)
 
-    wage_prev = np.copy(fw.wage_offer)
-    firms_decide_wage_offer(fw, w_min=1.05, h_xi=0.1, rng=rng)
-
-    # Non-hiring emp keep their previous wage (already ≥ w_min)
-    assert np.isclose(fw.wage_offer[1], 1.2)
-    assert np.isclose(fw.wage_offer[3], 1.3)
-
-    # Hiring emp obey floor and non-decreasing rule
-    assert (fw.wage_offer[fw.n_vacancies > 0] >= wage_prev[fw.n_vacancies > 0]).all()
-    assert (fw.wage_offer >= 1.05).all()
+    # bound checks
+    assert (emp.wage_offer >= 1.05).all()
+    # non-hiring unchanged (were already above floor)
+    np.testing.assert_allclose(emp.wage_offer[[1, 3]], prev[[1, 3]])
+    # hiring firms cannot decrease
+    assert (emp.wage_offer[emp.n_vacancies > 0] >= prev[emp.n_vacancies > 0]).all()
 
 
 def test_decide_wage_offer_floor_and_shock() -> None:
     """
-    If w_prev < w_min the floor binds; otherwise a positive shock draws
-    w_offer above w_prev.
+    If w_prev < w_min the floor binds;
+    otherwise a positive shock draws w_offer above w_prev.
     """
     rng = default_rng(2)
-    fw = Employer(
+    emp = mock_employer(
+        n=2,
         n_vacancies=np.array([0, 3]),
         wage_offer=np.array([0.8, 1.2]),
     )
-    firms_decide_wage_offer(fw, w_min=1.0, h_xi=0.1, rng=rng)
-    assert fw.wage_offer[0] == pytest.approx(1.0)  # floor
-    assert fw.wage_offer[1] >= 1.2  # shock
+    firms_decide_wage_offer(emp, w_min=1.0, h_xi=0.1, rng=rng)
+    assert emp.wage_offer[0] == pytest.approx(1.0)  # floor binds
+    assert emp.wage_offer[1] >= 1.2  # positive shock
+
+
+def test_decide_wage_offer_reuses_scratch() -> None:
+    emp = mock_employer(n=3, n_vacancies=[1, 0, 2])
+    firms_decide_wage_offer(emp, w_min=1.0, h_xi=0.1, rng=default_rng(0))
+    buf0 = emp.wage_shock
+    firms_decide_wage_offer(emp, w_min=1.1, h_xi=0.1, rng=default_rng(0))
+    buf1 = emp.wage_shock
+    assert buf0 is buf1                # same object
+    assert buf1 is not None and buf1.flags.writeable
 
 
 # --------------------------------------------------------------------------- #
-#  Shared helpers for application / hiring tests
+#  _topk_indices_desc helper                                                  #
 # --------------------------------------------------------------------------- #
-def _mini_state() -> Tuple[Employer, Worker, Employer, Generator, int]:
-    """Return a deterministic tiny labor-market state (6 workers × 3 emp)."""
-    rng = default_rng(seed=1)
-    n_workers, n_firms, M = 6, 3, 2
-
-    fw = Employer(
-        n_vacancies=np.array([2, 1, 0]),
-        wage_offer=np.array([1.0, 1.5, 1.2]),
-    )
-    ws = Worker(
-        employed=np.array([0, 0, 0, 1, 0, 1], dtype=np.int64),
-        employer_prev=np.full(n_workers, -1, dtype=np.int64),
-        contract_expired=np.zeros(n_workers, dtype=np.int64),
-        fired=np.zeros(n_workers, dtype=np.int64),
-        job_apps_head=np.full(n_workers, -1, dtype=np.int64),
-        job_apps_targets=np.full((n_workers, M), -1, dtype=np.int64),
-    )
-    fh = Employer(
-        wage_offer=fw.wage_offer,
-        n_vacancies=fw.n_vacancies,
-        current_labor=np.array([1, 0, 2], dtype=np.int64),
-        recv_job_apps_head=np.full(n_firms, -1, dtype=np.int64),
-        recv_job_apps=np.full((n_firms, M), -1, dtype=np.int64),
-    )
-    return fw, ws, fh, rng, M
-
-
-# --------------------------------------------------------------------------- #
-#  workers_prepare_applications
-# --------------------------------------------------------------------------- #
-def test__topk_indices_desc_partial_sort() -> None:
+def test_topk_indices_desc_partial_sort() -> None:
     """
     Requesting k < n should hit the argpartition ↦ slice branch.
-    We verify that the returned (unsorted) indices are exactly the k
-    positions of the largest elements.
+    We verify that the returned (unsorted) indices are exactly
+    the k positions of the largest elements.
     """
-    vals = np.array([[5.0, 1.0, 3.0, 4.0]], dtype=np.float64)
+    vals = np.array([[5.0, 1.0, 3.0, 4.0]])
     k = 2
     idx = _topk_indices_desc(vals, k=k)
-
     # Extract the values referenced by idx and check they are the two maxima.
     top_vals = vals[0, idx[0]]
     assert set(top_vals) == {5.0, 4.0}
     # Shape must be preserved (unsorted, but length == k)
     assert idx.shape == (1, k)
 
-
+# --------------------------------------------------------------------------- #
+#  workers_decide_firms_to_apply                                              #
+# --------------------------------------------------------------------------- #
 def test_prepare_applications_basic() -> None:
     """
     Unemployed workers must obtain a valid job_apps_head and targets within bounds.
     """
-    fw, ws, _, rng, M = _mini_state()
-    workers_decide_firms_to_apply(ws, fw, max_M=M, rng=rng)
+    emp, wrk, rng, M = _mini_state()
+    workers_decide_firms_to_apply(wrk, emp, max_M=M, rng=rng)
 
-    heads = ws.job_apps_head[ws.employed == 0]
+    heads = wrk.job_apps_head[~wrk.employed]
     assert (heads >= 0).all()
 
     rows = heads // M
-    targets = ws.job_apps_targets[rows]
-    assert (targets >= 0).all()
-    assert (targets < fw.wage_offer.size).all()
+    targets = wrk.job_apps_targets[rows]
+    assert ((0 <= targets) & (targets < emp.wage_offer.size)).all()
 
 
 def test_prepare_applications_no_unemployed() -> None:
     """If everyone is employed no application pointers should be set."""
-    fw = Employer(
-        n_vacancies=np.array([2, 1, 0]),
+    emp = mock_employer(
+        n=3,
         wage_offer=np.array([1.0, 1.5, 1.2]),
+        n_vacancies=np.array([0, 0, 0]),
     )
-    ws = Worker(
-        employed=np.ones(3, dtype=np.int64),
-        employer_prev=np.full(3, -1, dtype=np.int64),
-        contract_expired=np.zeros(3, dtype=np.int64),
-        fired=np.zeros(3, dtype=np.int64),
-        job_apps_head=np.full(3, -1, dtype=np.int64),
-        job_apps_targets=np.full((3, 2), -1, dtype=np.int64),
-    )
-    workers_decide_firms_to_apply(ws, fw, max_M=2, rng=default_rng(0))
-    assert (ws.job_apps_head == -1).all()
+    wrk = mock_worker(n=3, employed=np.ones(3, dtype=np.bool_))
+    workers_decide_firms_to_apply(wrk, emp, max_M=2, rng=default_rng(0))
+    assert (wrk.job_apps_head == -1).all()
 
 
 def test_prepare_applications_loyalty_to_employer() -> None:
     """
-    A worker whose contract just expired (not fired) should list her previous
-    employer first.
+    A worker whose contract just expired (not fired)
+    should list her previous employer first.
     """
-    rng = default_rng(3)
-    fw, ws, _, _, M = _mini_state()
+    emp, wrk, rng, M = _mini_state()
     # worker-idx 0 just finished contract at firm-idx 1
-    ws.employer_prev[0] = 1
-    ws.contract_expired[0] = 1
-    workers_decide_firms_to_apply(ws, fw, max_M=M, rng=rng)
-
-    first_choice = ws.job_apps_targets[0, 0]
-    assert first_choice == 1  # loyalty preserved
+    wrk.employer_prev[0] = 1
+    wrk.contract_expired[0] = True
+    workers_decide_firms_to_apply(wrk, emp, max_M=M, rng=rng)
+    assert wrk.job_apps_targets[0, 0] == 1  # loyalty kept
 
 
 @pytest.mark.xfail(reason="Cover loyalty‑swap branch later")
@@ -234,38 +228,29 @@ def test_prepare_applications_loyalty_swap() -> None:  # pragma: no cover
 
 def test_prepare_applications_one_trial() -> None:
     """Edge case M = 1 (single application per worker)."""
-    rng = default_rng(4)
-    fw, ws, _, _, _ = _mini_state()
+    emp, wrk, rng, _ = _mini_state()
     M = 1
-    ws.job_apps_targets = np.full((ws.employed.size, M), -1, dtype=np.int64)
-    workers_decide_firms_to_apply(ws, fw, max_M=M, rng=rng)
-
-    assert (ws.job_apps_head[ws.employed == 0] % M == 0).all()
-    assert (ws.job_apps_targets >= -1).all()  # buffer still valid
+    wrk.job_apps_targets = np.full((wrk.employed.size, M), -1, dtype=np.intp)
+    workers_decide_firms_to_apply(wrk, emp, max_M=M, rng=rng)
+    assert (wrk.job_apps_head[~wrk.employed] % M == 0).all()  # buffer still valid
 
 
 def test_prepare_applications_large_unemployment() -> None:
     """
-    More unemployed workers than emp × M → sampling with replacement must
-    still yield valid firm indices.
+    More unemployed workers than emp × M.
+    Sampling with replacement must still yield valid firm indices.
     """
     rng = default_rng(5)
-    n_workers, n_firms, M = 20, 3, 2
-    fw = Employer(
-        n_vacancies=np.array([2, 1, 0]),
+    n_wrk, n_emp, M = 20, 3, 2
+    fw = mock_employer(
+        n=n_emp,
+        queue_w=M,
         wage_offer=np.array([1.0, 1.5, 1.2]),
+        n_vacancies=np.array([2, 1, 0]),
     )
-    ws = Worker(
-        employed=np.zeros(n_workers, dtype=np.int64),
-        employer_prev=np.full(n_workers, -1, dtype=np.int64),
-        contract_expired=np.zeros(n_workers, dtype=np.int64),
-        fired=np.zeros(n_workers, dtype=np.int64),
-        job_apps_head=np.full(n_workers, -1, dtype=np.int64),
-        job_apps_targets=np.full((n_workers, M), -1, dtype=np.int64),
-    )
+    ws = mock_worker(n=n_wrk, queue_w=M)
     workers_decide_firms_to_apply(ws, fw, max_M=M, rng=rng)
-    assert (ws.job_apps_targets[ws.job_apps_targets >= 0] < n_firms).all()
-
+    assert (ws.job_apps_targets[ws.job_apps_targets >= 0] < n_emp).all()
 
 # --------------------------------------------------------------------------- #
 #  workers_send_one_round
@@ -275,37 +260,38 @@ def test_workers_send_one_round_queue_bounds() -> None:
     When a firm’s queue is almost full, the next application must be dropped
     rather than overflow the buffer.
     """
-    fw, ws, fh, _, M = _mini_state()
+    emp, wrk, _, M = _mini_state()
     # Preload firm-0 queue to capacity-1
-    fh.recv_job_apps_head[0] = M - 2
-    fh.recv_job_apps[0, : M - 1] = [0, 2][: M - 1]
+    emp.recv_job_apps_head[0] = M - 2
+    emp.recv_job_apps[0, : M - 1] = [0, 2][: M - 1]
 
-    workers_decide_firms_to_apply(ws, fw, max_M=M, rng=default_rng(6))
-    workers_send_one_round(ws, fh)
+    workers_decide_firms_to_apply(wrk, emp, max_M=M, rng=default_rng(6))
+    workers_send_one_round(wrk, emp)
 
-    assert fh.recv_job_apps_head[0] <= M - 1
-    assert fh.recv_job_apps_head[0] >= -1  # still valid pointer
+    # still valid pointer
+    np.testing.assert_array_less(emp.recv_job_apps_head, M)
+    assert (emp.recv_job_apps_head >= -1).all()
 
 
 def test_worker_with_empty_list_is_skipped() -> None:
-    fw, ws, fh, rng, M = _mini_state()
+    emp, wrk, _, _ = _mini_state()
     # worker‑0: unemployed but job_apps_head = -1  => should be ignored
-    ws.employed[0] = 0
-    ws.job_apps_head[0] = -1
-    workers_send_one_round(ws, fh)
+    wrk.employed[0] = False
+    wrk.job_apps_head[0] = -1
+    workers_send_one_round(wrk, emp)
     # queue heads unchanged
-    assert (fh.recv_job_apps_head == -1).all()
+    assert (emp.recv_job_apps_head == -1).all()
 
 
 def test_firm_queue_full_drops_application() -> None:
-    fw, ws, fh, rng, M = _mini_state()
-    fh.recv_job_apps_head[0] = M - 1  # already full
-    fh.recv_job_apps[0] = 99  # dummy
-    workers_decide_firms_to_apply(ws, fw, max_M=M, rng=rng)
-    workers_send_one_round(ws, fh)
+    emp, wrk, rng, M = _mini_state()
+    emp.recv_job_apps_head[0] = M - 1  # already full
+    emp.recv_job_apps[0] = 99  # dummy
+    workers_decide_firms_to_apply(wrk, emp, max_M=M, rng=rng)
+    workers_send_one_round(wrk, emp)
     # still full, nothing overwritten
-    assert fh.recv_job_apps_head[0] == M - 1
-    assert (fh.recv_job_apps[0] == 99).all()
+    assert emp.recv_job_apps_head[0] == M - 1
+    assert (emp.recv_job_apps[0] == 99).all()
 
 
 def test_workers_send_one_round_exhausted_target() -> None:
@@ -315,87 +301,80 @@ def test_workers_send_one_round_exhausted_target() -> None:
     """
     # --- minimal 1‑worker 1‑firm state -----------------------------------
     M = 1
-    fw = Employer(
-        n_vacancies=np.array([1]),
+    wrk = mock_worker(
+        n=1,
+        queue_w=M,
+        employed=np.array([False]),
+        job_apps_head=np.array([0]),  # points to first cell
+        job_apps_targets=np.array([[-1]], dtype=np.intp),  # *already* exhausted
+    )
+    emp = mock_employer(
+        n=1,
+        queue_w=M,
         wage_offer=np.array([1.0]),
+        n_vacancies=np.array([1]),
+        current_labor=np.zeros(1, dtype=np.int64),
     )
-    ws = Worker(
-        employed=np.array([0], dtype=np.int64),
-        employer_prev=np.array([-1], dtype=np.int64),
-        contract_expired=np.array([0], dtype=np.int64),
-        fired=np.array([0], dtype=np.int64),
-        job_apps_head=np.array([0], dtype=np.int64),  # points to first cell
-        job_apps_targets=np.array([[-1]], dtype=np.int64),  # *already* exhausted
-    )
-    fh = Employer(
-        wage_offer=fw.wage_offer,
-        n_vacancies=fw.n_vacancies,
-        current_labor=np.array([0], dtype=np.int64),
-        recv_job_apps_head=np.array([-1], dtype=np.int64),
-        recv_job_apps=np.full((1, M), -1, dtype=np.int64),
-    )
-
-    workers_send_one_round(ws, fh)
+    workers_send_one_round(wrk, emp)
 
     # job_apps_head must be cleared; nothing should be queued
-    assert ws.job_apps_head[0] == -1
-    assert fh.recv_job_apps_head[0] == -1
-
+    assert wrk.job_apps_head[0] == -1
+    assert emp.recv_job_apps_head[0] == -1
 
 # --------------------------------------------------------------------------- #
 #  firms_hire_workers
 # --------------------------------------------------------------------------- #
 def test_firms_hire_no_vacancies() -> None:
     """
-    Applications sent to a firm with zero vacancies should be cleared without
-    hiring anyone and without crashing.
+    Applications sent to a firm with zero vacancies should be cleared
+    without hiring anyone and without crashing.
     """
-    _, ws, fh, _, _ = _mini_state()
-    start_labor = fh.current_labor.copy()
+    emp, wrk, _, _ = _mini_state()
+    start = emp.current_labor.copy()
 
-    fh.n_vacancies[:] = 0  # nobody hiring
-    fh.recv_job_apps_head[1] = 0
-    fh.recv_job_apps[1, 0] = 2
+    emp.n_vacancies.fill(0)  # nobody hiring
+    emp.recv_job_apps_head[1] = 0
+    emp.recv_job_apps[1, 0] = 2
 
-    firms_hire_workers(ws, fh, contract_theta=8)
+    firms_hire_workers(wrk, emp, theta=8)
 
     # the application must *not* result in a hire
-    np.testing.assert_array_equal(fh.current_labor, start_labor)
-    assert ws.employed[2] == 0
+    np.testing.assert_array_equal(emp.current_labor, start)
+    assert not wrk.employed[2]
 
     # pointer stays where it was (0) — queue ignored, not flushed
-    assert fh.recv_job_apps_head[1] == 0
+    assert emp.recv_job_apps_head[1] == 0
 
 
 def test_firms_hire_exact_fit() -> None:
     """
-    If the number of applications equals vacancies, all are hired and the queue
-    is cleared.
+    If the number of applications equals vacancies,
+    all are hired and the queue is cleared.
     """
-    _, ws, fh, _, _ = _mini_state()
-    start_labor = fh.current_labor.copy()
+    emp, wrk, _, _ = _mini_state()
+    start = emp.current_labor.copy()
 
-    fh.recv_job_apps_head[0] = 1
-    fh.recv_job_apps[0, :2] = [0, 2]
+    emp.recv_job_apps_head[0] = 1
+    emp.recv_job_apps[0, :2] = [0, 2]
 
-    firms_hire_workers(ws, fh, contract_theta=8)
+    firms_hire_workers(wrk, emp, theta=8)
 
-    assert fh.n_vacancies[0] == 0
-    assert fh.current_labor[0] == start_labor[0] + 2
-    assert (fh.recv_job_apps[0] == -1).all()
-    assert ws.employed[[0, 2]].sum() == 2  # both hired
+    assert emp.n_vacancies[0] == 0
+    assert emp.current_labor[0] == start[0] + 2
+    assert (emp.recv_job_apps[0] == -1).all()
+    assert wrk.employed[[0, 2]].sum() == 2  # both hired
 
 
 def test_hire_workers_skips_invalid_slots() -> None:
-    _, ws, fh, _, _ = _mini_state()
-    fh.n_vacancies[:] = 1
-    fh.recv_job_apps_head[0] = 1
-    fh.recv_job_apps[0] = [-1, -1]  # all sentinels → size==0
-    start = fh.current_labor.copy()
-    firms_hire_workers(ws, fh, contract_theta=8)
+    emp, wrk, _, _ = _mini_state()
+    emp.n_vacancies.fill(1)
+    emp.recv_job_apps_head[0] = 1
+    emp.recv_job_apps[0].fill(-1)  # all sentinels → size==0
+    start = emp.current_labor.copy()
+    firms_hire_workers(wrk, emp, theta=8)
     # nothing hired, vacancies unchanged
-    np.testing.assert_array_equal(fh.current_labor, start)
-    assert fh.n_vacancies[0] == 1
+    np.testing.assert_array_equal(emp.current_labor, start)
+    assert emp.n_vacancies[0] == 1
 
 
 # --------------------------------------------------------------------------- #
@@ -403,20 +382,20 @@ def test_hire_workers_skips_invalid_slots() -> None:
 # --------------------------------------------------------------------------- #
 def test_full_round() -> None:
     """
-    One complete labour-market event with M rounds should leave:
+    One complete labor-market event with M rounds should leave:
     * non-negative vacancies,
     * at least one worker hired (given vacancies > 0),
     * no dangling head pointers for hired workers.
     """
-    fw, ws, fh, rng, M = _mini_state()
-    start_labor = fh.current_labor.copy()
+    emp, wrk, rng, M = _mini_state()
+    start_total_labor = emp.current_labor.sum()
 
-    workers_decide_firms_to_apply(ws, fw, max_M=M, rng=rng)
+    workers_decide_firms_to_apply(wrk, emp, max_M=M, rng=rng)
     for _ in range(M):
-        workers_send_one_round(ws, fh)
-        firms_hire_workers(ws, fh, contract_theta=8)
+        workers_send_one_round(wrk, emp)
+        firms_hire_workers(wrk, emp, theta=8)
 
-    assert (fh.n_vacancies >= 0).all()
-    assert ws.employed.sum() >= 1
-    assert fh.current_labor.sum() >= start_labor.sum()
-    assert (ws.job_apps_head[ws.employed == 1] == -1).all()
+    assert (emp.n_vacancies >= 0).all()
+    assert wrk.employed.any()
+    assert emp.current_labor.sum() >= start_total_labor
+    assert (wrk.job_apps_head[wrk.employed] == -1).all()
