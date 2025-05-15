@@ -23,6 +23,7 @@ from bamengine.components import (
     Economy,
     Employer,
     Lender,
+    LoanBook,
     Producer,
     Worker,
 )
@@ -105,6 +106,19 @@ def _lender_defaults(n: int, *, queue_h: int) -> dict[str, Any]:
         recv_apps_head=np.full(n, -1, dtype=np.int64),
         recv_apps=np.full((n, queue_h), -1, dtype=np.int64),
         opex_shock=None,  # scratch
+    )
+
+
+def _loanbook_defaults(n: int, *, queue_h: int) -> dict[str, Any]:
+    return dict(
+        borrower=np.empty(n, dtype=np.int64),
+        lender=np.empty(n, dtype=np.int64),
+        principal=np.empty(n, dtype=np.float64),
+        rate=np.empty(n, dtype=np.float64),
+        interest=np.empty(n, dtype=np.float64),
+        debt=np.empty(n, dtype=np.float64),
+        capacity=n,
+        size=0,
     )
 
 
@@ -245,3 +259,25 @@ def mock_lender(
     """
     cfg = _lender_defaults(n, queue_h=queue_h) | overrides
     return Lender(**cfg)
+
+
+def mock_loanbook(
+    n: int = 128,
+    *,
+    queue_h: int = 1,
+    **overrides: Any,
+) -> LoanBook:
+    """
+    Return a fully-typed `LoanBook`.
+
+    Parameters
+    ----------
+    n
+        Number of pre-allocated rows.
+    queue_h
+        Not defined for LoanBook class (kept for symmetry).
+    **overrides
+        Field-value pairs that overwrite defaults.
+    """
+    cfg = _loanbook_defaults(n, queue_h=queue_h) | overrides
+    return LoanBook(**cfg)
