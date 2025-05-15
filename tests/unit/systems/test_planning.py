@@ -218,7 +218,10 @@ def test_labor_and_vacancy_properties(data) -> None:  # type: ignore[no-untyped-
         a_eff = np.full_like(a_raw, CAP_LAB_PROD, dtype=np.float64)
     else:
         a_eff = a_raw.astype(np.float64)
-    desired_labor_expected = np.ceil(yd_raw / a_eff).astype(np.int64)
+    desired_labor_expected = np.ceil(yd_raw / a_eff)
+    int64_max = np.iinfo(np.int64).max  # <-- new
+    desired_labor_expected = np.clip(desired_labor_expected, 0, int64_max)
+    desired_labor_expected = desired_labor_expected.astype(np.int64)
     vacancies_expected = np.maximum(desired_labor_expected - L_raw, 0)
 
     np.testing.assert_array_equal(emp.desired_labor, desired_labor_expected)

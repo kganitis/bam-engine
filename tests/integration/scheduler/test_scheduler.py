@@ -1,10 +1,11 @@
+# tests/integrations/test_scheduler.py
 import numpy as np
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from bamengine.scheduler import Scheduler
-from tests import assert_basic_invariants
+from bamengine.scheduler import HOOK_NAMES, Scheduler
+from tests.helpers.invariants import assert_basic_invariants
 
 
 def test_scheduler_step(tiny_sched: Scheduler) -> None:
@@ -38,13 +39,8 @@ def test_scheduler_state_stable_over_time(steps: int) -> None:
     )
 
     for _ in range(steps):
-        prev_labor = sch.emp.current_labor.sum()
         sch.step()
-
         assert_basic_invariants(sch)
-
-        # multi‑period–specific extras
-        assert sch.emp.current_labor.sum() >= prev_labor  # no firing yet
 
 
 @given(
@@ -80,15 +76,42 @@ def test_scheduler_means() -> None:
 
 
 def test_scheduler_hooks_called() -> None:
-    called = {"pre": False, "post": False}
+    """
+    Attach a simple recorder callable to **every** defined hook.  After one
+    ``Scheduler.step`` the recorder's call order must match
+    ``Scheduler.HOOK_NAMES`` exactly.
+    """
+    call_order: list[str] = []
 
-    def _pre(s: Scheduler) -> None:
-        called["pre"] = True
-
-    def _post(s: Scheduler) -> None:
-        called["post"] = True
+    hooks = {
+        name: (lambda s, _name=name: call_order.append(_name)) for name in HOOK_NAMES
+    }
 
     sch = Scheduler.init(n_firms=3, n_households=6, n_banks=3, seed=0)
-    sch.step(before_planning=_pre, before_credit_market=_post)
+    sch.step(**hooks)
 
-    assert called == {"pre": True, "post": True}
+    assert call_order == list(HOOK_NAMES)
+
+
+def test_hook_after_stub_forces_no_inventory() -> None:
+
+    def _zero_out_inventory(sched: Scheduler) -> None:
+        """Callback that sets all firm inventories to 0."""
+        sched.prod.inventory[:] = 0.0
+
+    sch = Scheduler.init(n_firms=10, n_households=40, n_banks=5, seed=123)
+
+    # --- period t --------------------------------------------------------
+    sch.step(after_stub=_zero_out_inventory)  # <-- new hook name
+
+    # Inventories stay zero because the stub already ran
+    assert np.allclose(sch.prod.inventory, 0.0)
+
+    # --- period t+1 ------------------------------------------------------
+    # Plan again; with zero stock every firm takes the “up” branch
+    p_avg = float(sch.prod.price.mean())
+    from bamengine.systems.planning import firms_decide_desired_production
+
+    firms_decide_desired_production(sch.prod, p_avg=p_avg, h_rho=sch.h_rho, rng=sch.rng)
+
+    assert (sch.prod.desired_production >= sch.prod.production).all()

@@ -427,10 +427,10 @@ def test_hire_invariants(
 
     # cast the *lists* returned by Hypothesis to ndarrays right away
     vacancies: NDArray[np.int64] = np.asarray(vacancies_lst, dtype=np.int64)
-    qlens: NDArray[np.int64]     = np.asarray(qlens_lst,     dtype=np.int64)
+    qlens: NDArray[np.int64] = np.asarray(qlens_lst, dtype=np.int64)
 
     # clip queue-lengths so they fit inside the buffer width M
-    qlens = np.minimum(qlens, M)          # still NDArray[int]
+    qlens = np.minimum(qlens, M)  # still NDArray[int]
 
     # total #slots we will fill with **unique** worker ids
     total_slots = int(qlens.sum())

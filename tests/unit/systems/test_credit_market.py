@@ -27,11 +27,11 @@ from bamengine.systems.credit_market import (  # systems under test
     firms_prepare_loan_applications,
     firms_send_one_loan_app,
 )
-from tests import create_empty_ledger
 from tests.helpers.factories import (
     mock_borrower,
     mock_employer,
     mock_lender,
+    mock_loanbook,
     mock_worker,
 )
 
@@ -68,7 +68,7 @@ def _mini_state(
         credit_supply=np.full(n_lenders, 4_000.0),
         interest_rate=np.linspace(0.08, 0.11, n_lenders, dtype=np.float64),
     )
-    ledger = create_empty_ledger()
+    ledger = mock_loanbook()
 
     return bor, lend, ledger, rng, H
 
@@ -403,7 +403,7 @@ def test_banks_provide_loans_properties(
     firms_decide_credit_demand(bor)
     assume((bor.credit_demand > 0).any())
 
-    ledger = create_empty_ledger()
+    ledger = mock_loanbook()
     _run_basic_loan_cycle(bor, lend, ledger, rng, H)
 
     # invariants – no negative balances / supplies, and ledger rows consistent

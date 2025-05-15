@@ -62,16 +62,30 @@ def firms_decide_desired_production(  # noqa: C901  (still quite short)
 
 def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
     """
-    Desired labor demand (vectorised):
+    Desired labour demand (vectorised):
 
         Ld_i = ceil(Yd_i / a_i)
+
+    Guard-rails
+    -----------
+    • Any non-positive **or** non-finite productivity value triggers a
+      replacement of *the whole vector* by the constant ``CAP_LAB_PROD``.
+      This keeps the original “all-or-nothing” semantics while preventing
+      NaN / inf propagation and the associated cast warnings.
     """
-    if (prod.labor_productivity <= 0).any():
-        log.warning("labour productivity ≤ 0 detected – clamped to CAP_LAB_PROD")
+    invalid = (~np.isfinite(prod.labor_productivity)) | (prod.labor_productivity <= 0.0)
+    if invalid.any():
+        log.warning("labour productivity non-positive / non-finite – clamped")
         prod.labor_productivity[:] = CAP_LAB_PROD
+
     ratio = prod.desired_production / prod.labor_productivity
-    np.ceil(ratio, out=ratio)
-    emp.desired_labor[:] = ratio.astype(np.int64)
+    np.ceil(ratio, out=ratio)  # in-place ceiling
+
+    # clip to int64 range to avoid overflow warnings
+    int64_max = np.iinfo(np.int64).max
+    np.clip(ratio, 0, int64_max, out=ratio)
+
+    emp.desired_labor[:] = ratio.astype(np.int64)  # safe int cast
 
 
 def firms_decide_vacancies(emp: Employer) -> None:

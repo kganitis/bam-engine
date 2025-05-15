@@ -45,16 +45,35 @@ from bamengine.systems.planning import (
 )
 from bamengine.typing import Bool1D, Float1D, Int1D
 
-__all__ = [
-    "Scheduler",
-]
+__all__ = ["Scheduler", "HOOK_NAMES"]
 
 log = logging.getLogger(__name__)
 
-# A hook function that receives the Scheduler and returns nothing
-SchedulerHook: TypeAlias = Callable[["Scheduler"], None] | None
+
+# ------------------------------------------------------------------ #
+#  Hook infrastructure                                               #
+# ------------------------------------------------------------------ #
+
+# A hook is any callable that receives the ``Scheduler`` instance.
+SchedulerHook: TypeAlias = Callable[["Scheduler"], None]
+
+# Central list that defines **all** available hook points and their order.
+# Add / remove / reorder entries here and both the `step` method and the
+# tests pick the change up automatically.
+HOOK_NAMES: tuple[str, ...] = (
+    "before_planning",
+    "after_planning",
+    "before_labor_market",
+    "after_labor_market",
+    "before_credit_market",
+    "after_credit_market",
+    "after_stub",
+)
 
 
+# --------------------------------------------------------------------- #
+#                               Scheduler                               #
+# --------------------------------------------------------------------- #
 @dataclass(slots=True)
 class Scheduler:
     """
@@ -219,48 +238,36 @@ class Scheduler:
             theta=theta,
         )
 
-    # --------------------------------------------------------------------- #
-    #                               one step                                #
-    # --------------------------------------------------------------------- #
-    def step(
-        self,
-        *,
-        before_planning: SchedulerHook = None,
-        before_labor_market: SchedulerHook = None,
-        before_credit_market: SchedulerHook = None,
-        after_stub: SchedulerHook = None,
-    ) -> None:
+    # ------------------------------------------------------------------ #
+    #                               one step                             #
+    # ------------------------------------------------------------------ #
+    def step(self, **hooks: SchedulerHook) -> None:
         """Advance the economy by one period.
 
-        Parameters
-        ----------
-        before_planning : callable(self), optional
-            Called **before** planning systems run.
-        before_labor_market: callable(self) optional
-            Called **before** labor market systems run.
-        before_credit_market: callable(self), optional
-            Called **after** labor market systems finish.
-        after_stub: callable(self), optional
-            Called **after** stub bookkeeping.
+        Any keyword whose name appears in ``HOOK_NAMES`` may be supplied
+        with a callable that is executed at the documented point.
         """
 
-        # Optional hook
-        if before_planning is not None:
-            before_planning(self)
+        def _call(name: str) -> None:
+            fn = hooks.get(name)
+            if fn is not None:
+                fn(self)
 
-        # ===== Event 1 – firms plan =======================================
+        # ===== Event 1 – planning ======================================
+        _call("before_planning")
+
         firms_decide_desired_production(
             self.prod, p_avg=self.ec.avg_mkt_price, h_rho=self.h_rho, rng=self.rng
         )
         firms_decide_desired_labor(self.prod, self.emp)
         firms_decide_vacancies(self.emp)
-        # ==================================================================
 
-        # Optional hook
-        if before_labor_market is not None:
-            before_labor_market(self)
+        _call("after_planning")
+        # ===============================================================
 
-        # ===== Event 2 – labor market =====================================
+        # ===== Event 2 – labor-market ==================================
+        _call("before_labor_market")
+
         adjust_minimum_wage(self.ec)
         firms_decide_wage_offer(
             self.emp, w_min=self.ec.min_wage, h_xi=self.h_xi, rng=self.rng
@@ -268,43 +275,40 @@ class Scheduler:
         workers_decide_firms_to_apply(
             self.wrk, self.emp, max_M=self.max_M, rng=self.rng
         )
-        for _ in range(self.max_M):  # round‐robin M times
+        for _ in range(self.max_M):
             workers_send_one_round(self.wrk, self.emp)
             firms_hire_workers(self.wrk, self.emp, theta=self.theta)
         firms_calc_wage_bill(self.emp)
-        # ==================================================================
 
-        # Optional hook
-        if before_credit_market is not None:
-            before_credit_market(self)
+        _call("after_labor_market")
+        # ===============================================================
 
-        # ===== Event 3 – credit market ====================================
+        # ===== Event 3 – credit-market ================================
+        _call("before_credit_market")
+
         banks_decide_credit_supply(self.lend, v=self.ec.v)
         banks_decide_interest_rate(
-            self.lend,
-            r_bar=self.ec.r_bar,
-            h_phi=self.h_phi,
-            rng=self.rng,
+            self.lend, r_bar=self.ec.r_bar, h_phi=self.h_phi, rng=self.rng
         )
         firms_decide_credit_demand(self.bor)
         firms_calc_credit_metrics(self.bor)
         firms_prepare_loan_applications(
             self.bor, self.lend, max_H=self.max_H, rng=self.rng
         )
-        for _ in range(self.max_H):  # round‐robin H times
+        for _ in range(self.max_H):
             firms_send_one_loan_app(self.bor, self.lend)
             banks_provide_loans(self.bor, self.lb, self.lend, r_bar=self.ec.r_bar)
         firms_fire_workers(self.emp, self.wrk, rng=self.rng)
-        # ==================================================================
 
-        # Stub state advance
+        _call("after_credit_market")
+        # ===============================================================
+
+        # Stub state advance – internal deterministic bookkeeping
         import _testing
 
         _testing.advance_stub_state(self)
 
-        # Final hook – deterministic tweaks that must survive into t+1
-        if after_stub is not None:
-            after_stub(self)
+        _call("after_stub")
 
     # --------------------------------------------------------------------- #
     #                               snapshot                                #
