@@ -263,7 +263,7 @@ def firms_fire_workers(
     If `wage_bill[i]` exceeds `total_funds[i]` the firm lays off just enough
     workers to close the gap:
 
-        n_fire = ceil( gap / wage[i] )   but never more than current labour.
+        n_fire = ceil( gap / wage[i] )   but never more than current labor.
 
     Workers are picked **uniformly at random** from the current workforce.
     """
@@ -275,12 +275,11 @@ def firms_fire_workers(
             continue
 
         # how many heads must roll?
-        n_fire = int(
-            min(
-                emp.current_labor[i],
-                np.ceil(gap / emp.wage_offer[i]),
-            )
-        )
+        needed = int(
+            np.ceil(gap / float(emp.wage_offer[i]))
+        )  # heads needed to close gap
+        capacity = int(emp.current_labor[i])  # heads currently employed
+        n_fire = min(capacity, needed)
         if n_fire == 0:  # float quirks
             continue
 

@@ -1,6 +1,6 @@
 # tests/integration/events/test_event_labor_market.py
 """
-Event-2 integration tests (labour market)
+Event-2 integration tests (labor market)
 
 The first test reproduces the original regression checks.
 The second test adds deeper cross-component consistency assertions that
@@ -86,7 +86,7 @@ def test_event_labor_market(tiny_sched: Scheduler) -> None:
     vac_reduction = original_vacancies.sum() - sch.emp.n_vacancies.sum()
     assert hires == vac_reduction
 
-    assert (sch.wrk.job_apps_head[sch.wrk.employed == 1] == -1).all()
+    assert np.all((sch.wrk.job_apps_head[sch.wrk.employed == 1] == -1))
 
 
 # --------------------------------------------------------------------------- #
@@ -103,7 +103,7 @@ def test_labor_market_post_state_consistency(tiny_sched: Scheduler) -> None:
         workers_send_one_round(sch.wrk, sch.emp)
         firms_hire_workers(sch.wrk, sch.emp, theta=sch.theta)
 
-    # ---- 1. worker ↔ firm labour counts are consistent ------------------
+    # ---- 1. worker ↔ firm labor counts are consistent ------------------
     counts = np.bincount(
         sch.wrk.employer[sch.wrk.employed == 1],
         minlength=sch.emp.current_labor.size,
@@ -118,12 +118,12 @@ def test_labor_market_post_state_consistency(tiny_sched: Scheduler) -> None:
     assert (worker_wages >= sch.ec.min_wage).all()
 
     # ---- 3. contract duration set correctly ----------------------------
-    assert (sch.wrk.periods_left[employed_idx] == sch.theta).all()
+    assert np.all((sch.wrk.periods_left[employed_idx] == sch.theta))
 
     # ---- 4. inbound queues: any firm that still has vacancies must have
     # an empty queue; firms with zero vacancies may retain stale pointers
     mask_vac = sch.emp.n_vacancies > 0
-    assert (sch.emp.recv_job_apps_head[mask_vac] == -1).all()
+    assert np.all((sch.emp.recv_job_apps_head[mask_vac] == -1))
 
     # ---- 5. scheduler aggregate helper in sync -------------------------
     assert sch.mean_L == pytest.approx(sch.emp.current_labor.mean())

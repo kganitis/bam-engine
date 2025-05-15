@@ -1,5 +1,5 @@
 """
-Algorithmic subsystems (planner, labour market, …).
+Algorithmic subsystems (planner, labor market, …).
 
 Only *function* names that are genuinely useful for experimentation are
 forwarded.  Everything else should be imported from the concrete module.
@@ -20,7 +20,7 @@ __all__: list[str] = [
     "firms_decide_desired_production",
     "firms_decide_desired_labor",
     "firms_decide_vacancies",
-    # labour market
+    # labor market
     "adjust_minimum_wage",
     "firms_decide_wage_offer",
 ]

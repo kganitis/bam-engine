@@ -128,7 +128,7 @@ def test_reuses_internal_buffers() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# 3. desired labour – deterministic test & zero-productivity guard           #
+# 3. desired labor – deterministic test & zero-productivity guard           #
 # --------------------------------------------------------------------------- #
 def test_decide_desired_labor_vector() -> None:
     """Labor demand must equal ceil(Yd / a) element-wise."""
