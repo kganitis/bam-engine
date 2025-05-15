@@ -20,6 +20,7 @@ class Economy:
 
 @dataclass(slots=True)
 class LoanBook:
+    # noinspection PyUnresolvedReferences
     """
     Edge-list ledger for storing and managing *active* loans.
 
@@ -65,8 +66,8 @@ class LoanBook:
     number of active loans. Operations such as aggregation and updates are
     efficiently vectorized. For example, to sum all debt per borrower:
 
-    >>> borrower_debt = np.zeros(N)
-    >>> np.add.at(borrower_debt, lb.borrower, lb.debt)
+        >>> borrower_debt = np.zeros(N)
+        >>> np.add.at(borrower_debt, lb.borrower, lb.debt)
 
     Advantages of the edge-list design:
     - **Sparse Representation:** Memory usage scales with the number of active loans,

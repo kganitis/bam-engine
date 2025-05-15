@@ -16,6 +16,8 @@ from numpy.random import Generator, default_rng
 from numpy.typing import NDArray
 
 from bamengine.components import Borrower, Lender, LoanBook
+
+# noinspection PyProtectedMember
 from bamengine.systems.credit_market import (  # systems under test
     CAP_FRAG,
     _topk_lowest_rate,
@@ -192,14 +194,14 @@ def test_prepare_applications_single_trial() -> None:
     bor, lend, _, rng, _ = _mini_state(H=1)
     firms_decide_credit_demand(bor)
     firms_prepare_loan_applications(bor, lend, max_H=1, rng=rng)
-    assert (bor.loan_apps_head[bor.credit_demand > 0] % 1 == 0).all()
+    assert np.all((bor.loan_apps_head[bor.credit_demand > 0] % 1 == 0))
 
 
 def test_prepare_applications_no_demand() -> None:
     bor = mock_borrower(n=2, queue_h=2, credit_demand=np.zeros(2))
     lend = mock_lender(n=2, queue_h=2)
     firms_prepare_loan_applications(bor, lend, max_H=2, rng=default_rng(0))
-    assert (bor.loan_apps_head == -1).all()
+    assert np.all((bor.loan_apps_head == -1))
 
 
 # --------------------------------------------------------------------------- #
@@ -234,7 +236,7 @@ def test_send_one_loan_app_queue_bounds() -> None:
     firms_send_one_loan_app(bor, lend)
 
     assert lend.recv_apps_head[0] == H - 1
-    assert (lend.recv_apps[0] == 99).all()  # nothing overwritten
+    assert np.all((lend.recv_apps[0] == 99))  # nothing overwritten
 
 
 def test_borrower_with_empty_list_is_skipped() -> None:

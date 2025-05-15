@@ -115,7 +115,7 @@ class Scheduler:
         theta: int = 8,
         seed: int | np.random.Generator = 0,
     ) -> "Scheduler":
-        rng = seed if isinstance(seed, np.random.Generator) else default_rng(seed)
+        rng = seed if isinstance(seed, Generator) else default_rng(seed)
 
         # finance vectors
         net_worth = np.full(n_firms, 10.0)

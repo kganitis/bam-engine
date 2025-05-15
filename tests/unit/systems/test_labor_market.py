@@ -17,6 +17,8 @@ from numpy.random import Generator, default_rng
 from numpy.typing import NDArray
 
 from bamengine.components import Employer, Worker
+
+# noinspection PyProtectedMember
 from bamengine.systems.labor_market import (  # system under test
     _topk_indices_desc,
     adjust_minimum_wage,
@@ -47,7 +49,7 @@ def _mini_state(
     plus an RNG and queue width *M*.
 
     * Firms: wage-offers [1.0, 1.5, 1.2], vacancies [2, 1, 0],
-             current labour [1, 0, 2]  ⇒ mix of hiring / non-hiring.
+             current labor [1, 0, 2]  ⇒ mix of hiring / non-hiring.
     * Workers: 4 unemployed, 2 employed – the unemployed span every branch
       of the application logic.
     """
@@ -208,7 +210,7 @@ def test_prepare_applications_no_unemployed() -> None:
     )
     wrk = mock_worker(n=3, employed=np.ones(3, dtype=np.bool_))
     workers_decide_firms_to_apply(wrk, emp, max_M=2, rng=default_rng(0))
-    assert (wrk.job_apps_head == -1).all()
+    assert np.all((wrk.job_apps_head == -1))
 
 
 def test_prepare_applications_loyalty_to_employer() -> None:
@@ -235,7 +237,7 @@ def test_prepare_applications_one_trial() -> None:
     M = 1
     wrk.job_apps_targets = np.full((wrk.employed.size, M), -1, dtype=np.intp)
     workers_decide_firms_to_apply(wrk, emp, max_M=M, rng=rng)
-    assert (wrk.job_apps_head[~wrk.employed] % M == 0).all()  # buffer still valid
+    assert np.all((wrk.job_apps_head[~wrk.employed] % M == 0))  # buffer still valid
 
 
 def test_prepare_applications_large_unemployment() -> None:
@@ -260,7 +262,36 @@ def test_prepare_applications_large_unemployment() -> None:
 #  workers_send_one_round
 # --------------------------------------------------------------------------- #
 
-# TODO No basic case
+
+def test_workers_send_one_round() -> None:
+    """
+    One unemployed worker should place a single application in the only
+    firm's inbound queue and advance her head pointer by exactly +1.
+    """
+    M = 2
+    # --- build minimal components ----------------------------------------
+    emp = mock_employer(
+        n=1,
+        queue_w=M,
+        wage_offer=np.array([1.0]),
+        n_vacancies=np.array([2]),
+    )
+    wrk = mock_worker(n=1, queue_w=M)  # 1 unemployed worker
+
+    # prepare targets & head pointer
+    workers_decide_firms_to_apply(wrk, emp, max_M=M, rng=default_rng(0))
+    head_before = int(wrk.job_apps_head[0])
+
+    workers_send_one_round(wrk, emp)
+
+    # ---- firm-side -------------------------------------------------------
+    assert emp.recv_job_apps_head[0] == 0  # one message
+    assert emp.recv_job_apps[0, 0] == 0  # worker-id stored
+    np.testing.assert_array_less(emp.recv_job_apps_head, M)
+
+    # ---- worker-side -----------------------------------------------------
+    assert wrk.job_apps_head[0] == head_before + 1
+    assert wrk.job_apps_targets[0, 0] == -1  # slot cleared
 
 
 def test_workers_send_one_round_queue_bounds() -> None:
@@ -288,7 +319,7 @@ def test_worker_with_empty_list_is_skipped() -> None:
     wrk.job_apps_head[0] = -1
     workers_send_one_round(wrk, emp)
     # queue heads unchanged
-    assert (emp.recv_job_apps_head == -1).all()
+    assert np.all((emp.recv_job_apps_head == -1))
 
 
 def test_firm_queue_full_drops_application() -> None:
@@ -299,7 +330,7 @@ def test_firm_queue_full_drops_application() -> None:
     workers_send_one_round(wrk, emp)
     # still full, nothing overwritten
     assert emp.recv_job_apps_head[0] == M - 1
-    assert (emp.recv_job_apps[0] == 99).all()
+    assert np.all((emp.recv_job_apps[0] == 99))
 
 
 def test_workers_send_one_round_exhausted_target() -> None:
@@ -334,7 +365,41 @@ def test_workers_send_one_round_exhausted_target() -> None:
 #  firms_hire_workers
 # --------------------------------------------------------------------------- #
 
-# TODO No basic case
+
+def test_firms_hire_workers_basic() -> None:
+    """
+    A firm with vacancies hires the first two applicants in its queue
+    and updates all related state consistently.
+    """
+    M = 3
+    emp = mock_employer(
+        n=1,
+        queue_w=M,
+        n_vacancies=np.array([3]),
+        current_labor=np.array([0], dtype=np.int64),
+    )
+    wrk = mock_worker(n=3, queue_w=M)
+
+    # preload queue with worker-ids 0 and 1
+    emp.recv_job_apps_head[0] = 1  # queue length = 2
+    emp.recv_job_apps[0, :2] = [0, 1]
+
+    L_before = emp.current_labor[0]
+    V_before = emp.n_vacancies[0]
+
+    firms_hire_workers(wrk, emp, theta=8)
+
+    # ---- firm-side checks ----------------------------------------------
+    assert emp.current_labor[0] == L_before + 2
+    assert emp.n_vacancies[0] == V_before - 2
+    assert emp.recv_job_apps_head[0] == -1
+    assert np.all(emp.recv_job_apps[0] == -1)
+
+    # ---- worker-side checks --------------------------------------------
+    assert wrk.employed[[0, 1]].all()  # both hired
+    assert np.all((wrk.employer[[0, 1]] == 0))  # employer set
+    assert np.all((wrk.periods_left[[0, 1]] == 8))  # contract length
+    assert np.all((wrk.job_apps_head[[0, 1]] == -1))
 
 
 def test_firms_hire_no_vacancies() -> None:
@@ -374,7 +439,7 @@ def test_firms_hire_exact_fit() -> None:
 
     assert emp.n_vacancies[0] == 0
     assert emp.current_labor[0] == start[0] + 2
-    assert (emp.recv_job_apps[0] == -1).all()
+    assert np.all((emp.recv_job_apps[0] == -1))
     assert wrk.employed[[0, 2]].sum() == 2  # both hired
 
 
@@ -481,7 +546,7 @@ def test_hire_invariants(
     # 3.  invariants                                                     #
     # ------------------------------------------------------------------ #
     np.testing.assert_array_equal(
-        delta_L, hires_expected, err_msg="Δlabour != expected hires"
+        delta_L, hires_expected, err_msg="Δlabor != expected hires"
     )
     np.testing.assert_array_equal(
         delta_V, -hires_expected, err_msg="Δvacancies wrong sign / magnitude"
@@ -512,4 +577,4 @@ def test_full_round() -> None:
     assert (emp.n_vacancies >= 0).all()
     assert wrk.employed.any()
     assert emp.current_labor.sum() >= start_total_labor
-    assert (wrk.job_apps_head[wrk.employed] == -1).all()
+    assert np.all((wrk.job_apps_head[wrk.employed] == -1))
