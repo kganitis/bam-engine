@@ -103,7 +103,7 @@ class Scheduler:
         total_funds = np.copy(net_worth)
         rnd_intensity = np.ones(n_firms)
 
-        # procucer vectors
+        # producer vectors
         production = np.ones(n_firms)
         inventory = np.zeros_like(production)
         expected_demand = np.ones_like(production)
@@ -346,6 +346,10 @@ class Scheduler:
     @property
     def mean_Ld(self) -> float:  # noqa: D401
         return float(self.emp.desired_labor.mean())
+
+    @property
+    def mean_L(self) -> float:  # noqa: D401
+        return float(self.emp.current_labor.mean())
 
     # credit convenience
     @property

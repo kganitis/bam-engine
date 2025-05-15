@@ -214,7 +214,9 @@ def banks_provide_loans(
         queue = queue[queue >= 0]  # compact valid requests
 
         if queue.size == 0:
-            continue
+            # flush empty / invalid queues immediately
+            lend.recv_apps_head[k] = -1
+            lend.recv_apps[k, :n_recv] = -1
 
         # --- gather data ------------------------------------------------
         cd = bor.credit_demand[queue]

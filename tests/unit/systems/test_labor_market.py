@@ -262,6 +262,7 @@ def test_prepare_applications_large_unemployment() -> None:
 
 # TODO No basic case
 
+
 def test_workers_send_one_round_queue_bounds() -> None:
     """
     When a firm’s queue is almost full, the next application must be dropped
@@ -335,6 +336,7 @@ def test_workers_send_one_round_exhausted_target() -> None:
 
 # TODO No basic case
 
+
 def test_firms_hire_no_vacancies() -> None:
     """
     Applications sent to a firm with zero vacancies should be cleared
@@ -387,24 +389,30 @@ def test_hire_workers_skips_invalid_slots() -> None:
     np.testing.assert_array_equal(emp.current_labor, start)
     assert emp.n_vacancies[0] == 1
 
+
 # --------------------------------------------------------------------------- #
 #  firms_hire_workers – property-based invariant                              #
 # --------------------------------------------------------------------------- #
 @settings(max_examples=250, deadline=None)
 @given(
-    st.integers(min_value=1, max_value=6).flatmap(          # random number of firms
+    st.integers(min_value=1, max_value=6).flatmap(  # random number of firms
         lambda n_firms: st.tuples(
-            st.integers(1, 5),                              # queue width  M
-            st.lists(st.integers(0, 5),                     # vacancies  V_i
-                     min_size=n_firms, max_size=n_firms),
-            st.lists(st.integers(0, 5),                     # queue-lengths  n_recv_i
-                     min_size=n_firms, max_size=n_firms),
-            st.integers(n_firms, n_firms + 50),             # #workers  (enough to fill queues)
+            st.integers(1, 5),  # queue width  M
+            st.lists(
+                st.integers(0, 5), min_size=n_firms, max_size=n_firms  # vacancies  V_i
+            ),
+            st.lists(
+                st.integers(0, 5),  # queue-lengths  n_recv_i
+                min_size=n_firms,
+                max_size=n_firms,
+            ),
+            st.integers(n_firms, n_firms + 50),  # #workers  (enough to fill queues)
         ).map(lambda t: (n_firms, *t))
     )
 )
-def test_hire_invariants(random_case: tuple[int, int, list[int], list[int], int]
-                         ) -> None:
+def test_hire_invariants(
+    random_case: tuple[int, int, list[int], list[int], int],
+) -> None:
     """
     Invariant (per firm *i*) that must hold **after** `firms_hire_workers`:
 
@@ -415,22 +423,24 @@ def test_hire_invariants(random_case: tuple[int, int, list[int], list[int], int]
         n_recv_i  = recv_job_apps_head + 1   (queue length before the call)
     """
     # ── unpack & clip the random draw -----------------------------------------
-    n_firms, M, vacancies, qlens, n_workers = random_case
-    vacancies = np.asarray(vacancies, dtype=np.int64)
-    qlens     = np.asarray(qlens,     dtype=np.int64)
+    n_firms, M, vacancies_lst, qlens_lst, n_workers = random_case
+
+    # cast the *lists* returned by Hypothesis to ndarrays right away
+    vacancies: NDArray[np.int64] = np.asarray(vacancies_lst, dtype=np.int64)
+    qlens: NDArray[np.int64]     = np.asarray(qlens_lst,     dtype=np.int64)
 
     # clip queue-lengths so they fit inside the buffer width M
-    qlens = np.minimum(qlens, M)
+    qlens = np.minimum(qlens, M)          # still NDArray[int]
 
     # total #slots we will fill with **unique** worker ids
     total_slots = int(qlens.sum())
-    assume(total_slots <= n_workers)          # safe guard for uniqueness
+    assume(total_slots <= n_workers)  # safe guard for uniqueness
 
     # ── build Employer & Worker components ------------------------------------
     emp = mock_employer(
         n=n_firms,
         queue_w=M,
-        n_vacancies=vacancies.copy(),         # copy: we reuse originals later
+        n_vacancies=vacancies.copy(),  # copy: we reuse originals later
     )
 
     wrk = mock_worker(
@@ -444,7 +454,7 @@ def test_hire_invariants(random_case: tuple[int, int, list[int], list[int], int]
     w_idx = 0
     for i in range(n_firms):
         n_recv = int(qlens[i])
-        emp.recv_job_apps_head[i] = n_recv - 1          # -1  →  queue length = 0
+        emp.recv_job_apps_head[i] = n_recv - 1  # -1  →  queue length = 0
         if n_recv:
             emp.recv_job_apps[i, :n_recv] = np.arange(w_idx, w_idx + n_recv)
             w_idx += n_recv
@@ -452,8 +462,8 @@ def test_hire_invariants(random_case: tuple[int, int, list[int], list[int], int]
     wrk.employed[:] = False
 
     # --- snapshots before call ----------------------------------------
-    L_before   = emp.current_labor.copy()
-    V_before   = emp.n_vacancies.copy()
+    L_before = emp.current_labor.copy()
+    V_before = emp.n_vacancies.copy()
 
     # ------------------------------------------------------------------ #
     # 2.  run system under test                                          #
@@ -462,7 +472,7 @@ def test_hire_invariants(random_case: tuple[int, int, list[int], list[int], int]
 
     # --- deltas --------------------------------------------------------
     delta_L = emp.current_labor - L_before
-    delta_V = emp.n_vacancies   - V_before
+    delta_V = emp.n_vacancies - V_before
 
     # expected hires_i = min(n_recv_i, V_i)  (with the pre-call values!)
     hires_expected = np.minimum(qlens, V_before)
@@ -470,13 +480,16 @@ def test_hire_invariants(random_case: tuple[int, int, list[int], list[int], int]
     # ------------------------------------------------------------------ #
     # 3.  invariants                                                     #
     # ------------------------------------------------------------------ #
-    np.testing.assert_array_equal(delta_L, hires_expected,
-                                  err_msg="Δlabour != expected hires")
-    np.testing.assert_array_equal(delta_V, -hires_expected,
-                                  err_msg="Δvacancies wrong sign / magnitude")
+    np.testing.assert_array_equal(
+        delta_L, hires_expected, err_msg="Δlabour != expected hires"
+    )
+    np.testing.assert_array_equal(
+        delta_V, -hires_expected, err_msg="Δvacancies wrong sign / magnitude"
+    )
 
     # additional sanity: no firm can hire more than its queue capacity
     assert (delta_L <= M).all()
+
 
 # --------------------------------------------------------------------------- #
 #  End-to-end micro integration of one hiring event

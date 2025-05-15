@@ -38,13 +38,13 @@ def test_scheduler_state_stable_over_time(steps: int) -> None:
     )
 
     for _ in range(steps):
-        prev_labor = sch.fh.current_labor.sum()
+        prev_labor = sch.emp.current_labor.sum()
         sch.step()
 
         assert_basic_invariants(sch)
 
         # multi‑period–specific extras
-        assert sch.fh.current_labor.sum() >= prev_labor  # no firing yet
+        assert sch.emp.current_labor.sum() >= prev_labor  # no firing yet
 
 
 @given(
@@ -74,7 +74,7 @@ def test_scheduler_step_properties(
 def test_scheduler_means() -> None:
     sch = Scheduler.init(n_firms=3, n_households=3, n_banks=3)
     sch.prod.desired_production = np.array([1.0, 2.0, 3.0])
-    sch.lab.desired_labor = np.array([10, 20, 30])
+    sch.emp.desired_labor = np.array([10, 20, 30])
     assert np.isclose(sch.mean_Yd, 2.0)
     assert sch.mean_Ld == 20
 
