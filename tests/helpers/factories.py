@@ -19,12 +19,12 @@ from typing import Any
 import numpy as np
 
 from bamengine.components import (
-    Economy,
-    Producer,
-    Employer,
-    Worker,
     Borrower,
+    Economy,
+    Employer,
     Lender,
+    Producer,
+    Worker,
 )
 
 # ───────────────────────── default dictionaries ────────────────────────── #
@@ -107,7 +107,9 @@ def _lender_defaults(n: int, *, queue_h: int) -> dict[str, Any]:
         opex_shock=None,  # scratch
     )
 
+
 # ───────────────────────── public factory helpers ──────────────────────── #
+
 
 def mock_economy(
     **overrides: Any,

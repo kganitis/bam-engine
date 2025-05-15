@@ -182,6 +182,8 @@ def firms_hire_workers(
         hires = emp.recv_job_apps[i, :n_hire]
         hires = hires[hires >= 0]  # drop sentinel slots
         if hires.size == 0:
+            emp.recv_job_apps_head[i] = -1  # clear queue
+            emp.recv_job_apps[i, :n_recv] = -1
             continue
 
         # ---- worker‑side updates ----------------------------------------

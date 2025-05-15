@@ -24,4 +24,4 @@ def test_hook_after_stub_forces_no_inventory() -> None:
 
     firms_decide_desired_production(sch.prod, p_avg=p_avg, h_rho=sch.h_rho, rng=sch.rng)
 
-    assert (sch.prod.desired_production >= sch.prod.prev_production).all()
+    assert (sch.prod.desired_production >= sch.prod.production).all()
