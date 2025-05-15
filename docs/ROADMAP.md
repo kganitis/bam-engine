@@ -1,13 +1,13 @@
 # BAM-Engine roadmap
 
-## Immediate tasks
+### Immediate tasks
 
 * Add a credit-market event integration test
 * Raise the test coverage
 
 ---
 
-## Incremental event implementation
+### Incremental event implementation
 
 Implement the next events one by one
 
@@ -21,7 +21,7 @@ Repeat until the full event chain is implemented
 
 ---
 
-## Visualization
+### Visualization
 
 * Logging and plotting
   * Add lightweight debug logging
@@ -30,7 +30,7 @@ Repeat until the full event chain is implemented
 
 ---
 
-## Low-priority housekeeping
+### Low-priority housekeeping
 
 * Guard all heavy logging with level checks
 * Keep the Ruff rule set minimal (`E, F, W, I` plus docstrings later)
@@ -39,7 +39,7 @@ Repeat until the full event chain is implemented
 
 ---
 
-## Performance milestone
+### Performance milestone
 
 * Profile representative sizes to establish baselines
 * Remove remaining temporary allocations and other obvious hotspots
@@ -49,7 +49,7 @@ Repeat until the full event chain is implemented
 
 ---
 
-## Distribution and research API
+### Distribution and research API
 
 * Package the library as a PyPI wheel once the public API stabilises
 * Add `Scheduler.to_dict` and `Scheduler.from_dict` for checkpoint and restart workflows
@@ -59,7 +59,7 @@ Repeat until the full event chain is implemented
 
 ---
 
-## Future research extensions
+### Future research extensions
 
 * Add reinforcement-learning agents for policy search experiments
 * Investigate GPU or distributed back-ends once single-node scaling limits are reached
