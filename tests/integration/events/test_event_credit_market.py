@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from numpy.typing import NDArray
 
 from bamengine.scheduler import Scheduler
 from bamengine.systems.credit_market import (
@@ -34,7 +35,7 @@ from bamengine.systems.credit_market import (
 # --------------------------------------------------------------------------- #
 # helper – run ONE credit event                                               #
 # --------------------------------------------------------------------------- #
-def _run_credit_event(sch: Scheduler) -> np.ndarray:
+def _run_credit_event(sch: Scheduler) -> NDArray[np.float64]:
     """
     Execute the complete Event-3 logic once and return the snapshot of
     credit_demand *before* loans are granted (for later delta checks).
@@ -78,8 +79,6 @@ def test_event_credit_market_basic(tiny_sched: Scheduler) -> None:
     )
 
     total_funds_before = sch.bor.total_funds.copy()
-    supply_before = sch.lend.credit_supply.copy()
-
     demand_before = _run_credit_event(sch)  # run Event-3
 
     lb = sch.lb
@@ -103,8 +102,9 @@ def test_event_credit_market_basic(tiny_sched: Scheduler) -> None:
     dec_by_lender = np.bincount(
         lb.lender[: lb.size], weights=p, minlength=sch.lend.credit_supply.size
     )
+
     # pots were reset inside the event: C_k0 = equity_base * v
-    pot_at_start = sch.lend.equity_base * sch.ec.v
+    pot_at_start = sch.lend.equity_base * sch.ec.v  # what each bank could lend
     supply_drop = pot_at_start - sch.lend.credit_supply
     np.testing.assert_allclose(dec_by_lender, supply_drop, atol=1e-9)
 
