@@ -54,3 +54,11 @@ def assert_basic_invariants(sch: Scheduler) -> None:
         np.testing.assert_allclose(
             sch.lb.debt[: sch.lb.size], principal * (1.0 + rate), rtol=1e-8
         )
+
+    #  Bank-side sanity: remaining pot never goes negative *and*
+    #  never exceeds the initial regulatory cap  (E_k · v).
+    cap_per_bank = sch.lend.equity_base * sch.ec.v
+    assert np.all(
+        (0.0 <= sch.lend.credit_supply)
+        & (sch.lend.credit_supply <= cap_per_bank + 1e-9)
+    )

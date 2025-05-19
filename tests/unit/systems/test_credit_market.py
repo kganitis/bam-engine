@@ -26,6 +26,7 @@ from bamengine.systems.credit_market import (  # systems under test
     banks_provide_loans,
     firms_calc_credit_metrics,
     firms_decide_credit_demand,
+    firms_fire_workers,
     firms_prepare_loan_applications,
     firms_send_one_loan_app,
 )
@@ -119,7 +120,7 @@ def test_interest_rate_reuses_scratch() -> None:
 
 
 # --------------------------------------------------------------------------- #
-#  firms_decide_credit_demand & firms_calc_credit_metrics                     #
+#  firms_decide_credit_demand                    #
 # --------------------------------------------------------------------------- #
 
 
@@ -146,6 +147,11 @@ def test_credit_demand_basic(
     np.testing.assert_allclose(bor.credit_demand, expected_B)
 
 
+# --------------------------------------------------------------------------- #
+#  firms_calc_credit_metrics                                                  #
+# --------------------------------------------------------------------------- #
+
+
 def test_calc_credit_metrics_fragility() -> None:
     bor = mock_borrower(
         n=3,
@@ -157,6 +163,32 @@ def test_calc_credit_metrics_fragility() -> None:
     firms_calc_credit_metrics(bor)
     expected = np.array([0.5, CAP_FRAG * 0.5, 0.0])
     np.testing.assert_allclose(bor.projected_fragility, expected, rtol=1e-12)
+
+
+def test_calc_credit_metrics_allocates_buffer() -> None:
+    """
+    Branch: projected_fragility is None (or wrong shape) → function
+    must allocate a fresh buffer and write results in-place.
+    """
+    bor = mock_borrower(
+        n=2,
+        queue_h=1,
+        credit_demand=np.array([4.0, 6.0]),
+        net_worth=np.array([8.0, 2.0]),
+        rnd_intensity=np.array([1.0, 2.0]),
+    )
+    # give it the wrong shape so the allocation branch triggers
+    bor.projected_fragility = np.empty(0, dtype=np.float64)
+
+    firms_calc_credit_metrics(bor)
+
+    assert bor.projected_fragility is not None
+    np.testing.assert_allclose(
+        bor.projected_fragility, np.array([0.5, 6.0]), rtol=1e-12
+    )
+    # buffer has correct shape & is writable
+    assert bor.projected_fragility.shape == bor.net_worth.shape
+    assert bor.projected_fragility.flags.writeable
 
 
 # --------------------------------------------------------------------------- #
@@ -202,6 +234,7 @@ def test_prepare_applications_no_demand() -> None:
     lend = mock_lender(n=2, queue_h=2)
     firms_prepare_loan_applications(bor, lend, max_H=2, rng=default_rng(0))
     assert np.all((bor.loan_apps_head == -1))
+    assert np.all(bor.loan_apps_targets == -1)
 
 
 # --------------------------------------------------------------------------- #
@@ -354,7 +387,7 @@ def test_ledger_capacity_auto_grows() -> None:
 
 
 # --------------------------------------------------------------------------- #
-#  firms_fire_workers (credit-induced layoffs)                                #
+#  firms_fire_workers                               #
 # --------------------------------------------------------------------------- #
 
 
@@ -371,12 +404,56 @@ def test_firms_fire_workers_gap_closed() -> None:
     wrk.employed[:] = True
     wrk.employer[:] = 0
 
-    from bamengine.systems.credit_market import firms_fire_workers
-
     firms_fire_workers(emp, wrk, rng=default_rng(0))
 
     assert emp.wage_bill[0] <= emp.total_funds[0] + 1e-12
     assert emp.current_labor[0] == wrk.employed.sum()
+
+
+def test_firms_fire_workers_zero_needed() -> None:
+    """
+    Branch: ``n_fire == 0``.
+    Make the wage gap > 0 but set ``wage_offer = inf`` so
+    gap / wage_offer → 0 → ceil(0) → 0.
+    """
+    emp = mock_employer(
+        n=1,
+        current_labor=np.array([3]),
+        wage_offer=np.array([np.inf]),
+        wage_bill=np.array([10.0]),  # gap = 10
+        total_funds=np.array([0.0]),
+    )
+    wrk = mock_worker(n=3)
+    wrk.employed[:] = True
+    wrk.employer[:] = 0
+
+    before = emp.current_labor.copy()
+    firms_fire_workers(emp, wrk, rng=default_rng(42))
+    # nothing should change – the "float quirks" early-exit hit
+    np.testing.assert_array_equal(emp.current_labor, before)
+    assert wrk.fired.sum() == 0
+
+
+def test_firms_fire_workers_no_workforce() -> None:
+    """
+    Branch: ``workforce.size == 0``.
+    The firm appears to employ labour according to the accounting
+    vector, but no matching workers are actually flagged → skip.
+    """
+    emp = mock_employer(
+        n=1,
+        current_labor=np.array([2]),  # says 2 workers employed
+        wage_offer=np.array([1.0]),
+        wage_bill=np.array([4.0]),
+        total_funds=np.array([1.0]),  # gap = 3.0 ⇒ needs layoffs
+    )
+    wrk = mock_worker(n=2)  # but both workers are unemployed
+
+    firms_fire_workers(emp, wrk, rng=default_rng(0))
+
+    # nothing changed because workforce.size == 0 branch hit
+    assert emp.current_labor[0] == 2
+    assert wrk.fired.sum() == 0
 
 
 # --------------------------------------------------------------------------- #

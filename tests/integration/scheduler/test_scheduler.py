@@ -67,14 +67,6 @@ def test_scheduler_step_properties(
     assert_basic_invariants(sch)
 
 
-def test_scheduler_means() -> None:
-    sch = Scheduler.init(n_firms=3, n_households=3, n_banks=3)
-    sch.prod.desired_production = np.array([1.0, 2.0, 3.0])
-    sch.emp.desired_labor = np.array([10, 20, 30])
-    assert np.isclose(sch.mean_Yd, 2.0)
-    assert sch.mean_Ld == 20
-
-
 def test_scheduler_hooks_called() -> None:
     """
     Attach a simple recorder callable to **every** defined hook.  After one
@@ -115,3 +107,43 @@ def test_hook_after_stub_forces_no_inventory() -> None:
     firms_decide_desired_production(sch.prod, p_avg=p_avg, h_rho=sch.h_rho, rng=sch.rng)
 
     assert (sch.prod.desired_production >= sch.prod.production).all()
+
+
+@pytest.mark.xfail(reason="Cover snapshot later")
+def test_prepare_applications_loyalty_swap() -> None:  # pragma: no cover
+    raise NotImplementedError
+
+
+def test_scheduler_means() -> None:
+    """
+    Convenience-property sanity:
+
+        • mean_Yd   averages desired production
+        • mean_Ld   averages desired labour
+        • mean_L    averages current labour
+        • mean_B    averages credit demand
+        • total_loans sums outstanding principal
+    """
+    sch = Scheduler.init(n_firms=3, n_households=3, n_banks=3)
+
+    # fill deterministic toy values
+    sch.prod.desired_production = np.array([1.0, 2.0, 3.0])
+    sch.emp.desired_labor = np.array([10, 20, 30])
+    sch.emp.current_labor = np.array([0, 1, 99])
+    sch.bor.credit_demand = np.array([5.0, 0.0, 10.0])
+
+    # create two dummy loans so total_loans ≠ 0
+    sch.lb.principal = np.array([2.0, 3.0])
+    sch.lb.rate = np.zeros_like(sch.lb.principal)
+    sch.lb.interest = np.zeros_like(sch.lb.principal)
+    sch.lb.debt = sch.lb.principal.copy()
+    sch.lb.borrower = np.array([0, 2])
+    sch.lb.lender = np.array([1, 0])
+    sch.lb.size = 2
+
+    # assertions
+    assert np.isclose(sch.mean_Yd, 2.0)  # (1+2+3)/3
+    assert sch.mean_Ld == 20  # (10+20+30)/3
+    assert sch.mean_L == pytest.approx(100 / 3)  # (0+1+99)/3
+    assert sch.mean_B == pytest.approx(5.0)  # (5+0+10)/3
+    assert sch.total_loans == pytest.approx(5.0)
