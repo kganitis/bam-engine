@@ -2,8 +2,13 @@
 
 ### Immediate tasks
 
-* Add a credit-market event integration test
-* Raise the test coverage
+* Implement production components
+* Implement production systems
+* Scheduler wiring
+* Unit tests
+* Integration tests
+* Raise test coverage
+* Scheduler tests
 
 ---
 
@@ -16,6 +21,7 @@ Implement the next events one by one
 * Write unit tests that cover edge cases and buffer reuse
 * Write an event-level integration test
 * Raise the test coverage
+* Update the scheduler integration test
 
 Repeat until the full event chain is implemented
 
