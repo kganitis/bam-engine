@@ -1,10 +1,6 @@
 # tests/unit/systems/test_labor_market.py
 """
-Labor-market unit tests
-
-These tests exercise every pure function in `bamengine.systems.labor_market`
-under the extreme or economically-interesting scenarios that are possible
-after the component refactor.
+Labor-market systems unit tests.
 """
 
 from __future__ import annotations
@@ -57,14 +53,14 @@ def _mini_state(
     rng = default_rng(seed)
     emp = mock_employer(
         n=n_employers,
-        queue_w=M,
+        queue_m=M,
         wage_offer=np.array([1.0, 1.5, 1.2]),
         n_vacancies=np.array([2, 1, 0]),
         current_labor=np.array([1, 0, 2], dtype=np.int64),
     )
     wrk = mock_worker(
         n=n_workers,
-        queue_w=M,
+        queue_m=M,
         employed=np.array([False, False, False, True, False, True]),
         employer_prev=np.full(n_workers, -1, dtype=np.intp),
         contract_expired=np.zeros(n_workers, dtype=np.bool_),
@@ -249,11 +245,11 @@ def test_prepare_applications_large_unemployment() -> None:
     n_wrk, n_emp, M = 20, 3, 2
     fw = mock_employer(
         n=n_emp,
-        queue_w=M,
+        queue_m=M,
         wage_offer=np.array([1.0, 1.5, 1.2]),
         n_vacancies=np.array([2, 1, 0]),
     )
-    ws = mock_worker(n=n_wrk, queue_w=M)
+    ws = mock_worker(n=n_wrk, queue_m=M)
     workers_decide_firms_to_apply(ws, fw, max_M=M, rng=rng)
     assert (ws.job_apps_targets[ws.job_apps_targets >= 0] < n_emp).all()
 
@@ -272,11 +268,11 @@ def test_workers_send_one_round() -> None:
     # --- build minimal components ----------------------------------------
     emp = mock_employer(
         n=1,
-        queue_w=M,
+        queue_m=M,
         wage_offer=np.array([1.0]),
         n_vacancies=np.array([2]),
     )
-    wrk = mock_worker(n=1, queue_w=M)  # 1 unemployed worker
+    wrk = mock_worker(n=1, queue_m=M)  # 1 unemployed worker
 
     # prepare targets & head pointer
     workers_decide_firms_to_apply(wrk, emp, max_M=M, rng=default_rng(0))
@@ -342,14 +338,14 @@ def test_workers_send_one_round_exhausted_target() -> None:
     M = 1
     wrk = mock_worker(
         n=1,
-        queue_w=M,
+        queue_m=M,
         employed=np.array([False]),
         job_apps_head=np.array([0]),  # points to first cell
         job_apps_targets=np.array([[-1]], dtype=np.intp),  # *already* exhausted
     )
     emp = mock_employer(
         n=1,
-        queue_w=M,
+        queue_m=M,
         wage_offer=np.array([1.0]),
         n_vacancies=np.array([1]),
         current_labor=np.zeros(1, dtype=np.int64),
@@ -374,11 +370,11 @@ def test_firms_hire_workers_basic() -> None:
     M = 3
     emp = mock_employer(
         n=1,
-        queue_w=M,
+        queue_m=M,
         n_vacancies=np.array([3]),
         current_labor=np.array([0], dtype=np.int64),
     )
-    wrk = mock_worker(n=3, queue_w=M)
+    wrk = mock_worker(n=3, queue_m=M)
 
     # preload queue with worker-ids 0 and 1
     emp.recv_job_apps_head[0] = 1  # queue length = 2
@@ -504,13 +500,13 @@ def test_hire_invariants(
     # ── build Employer & Worker components ------------------------------------
     emp = mock_employer(
         n=n_firms,
-        queue_w=M,
+        queue_m=M,
         n_vacancies=vacancies.copy(),  # copy: we reuse originals later
     )
 
     wrk = mock_worker(
         n=n_workers,
-        queue_w=M,
+        queue_m=M,
     )
 
     # ------------------------------------------------------------------ #

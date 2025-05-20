@@ -45,7 +45,7 @@ def test_scheduler_state_stable_over_time(steps: int) -> None:
 
 @given(
     n_firms=st.integers(20, 50),
-    n_households=st.integers(50, 200),
+    n_households=st.integers(100, 250),
     n_banks=st.integers(2, 5),
     seed=st.integers(0, 2**32 - 1),
 )

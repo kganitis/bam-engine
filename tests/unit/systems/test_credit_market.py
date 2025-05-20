@@ -1,9 +1,6 @@
 # tests/unit/systems/test_credit_market.py
 """
-Credit-market unit tests
-
-This suite exercises every **pure** function in
-`bamengine.systems.credit_market` after the component-refactor.
+Credit-market systems unit tests.
 """
 
 from __future__ import annotations

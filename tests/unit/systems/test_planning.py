@@ -1,9 +1,6 @@
 # tests/unit/systems/test_planning.py
 """
-Planning-system unit tests
-
-These tests verify that the three pure functions in `bamengine.systems.planning`
-behave correctly for all economically relevant branches:
+Planning-system unit tests.
 """
 
 from __future__ import annotations
