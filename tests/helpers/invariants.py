@@ -1,3 +1,4 @@
+# tests/helpers/invariants.py
 import numpy as np
 
 from bamengine.scheduler import Scheduler
@@ -40,8 +41,8 @@ def assert_basic_invariants(sch: Scheduler) -> None:
     # Ledger indices within component bounds
     n_borrowers = sch.bor.net_worth.size
     n_lenders = sch.lend.credit_supply.size
-    assert (sch.lb.borrower[: sch.lb.size] < n_borrowers).all()
-    assert (sch.lb.lender[: sch.lb.size] < n_lenders).all()
+    assert np.all((sch.lb.borrower[: sch.lb.size] < n_borrowers))
+    assert np.all((sch.lb.lender[: sch.lb.size] < n_lenders))
 
     # Basic ledger algebra:  interest = principal * rate,
     #                        debt     = principal * (1 + rate)

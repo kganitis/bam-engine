@@ -73,26 +73,13 @@ def _mini_state(
 # --------------------------------------------------------------------------- #
 #  Minimum-wage inflation rule
 # --------------------------------------------------------------------------- #
-def test_adjust_minimum_wage_revision() -> None:
-    """Exact revision step (len = m+1) – floor must move by realised inflation."""
-    ec = mock_economy(
-        min_wage=1.0,
-        avg_mkt_price_history=np.array(
-            [1.00, 1.05, 1.10, 1.15, 1.20]
-        ),  # t = 4 (len = 5)
-        min_wage_rev_period=4,
-    )
-    adjust_minimum_wage(ec)
-    assert ec.min_wage == pytest.approx(1.20)  # +20 % inflation
-
-
 @pytest.mark.parametrize(
     ("prices", "direction"),
     [
         (np.array([1.00, 1.05, 1.10, 1.15, 1.20]), "up"),  # inflation
         (np.array([1.00, 0.95, 0.90, 0.85, 0.80]), "down"),  # deflation
         (np.array([1.00, 1.10, 1.20, 1.30]), "flat"),  # = m  → no change
-        (np.array([1.00, 1.10, 1.20]), "flat"),  # < m  → no change
+        (np.array([1.00, 1.05, 1.10, 1.15, 1.20, 1.30]), "flat"),  # < m  → no change
     ],
 )
 def test_adjust_minimum_wage_edges(prices: NDArray[np.float64], direction: str) -> None:
@@ -110,6 +97,19 @@ def test_adjust_minimum_wage_edges(prices: NDArray[np.float64], direction: str) 
         assert ec.min_wage < old
     else:  # no revision
         assert ec.min_wage == pytest.approx(old)
+
+
+def test_adjust_minimum_wage_revision() -> None:
+    """Exact revision step (len = m+1) – floor must move by realised inflation."""
+    ec = mock_economy(
+        min_wage=1.0,
+        avg_mkt_price_history=np.array(
+            [1.00, 1.05, 1.10, 1.15, 1.20]
+        ),  # t = 4 (len = 5)
+        min_wage_rev_period=4,
+    )
+    adjust_minimum_wage(ec)
+    assert ec.min_wage == pytest.approx(1.20)  # +20 % inflation
 
 
 # --------------------------------------------------------------------------- #

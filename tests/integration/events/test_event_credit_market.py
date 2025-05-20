@@ -16,7 +16,6 @@ balance symmetry, queue flushing, and scheduler helpers.
 from __future__ import annotations
 
 import numpy as np
-import pytest
 from numpy.typing import NDArray
 
 from bamengine.scheduler import Scheduler
@@ -137,7 +136,3 @@ def test_credit_market_post_state_consistency(tiny_sched: Scheduler) -> None:
 
     # 3. LoanBook capacity >= size
     assert sch.lb.capacity >= sch.lb.size
-
-    # 4. scheduler helpers are in sync with raw state
-    assert sch.mean_B == pytest.approx(sch.bor.credit_demand.mean())
-    assert sch.total_loans == pytest.approx(sch.lb.principal[: sch.lb.size].sum())

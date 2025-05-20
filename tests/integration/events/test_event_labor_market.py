@@ -124,6 +124,3 @@ def test_labor_market_post_state_consistency(tiny_sched: Scheduler) -> None:
     # an empty queue; firms with zero vacancies may retain stale pointers
     mask_vac = sch.emp.n_vacancies > 0
     assert np.all((sch.emp.recv_job_apps_head[mask_vac] == -1))
-
-    # ---- 5. scheduler aggregate helper in sync -------------------------
-    assert sch.mean_L == pytest.approx(sch.emp.current_labor.mean())

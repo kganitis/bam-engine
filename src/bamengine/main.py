@@ -40,12 +40,6 @@ def main() -> None:
     for t in range(1, args.steps + 1):
         log.info("=== PERIOD %d ===", t)
         sched.step()
-        log.info(
-            "mean Yd=%.2f | mean Ld=%.2f | max Ld=%d",
-            sched.mean_Yd,
-            sched.mean_Ld,
-            int(sched.emp.desired_labor.max()),
-        )
 
     log.info("Simulation finished.")
 

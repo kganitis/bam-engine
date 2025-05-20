@@ -278,22 +278,43 @@ def firms_fire_workers(
         needed = int(
             np.ceil(gap / float(emp.wage_offer[i]))
         )  # heads needed to close gap
-        capacity = int(emp.current_labor[i])  # heads currently employed
+
+        workforce = np.where((wrk.employed == 1) & (wrk.employer == i))[0]
+        if workforce.size == 0:
+            continue
+
+        capacity = workforce.size  # **actual** roster
         n_fire = min(capacity, needed)
         if n_fire == 0:  # float quirks
             continue
 
         # choose victims uniformly
-        workforce = np.where((wrk.employed == 1) & (wrk.employer == i))[0]
-        if workforce.size == 0:
-            continue
         victims = rng.choice(workforce, size=n_fire, replace=False)
 
         # --- worker-side -------------------------------------------
         wrk.employed[victims] = 0
-        wrk.fired[victims] = 1
+        wrk.employer[victims] = -1
+        wrk.employer_prev[victims] = i
+        wrk.wage[victims] = 0.0
+        wrk.periods_left[victims] = 0
         wrk.contract_expired[victims] = 0  # explicit: this was a firing
+        wrk.fired[victims] = 1
 
         # --- firm-side ---------------------------------------------
         emp.current_labor[i] -= n_fire
         emp.wage_bill[i] -= n_fire * emp.wage_offer[i]
+
+
+def _sync_labor_and_wages(wrk: Worker, emp: Employer) -> None:
+    """
+    Rebuild `emp.current_labor` from first principles (worker table)
+    and refresh `emp.wage_bill` so books are always consistent:
+        L_i = Σ 1{worker employed & employer == i}
+        W_i = L_i · w_i
+    """
+    counts = np.bincount(
+        wrk.employer[wrk.employed == 1],
+        minlength=emp.current_labor.size,
+    )
+    emp.current_labor[:] = counts
+    np.multiply(emp.current_labor, emp.wage_offer, out=emp.wage_bill)

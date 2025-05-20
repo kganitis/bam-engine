@@ -20,7 +20,7 @@ def advance_stub_state(sched: "Scheduler") -> None:
 
     # 1. --- mock production ---------------------------------------
     sched.prod.production[:] *= sched.rng.uniform(
-        0.7, 1.0, size=sched.prod.desired_production.shape
+        0.5, 2.0, size=sched.prod.desired_production.shape
     )
 
     # 2. --- mock prices -------------------------------------------
@@ -30,5 +30,5 @@ def advance_stub_state(sched: "Scheduler") -> None:
         sched.ec.avg_mkt_price_history, sched.ec.avg_mkt_price
     )
 
-    # 3. --- mock goods market -------------------------------------
+    # ------ mock goods market -------------------------------------
     sched.prod.inventory[:] = sched.rng.integers(0, 6, size=sched.prod.inventory.shape)
