@@ -52,8 +52,3 @@ def test_event_planning(tiny_sched: Scheduler) -> None:
     # Detects mis-ordering where decide_vacancies ran before decide_desired_labor.
     if (sch.emp.desired_labor > sch.emp.current_labor).any():
         assert (sch.emp.n_vacancies > 0).any()
-
-    # 6. Scheduler aggregation helpers must be in sync
-    # Ensures the scheduler-level aggregates are consistent with the raw component state
-    assert np.isclose(sch.mean_Yd, sch.prod.desired_production.mean())
-    assert sch.mean_Ld == pytest.approx(sch.emp.desired_labor.mean())

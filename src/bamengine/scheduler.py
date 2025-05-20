@@ -13,6 +13,7 @@ from numpy.random import Generator, default_rng
 
 from bamengine.components import (
     Borrower,
+    Consumer,
     Economy,
     Employer,
     Lender,
@@ -43,6 +44,9 @@ from bamengine.systems.planning import (
     firms_decide_desired_production,
     firms_decide_vacancies,
 )
+from bamengine.systems.production import (
+    firms_pay_wages,
+)
 from bamengine.typing import Bool1D, Float1D, Int1D
 
 __all__ = ["Scheduler", "HOOK_NAMES"]
@@ -67,6 +71,8 @@ HOOK_NAMES: tuple[str, ...] = (
     "after_labor_market",
     "before_credit_market",
     "after_credit_market",
+    "before_production",
+    "after_production",
     "after_stub",
 )
 
@@ -87,6 +93,7 @@ class Scheduler:
     emp: Employer
     bor: Borrower
     lend: Lender
+    con: Consumer
     lb: LoanBook
 
     # global parameters
@@ -95,6 +102,7 @@ class Scheduler:
     h_phi: float  # max bank operational costs shock
     max_M: int  # max job applications per unemployed worker
     max_H: int  # max loan applications per firm
+    max_Z: int  # max firm visits per consumer
     theta: int  # job contract length
 
     # --------------------------------------------------------------------- #
@@ -112,6 +120,7 @@ class Scheduler:
         h_phi: float = 0.1,
         max_M: int = 4,
         max_H: int = 2,
+        max_Z: int = 2,
         theta: int = 8,
         seed: int | np.random.Generator = 0,
     ) -> "Scheduler":
@@ -163,6 +172,9 @@ class Scheduler:
         interest_rate = np.zeros(n_banks)
         recv_loan_apps_head = np.full(n_banks, -1, dtype=np.int64)
         recv_loan_apps = np.full((n_banks, max_H), -1, dtype=np.int64)
+
+        # consumer vectors
+        income = np.zeros(n_households)
 
         # ---------- wrap into components ----------------------------------
         ec = Economy(
@@ -220,6 +232,9 @@ class Scheduler:
             recv_apps=recv_loan_apps,
         )
         lb = LoanBook()
+        con = Consumer(
+            income=income,
+        )
 
         return cls(
             rng=rng,
@@ -230,11 +245,13 @@ class Scheduler:
             bor=bor,
             lend=lend,
             lb=lb,
+            con=con,
             h_rho=h_rho,
             h_xi=h_xi,
             h_phi=h_phi,
             max_M=max_M,
             max_H=max_H,
+            max_Z=max_Z,
             theta=theta,
         )
 
@@ -249,9 +266,9 @@ class Scheduler:
         """
 
         def _call(name: str) -> None:
-            fn = hooks.get(name)
-            if fn is not None:
-                fn(self)
+            hook = hooks.get(name)
+            if hook is not None:
+                hook(self)
 
         # ===== Event 1 – planning ======================================
         _call("before_planning")
@@ -283,7 +300,7 @@ class Scheduler:
         _call("after_labor_market")
         # ===============================================================
 
-        # ===== Event 3 – credit-market ================================
+        # ===== Event 3 – credit-market =================================
         _call("before_credit_market")
 
         banks_decide_credit_supply(self.lend, v=self.ec.v)
@@ -300,7 +317,22 @@ class Scheduler:
             banks_provide_loans(self.bor, self.lb, self.lend, r_bar=self.ec.r_bar)
         firms_fire_workers(self.emp, self.wrk, rng=self.rng)
 
+        from bamengine.systems.credit_market import _sync_labor_and_wages
+
+        _sync_labor_and_wages(self.wrk, self.emp)
+
         _call("after_credit_market")
+        # ===============================================================
+
+        # ===== Event 4 – production ====================================
+        _call("before_production")
+
+        firms_pay_wages(self.emp)
+        # workers_receive_wage(self.con, self.wrk)
+        # firms_run_production(self.prod, self.emp)
+        # workers_update_contracts(self.wrk, self.emp)
+
+        _call("after_production")
         # ===============================================================
 
         # Stub state advance – internal deterministic bookkeeping
@@ -314,16 +346,16 @@ class Scheduler:
     #                               snapshot                                #
     # --------------------------------------------------------------------- #
     def snapshot(
-        self, *, copy: bool = False
+        self, *, copy: bool = True
     ) -> Dict[str, Float1D | Int1D | Bool1D | float]:
         """ "
         Return a read‑only view (or copy) of key state arrays.
 
         Parameters
         ----------
-        copy : bool, default False
-            * False – return **views**; cheap but mutation‑unsafe.
+        copy : bool, default True
             * True  – return **copies** so the caller can mutate freely.
+            * False – return **views**; cheap but mutation‑unsafe.
         """
         cp = np.copy if copy else lambda x: x  # cheap inline helper
 
@@ -337,29 +369,7 @@ class Scheduler:
             "wage_bill": cp(self.emp.wage_bill),
             "employed": cp(self.wrk.employed),
             "debt": cp(self.lb.debt),
+            "production": cp(self.prod.production),
+            "income": cp(self.con.income),
             "avg_mkt_price": float(self.ec.avg_mkt_price),
         }
-
-    # ------------------------------------------------------------------ #
-    # convenience                                                        #
-    # ------------------------------------------------------------------ #
-    @property
-    def mean_Yd(self) -> float:  # noqa: D401
-        return float(self.prod.desired_production.mean())
-
-    @property
-    def mean_Ld(self) -> float:  # noqa: D401
-        return float(self.emp.desired_labor.mean())
-
-    @property
-    def mean_L(self) -> float:  # noqa: D401
-        return float(self.emp.current_labor.mean())
-
-    # credit convenience
-    @property
-    def mean_B(self) -> float:  # average credit demand
-        return float(self.bor.credit_demand.mean())
-
-    @property
-    def total_loans(self) -> float:  # outstanding principal
-        return float(self.lb.principal[: self.lb.size].sum())

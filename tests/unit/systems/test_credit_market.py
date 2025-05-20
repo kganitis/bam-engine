@@ -453,6 +453,30 @@ def test_firms_fire_workers_no_workforce() -> None:
     assert wrk.fired.sum() == 0
 
 
+def test_firms_fire_workers_roster_smaller_than_counter() -> None:
+    """
+    Regression: when emp.current_labor overstates the true roster size,
+    the function must cap n_fire so rng.choice never errors out.
+    """
+    emp = mock_employer(
+        n=1,
+        current_labor=np.array([5]),  # bookkeeping says 5…
+        wage_offer=np.array([1.0]),
+        wage_bill=np.array([5.0]),
+        total_funds=np.array([0.0]),  # big wage gap → wants to fire 5
+    )
+    wrk = mock_worker(n=3)  # but only *3* workers really exist
+    wrk.employed[:] = True
+    wrk.employer[:] = 0
+
+    firms_fire_workers(emp, wrk, rng=default_rng(123))
+
+    # after the call current_labor must equal surviving roster
+    assert emp.current_labor[0] == wrk.employed.sum()
+    # no negative counts
+    assert emp.current_labor[0] >= 0
+
+
 # --------------------------------------------------------------------------- #
 #  Property-based invariant: banks_provide_loans                              #
 # --------------------------------------------------------------------------- #
