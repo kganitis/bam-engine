@@ -6,7 +6,7 @@ from bamengine.typing import Bool1D, Float1D, Idx1D, Idx2D, Int1D
 
 @dataclass(slots=True)
 class Worker:
-    """Dense state for *all* worker households."""
+    """Dense state for *all* workers."""
 
     # persistent
     employed: Bool1D  # 1 = employed, 0 = unemployed

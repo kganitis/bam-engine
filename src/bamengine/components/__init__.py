@@ -2,6 +2,7 @@
 """Internal dataclass bundles."""
 
 from bamengine.components.borrower import Borrower
+from bamengine.components.consumer import Consumer
 from bamengine.components.economy import Economy, LoanBook
 from bamengine.components.employer import Employer
 from bamengine.components.lender import Lender
@@ -16,4 +17,5 @@ __all__ = [
     "Borrower",
     "Lender",
     "LoanBook",
+    "Consumer",
 ]

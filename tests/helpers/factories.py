@@ -20,6 +20,7 @@ import numpy as np
 
 from bamengine.components import (
     Borrower,
+    Consumer,
     Economy,
     Employer,
     Lender,
@@ -42,7 +43,7 @@ def _economy_defaults() -> dict[str, Any]:
     )
 
 
-def _producer_defaults(n: int, *, queue_w: int) -> dict[str, Any]:
+def _producer_defaults(n: int, *, queue_: int) -> dict[str, Any]:
     return dict(
         production=np.full(n, 10.0, dtype=np.float64),
         inventory=np.zeros(n, dtype=np.float64),
@@ -57,7 +58,7 @@ def _producer_defaults(n: int, *, queue_w: int) -> dict[str, Any]:
     )
 
 
-def _employer_defaults(n: int, *, queue_w: int) -> dict[str, Any]:
+def _employer_defaults(n: int, *, queue_m: int) -> dict[str, Any]:
     return dict(
         desired_labor=np.zeros(n, dtype=np.int64),
         current_labor=np.zeros(n, dtype=np.int64),
@@ -66,12 +67,12 @@ def _employer_defaults(n: int, *, queue_w: int) -> dict[str, Any]:
         n_vacancies=np.zeros(n, dtype=np.int64),
         total_funds=np.ones(n, dtype=np.float64),
         recv_job_apps_head=np.full(n, -1, dtype=np.int64),
-        recv_job_apps=np.full((n, queue_w), -1, dtype=np.int64),
+        recv_job_apps=np.full((n, queue_m), -1, dtype=np.int64),
         wage_shock=None,  # scratch
     )
 
 
-def _worker_defaults(n: int, *, queue_w: int) -> dict[str, Any]:
+def _worker_defaults(n: int, *, queue_m: int) -> dict[str, Any]:
     return dict(
         employed=np.zeros(n, dtype=np.bool_),
         employer=np.full(n, -1, dtype=np.intp),
@@ -81,7 +82,7 @@ def _worker_defaults(n: int, *, queue_w: int) -> dict[str, Any]:
         contract_expired=np.zeros(n, dtype=np.bool_),
         fired=np.zeros(n, dtype=np.bool_),
         job_apps_head=np.full(n, -1, dtype=np.intp),
-        job_apps_targets=np.full((n, queue_w), -1, dtype=np.intp),
+        job_apps_targets=np.full((n, queue_m), -1, dtype=np.intp),
     )
 
 
@@ -109,7 +110,7 @@ def _lender_defaults(n: int, *, queue_h: int) -> dict[str, Any]:
     )
 
 
-def _loanbook_defaults(n: int, *, queue_h: int) -> dict[str, Any]:
+def _loanbook_defaults(n: int, *, queue_: int) -> dict[str, Any]:
     return dict(
         borrower=np.empty(n, dtype=np.int64),
         lender=np.empty(n, dtype=np.int64),
@@ -119,6 +120,12 @@ def _loanbook_defaults(n: int, *, queue_h: int) -> dict[str, Any]:
         debt=np.empty(n, dtype=np.float64),
         capacity=n,
         size=0,
+    )
+
+
+def _consumer_defaults(n: int, *, queue_z: int) -> dict[str, Any]:
+    return dict(
+        income=np.zeros(n, dtype=np.float64),
     )
 
 
@@ -143,7 +150,7 @@ def mock_economy(
 def mock_producer(
     n: int = 1,
     *,
-    queue_w: int = 4,
+    queue_: int = 4,
     alloc_scratch: bool = False,
     **overrides: Any,
 ) -> Producer:
@@ -154,7 +161,7 @@ def mock_producer(
     ----------
     n
         Number of producers.
-    queue_w
+    queue_
         Placeholder for future outbound queues (kept for symmetry).
     alloc_scratch
         If *True* pre-allocate zeroed scratch buffers so the system call
@@ -163,7 +170,7 @@ def mock_producer(
     **overrides
         Field-value pairs that overwrite defaults.
     """
-    cfg = _producer_defaults(n, queue_w=queue_w) | overrides
+    cfg = _producer_defaults(n, queue_=queue_) | overrides
 
     if alloc_scratch and cfg["prod_shock"] is None:
         cfg["prod_shock"] = np.zeros(n, dtype=np.float64)
@@ -176,7 +183,7 @@ def mock_producer(
 def mock_employer(
     n: int = 1,
     *,
-    queue_w: int = 4,
+    queue_m: int = 4,
     **overrides: Any,
 ) -> Employer:
     """
@@ -186,19 +193,19 @@ def mock_employer(
     ----------
     n
         Number of employers.
-    queue_w
+    queue_m
         Width of the application queue (`recv_job_apps.shape[1]`).
     **overrides
         Field-value pairs that overwrite defaults.
     """
-    cfg = _employer_defaults(n, queue_w=queue_w) | overrides
+    cfg = _employer_defaults(n, queue_m=queue_m) | overrides
     return Employer(**cfg)
 
 
 def mock_worker(
     n: int = 1,
     *,
-    queue_w: int = 4,
+    queue_m: int = 4,
     **overrides: Any,
 ) -> Worker:
     """
@@ -208,12 +215,12 @@ def mock_worker(
     ----------
     n
         Number of workers.
-    queue_w
+    queue_m
         Width of the application queue (`job_apps_targets.shape[1]`).
     **overrides
         Field-value pairs that overwrite defaults.
     """
-    cfg = _worker_defaults(n, queue_w=queue_w) | overrides
+    cfg = _worker_defaults(n, queue_m=queue_m) | overrides
     return Worker(**cfg)
 
 
@@ -264,7 +271,7 @@ def mock_lender(
 def mock_loanbook(
     n: int = 128,
     *,
-    queue_h: int = 1,
+    queue_: int = 1,
     **overrides: Any,
 ) -> LoanBook:
     """
@@ -274,10 +281,32 @@ def mock_loanbook(
     ----------
     n
         Number of pre-allocated rows.
-    queue_h
+    queue_
         Not defined for LoanBook class (kept for symmetry).
     **overrides
         Field-value pairs that overwrite defaults.
     """
-    cfg = _loanbook_defaults(n, queue_h=queue_h) | overrides
+    cfg = _loanbook_defaults(n, queue_=queue_) | overrides
     return LoanBook(**cfg)
+
+
+def mock_consumer(
+    n: int = 1,
+    *,
+    queue_z: int = 2,
+    **overrides: Any,
+) -> Consumer:
+    """
+    Return a fully-typed `Consumer`.
+
+    Parameters
+    ----------
+    n
+        Number of consumers.
+    queue_z
+        Placeholder for future queues.
+    **overrides
+        Field-value pairs that overwrite defaults.
+    """
+    cfg = _consumer_defaults(n, queue_z=queue_z) | overrides
+    return Consumer(**cfg)
