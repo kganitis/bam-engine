@@ -5,10 +5,8 @@ Event-4 – Production systems (vectorised, zero allocations)
 from __future__ import annotations
 
 import numpy as np
-from numpy.typing import NDArray
 
 from bamengine.components import Consumer, Employer, Producer, Worker
-from bamengine.typing import Idx1D
 
 
 # --------------------------------------------------------------------- #
@@ -66,20 +64,25 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
     adjustment, which uses a single `np.bincount`.
     """
 
+    # ---- step 0: catch impossible ‘already-0’ contracts -----------------
+    already_expired = (wrk.employed == 1) & (wrk.periods_left == 0)
+    if already_expired.any():
+        wrk.periods_left[already_expired] = 1  # so the decrement below hits 0
+
     # --- step 1: tick down only for currently employed -----------------
-    mask_emp: NDArray[np.bool_] = wrk.employed == 1
+    mask_emp = wrk.employed == 1
     if not mask_emp.any():
         return  # nothing to do
 
     wrk.periods_left[mask_emp] -= 1
 
     # --- step 2: detect expirations -----------------------------------
-    expired: NDArray[np.bool_] = mask_emp & (wrk.periods_left == 0)
+    expired = mask_emp & (wrk.periods_left == 0)
     if not expired.any():
         return
 
     # snapshot firm indices before we overwrite them
-    firms: Idx1D = wrk.employer[expired]
+    firms = wrk.employer[expired]
 
     # worker-side state
     wrk.employed[expired] = 0

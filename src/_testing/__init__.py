@@ -18,12 +18,7 @@ def advance_stub_state(sched: "Scheduler") -> None:
     tests have fresh, non-degenerate arrays.
     """
 
-    # 1. --- mock production ---------------------------------------
-    # sched.prod.production[:] *= sched.rng.uniform(
-    #     0.5, 2.0, size=sched.prod.desired_production.shape
-    # )
-
-    # 2. --- mock prices -------------------------------------------
+    # ------ mock prices -------------------------------------------
     sched.prod.price[:] *= sched.rng.uniform(0.95, 1.05, size=sched.prod.price.shape)
     sched.ec.avg_mkt_price = float(sched.prod.price.mean())
     sched.ec.avg_mkt_price_history = np.append(

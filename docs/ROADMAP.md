@@ -2,10 +2,9 @@
 
 ### Immediate tasks
 
-* Scheduler wiring
 * Integration tests
-* Raise test coverage
 * Scheduler tests
+* Raise test coverage
 
 ---
 

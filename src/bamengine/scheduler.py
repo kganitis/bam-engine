@@ -347,7 +347,7 @@ class Scheduler:
     def snapshot(
         self, *, copy: bool = True
     ) -> Dict[str, Float1D | Int1D | Bool1D | float]:
-        """ "
+        """
         Return a read‑only view (or copy) of key state arrays.
 
         Parameters
