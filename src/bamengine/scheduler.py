@@ -46,6 +46,9 @@ from bamengine.systems.planning import (
 )
 from bamengine.systems.production import (
     firms_pay_wages,
+    firms_run_production,
+    workers_receive_wage,
+    workers_update_contracts,
 )
 from bamengine.typing import Bool1D, Float1D, Int1D
 
@@ -317,10 +320,6 @@ class Scheduler:
             banks_provide_loans(self.bor, self.lb, self.lend, r_bar=self.ec.r_bar)
         firms_fire_workers(self.emp, self.wrk, rng=self.rng)
 
-        from bamengine.systems.credit_market import _sync_labor_and_wages
-
-        _sync_labor_and_wages(self.wrk, self.emp)
-
         _call("after_credit_market")
         # ===============================================================
 
@@ -328,9 +327,9 @@ class Scheduler:
         _call("before_production")
 
         firms_pay_wages(self.emp)
-        # workers_receive_wage(self.con, self.wrk)
-        # firms_run_production(self.prod, self.emp)
-        # workers_update_contracts(self.wrk, self.emp)
+        workers_receive_wage(self.con, self.wrk)
+        firms_run_production(self.prod, self.emp)
+        workers_update_contracts(self.wrk, self.emp)
 
         _call("after_production")
         # ===============================================================
