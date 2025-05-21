@@ -152,20 +152,20 @@ def firms_send_one_loan_app(bor: Borrower, lend: Lender) -> None:
 
 
 def _ensure_capacity(book: LoanBook, extra: int) -> None:
-
     needed = book.size + extra
     if needed <= book.capacity:
-        return
-
-    new_cap = max(book.capacity * 2, needed, 128)
+        new_cap = book.capacity
+    else:
+        new_cap = max(book.capacity * 2, needed, 128)
 
     for name in ("borrower", "lender", "principal", "rate", "interest", "debt"):
         arr = getattr(book, name)
-        new_arr = np.resize(arr, new_cap)  # returns *new* ndarray; O(1) amortized;
-        # large simulations should pre-allocate capacity = n_borrowers * H
-        setattr(book, name, new_arr)
+        if arr.size != new_cap:  # only when really needed
+            new_arr = np.resize(arr, new_cap)
+            setattr(book, name, new_arr)
 
     book.capacity = new_cap
+    # sanity
     assert all(
         getattr(book, n).size == new_cap
         for n in ("borrower", "lender", "principal", "rate", "interest", "debt")
@@ -260,56 +260,49 @@ def firms_fire_workers(
     rng: Generator,
 ) -> None:
     """
-    If `wage_bill[i]` exceeds `total_funds[i]` the firm lays off just enough
-    workers to close the gap:
+    If a firm’s wage-bill exceeds its cash, lay off just enough workers
+    to close the funding gap – never sampling more workers than actually
+    exist on the roster.
 
-        n_fire = ceil( gap / wage[i] )   but never more than current labor.
-
-    Workers are picked **uniformly at random** from the current workforce.
+        n_fire = ceil(gap / w_i)   capped by true roster size
     """
-    n_firms = emp.current_labor.size
-
-    for i in range(n_firms):
+    for i in range(emp.current_labor.size):
         gap = emp.wage_bill[i] - emp.total_funds[i]
-        if gap <= 0.0 or emp.current_labor[i] == 0:
+        if gap <= 0.0:
             continue
 
-        # how many heads must roll?
-        needed = int(
-            np.ceil(gap / float(emp.wage_offer[i]))
-        )  # heads needed to close gap
-
+        # real roster: might differ from bookkeeping
         workforce = np.where((wrk.employed == 1) & (wrk.employer == i))[0]
-        if workforce.size == 0:
+        if workforce.size == 0:  # no one to fire
             continue
 
-        capacity = workforce.size  # **actual** roster
-        n_fire = min(capacity, needed)
-        if n_fire == 0:  # float quirks
+        needed = int(np.ceil(gap / float(emp.wage_offer[i])))
+        n_fire = min(needed, workforce.size)
+        if n_fire == 0:  # numerical quirk
             continue
 
-        # choose victims uniformly
         victims = rng.choice(workforce, size=n_fire, replace=False)
 
-        # --- worker-side -------------------------------------------
+        # -------- worker-side updates --------------------------------
         wrk.employed[victims] = 0
         wrk.employer[victims] = -1
         wrk.employer_prev[victims] = i
         wrk.wage[victims] = 0.0
         wrk.periods_left[victims] = 0
-        wrk.contract_expired[victims] = 0  # explicit: this was a firing
+        wrk.contract_expired[victims] = 0
         wrk.fired[victims] = 1
 
-        # --- firm-side ---------------------------------------------
-        emp.current_labor[i] -= n_fire
-        emp.wage_bill[i] -= n_fire * emp.wage_offer[i]
+    # -----------------------------------------------------------------
+    # After all firms processed, rebuild labour books + wage-bill once
+    # to ensure firm and worker tables are totally in-sync.
+    _sync_labor_and_wages(wrk, emp)
 
 
 def _sync_labor_and_wages(wrk: Worker, emp: Employer) -> None:
     """
-    Rebuild `emp.current_labor` from first principles (worker table)
-    and refresh `emp.wage_bill` so books are always consistent:
-        L_i = Σ 1{worker employed & employer == i}
+    Recompute firm-side head-counts and wage-bills from worker records.
+
+        L_i = Σ 1{ employed_h & employer_h == i }
         W_i = L_i · w_i
     """
     counts = np.bincount(

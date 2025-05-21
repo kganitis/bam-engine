@@ -6,7 +6,7 @@ A research prototype for my thesis, implementing the BAM model from *Macroeconom
 
 * Entity-Component style: all state stored in NumPy arrays
 * Event-driven Scheduler: each period runs Planning → Labour market → Credit market → …
-* Zero runtime allocation in hot loops: permanent scratch buffers, amortized O(1) ledger growth
+* Zero runtime allocation in hot loops
 
 ### Technology
 
