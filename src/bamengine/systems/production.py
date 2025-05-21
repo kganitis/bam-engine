@@ -51,49 +51,45 @@ def firms_run_production(prod: Producer, emp: Employer) -> None:
 # --------------------------------------------------------------------- #
 def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
     """
-    Decrease `periods_left` for every *employed* worker.
-    When the counter reaches 0 the contract expires:
+    Decrease `periods_left` for every employed worker and let contracts that
+    reach 0 expire.  All worker-side flags are updated **and** the corresponding
+    firm’s labour and wage-bill are brought back in sync.
 
-        • worker becomes unemployed (`employed = 0`)
-        • `contract_expired = 1`
-        • `employer_prev` stores the firm index
-        • firm labour count `current_labor` is decremented
-        • queue-related scratch is left untouched (will be filled later)
-
-    All updates are fully vectorised except the firm-side labour
-    adjustment, which uses a single `np.bincount`.
+        • L_i := Σ 1{worker employed & employer == i}
+        • W_i := L_i · w_i
     """
 
-    # ---- step 0: catch impossible ‘already-0’ contracts -----------------
+    # ---- step 0: guard against impossible ‘already-0’ contracts ----------
     already_expired = (wrk.employed == 1) & (wrk.periods_left == 0)
-    if already_expired.any():
-        wrk.periods_left[already_expired] = 1  # so the decrement below hits 0
+    if already_expired.any():  # treat them as “1 → 0”
+        wrk.periods_left[already_expired] = 1
 
-    # --- step 1: tick down only for currently employed -----------------
+    # ---- step 1: tick down only for currently employed -------------------
     mask_emp = wrk.employed == 1
-    if not mask_emp.any():
-        return  # nothing to do
+    if not mask_emp.any():  # nothing to do
+        return
 
     wrk.periods_left[mask_emp] -= 1
 
-    # --- step 2: detect expirations -----------------------------------
+    # ---- step 2: detect expirations --------------------------------------
     expired = mask_emp & (wrk.periods_left == 0)
-    if not expired.any():
+    if not expired.any():  # no contract hit zero
         return
 
-    # snapshot firm indices before we overwrite them
-    firms = wrk.employer[expired]
+    firms = wrk.employer[expired]  # snapshot before overwrite
 
-    # worker-side state
+    # -------- worker-side updates -----------------------------------------
     wrk.employed[expired] = 0
     wrk.employer[expired] = -1
     wrk.employer_prev[expired] = firms
     wrk.wage[expired] = 0.0
     wrk.contract_expired[expired] = 1
-    wrk.fired[expired] = 0  # explicit: this was an expiration
+    wrk.fired[expired] = 0
 
-    # firm-side labour book-keeping
+    # -------- firm-side labour bookkeeping --------------------------------
     delta = np.bincount(firms, minlength=emp.current_labor.size)
     emp.current_labor[: delta.size] -= delta
-    # guard against numerical slip
     assert (emp.current_labor >= 0).all(), "negative labour after expirations"
+
+    # keep wage-bill consistent with the new labour vector
+    np.multiply(emp.current_labor, emp.wage_offer, out=emp.wage_bill)
