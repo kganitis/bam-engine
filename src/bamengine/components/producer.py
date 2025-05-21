@@ -14,7 +14,7 @@ class Producer:
     desired_production: Float1D  # Yd_i
     labor_productivity: Float1D  # a_i   (can change with R&D later)
 
-    price: Float1D  # p_i  (carried from t-1)   shared view from Seller component?
+    price: Float1D  # p_i  (carried from t-1)
 
     # ---- permanent scratch buffers ----
     prod_shock: Float1D | None = field(default=None, repr=False)
