@@ -11,10 +11,10 @@
 Implement the next events one by one
 
 * Specify the required components and systems
-* Wire the event into the scheduler
 * Write unit tests that cover edge cases and buffer reuse
-* Write an event-level integration test
 * Raise the test coverage
+* Wire the event into the scheduler
+* Write an event-level integration test
 * Update the scheduler integration test
 
 Repeat until the full event chain is implemented
