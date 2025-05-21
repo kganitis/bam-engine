@@ -2,9 +2,7 @@
 
 ### Immediate tasks
 
-* Integration tests
-* Scheduler tests
-* Raise test coverage
+* Implement goods market
 
 ---
 

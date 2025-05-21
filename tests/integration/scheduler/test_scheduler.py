@@ -110,5 +110,5 @@ def test_hook_after_stub_forces_no_inventory() -> None:
 
 
 @pytest.mark.xfail(reason="Cover snapshot later")
-def test_prepare_applications_loyalty_swap() -> None:  # pragma: no cover
+def test_scheduler_snapshot() -> None:  # pragma: no cover
     raise NotImplementedError
