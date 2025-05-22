@@ -19,8 +19,10 @@ from numpy.typing import NDArray
 from bamengine.scheduler import Scheduler
 from bamengine.systems.labor_market import firms_calc_wage_bill
 from bamengine.systems.production import (
+    firms_decide_price,
     firms_pay_wages,
     firms_run_production,
+    update_avg_mkt_price,
     workers_receive_wage,
     workers_update_contracts,
 )
@@ -48,6 +50,18 @@ def _run_production_event(
     """
     # make sure the wage-bill is up-to-date with current_labor
     firms_calc_wage_bill(sch.emp)
+
+    # ---- price rule & market price ------------------------------------
+    interest = np.zeros(sch.n_firms, dtype=np.float64)  # ledger empty in tiny_sched
+    firms_decide_price(
+        sch.prod,
+        sch.emp,
+        interest,
+        p_avg=sch.ec.avg_mkt_price,
+        h_eta=sch.h_eta,
+        rng=sch.rng,
+    )
+    update_avg_mkt_price(sch.ec, sch.prod)
 
     funds_before = sch.emp.total_funds.copy()
     income_before = sch.con.income.copy()
@@ -96,6 +110,10 @@ def test_event_production_basic(tiny_sched: Scheduler) -> None:
     expected_output = sch.prod.labor_productivity * sch.emp.current_labor
     np.testing.assert_allclose(sch.prod.production, expected_output)
     np.testing.assert_allclose(sch.prod.inventory, expected_output)
+
+    # --- avg market price appended & consistent -----------------------
+    assert sch.ec.avg_mkt_price_history[-1] == sch.ec.avg_mkt_price
+    np.testing.assert_allclose(sch.ec.avg_mkt_price, sch.prod.price.mean())
 
     # --- non-negativity guard --------------------------------------------
     assert (sch.emp.total_funds >= -1e-9).all()

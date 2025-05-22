@@ -45,8 +45,10 @@ from bamengine.systems.planning import (
     firms_decide_vacancies,
 )
 from bamengine.systems.production import (
+    firms_decide_price,
     firms_pay_wages,
     firms_run_production,
+    update_avg_mkt_price,
     workers_receive_wage,
     workers_update_contracts,
 )
@@ -100,9 +102,13 @@ class Scheduler:
     lb: LoanBook
 
     # global parameters
+    n_firms: int
+    n_households: int
+    n_banks: int
     h_rho: float  # max production-growth shock
     h_xi: float  # max wage-growth shock
     h_phi: float  # max bank operational costs shock
+    h_eta: float  # max price-growth shock
     max_M: int  # max job applications per unemployed worker
     max_H: int  # max loan applications per firm
     max_Z: int  # max firm visits per consumer
@@ -121,11 +127,12 @@ class Scheduler:
         h_rho: float = 0.1,
         h_xi: float = 0.05,
         h_phi: float = 0.1,
+        h_eta: float = 0.1,
         max_M: int = 4,
         max_H: int = 2,
         max_Z: int = 2,
         theta: int = 8,
-        seed: int | np.random.Generator = 0,
+        seed: int | Generator = 0,
     ) -> "Scheduler":
         rng = seed if isinstance(seed, Generator) else default_rng(seed)
 
@@ -177,7 +184,12 @@ class Scheduler:
         recv_loan_apps = np.full((n_banks, max_H), -1, dtype=np.int64)
 
         # consumer vectors
-        income = np.zeros(n_households)
+        income = np.zeros_like(wage)
+        savings = np.zeros_like(wage)
+        remaining_income = np.zeros_like(wage)
+        largest_prod_prev = np.full(n_households, -1, dtype=np.int64)
+        shop_visits_head = np.full(n_households, -1, dtype=np.int64)
+        shop_visits_targets = np.full((n_households, max_Z), -1, dtype=np.int64)
 
         # ---------- wrap into components ----------------------------------
         ec = Economy(
@@ -237,9 +249,17 @@ class Scheduler:
         lb = LoanBook()
         con = Consumer(
             income=income,
+            savings=savings,
+            remaining_income=remaining_income,
+            largest_prod_prev=largest_prod_prev,
+            shop_visits_head=shop_visits_head,
+            shop_visits_targets=shop_visits_targets,
         )
 
         return cls(
+            n_firms=n_firms,
+            n_households=n_households,
+            n_banks=n_banks,
             rng=rng,
             ec=ec,
             prod=prod,
@@ -252,6 +272,7 @@ class Scheduler:
             h_rho=h_rho,
             h_xi=h_xi,
             h_phi=h_phi,
+            h_eta=h_eta,
             max_M=max_M,
             max_H=max_H,
             max_Z=max_Z,
@@ -325,6 +346,18 @@ class Scheduler:
 
         # ===== Event 4 – production ====================================
         _call("before_production")
+
+        _int_scratch: Float1D = np.zeros(self.n_firms)
+        self.lb.interest_per_borrower(self.n_firms, out=_int_scratch)
+        firms_decide_price(
+            self.prod,
+            self.emp,
+            _int_scratch,
+            p_avg=self.ec.avg_mkt_price,
+            h_eta=self.h_eta,
+            rng=self.rng,
+        )
+        update_avg_mkt_price(self.ec, self.prod)
 
         firms_pay_wages(self.emp)
         workers_receive_wage(self.con, self.wrk)
