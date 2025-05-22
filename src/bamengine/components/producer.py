@@ -20,3 +20,4 @@ class Producer:
     prod_shock: Float1D | None = field(default=None, repr=False)
     prod_mask_up: Bool1D | None = field(default=None, repr=False)
     prod_mask_dn: Bool1D | None = field(default=None, repr=False)
+    price_shock: Float1D | None = field(default=None, repr=False)

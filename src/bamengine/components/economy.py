@@ -104,3 +104,33 @@ class LoanBook:
         out = np.zeros(n_lenders, dtype=np.float64)
         np.add.at(out, self.lender[: self.size], self.debt[: self.size])
         return out
+
+    def interest_per_borrower(
+        self,
+        n_borrowers: int,
+        *,
+        out: Float1D | None = None,
+    ) -> Float1D:
+        """
+        Aggregate contractual interest owed by each borrower.
+
+        Parameters
+        ----------
+        n_borrowers : int
+            Total number of borrowers (length of the output vector).
+        out : Float1D | None, optional
+            Pre-allocated array to write the result into.  When ``None``
+            (default) a new zero-filled array is created.
+
+        Returns
+        -------
+        Float1D
+            Vector ``interest_sum[i]`` with length ``n_borrowers``.
+        """
+        if out is None or out.shape[0] != n_borrowers:
+            out = np.zeros(n_borrowers, dtype=np.float64)
+        else:
+            out.fill(0.0)  # reuse caller-supplied buffer
+
+        np.add.at(out, self.borrower[: self.size], self.interest[: self.size])
+        return out

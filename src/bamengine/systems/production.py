@@ -5,12 +5,74 @@ Event-4 – Production systems (vectorised, zero allocations)
 from __future__ import annotations
 
 import numpy as np
+from numpy.random import Generator
 
-from bamengine.components import Consumer, Employer, Producer, Worker
+from bamengine.components import Consumer, Economy, Employer, Producer, Worker
+from bamengine.typing import Float1D
+
+
+# ------------------------------------------------------------------ #
+# 1.  Firms: decide selling price                                    #
+# ------------------------------------------------------------------ #
+def firms_decide_price(
+    prod: Producer,
+    emp: Employer,
+    interest: Float1D,
+    *,
+    p_avg: float,
+    h_eta: float,
+    rng: Generator,
+) -> None:
+    """
+    Nominal price-adjustment rule (vectorised):
+
+        shock_i ~ U(0, h_eta)
+
+        if S_i == 0 and p_i < p̄:      p_i ← max( breakeven_i , p_i·(1+shock) )
+        if S_i  > 0 and p_i ≥ p̄:      p_i ← max( breakeven_i , p_i·(1-shock) )
+
+    Notes
+    -----
+    • Works fully in-place;
+    only a single scratch array (`price_shock`) is reused between steps.
+    """
+    shape = prod.price.shape
+
+    shock = prod.price_shock
+    if shock is None or shock.shape != shape:
+        shock = np.empty(shape, dtype=np.float64)
+        prod.price_shock = shock
+
+    # fill scratch
+    shock[:] = rng.uniform(0.0, h_eta, size=shape)
+
+    mask_up = (prod.inventory == 0.0) & (prod.price < p_avg)
+    mask_dn = (prod.inventory > 0.0) & (prod.price >= p_avg)
+
+    breakeven = (emp.wage_bill + interest) / np.maximum(prod.production, 1.0e-12)
+
+    # raise prices
+    if mask_up.any():
+        np.multiply(prod.price[mask_up], 1.0 + shock[mask_up], out=prod.price[mask_up])
+        np.maximum(prod.price[mask_up], breakeven[mask_up], out=prod.price[mask_up])
+
+    # cut prices
+    if mask_dn.any():
+        np.multiply(prod.price[mask_dn], 1.0 - shock[mask_dn], out=prod.price[mask_dn])
+        np.maximum(prod.price[mask_dn], breakeven[mask_dn], out=prod.price[mask_dn])
 
 
 # --------------------------------------------------------------------- #
-# 1.  Wage payment – firm-side only                                     #
+# 2.  Update average market price                                       #
+# --------------------------------------------------------------------- #
+def update_avg_mkt_price(ec: Economy, prod: Producer) -> None:
+    """ """
+    ec.avg_mkt_price = float(prod.price.mean())
+    ec.avg_mkt_price_history = np.append(ec.avg_mkt_price_history, ec.avg_mkt_price)
+
+
+# --------------------------------------------------------------------- #
+# 3.  Wage payment – firm-side only                                     #
 # --------------------------------------------------------------------- #
 def firms_pay_wages(emp: Employer) -> None:
     """
@@ -20,7 +82,7 @@ def firms_pay_wages(emp: Employer) -> None:
 
 
 # --------------------------------------------------------------------- #
-# 2.  Wage receipt – household side                                     #
+# 4.  Wage receipt – household side                                     #
 # --------------------------------------------------------------------- #
 def workers_receive_wage(con: Consumer, wrk: Worker) -> None:
     """
@@ -33,7 +95,7 @@ def workers_receive_wage(con: Consumer, wrk: Worker) -> None:
 
 
 # --------------------------------------------------------------------- #
-# 3.  Physical production                                               #
+# 5.  Physical production                                               #
 # --------------------------------------------------------------------- #
 def firms_run_production(prod: Producer, emp: Employer) -> None:
     """
@@ -47,7 +109,7 @@ def firms_run_production(prod: Producer, emp: Employer) -> None:
 
 
 # --------------------------------------------------------------------- #
-# 4.  Contract-expiration mechanic                                      #
+# 6.  Contract-expiration mechanic                                      #
 # --------------------------------------------------------------------- #
 def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
     """

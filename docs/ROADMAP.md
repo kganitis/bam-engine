@@ -61,8 +61,26 @@ Repeat until the full event chain is implemented
 
 ### Future research extensions
 
+* Implement "growth+" model with R&D and productivity
+* Consumption and buffer stock
+* Exploration of the parameter space
+* Preferential attachment in consumption and the entry mechanism
 * Add reinforcement-learning agents for policy search experiments
 * Investigate GPU or distributed back-ends once single-node scaling limits are reached
 
 ---
 
+### Various ideas
+
+#### ECS Implementation
+* Prototype the systems so that each system by default accepts a before & after hook
+* Each system must update the minimum possible number of vectors
+* Review of the components structure
+  * Need of fields reshuffling, combine components or break them into pieces
+  * Based on the systems, so that we optimize speed and memory
+* Also review which systems belong to which events, general event structure
+* Dynamic scheduler re-wiring by the user, add/remove systems, change their order
+  * Step should just decide which systems are called in what order
+
+#### Documentation
+* Review all the comments and un-AI them

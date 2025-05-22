@@ -5,20 +5,84 @@ Unit tests for production systems.
 from __future__ import annotations
 
 import numpy as np
+from numpy.random import default_rng
 
 from bamengine.components import Employer, Worker
 from bamengine.systems.production import (
+    firms_decide_price,
     firms_pay_wages,
     firms_run_production,
+    update_avg_mkt_price,
     workers_receive_wage,
     workers_update_contracts,
 )
 from tests.helpers.factories import (
     mock_consumer,
+    mock_economy,
     mock_employer,
     mock_producer,
     mock_worker,
 )
+
+
+# ------------------------------------------------------------------ #
+#  firms_decide_price                                                #
+# ------------------------------------------------------------------ #
+def test_firms_decide_price_obeys_break_even_and_shocks() -> None:
+    """
+    • Firm-0 has no stock → should *raise* price if below p̄
+    • Firm-1 has excess stock → should *cut* price if ≥ p̄
+    • Breakeven floor respected in both directions.
+    """
+    rng = default_rng(0)
+
+    prod = mock_producer(
+        n=2,
+        production=np.array([5.0, 8.0]),
+        inventory=np.array([0.0, 3.0]),  # firm-0 sold out, firm-1 leftover
+        price=np.array([1.0, 3.0]),
+        alloc_scratch=False,  # exercise lazy buffer path
+    )
+    emp = mock_employer(
+        n=2,
+        current_labor=np.array([2, 2]),
+        wage_offer=np.array([1.0, 1.0]),
+        wage_bill=np.array([2.0, 2.0]),
+    )
+    # simple constant interest vector
+    interest = np.array([0.5, 0.5])
+
+    p_avg = 2.0
+    h_eta = 0.10
+
+    firms_decide_price(prod, emp, interest, p_avg=p_avg, h_eta=h_eta, rng=rng)
+
+    # firm-0 price ↑ at most 10 %
+    assert prod.price[0] >= 1.0
+    assert prod.price[0] <= 1.0 * (1 + h_eta) + 1e-12
+    # firm-1 price ↓ at most 10 %
+    assert prod.price[1] <= 3.0
+    assert prod.price[1] >= 3.0 * (1 - h_eta) - 1e-12
+
+    # floor: price never below break-even
+    breakeven = (emp.wage_bill + interest) / prod.production
+    assert np.all(prod.price >= breakeven - 1e-12)
+
+
+# ------------------------------------------------------------------ #
+#  update_avg_mkt_price                                              #
+# ------------------------------------------------------------------ #
+def test_update_avg_mkt_price_appends_series() -> None:
+    ec = mock_economy()
+    prod = mock_producer(n=3, price=np.array([1.0, 2.0, 3.0]))
+
+    hist_len_before = ec.avg_mkt_price_history.size
+    update_avg_mkt_price(ec, prod)
+
+    expected_avg = prod.price.mean()
+    assert ec.avg_mkt_price == expected_avg
+    assert ec.avg_mkt_price_history.size == hist_len_before + 1
+    assert ec.avg_mkt_price_history[-1] == expected_avg
 
 
 # ------------------------------------------------------------------ #

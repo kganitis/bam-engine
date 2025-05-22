@@ -147,6 +147,7 @@ def workers_send_one_round(wrk: Worker, emp: Employer) -> None:
         h = wrk.job_apps_head[w]
         if h < 0:
             continue
+
         row, col = divmod(h, stride)
         firm_idx = wrk.job_apps_targets[row, col]
         if firm_idx < 0:  # exhausted list
