@@ -124,7 +124,7 @@ def workers_decide_firms_to_apply(
             prev = wrk.employer_prev[unem[r]]
             row = sorted_sample[r]
 
-            if row[0] != prev:  # not covered by tests
+            if row[0] != prev:
                 # find where prev employer ended up (guaranteed to exist)
                 j = np.where(row == prev)[0][0]
                 row[0], row[j] = row[j], row[0]

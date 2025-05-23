@@ -5,6 +5,8 @@ Labor-market systems unit tests.
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import numpy as np
 import pytest
 from hypothesis import assume, given, settings
@@ -222,9 +224,56 @@ def test_prepare_applications_loyalty_to_employer() -> None:
     assert wrk.job_apps_targets[0, 0] == 1  # loyalty kept
 
 
-@pytest.mark.xfail(reason="Cover loyalty‑swap branch later")
-def test_prepare_applications_loyalty_swap() -> None:  # pragma: no cover
-    raise NotImplementedError
+def test_prepare_applications_loyalty_swap_branch() -> None:
+    """
+    Drive the branch that swaps columns when the previous employer is pushed
+    away from column-0 by the wage-descending partial sort.
+
+    Conditions required by the code:
+
+    • loyal == True                      → worker had employer_prev ≥ 0
+    • filled > 1                         → max_M ≥ 2  and we drew ≥ 1 other firm
+    • row[0] != prev after the sort      → prev's wage < another sampled firm
+    """
+    # ---- components -------------------------------------------------------
+    emp = mock_employer(
+        n=2,
+        queue_m=2,
+        wage_offer=np.array([1.0, 10.0]),  # firm-1 much higher wage
+        n_vacancies=np.array([1, 1]),
+    )
+    wrk = mock_worker(
+        n=1,
+        queue_m=2,
+        employed=np.array([False]),
+        contract_expired=np.array([True]),
+        fired=np.array([False]),
+        employer_prev=np.array([0]),  # loyalty to firm-0
+    )
+
+    # ---- deterministic “RNG” that returns the matrix [[1, 1]] -------------
+    class FixedRNG:
+        """Mimic `numpy.random.Generator` just for `.integers()`."""
+
+        def __init__(self, arr: NDArray[np.int64]) -> None:
+            self._arr = arr
+
+        def integers(  # noqa: D401  (signature intentionally minimal)
+            self,
+            low: int | np.int64,
+            high: int | None = None,
+            size: tuple[int, int] | None = None,
+            dtype: type[np.int64] | np.dtype[np.int64] = np.int64,
+        ) -> NDArray[np.int64]:
+            return self._arr.copy()
+
+    stub_rng: Any = FixedRNG(np.array([[1, 1]], dtype=np.int64))
+    # `cast` silences mypy – at runtime only `.integers()` is used
+    workers_decide_firms_to_apply(wrk, emp, max_M=2, rng=cast(Generator, stub_rng))
+
+    # loyalty guarantee after swap
+    assert wrk.job_apps_targets[0, 0] == 0  # prev employer in col-0
+    assert wrk.job_apps_targets[0, 1] == 1  # other firm in col-1
 
 
 def test_prepare_applications_one_trial() -> None:
