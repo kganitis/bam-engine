@@ -90,9 +90,10 @@ def consumers_decide_firms_to_visit(
             filled += n_draw
 
         if loyal and filled > 1 and row[0] != prev:
-            # guarantee loyalty stays at slot-0 (rare race with price ties)
-            j = np.where(row[:filled] == prev)[0][0]
-            row[0], row[j] = row[j], row[0]
+            # guarantee loyalty stays at slot-0
+            # (defensive; never triggered in practice)
+            j = np.where(row[:filled] == prev)[0][0]  # pragma: no cover
+            row[0], row[j] = row[j], row[0]  ## pragma: no cover
 
         if filled > 0:
             con.shop_visits_head[h] = h * stride
