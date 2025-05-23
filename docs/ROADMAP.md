@@ -73,7 +73,7 @@ Repeat until the full event chain is implemented
 ### Various ideas
 
 #### ECS Implementation
-* Prototype the systems so that each system by default accepts a before & after hook
+* Prototype the systems so that each system by default accepts a before & after hook, or other common logic
 * Each system must update the minimum possible number of vectors
 * Review of the components structure
   * Need of fields reshuffling, combine components or break them into pieces
