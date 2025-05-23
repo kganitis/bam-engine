@@ -12,6 +12,7 @@ from numpy.random import Generator, default_rng
 
 from bamengine.components import Consumer, Producer
 from bamengine.systems.goods_market import (
+    consumers_calc_propensity,
     consumers_decide_firms_to_visit,
     consumers_decide_income_to_spend,
     consumers_finalize_purchases,
@@ -52,22 +53,35 @@ def _mini_state(
 # --------------------------------------------------------------------------- #
 #  consumers_decide_income_to_spend                                           #
 # --------------------------------------------------------------------------- #
+def test_calc_propensity_basic() -> None:
+    con = mock_consumer(
+        n=3,
+        savings=np.array([0.0, 5.0, 10.0]),
+    )
+    consumers_calc_propensity(con, avg_sav=5.0, beta=0.5)
+    # monotone decreasing with savings
+    assert con.propensity[0] > con.propensity[1] > con.propensity[2]
+    assert np.all((0.0 < con.propensity) & (con.propensity <= 1.0))
+
+
 @pytest.mark.parametrize("beta", [0.5, 1.0, 2.0])
 def test_budget_rule_conservation(beta: float) -> None:
     """Remaining-income + savings must equal wealth; income must zero-out."""
     con, _, _, _ = _mini_state()
     wealth = con.savings + con.income
-    consumers_decide_income_to_spend(con, avg_sav=con.savings.mean(), beta=beta)
-    np.testing.assert_allclose(con.remaining_income + con.savings, wealth, rtol=1e-12)
-    assert (con.income == 0.0).all()
+    consumers_calc_propensity(con, avg_sav=1.0, beta=0.9)
+    consumers_decide_income_to_spend(con)
+    np.testing.assert_allclose(con.income_to_spend + con.savings, wealth, rtol=1e-12)
+    assert np.all((con.income == 0.0))
 
 
 def test_budget_rule_zero_avg_savings_guard() -> None:
     """`avg_sav → 0` must not raise `÷0` warnings and still conserve wealth."""
     con, _, _, _ = _mini_state()
-    consumers_decide_income_to_spend(con, avg_sav=0.0, beta=0.8)
+    consumers_calc_propensity(con, avg_sav=1.0, beta=0.9)
+    consumers_decide_income_to_spend(con)
     np.testing.assert_allclose(
-        con.remaining_income + con.savings, np.full(con.savings.shape, 5.0)
+        con.income_to_spend + con.savings, np.full(con.savings.shape, 5.0)
     )
 
 
@@ -78,8 +92,8 @@ def test_pick_firms_basic() -> None:
     con, prod, rng, Z = _mini_state()
     consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=rng)
 
-    # every household with positive remaining_income has valid queue ptr + targets
-    active = np.where(con.remaining_income > 0.0)[0]
+    # every household with positive income_to_spend has valid queue ptr + targets
+    active = np.where(con.income_to_spend > 0.0)[0]
     heads = con.shop_visits_head[active]
     assert (heads >= 0).all()
 
@@ -93,7 +107,8 @@ def test_pick_firms_loyalty_slot() -> None:
     con, prod, rng, Z = _mini_state()
     # set loyalty of hh-0 to firm-2 (which has inventory)
     con.largest_prod_prev[0] = 2
-    consumers_decide_income_to_spend(con, avg_sav=con.savings.mean(), beta=1.0)
+    consumers_calc_propensity(con, avg_sav=1.0, beta=0.9)
+    consumers_decide_income_to_spend(con)
     consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=rng)
     assert con.shop_visits_targets[0, 0] == 2
 
@@ -101,10 +116,11 @@ def test_pick_firms_loyalty_slot() -> None:
 def test_pick_firms_no_inventory_exits_early() -> None:
     con, prod, rng, Z = _mini_state()
     prod.inventory[:] = 0.0  # market empty
-    consumers_decide_income_to_spend(con, avg_sav=1.0, beta=1.0)
+    consumers_calc_propensity(con, avg_sav=1.0, beta=0.9)
+    consumers_decide_income_to_spend(con)
     consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=rng)
-    assert (con.shop_visits_head == -1).all()
-    assert (con.shop_visits_targets == -1).all()
+    assert np.all((con.shop_visits_head == -1))
+    assert np.all((con.shop_visits_targets == -1))
 
 
 def test_loyalty_swap_keeps_prev_at_slot0() -> None:
@@ -125,7 +141,8 @@ def test_loyalty_swap_keeps_prev_at_slot0() -> None:
         production=np.array([4.0, 6.0]),
     )
 
-    consumers_decide_income_to_spend(con, avg_sav=2.0, beta=1.0)
+    consumers_calc_propensity(con, avg_sav=1.0, beta=0.9)
+    consumers_decide_income_to_spend(con)
     consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=default_rng(42))
 
     # loyalty guarantee: despite being pricier, firm-1 stays in column-0
@@ -137,12 +154,13 @@ def test_loyalty_swap_keeps_prev_at_slot0() -> None:
 # --------------------------------------------------------------------------- #
 def test_one_round_basic_purchase() -> None:
     con, prod, rng, Z = _mini_state()
-    consumers_decide_income_to_spend(con, avg_sav=con.savings.mean(), beta=0.9)
+    consumers_calc_propensity(con, avg_sav=1.0, beta=0.9)
+    consumers_decide_income_to_spend(con)
     consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=rng)
 
     h = 0  # focus on household-0
     head_before = int(con.shop_visits_head[h])
-    wealth_before = con.remaining_income[h] + con.savings[h]
+    wealth_before = con.income_to_spend[h] + con.savings[h]
     inv_before = prod.inventory.copy()
 
     consumers_visit_one_round(con, prod)
@@ -150,7 +168,7 @@ def test_one_round_basic_purchase() -> None:
     # exactly one slot consumed
     assert con.shop_visits_head[h] == head_before + 1
     # money conservation for that household
-    spent = wealth_before - (con.remaining_income[h] + con.savings[h])
+    spent = wealth_before - (con.income_to_spend[h] + con.savings[h])
     assert spent >= 0.0
     # inventory decreased by the purchased quantity
     assert np.any(prod.inventory < inv_before)
@@ -165,7 +183,8 @@ def test_one_round_skip_sold_out() -> None:
     # make firm-0 sold out; force it into slot-0 for hh-0
     prod.inventory[0] = 0.0
     con.largest_prod_prev[0] = 0
-    consumers_decide_income_to_spend(con, avg_sav=2.0, beta=1.0)
+    consumers_calc_propensity(con, avg_sav=1.0, beta=0.9)
+    consumers_decide_income_to_spend(con)
     consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=rng)
     head_before = int(con.shop_visits_head[0])
     consumers_visit_one_round(con, prod)
@@ -179,7 +198,7 @@ def test_one_round_queue_exhaustion_clears_head() -> None:
     con = mock_consumer(
         n=1,
         queue_z=1,
-        remaining_income=np.array([5.0]),
+        income_to_spend=np.array([5.0]),
         shop_visits_head=np.array([0]),
         shop_visits_targets=np.array([[-1]], dtype=np.intp),
     )
@@ -190,13 +209,13 @@ def test_one_round_queue_exhaustion_clears_head() -> None:
 
 def test_visit_one_round_skips_household_with_no_head() -> None:
     """
-    If `remaining_income > 0` but the head pointer is −1, the early-continue
+    If `income_to_spend > 0` but the head pointer is −1, the early-continue
     branch must execute without touching inventories.
     """
     con = mock_consumer(
         n=1,
         queue_z=1,
-        remaining_income=np.array([4.0]),
+        income_to_spend=np.array([4.0]),
         shop_visits_head=np.array([-1]),  # no queue
         shop_visits_targets=np.array([[-1]], dtype=np.intp),
         savings=np.array([1.0]),
@@ -213,7 +232,7 @@ def test_visit_one_round_skips_household_with_no_head() -> None:
 
     # nothing purchased, inventory unchanged, income untouched
     np.testing.assert_allclose(prod.inventory, inv_before)
-    assert con.remaining_income[0] == pytest.approx(4.0)
+    assert con.income_to_spend[0] == pytest.approx(4.0)
 
 
 # --------------------------------------------------------------------------- #
@@ -221,9 +240,9 @@ def test_visit_one_round_skips_household_with_no_head() -> None:
 # --------------------------------------------------------------------------- #
 def test_finalize_transfers_leftover_to_savings() -> None:
     con, _, _, _ = _mini_state()
-    leftover = con.remaining_income.copy()
+    leftover = con.income_to_spend.copy()
     consumers_finalize_purchases(con)
-    np.testing.assert_allclose(con.remaining_income, 0.0)
+    np.testing.assert_allclose(con.income_to_spend, 0.0)
     np.testing.assert_allclose(con.savings, 2.0 + leftover)
 
 
@@ -251,7 +270,8 @@ def test_visit_invariants(n_hh: int, n_firms: int, Z: int) -> None:
         income=rng.uniform(0.0, 5.0, size=n_hh),
         savings=rng.uniform(0.0, 10.0, size=n_hh),
     )
-    consumers_decide_income_to_spend(con, avg_sav=con.savings.mean() + 1e-9, beta=0.9)
+    consumers_calc_propensity(con, avg_sav=con.savings.mean() + 1e-9, beta=0.9)
+    consumers_decide_income_to_spend(con)
     consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=rng)
     consumers_visit_one_round(con, prod)
 

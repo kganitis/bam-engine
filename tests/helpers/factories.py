@@ -127,7 +127,8 @@ def _consumer_defaults(n: int, *, queue_z: int) -> dict[str, Any]:
     return dict(
         income=np.zeros(n, dtype=np.float64),
         savings=np.zeros(n, dtype=np.float64),
-        remaining_income=np.zeros(n, dtype=np.float64),
+        income_to_spend=np.zeros(n, dtype=np.float64),
+        propensity=np.zeros(n, dtype=np.float64),
         largest_prod_prev=np.full(n, -1, dtype=np.intp),
         shop_visits_head=np.full(n, -1, dtype=np.intp),
         shop_visits_targets=np.full((n, queue_z), -1, dtype=np.intp),
