@@ -12,7 +12,7 @@ from bamengine.components import Consumer, Producer
 
 
 # ------------------------------------------------------------------ #
-# 0.  Households – propensity-to-consume (NEW)                       #
+# 0.  Households – propensity-to-consume                       #
 # ------------------------------------------------------------------ #
 def consumers_calc_propensity(
     con: Consumer,
@@ -50,7 +50,7 @@ def consumers_decide_income_to_spend(con: Consumer) -> None:
 
 
 # ------------------------------------------------------------------ #
-# 2.  Households: pick firms to visit                                 #
+# 2.  Households: pick firms to visit                                #
 # ------------------------------------------------------------------ #
 def consumers_decide_firms_to_visit(
     con: Consumer,
