@@ -12,31 +12,41 @@ from bamengine.components import Consumer, Producer
 
 
 # ------------------------------------------------------------------ #
-# 1.  Households: budget rule                                         #
+# 0.  Households – propensity-to-consume (NEW)                       #
 # ------------------------------------------------------------------ #
-def consumers_decide_income_to_spend(
+def consumers_calc_propensity(
     con: Consumer,
     *,
     avg_sav: float,
     beta: float,
 ) -> None:
     """
+    π_h  = 1 / (1 + tanh(savings_h / avg_sav) ** beta)
+
+    • Enforces savings ≥ 0 in place
+    • Writes the result into ``con.propensity`` only
+    """
+    np.maximum(con.savings, 0.0, out=con.savings)  # defensive clamp
+    avg_sav = max(avg_sav, 1.0e-12)  # avoid /0
+    t = np.tanh(con.savings / avg_sav)  # ∈ [0, 1]
+    con.propensity[:] = 1.0 / (1.0 + t**beta)
+
+
+# ------------------------------------------------------------------ #
+# 1.  Households: budget rule                                        #
+# ------------------------------------------------------------------ #
+def consumers_decide_income_to_spend(con: Consumer) -> None:
+    """
     Share of disposable wealth turned into consumption expenditure:
 
         w_h        = savings_h + income_h
-        prop_h     = 1 / (1 + tanh(savings_h / avg_sav) ** beta)
         rem_inc_h  = prop_h · w_h
         savings_h  = w_h − rem_inc_h
-
-    All vectors updated in-place; no temporaries.
     """
-    avg_sav = max(avg_sav, 1.0e-12)  # guard division
-
     wealth = con.savings + con.income
-    prop = 1.0 / (1.0 + np.tanh(con.savings / avg_sav) ** beta)
-    con.remaining_income[:] = wealth * prop
-    con.savings[:] = wealth - con.remaining_income
-    con.income[:] = 0.0  # spent or saved – income cleared
+    con.income_to_spend[:] = wealth * con.propensity
+    con.savings[:] = wealth - con.income_to_spend
+    con.income[:] = 0.0  # zero-out disposable income
 
 
 # ------------------------------------------------------------------ #
@@ -69,7 +79,7 @@ def consumers_decide_firms_to_visit(
     if avail.size == 0:
         return  # nothing to buy this period
 
-    for h in range(con.remaining_income.size):
+    for h in range(con.income_to_spend.size):
         row = con.shop_visits_targets[h]
         filled = 0
 
@@ -108,7 +118,7 @@ def consumers_visit_one_round(con: Consumer, prod: Producer) -> None:
     """
     stride = con.shop_visits_targets.shape[1]
 
-    for h in np.where(con.remaining_income > 0.0)[0]:
+    for h in np.where(con.income_to_spend > 0.0)[0]:
         ptr = con.shop_visits_head[h]
         if ptr < 0:
             continue
@@ -126,10 +136,10 @@ def consumers_visit_one_round(con: Consumer, prod: Producer) -> None:
             continue
 
         price = prod.price[firm_idx]
-        qty = min(prod.inventory[firm_idx], con.remaining_income[h] / price)
+        qty = min(prod.inventory[firm_idx], con.income_to_spend[h] / price)
         spent = qty * price
         prod.inventory[firm_idx] -= qty
-        con.remaining_income[h] -= spent
+        con.income_to_spend[h] -= spent
 
         # loyalty update
         prev = con.largest_prod_prev[h]
@@ -146,5 +156,5 @@ def consumers_visit_one_round(con: Consumer, prod: Producer) -> None:
 # ------------------------------------------------------------------ #
 def consumers_finalize_purchases(con: Consumer) -> None:
     """Unspent income → savings; reset scratch vectors."""
-    np.add(con.savings, con.remaining_income, out=con.savings)
-    con.remaining_income.fill(0.0)
+    np.add(con.savings, con.income_to_spend, out=con.savings)
+    con.income_to_spend.fill(0.0)

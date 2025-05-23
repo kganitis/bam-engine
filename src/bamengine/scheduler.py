@@ -31,6 +31,13 @@ from bamengine.systems.credit_market import (
     firms_prepare_loan_applications,
     firms_send_one_loan_app,
 )
+from bamengine.systems.goods_market import (
+    consumers_calc_propensity,
+    consumers_decide_firms_to_visit,
+    consumers_decide_income_to_spend,
+    consumers_finalize_purchases,
+    consumers_visit_one_round,
+)
 from bamengine.systems.labor_market import (
     adjust_minimum_wage,
     firms_calc_wage_bill,
@@ -78,6 +85,8 @@ HOOK_NAMES: tuple[str, ...] = (
     "after_credit_market",
     "before_production",
     "after_production",
+    "before_goods_market",
+    "after_goods_market",
     "after_stub",
 )
 
@@ -113,6 +122,7 @@ class Scheduler:
     max_H: int  # max loan applications per firm
     max_Z: int  # max firm visits per consumer
     theta: int  # job contract length
+    beta: float  # propensity to consume parameter
 
     # --------------------------------------------------------------------- #
     #                            constructor                                #
@@ -132,6 +142,7 @@ class Scheduler:
         max_H: int = 2,
         max_Z: int = 2,
         theta: int = 8,
+        beta: float = 0.87,
         seed: int | Generator = 0,
     ) -> "Scheduler":
         rng = seed if isinstance(seed, Generator) else default_rng(seed)
@@ -186,7 +197,8 @@ class Scheduler:
         # consumer vectors
         income = np.zeros_like(wage)
         savings = np.zeros_like(wage)
-        remaining_income = np.zeros_like(wage)
+        income_to_spend = np.zeros_like(wage)
+        propensity = np.zeros(n_households)
         largest_prod_prev = np.full(n_households, -1, dtype=np.int64)
         shop_visits_head = np.full(n_households, -1, dtype=np.int64)
         shop_visits_targets = np.full((n_households, max_Z), -1, dtype=np.int64)
@@ -250,7 +262,8 @@ class Scheduler:
         con = Consumer(
             income=income,
             savings=savings,
-            remaining_income=remaining_income,
+            income_to_spend=income_to_spend,
+            propensity=propensity,
             largest_prod_prev=largest_prod_prev,
             shop_visits_head=shop_visits_head,
             shop_visits_targets=shop_visits_targets,
@@ -277,6 +290,7 @@ class Scheduler:
             max_H=max_H,
             max_Z=max_Z,
             theta=theta,
+            beta=beta,
         )
 
     # ------------------------------------------------------------------ #
@@ -367,6 +381,22 @@ class Scheduler:
         _call("after_production")
         # ===============================================================
 
+        # ===== Event 5 – goods-market ==================================
+        _call("before_goods_market")
+
+        _avg_sav = float(self.con.savings.mean())
+        consumers_calc_propensity(self.con, avg_sav=_avg_sav, beta=self.beta)
+        consumers_decide_income_to_spend(self.con)
+        consumers_decide_firms_to_visit(
+            self.con, self.prod, max_Z=self.max_Z, rng=self.rng
+        )
+        for _ in range(self.max_Z):
+            consumers_visit_one_round(self.con, self.prod)
+        consumers_finalize_purchases(self.con)
+
+        _call("after_goods_market")
+        # ===============================================================
+
         # Stub state advance – internal deterministic bookkeeping
         import _testing
 
@@ -403,5 +433,7 @@ class Scheduler:
             "debt": cp(self.lb.debt),
             "production": cp(self.prod.production),
             "income": cp(self.con.income),
+            "savings": cp(self.con.savings),
+            "income_to_spend": cp(self.con.income_to_spend),
             "avg_mkt_price": float(self.ec.avg_mkt_price),
         }
