@@ -6,7 +6,7 @@ They should disappear once all real events are implemented.
 
 from typing import TYPE_CHECKING
 
-import numpy as np
+# import numpy as np
 
 if TYPE_CHECKING:
     from bamengine.scheduler import Scheduler
