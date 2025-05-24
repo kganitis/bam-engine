@@ -43,8 +43,7 @@ def firms_decide_price(
     mask_up = (prod.inventory == 0.0) & (prod.price < p_avg)
     mask_dn = (prod.inventory > 0.0) & (prod.price >= p_avg)
 
-    interest = np.zeros(prod.price.size)
-    lb.interest_per_borrower(prod.price.size, out=interest)
+    interest = lb.interest_per_borrower(prod.price.size)
     breakeven = (emp.wage_bill + interest) / np.maximum(prod.production, 1.0e-12)
 
     # raise prices

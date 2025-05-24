@@ -80,9 +80,6 @@ class LoanBook:
     ensuring amortized O(1) append complexity.
     """
 
-    def __len__(self) -> int:
-        return self.size
-
     borrower: Int1D = field(default_factory=lambda: np.empty(0, np.int64))
     lender: Int1D = field(default_factory=lambda: np.empty(0, np.int64))
     principal: Float1D = field(default_factory=lambda: np.empty(0, np.float64))
@@ -100,37 +97,7 @@ class LoanBook:
         np.add.at(out, self.borrower[: self.size], self.debt[: self.size])
         return out
 
-    def debt_per_lender(self, n_lenders: int) -> Float1D:
-        out = np.zeros(n_lenders, dtype=np.float64)
-        np.add.at(out, self.lender[: self.size], self.debt[: self.size])
-        return out
-
-    def interest_per_borrower(
-        self,
-        n_borrowers: int,
-        *,
-        out: Float1D | None = None,
-    ) -> Float1D:
-        """
-        Aggregate contractual interest owed by each borrower.
-
-        Parameters
-        ----------
-        n_borrowers : int
-            Total number of borrowers (length of the output vector).
-        out : Float1D | None, optional
-            Pre-allocated array to write the result into.  When ``None``
-            (default) a new zero-filled array is created.
-
-        Returns
-        -------
-        Float1D
-            Vector ``interest_sum[i]`` with length ``n_borrowers``.
-        """
-        if out is None or out.shape[0] != n_borrowers:
-            out = np.zeros(n_borrowers, dtype=np.float64)
-        else:
-            out.fill(0.0)  # reuse caller-supplied buffer
-
+    def interest_per_borrower(self, n_borrowers: int) -> Float1D:
+        out = np.zeros(n_borrowers, dtype=np.float64)
         np.add.at(out, self.borrower[: self.size], self.interest[: self.size])
         return out
