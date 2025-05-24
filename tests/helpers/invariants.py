@@ -38,21 +38,21 @@ def assert_basic_invariants(sch: Scheduler) -> None:  # noqa: C901  (long but fl
     # 2. Credit-market                                                   #
     # ------------------------------------------------------------------ #
     # Non-negative balances
-    assert (sch.bor.credit_demand   >= -1e-9).all()
-    assert (sch.lend.credit_supply  >= -1e-9).all()
-    assert (sch.emp.total_funds     >= -1e-9).all()
+    assert (sch.bor.credit_demand >= -1e-9).all()
+    assert (sch.lend.credit_supply >= -1e-9).all()
+    assert (sch.emp.total_funds >= -1e-9).all()
 
     # Ledger bounds & arithmetic
     assert sch.lb.size <= sch.lb.capacity
     nb, nl = sch.bor.net_worth.size, sch.lend.credit_supply.size
     assert (sch.lb.borrower[: sch.lb.size] < nb).all()
-    assert (sch.lb.lender [: sch.lb.size] < nl).all()
+    assert (sch.lb.lender[: sch.lb.size] < nl).all()
 
     if sch.lb.size:
         p = sch.lb.principal[: sch.lb.size]
-        r = sch.lb.rate     [: sch.lb.size]
-        np.testing.assert_allclose(sch.lb.interest[: sch.lb.size], p * r,         rtol=1e-8)
-        np.testing.assert_allclose(sch.lb.debt    [: sch.lb.size], p * (1 + r),   rtol=1e-8)
+        r = sch.lb.rate[: sch.lb.size]
+        np.testing.assert_allclose(sch.lb.interest[: sch.lb.size], p * r, rtol=1e-8)
+        np.testing.assert_allclose(sch.lb.debt[: sch.lb.size], p * (1 + r), rtol=1e-8)
 
     # Regulatory cap
     cap = sch.lend.equity_base * sch.ec.v
@@ -67,7 +67,7 @@ def assert_basic_invariants(sch: Scheduler) -> None:  # noqa: C901  (long but fl
 
     # Savings & income never negative
     assert (sch.con.savings >= -1e-9).all()
-    assert (sch.con.income  >= -1e-9).all()
+    assert (sch.con.income >= -1e-9).all()
 
     # Propensity bounded (0,1] whenever present
     if hasattr(sch.con, "propensity"):

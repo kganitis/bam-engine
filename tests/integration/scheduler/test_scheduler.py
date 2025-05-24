@@ -16,8 +16,6 @@ from bamengine.scheduler import HOOK_NAMES, Scheduler
 from tests.helpers.invariants import assert_basic_invariants
 
 
-
-
 # --------------------------------------------------------------------------- #
 #   single-step                                                               #
 # --------------------------------------------------------------------------- #
@@ -57,7 +55,6 @@ def test_scheduler_state_stable_over_time(steps: int) -> None:
     for _ in range(steps):
         sch.step()
         assert_basic_invariants(sch)
-
 
 
 # --------------------------------------------------------------------------- #
@@ -118,11 +115,12 @@ def test_hook_after_stub_forces_no_inventory() -> None:
         sched.prod.inventory[:] = 0.0
 
     sch = Scheduler.init(n_firms=10, n_households=40, n_banks=5, seed=123)
-    sch.step(after_stub=_zero_out_inventory)     # period t
+    sch.step(after_stub=_zero_out_inventory)  # period t
     assert np.allclose(sch.prod.inventory, 0.0)  # enforced
 
     # one more step ⇒ planning should see zero stocks
     from bamengine.systems.planning import firms_decide_desired_production
+
     p_avg = float(sch.prod.price.mean())
     firms_decide_desired_production(sch.prod, p_avg=p_avg, h_rho=sch.h_rho, rng=sch.rng)
     assert (sch.prod.desired_production >= sch.prod.production).all()
@@ -137,7 +135,7 @@ def test_scheduler_snapshot_copy_vs_view() -> None:
     * copy=False → returns views (live linkage)
     Test is **independent** of which keys are present in the snap dict.
     """
-    sch  = Scheduler.init(n_firms=4, n_households=10, n_banks=2, seed=7)
+    sch = Scheduler.init(n_firms=4, n_households=10, n_banks=2, seed=7)
 
     snap_copy = sch.snapshot(copy=True)
     snap_view = sch.snapshot(copy=False)
@@ -153,4 +151,4 @@ def test_scheduler_snapshot_copy_vs_view() -> None:
     # --- views must reflect the change ----------------------------------
     for arr in snap_view.values():
         if np.shares_memory(arr, sch.wrk.employed):
-            assert (arr == sch.wrk.employed).all()
+            assert np.all((arr == sch.wrk.employed))

@@ -25,6 +25,7 @@ from bamengine.systems.goods_market import (  # systems under test
     consumers_visit_one_round,
 )
 
+
 # --------------------------------------------------------------------------- #
 # helper – run ONE complete goods-market event                                #
 # --------------------------------------------------------------------------- #
@@ -45,9 +46,9 @@ def _run_goods_event(sch: Scheduler) -> dict[str, NDArray[np.float64]]:
       sav_final         : savings            at *t-1* (after finalise)
     """
     snap: dict[str, NDArray[np.float64]] = {
-        "inc_before":   sch.con.income.copy(),
-        "sav_before":   sch.con.savings.copy(),
-        "inv_before":   sch.prod.inventory.copy(),
+        "inc_before": sch.con.income.copy(),
+        "sav_before": sch.con.savings.copy(),
+        "inv_before": sch.prod.inventory.copy(),
     }
 
     # ----- 0. propensity + budget split ----------------------------------
@@ -57,8 +58,7 @@ def _run_goods_event(sch: Scheduler) -> dict[str, NDArray[np.float64]]:
     snap["sav_after_split"] = sch.con.savings.copy()
 
     # ----- 1. shopping ---------------------------------------------------
-    consumers_decide_firms_to_visit(sch.con, sch.prod,
-                                    max_Z=sch.max_Z, rng=sch.rng)
+    consumers_decide_firms_to_visit(sch.con, sch.prod, max_Z=sch.max_Z, rng=sch.rng)
     for _ in range(sch.max_Z):
         consumers_visit_one_round(sch.con, sch.prod)
 
@@ -85,26 +85,26 @@ def test_event_goods_market_basic(tiny_sched: Scheduler) -> None:
     sch = tiny_sched
 
     # --- craft a non-degenerate initial state ----------------------------
-    sch.prod.inventory[:]  = sch.rng.uniform(5.0, 12.0, sch.prod.inventory.size)
-    sch.prod.production[:] = sch.prod.inventory         # keep consistent
-    sch.con.income[:]     = sch.rng.uniform(2.0,  6.0, sch.con.income.size)
-    sch.con.savings[:]    = sch.rng.uniform(5.0, 15.0, sch.con.savings.size)
+    sch.prod.inventory[:] = sch.rng.uniform(5.0, 12.0, sch.prod.inventory.size)
+    sch.prod.production[:] = sch.prod.inventory  # keep consistent
+    sch.con.income[:] = sch.rng.uniform(2.0, 6.0, sch.con.income.size)
+    sch.con.savings[:] = sch.rng.uniform(5.0, 15.0, sch.con.savings.size)
 
     snap = _run_goods_event(sch)
 
     # ----- 1. money-flow identity ---------------------------------------
     wealth0 = snap["inc_before"] + snap["sav_before"]
     wealth1 = snap["sav_final"]
-    spent   = wealth0 - wealth1                       # ≥ 0
+    spent = wealth0 - wealth1  # ≥ 0
 
-    qty_sold    = snap["inv_before"] - snap["inv_after"]
+    qty_sold = snap["inv_before"] - snap["inv_after"]
     sales_value = (qty_sold * sch.prod.price).sum()
 
     np.testing.assert_allclose(spent.sum(), sales_value, rtol=1e-12)
 
     # ----- 2. stock-flow guards -----------------------------------------
     assert (snap["inv_after"] >= -1e-12).all()
-    assert (snap["sav_final"]  >= -1e-12).all()
+    assert (snap["sav_final"] >= -1e-12).all()
     assert np.all(sch.con.income_to_spend == 0.0)
 
 
@@ -124,10 +124,10 @@ def test_goods_market_post_state_consistency(tiny_sched: Scheduler) -> None:
     sch = tiny_sched
 
     # --- richer starting state ------------------------------------------
-    sch.prod.inventory[:]  = sch.rng.uniform(1.0,  8.0, sch.prod.inventory.size)
+    sch.prod.inventory[:] = sch.rng.uniform(1.0, 8.0, sch.prod.inventory.size)
     sch.prod.production[:] = sch.prod.inventory
-    sch.con.income[:]      = sch.rng.uniform(1.0,  4.0, sch.con.income.size)
-    sch.con.savings[:]     = sch.rng.uniform(0.0, 10.0, sch.con.savings.size)
+    sch.con.income[:] = sch.rng.uniform(1.0, 4.0, sch.con.income.size)
+    sch.con.savings[:] = sch.rng.uniform(0.0, 10.0, sch.con.savings.size)
 
     snap = _run_goods_event(sch)
 
