@@ -59,6 +59,11 @@ from bamengine.systems.production import (
     workers_receive_wage,
     workers_update_contracts,
 )
+from bamengine.systems.revenue import (
+    firms_collect_revenue,
+    firms_pay_dividends,
+    firms_validate_debt_commitments,
+)
 from bamengine.typing import Bool1D, Float1D, Int1D
 
 __all__ = ["Scheduler", "HOOK_NAMES"]
@@ -87,7 +92,8 @@ HOOK_NAMES: tuple[str, ...] = (
     "after_production",
     "before_goods_market",
     "after_goods_market",
-    "after_stub",
+    "before_revenue",
+    "after_revenue",
 )
 
 
@@ -123,6 +129,7 @@ class Scheduler:
     max_Z: int  # max firm visits per consumer
     theta: int  # job contract length
     beta: float  # propensity to consume parameter
+    delta: float  # dividend payout ratio (DPR)
 
     # --------------------------------------------------------------------- #
     #                            constructor                                #
@@ -143,6 +150,7 @@ class Scheduler:
         max_Z: int = 2,
         theta: int = 8,
         beta: float = 0.87,
+        delta: float = 0.15,
         seed: int | Generator = 0,
     ) -> "Scheduler":
         rng = seed if isinstance(seed, Generator) else default_rng(seed)
@@ -297,6 +305,7 @@ class Scheduler:
             max_Z=max_Z,
             theta=theta,
             beta=beta,
+            delta=delta,
         )
 
     # ------------------------------------------------------------------ #
@@ -309,13 +318,13 @@ class Scheduler:
         with a callable that is executed at the documented point.
         """
 
-        def _call(name: str) -> None:
+        def _hook(name: str) -> None:
             hook = hooks.get(name)
             if hook is not None:
                 hook(self)
 
         # ===== Event 1 – planning ======================================
-        _call("before_planning")
+        _hook("before_planning")
 
         firms_decide_desired_production(
             self.prod, p_avg=self.ec.avg_mkt_price, h_rho=self.h_rho, rng=self.rng
@@ -323,11 +332,11 @@ class Scheduler:
         firms_decide_desired_labor(self.prod, self.emp)
         firms_decide_vacancies(self.emp)
 
-        _call("after_planning")
+        _hook("after_planning")
         # ===============================================================
 
         # ===== Event 2 – labor-market ==================================
-        _call("before_labor_market")
+        _hook("before_labor_market")
 
         adjust_minimum_wage(self.ec)
         firms_decide_wage_offer(
@@ -341,11 +350,11 @@ class Scheduler:
             firms_hire_workers(self.wrk, self.emp, theta=self.theta)
         firms_calc_wage_bill(self.emp)
 
-        _call("after_labor_market")
+        _hook("after_labor_market")
         # ===============================================================
 
         # ===== Event 3 – credit-market =================================
-        _call("before_credit_market")
+        _hook("before_credit_market")
 
         banks_decide_credit_supply(self.lend, v=self.ec.v)
         banks_decide_interest_rate(
@@ -361,11 +370,11 @@ class Scheduler:
             banks_provide_loans(self.bor, self.lb, self.lend, r_bar=self.ec.r_bar)
         firms_fire_workers(self.emp, self.wrk, rng=self.rng)
 
-        _call("after_credit_market")
+        _hook("after_credit_market")
         # ===============================================================
 
         # ===== Event 4 – production ====================================
-        _call("before_production")
+        _hook("before_production")
 
         firms_decide_price(
             self.prod,
@@ -382,11 +391,11 @@ class Scheduler:
         firms_run_production(self.prod, self.emp)
         workers_update_contracts(self.wrk, self.emp)
 
-        _call("after_production")
+        _hook("after_production")
         # ===============================================================
 
         # ===== Event 5 – goods-market ==================================
-        _call("before_goods_market")
+        _hook("before_goods_market")
 
         _avg_sav = float(self.con.savings.mean())
         consumers_calc_propensity(self.con, avg_sav=_avg_sav, beta=self.beta)
@@ -398,15 +407,17 @@ class Scheduler:
             consumers_visit_one_round(self.con, self.prod)
         consumers_finalize_purchases(self.con)
 
-        _call("after_goods_market")
+        _hook("after_goods_market")
         # ===============================================================
 
-        # Stub state advance – internal deterministic bookkeeping
-        import _testing
+        # ===== Event 6 – revenue =======================================
+        _hook("before_revenue")
 
-        _testing.advance_stub_state(self)
+        firms_collect_revenue(self.prod, self.bor)
+        firms_validate_debt_commitments(self.bor, self.lend, self.lb)
+        firms_pay_dividends(self.bor, delta=self.delta)
 
-        _call("after_stub")
+        _hook("after_revenue")
 
     # --------------------------------------------------------------------- #
     #                               snapshot                                #
