@@ -7,8 +7,7 @@ from __future__ import annotations
 import numpy as np
 from numpy.random import Generator
 
-from bamengine.components import Consumer, Economy, Employer, Producer, Worker
-from bamengine.typing import Float1D
+from bamengine.components import Consumer, Economy, Employer, LoanBook, Producer, Worker
 
 
 # ------------------------------------------------------------------ #
@@ -17,7 +16,7 @@ from bamengine.typing import Float1D
 def firms_decide_price(
     prod: Producer,
     emp: Employer,
-    interest: Float1D,
+    lb: LoanBook,
     *,
     p_avg: float,
     h_eta: float,
@@ -30,11 +29,6 @@ def firms_decide_price(
 
         if S_i == 0 and p_i < p̄:      p_i ← max( breakeven_i , p_i·(1+shock) )
         if S_i  > 0 and p_i ≥ p̄:      p_i ← max( breakeven_i , p_i·(1-shock) )
-
-    Notes
-    -----
-    • Works fully in-place;
-    only a single scratch array (`price_shock`) is reused between steps.
     """
     shape = prod.price.shape
 
@@ -49,6 +43,8 @@ def firms_decide_price(
     mask_up = (prod.inventory == 0.0) & (prod.price < p_avg)
     mask_dn = (prod.inventory > 0.0) & (prod.price >= p_avg)
 
+    interest = np.zeros(prod.price.size)
+    lb.interest_per_borrower(prod.price.size, out=interest)
     breakeven = (emp.wage_bill + interest) / np.maximum(prod.production, 1.0e-12)
 
     # raise prices

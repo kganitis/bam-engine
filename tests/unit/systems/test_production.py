@@ -4,10 +4,13 @@ Unit tests for production systems.
 """
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import numpy as np
 from numpy.random import default_rng
+from numpy.typing import NDArray
 
-from bamengine.components import Employer, Worker
+from bamengine.components import Employer, LoanBook, Worker
 from bamengine.systems.production import (
     firms_decide_price,
     firms_pay_wages,
@@ -20,6 +23,7 @@ from tests.helpers.factories import (
     mock_consumer,
     mock_economy,
     mock_employer,
+    mock_loanbook,
     mock_producer,
     mock_worker,
 )
@@ -49,13 +53,24 @@ def test_firms_decide_price_obeys_break_even_and_shocks() -> None:
         wage_offer=np.array([1.0, 1.0]),
         wage_bill=np.array([2.0, 2.0]),
     )
-    # simple constant interest vector
-    interest = np.array([0.5, 0.5])
+    # --- dummy LoanBook that always returns a constant vector 0.5 ----
+    lb = mock_loanbook()
+
+    def _const_interest(
+        _self: "LoanBook", n: int = 128, *, out: NDArray[np.float64] | None = None
+    ) -> NDArray[np.float64]:
+        """Return a length-n vector filled with 0.5."""
+        if out is None or out.shape[0] != n:
+            out = np.full(n, 0.5)
+        else:
+            out.fill(0.5)
+        return out
 
     p_avg = 2.0
     h_eta = 0.10
 
-    firms_decide_price(prod, emp, interest, p_avg=p_avg, h_eta=h_eta, rng=rng)
+    with patch.object(type(lb), "interest_per_borrower", _const_interest):
+        firms_decide_price(prod, emp, lb, p_avg=p_avg, h_eta=h_eta, rng=rng)
 
     # firm-0 price ↑ at most 10 %
     assert prod.price[0] >= 1.0
@@ -65,7 +80,7 @@ def test_firms_decide_price_obeys_break_even_and_shocks() -> None:
     assert prod.price[1] >= 3.0 * (1 - h_eta) - 1e-12
 
     # floor: price never below break-even
-    breakeven = (emp.wage_bill + interest) / prod.production
+    breakeven = (emp.wage_bill + 0.5) / prod.production
     assert np.all(prod.price >= breakeven - 1e-12)
 
 

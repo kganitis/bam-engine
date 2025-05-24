@@ -8,15 +8,16 @@ from bamengine.typing import Float1D, Idx1D, Idx2D
 class Borrower:
     """Dense state for all borrowing firms."""
 
-    # to ChatGPT: consider moving `net_worth`, `total_funds`,
-    # `wage_bill`, rnd_intensity` to a separate component
     net_worth: Float1D  # A_i
-    total_funds: Float1D
+    total_funds: Float1D  # cash account
     wage_bill: Float1D  # W_i  (should be L_i * wage_i)
     credit_demand: Float1D  # B_i
     rnd_intensity: Float1D  # μ_i
     projected_fragility: Float1D  # φ̂_i
+    gross_profit: Float1D
+    net_profit: Float1D
+    retained_profit: Float1D
 
-    # scratch arrays (reset every period)
+    # --------------- period-scratch queues ------------- #
     loan_apps_head: Idx1D  # queue pointer  (-1 ⇒ empty)
     loan_apps_targets: Idx2D  # shape (N_firms, H)  index buffer

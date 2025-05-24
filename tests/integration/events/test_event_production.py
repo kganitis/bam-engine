@@ -52,11 +52,10 @@ def _run_production_event(
     firms_calc_wage_bill(sch.emp)
 
     # ---- price rule & market price ------------------------------------
-    interest = np.zeros(sch.n_firms, dtype=np.float64)  # ledger empty in tiny_sched
     firms_decide_price(
         sch.prod,
         sch.emp,
-        interest,
+        sch.lb,
         p_avg=sch.ec.avg_mkt_price,
         h_eta=sch.h_eta,
         rng=sch.rng,

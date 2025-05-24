@@ -184,6 +184,9 @@ class Scheduler:
         # borrower vectors
         credit_demand = np.zeros_like(net_worth)
         projected_fragility = np.zeros(n_firms)
+        gross_profit = np.zeros_like(net_worth)
+        net_profit = np.zeros_like(net_worth)
+        retained_profit = np.zeros_like(net_worth)
         loan_apps_head = np.full(n_firms, -1, dtype=np.int64)
         loan_apps_targets = np.full((n_firms, max_H), -1, dtype=np.int64)
 
@@ -247,6 +250,9 @@ class Scheduler:
             wage_bill=wage_bill,
             credit_demand=credit_demand,
             rnd_intensity=rnd_intensity,
+            gross_profit=gross_profit,
+            net_profit=net_profit,
+            retained_profit=retained_profit,
             projected_fragility=projected_fragility,
             loan_apps_head=loan_apps_head,
             loan_apps_targets=loan_apps_targets,
@@ -361,12 +367,10 @@ class Scheduler:
         # ===== Event 4 – production ====================================
         _call("before_production")
 
-        _int_scratch: Float1D = np.zeros(self.n_firms)
-        self.lb.interest_per_borrower(self.n_firms, out=_int_scratch)
         firms_decide_price(
             self.prod,
             self.emp,
-            _int_scratch,
+            self.lb,
             p_avg=self.ec.avg_mkt_price,
             h_eta=self.h_eta,
             rng=self.rng,
