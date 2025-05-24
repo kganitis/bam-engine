@@ -56,15 +56,8 @@ def test_firms_decide_price_obeys_break_even_and_shocks() -> None:
     # --- dummy LoanBook that always returns a constant vector 0.5 ----
     lb = mock_loanbook()
 
-    def _const_interest(
-        _self: "LoanBook", n: int = 128, *, out: NDArray[np.float64] | None = None
-    ) -> NDArray[np.float64]:
-        """Return a length-n vector filled with 0.5."""
-        if out is None or out.shape[0] != n:
-            out = np.full(n, 0.5)
-        else:
-            out.fill(0.5)
-        return out
+    def _const_interest(_self: "LoanBook", n: int = 128) -> NDArray[np.float64]:
+        return np.full(n, 0.5)
 
     p_avg = 2.0
     h_eta = 0.10
