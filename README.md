@@ -10,29 +10,30 @@ A research prototype for my thesis, implementing the BAM model from *Macroeconom
 
 ### Technology
 
-* pure Python + NumPy
+* Pure Python + NumPy
 * pytest for unit and integration tests
-* hooks for custom shocks or policy experiments
+* Hooks for custom shocks or policy experiments
 
 ### Status
 
-* 4 of 8 events implemented and tested:
+* 6 of 8 events implemented and tested:
   * Planning
   * Labour market
   * Credit market
   * Production
   * Goods market
-
+  * Revenues
 
 * Remaining events:
-  * Revenues
   * Bankruptcy
   * Entry of new agents
 
 ### Next Steps
 
-* implement and test the remaining 3 events
-* cross-check results with the BAM paper
-* profile and optimize critical loops
-* explore parallel execution options
-* package as a lightweight library for reproducible research
+* Implement and test the remaining 2 events
+* Visualize and cross-check results with the BAM paper
+* Refactor architecture to true ECS
+* Profile and optimize critical loops
+* Explore parallel execution options
+* Package as a lightweight library for reproducible research
+* Future extensions with RL agents
