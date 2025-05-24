@@ -1,11 +1,5 @@
 # BAM-Engine roadmap
 
-### Immediate tasks
-
-* Implement revenues
-
----
-
 ### Incremental event implementation
 
 Implement the next events one by one
@@ -17,7 +11,7 @@ Implement the next events one by one
 * Write an event-level integration test
 * Update the scheduler integration test
 
-Repeat until the full event chain is implemented
+Repeat until the full event chain is implemented, then:
 
 * Run simulation and visualize the results
 * Cross-check with the original BAM paper
@@ -51,6 +45,7 @@ Repeat until the full event chain is implemented
   * Based on the systems, so that we optimize speed and memory
   * Remove any shared vector references
 * Also review which systems belong to which events, general event structure
+* Watch vectors lifetime, review which are needed temporarily and which permanently, then optimize
 * Dynamic scheduler re-wiring by the user, add/remove systems, change their order
   * Step should just decide which systems are called in what order
  
