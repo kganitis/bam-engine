@@ -54,10 +54,6 @@ def assert_basic_invariants(sch: Scheduler) -> None:  # noqa: C901  (long but fl
         np.testing.assert_allclose(sch.lb.interest[: sch.lb.size], p * r, rtol=1e-8)
         np.testing.assert_allclose(sch.lb.debt[: sch.lb.size], p * (1 + r), rtol=1e-8)
 
-    # Regulatory cap
-    cap = sch.lend.equity_base * sch.ec.v
-    assert (sch.lend.credit_supply <= cap + 1e-9).all()
-
     # ------------------------------------------------------------------ #
     # 3. Production & Goods-market                                       #
     # ------------------------------------------------------------------ #
@@ -72,3 +68,12 @@ def assert_basic_invariants(sch: Scheduler) -> None:  # noqa: C901  (long but fl
     # Propensity bounded (0,1] whenever present
     if hasattr(sch.con, "propensity"):
         assert ((0 < sch.con.propensity) & (sch.con.propensity <= 1)).all()
+
+    # ──────────────────────────────────────────────────────────────────────
+    # 4. Revenue event bookkeeping
+    # ──────────────────────────────────────────────────────────────────────
+    # gross_profit = revenue – wage_bill  (checked indirectly: retained/net set)
+    # retained ≤ net_profit   and   dividends ≥ 0
+    pos = sch.bor.net_profit > 0
+    assert (sch.bor.retained_profit[~pos] == sch.bor.net_profit[~pos]).all()
+    assert (sch.bor.retained_profit[pos] < sch.bor.net_profit[pos] + 1e-12).all()

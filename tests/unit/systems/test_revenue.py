@@ -1,20 +1,18 @@
+# tests/unit/systems/test_revenue.py
 """
 Revenue-systems unit-tests.
 """
 from __future__ import annotations
-from bamengine.components import Borrower, Lender, LoanBook
 
 import numpy as np
 import pytest
-from numpy.typing import NDArray
-from numpy.random import default_rng
 
+from bamengine.components import Borrower, Lender, LoanBook
 from bamengine.systems.revenue import (
     firms_collect_revenue,
     firms_pay_dividends,
     firms_validate_debt_commitments,
 )
-
 from tests.helpers.factories import (
     mock_borrower,
     mock_lender,
@@ -35,7 +33,7 @@ def test_collect_revenue_basic() -> None:
     prod = mock_producer(
         n=1,
         production=np.array([10.0]),
-        inventory=np.array([2.0]),   # sold = 8
+        inventory=np.array([2.0]),  # sold = 8
         price=np.array([1.25]),
     )
     bor = mock_borrower(
@@ -93,9 +91,9 @@ def _single_loan_setup(
     lb = mock_loanbook(n=1, size=1)
     lb.borrower[0] = 0
     lb.lender[0] = 0
-    lb.principal[0] = debt / 2.0            # any split works
-    lb.rate[0] = 1.0                        # makes debt = 2×principal
-    lb.interest[0] = lb.principal[0]        # same value
+    lb.principal[0] = debt / 2.0  # any split works
+    lb.rate[0] = 1.0  # makes debt = 2×principal
+    lb.interest[0] = lb.principal[0]  # same value
     lb.debt[0] = debt
 
     return bor, lend, lb
@@ -128,7 +126,7 @@ def test_validate_debt_partial_writeoff() -> None:
     # --- borrower 0 owes two banks ---------------------------------------
     bor = mock_borrower(
         n=1,
-        gross_profit=np.array([2.0]),      # cannot cover total debt (4.0)
+        gross_profit=np.array([2.0]),  # cannot cover total debt (4.0)
         net_worth=np.array([6.0]),
         total_funds=np.array([30.0]),
     )
@@ -139,10 +137,10 @@ def test_validate_debt_partial_writeoff() -> None:
     lb = mock_loanbook(n=2, size=2)
     lb.borrower[:2] = 0
     lb.lender[:2] = [0, 1]
-    lb.principal[:2] = 2.0           # each
+    lb.principal[:2] = 2.0  # each
     lb.rate[:2] = 0.0
     lb.interest[:2] = 0.0
-    lb.debt[:2] = 2.0                # each  → total 4.0
+    lb.debt[:2] = 2.0  # each  → total 4.0
 
     firms_validate_debt_commitments(bor, lend, lb)
 

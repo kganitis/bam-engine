@@ -108,14 +108,14 @@ def test_scheduler_hooks_called() -> None:
 # --------------------------------------------------------------------------- #
 #   hook side-effects                                                         #
 # --------------------------------------------------------------------------- #
-def test_hook_after_stub_forces_no_inventory() -> None:
+def test_hook_forces_no_inventory() -> None:
 
     def _zero_out_inventory(sched: Scheduler) -> None:
         """Callback that sets all firm inventories to 0."""
         sched.prod.inventory[:] = 0.0
 
     sch = Scheduler.init(n_firms=10, n_households=40, n_banks=5, seed=123)
-    sch.step(after_stub=_zero_out_inventory)  # period t
+    sch.step(after_goods_market=_zero_out_inventory)  # period t
     assert np.allclose(sch.prod.inventory, 0.0)  # enforced
 
     # one more step ⇒ planning should see zero stocks
