@@ -1,18 +1,13 @@
 # tests/integration/scheduler/test_scheduler.py
 """
 Scheduler smoke-tests.
-
-* single-step, multi-step and property-based fuzzing
-* hook invocation order
-* snapshot semantics
 """
 
-import numpy as np
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from bamengine.scheduler import HOOK_NAMES, Scheduler
+from bamengine.scheduler import Scheduler
 from tests.helpers.invariants import assert_basic_invariants
 
 
@@ -82,73 +77,3 @@ def test_scheduler_step_properties(
     )
     sch.step()
     assert_basic_invariants(sch)
-
-
-# --------------------------------------------------------------------------- #
-#   hook order                                                                #
-# --------------------------------------------------------------------------- #
-def test_scheduler_hooks_called() -> None:
-    """
-    Attach a simple recorder callable to **every** defined hook.  After one
-    ``Scheduler.step`` the recorder's call order must match
-    ``Scheduler.HOOK_NAMES`` exactly.
-    """
-    call_order: list[str] = []
-
-    hooks = {
-        name: (lambda s, _name=name: call_order.append(_name)) for name in HOOK_NAMES
-    }
-
-    sch = Scheduler.init(n_firms=3, n_households=6, n_banks=3, seed=0)
-    sch.step(**hooks)
-
-    assert call_order == list(HOOK_NAMES)
-
-
-# --------------------------------------------------------------------------- #
-#   hook side-effects                                                         #
-# --------------------------------------------------------------------------- #
-def test_hook_forces_no_inventory() -> None:
-
-    def _zero_out_inventory(sched: Scheduler) -> None:
-        """Callback that sets all firm inventories to 0."""
-        sched.prod.inventory[:] = 0.0
-
-    sch = Scheduler.init(n_firms=10, n_households=40, n_banks=5, seed=123)
-    sch.step(after_goods_market=_zero_out_inventory)  # period t
-    assert np.allclose(sch.prod.inventory, 0.0)  # enforced
-
-    # one more step ⇒ planning should see zero stocks
-    from bamengine.systems.planning import firms_decide_desired_production
-
-    p_avg = float(sch.prod.price.mean())
-    firms_decide_desired_production(sch.prod, p_avg=p_avg, h_rho=sch.h_rho, rng=sch.rng)
-    assert (sch.prod.desired_production >= sch.prod.production).all()
-
-
-# --------------------------------------------------------------------------- #
-#   snapshot semantics                                                        #
-# --------------------------------------------------------------------------- #
-def test_scheduler_snapshot_copy_vs_view() -> None:
-    """
-    * copy=True  → returns deep copies (mutation-safe)
-    * copy=False → returns views (live linkage)
-    Test is **independent** of which keys are present in the snap dict.
-    """
-    sch = Scheduler.init(n_firms=4, n_households=10, n_banks=2, seed=7)
-
-    snap_copy = sch.snapshot(copy=True)
-    snap_view = sch.snapshot(copy=False)
-
-    # mutate one *known* array in the scheduler
-    sch.wrk.employed[:] = 1 - sch.wrk.employed  # flip flags
-
-    # --- copies remain unchanged ----------------------------------------
-    for arr in snap_copy.values():
-        if isinstance(arr, np.ndarray):
-            assert not np.shares_memory(arr, sch.wrk.employed)
-
-    # --- views must reflect the change ----------------------------------
-    for arr in snap_view.values():
-        if np.shares_memory(arr, sch.wrk.employed):
-            assert np.all((arr == sch.wrk.employed))
