@@ -21,17 +21,18 @@ A research prototype for my thesis, implementing the BAM model from *Macroeconom
   * Labour market
   * Credit market
   * Production
+  * Goods market
 
 
 * Remaining events:
-  * Goods market
   * Revenues
   * Bankruptcy
   * Entry of new agents
 
 ### Next Steps
 
-* implement and test the remaining 4 events
+* implement and test the remaining 3 events
+* cross-check results with the BAM paper
 * profile and optimize critical loops
 * explore parallel execution options
 * package as a lightweight library for reproducible research
