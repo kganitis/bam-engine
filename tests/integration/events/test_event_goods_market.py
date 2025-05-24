@@ -1,15 +1,16 @@
+# tests/integration/events/test_event_goods_market.py
 """
-Event-5 integration tests (goods market)
+Event-5 integration tests  ⸺  goods-market round
+=================================================
 
-Two tests exercise the *entire* goods-market sequence on the tiny scheduler:
+Two test-cases run the *entire* goods-market sequence on a tiny `Scheduler`.
 
 1. test_event_goods_market_basic
-   – regression-style money-flow & stock-flow checks.
+   Regression-style money-flow & stock-flow checks.
 
 2. test_goods_market_post_state_consistency
-   – deeper invariants that require seeing all components together.
+   Deeper invariants that need a full-system lens.
 """
-
 from __future__ import annotations
 
 import numpy as np
@@ -24,52 +25,50 @@ from bamengine.systems.goods_market import (  # systems under test
     consumers_visit_one_round,
 )
 
-
 # --------------------------------------------------------------------------- #
-# helper – run ONE goods-market event                                         #
+# helper – run ONE complete goods-market event                                #
 # --------------------------------------------------------------------------- #
-def _run_goods_event(
-    sch: Scheduler,
-) -> tuple[
-    NDArray[np.float64],
-    NDArray[np.float64],
-    NDArray[np.float64],
-    NDArray[np.float64],
-    NDArray[np.float64],
-    NDArray[np.float64],
-    NDArray[np.float64],
-]:
+def _run_goods_event(sch: Scheduler) -> dict[str, NDArray[np.float64]]:
     """
-    Execute the complete Event-5 logic once.
+    Drive the full Event-5 pipeline **once** and return *snapshots* of the
+    vectors that callers need for delta checks.
 
     Returns
     -------
-    tuple(inc_before, sav_before, unspent_income, inv_before, inv_after)
-    The caller can derive deltas from these snapshots.
+    dict with keys
+      inc_before        : disposable income at *t-0*
+      sav_before        : savings            at *t-0*
+      sav_after_split   : savings right **after** the budget split
+      inv_before        : firm inventories   at *t-0*
+      unspent_income    : household income *not* spent after shopping
+      inv_after         : firm inventories   at *t-1*
+      sav_final         : savings            at *t-1* (after finalise)
     """
-    inc0 = sch.con.income.copy()
-    inv1 = sch.prod.inventory.copy()
-    sav0 = sch.con.savings.copy()
+    snap: dict[str, NDArray[np.float64]] = {
+        "inc_before":   sch.con.income.copy(),
+        "sav_before":   sch.con.savings.copy(),
+        "inv_before":   sch.prod.inventory.copy(),
+    }
 
-    # ----- propensity & budget split ------------------------------------
+    # ----- 0. propensity + budget split ----------------------------------
     avg_sav = float(sch.con.savings.mean() + 1e-12)
     consumers_calc_propensity(sch.con, avg_sav=avg_sav, beta=sch.beta)
     consumers_decide_income_to_spend(sch.con)
+    snap["sav_after_split"] = sch.con.savings.copy()
 
-    sav1 = sch.con.savings.copy()
-
-    # ---- shopping ------------------------------------------------------
-    consumers_decide_firms_to_visit(sch.con, sch.prod, max_Z=sch.max_Z, rng=sch.rng)
+    # ----- 1. shopping ---------------------------------------------------
+    consumers_decide_firms_to_visit(sch.con, sch.prod,
+                                    max_Z=sch.max_Z, rng=sch.rng)
     for _ in range(sch.max_Z):
         consumers_visit_one_round(sch.con, sch.prod)
 
-    # ---- final bookkeeping ---------------------------------------------
-    inv2 = sch.prod.inventory.copy()
-    uinc = sch.con.income_to_spend.copy()  # unspent income
+    # ----- 2. final bookkeeping -----------------------------------------
+    snap["inv_after"] = sch.prod.inventory.copy()
+    snap["unspent_income"] = sch.con.income_to_spend.copy()
     consumers_finalize_purchases(sch.con)
-    sav2 = sch.con.savings.copy()
+    snap["sav_final"] = sch.con.savings.copy()
 
-    return inc0, sav0, sav1, inv1, uinc, inv2, sav2
+    return snap
 
 
 # --------------------------------------------------------------------------- #
@@ -79,35 +78,34 @@ def test_event_goods_market_basic(tiny_sched: Scheduler) -> None:
     """
     Happy-path regression:
 
-    • total household spending equals total value of goods sold
-    • no firm inventory drops below zero
-    • every household ends with non-negative savings and zero income_to_spend
+    * Σ household-spending == Σ firm-sales value
+    * no inventory < 0
+    * savings non-negative and income_to_spend flushed to zero
     """
     sch = tiny_sched
 
-    # -------- craft a non-degenerate starting state ----------------------
-    sch.prod.inventory[:] = sch.rng.uniform(5.0, 12.0, sch.prod.inventory.size)
-    sch.prod.production[:] = sch.prod.inventory  # keep self-consistent
-    sch.con.income[:] = sch.rng.uniform(2.0, 6.0, sch.con.income.size)
-    sch.con.savings[:] = sch.rng.uniform(5.0, 15.0, sch.con.savings.size)
+    # --- craft a non-degenerate initial state ----------------------------
+    sch.prod.inventory[:]  = sch.rng.uniform(5.0, 12.0, sch.prod.inventory.size)
+    sch.prod.production[:] = sch.prod.inventory         # keep consistent
+    sch.con.income[:]     = sch.rng.uniform(2.0,  6.0, sch.con.income.size)
+    sch.con.savings[:]    = sch.rng.uniform(5.0, 15.0, sch.con.savings.size)
 
-    inc0, sav0, _, inv1, _, inv2, sav2 = _run_goods_event(sch)
+    snap = _run_goods_event(sch)
 
-    # ----- 1.  money-flow identity --------------------------------------
-    wealth0 = inc0 + sav0
-    wealth2 = sav2  # after finalise
-    spent = wealth0 - wealth2  # ≥ 0 by construction
+    # ----- 1. money-flow identity ---------------------------------------
+    wealth0 = snap["inc_before"] + snap["sav_before"]
+    wealth1 = snap["sav_final"]
+    spent   = wealth0 - wealth1                       # ≥ 0
 
-    qty_sold = inv1 - inv2  # ≥ 0
+    qty_sold    = snap["inv_before"] - snap["inv_after"]
     sales_value = (qty_sold * sch.prod.price).sum()
 
-    # households spend exactly what firms earned
     np.testing.assert_allclose(spent.sum(), sales_value, rtol=1e-12)
 
-    # ----- 2.  stock-flow guards ----------------------------------------
-    assert np.all((inv2 >= -1e-12))  # never negative
-    assert np.all((sav2 >= -1e-12))
-    assert np.all((sch.con.income_to_spend == 0.0))
+    # ----- 2. stock-flow guards -----------------------------------------
+    assert (snap["inv_after"] >= -1e-12).all()
+    assert (snap["sav_final"]  >= -1e-12).all()
+    assert np.all(sch.con.income_to_spend == 0.0)
 
 
 # --------------------------------------------------------------------------- #
@@ -115,38 +113,38 @@ def test_event_goods_market_basic(tiny_sched: Scheduler) -> None:
 # --------------------------------------------------------------------------- #
 def test_goods_market_post_state_consistency(tiny_sched: Scheduler) -> None:
     """
-    Deeper invariants:
+    Invariants checked after the round:
 
-      1. every household’s `largest_prod_prev` is either −1
-         *or* points to a firm that still exists.
-
-      2. shop_visits_head pointers remain in the valid range
-         [−1 … n_hh * Z).
-
-      3. for each household  h
-           savings_h(t)  =  savings_h(t−1) + unspent_income_h(t)
+    1. `largest_prod_prev` either −1 or a valid firm id.
+    2. `shop_visits_head` ∈ [−1 … n_households × Z].
+    3. Budget identity per household:
+         sav_after_split + spent_income == sav_final
+       → equivalently   sav_final − unspent_income == sav_after_split
     """
     sch = tiny_sched
 
-    # -------- richer initial state --------------------------------------
-    sch.prod.inventory[:] = sch.rng.uniform(1.0, 8.0, sch.prod.inventory.size)
+    # --- richer starting state ------------------------------------------
+    sch.prod.inventory[:]  = sch.rng.uniform(1.0,  8.0, sch.prod.inventory.size)
     sch.prod.production[:] = sch.prod.inventory
-    sch.con.income[:] = sch.rng.uniform(1.0, 4.0, sch.con.income.size)
-    sch.con.savings[:] = sch.rng.uniform(0.0, 10.0, sch.con.savings.size)
+    sch.con.income[:]      = sch.rng.uniform(1.0,  4.0, sch.con.income.size)
+    sch.con.savings[:]     = sch.rng.uniform(0.0, 10.0, sch.con.savings.size)
 
-    inc0, sav0, sav1, inv1, uinc, inv2, sav2 = _run_goods_event(sch)
+    snap = _run_goods_event(sch)
 
-    n_hh, Z = sav2.size, sch.max_Z
+    n_hh, Z = sch.con.savings.size, sch.max_Z
 
-    # ---- 1.  largest_prod_prev in bounds -------------------------------
+    # ----- 1. largest_prod_prev bounds ----------------------------------
     mask = sch.con.largest_prod_prev >= 0
-    if mask.any():  # guard empty slice
-        assert np.all((sch.con.largest_prod_prev[mask] < sch.prod.price.size))
+    if mask.any():
+        assert (sch.con.largest_prod_prev[mask] < sch.prod.price.size).all()
 
-    # ---- 2.  head pointers within valid domain -------------------------
+    # ----- 2. head-pointer domain ---------------------------------------
     heads = sch.con.shop_visits_head
     assert ((heads >= -1) & (heads <= n_hh * Z)).all()
 
-    # ---- 3.  household budget identity ---------------------------------
-    # unspent income was transferred back to savings inside finalise
-    assert np.allclose(sav2 - uinc, sav1, rtol=1e-9)
+    # ----- 3. household budget identity ---------------------------------
+    np.testing.assert_allclose(
+        snap["sav_final"] - snap["unspent_income"],
+        snap["sav_after_split"],
+        rtol=1e-9,
+    )

@@ -1,4 +1,12 @@
-# tests/integrations/test_scheduler.py
+# tests/integration/scheduler/test_scheduler.py
+"""
+Scheduler smoke-tests.
+
+* single-step, multi-step and property-based fuzzing
+* hook invocation order
+* snapshot semantics
+"""
+
 import numpy as np
 import pytest
 from hypothesis import given, settings
@@ -8,6 +16,11 @@ from bamengine.scheduler import HOOK_NAMES, Scheduler
 from tests.helpers.invariants import assert_basic_invariants
 
 
+
+
+# --------------------------------------------------------------------------- #
+#   single-step                                                               #
+# --------------------------------------------------------------------------- #
 def test_scheduler_step(tiny_sched: Scheduler) -> None:
     """
     Smoke integration test: one `Scheduler.step()`.
@@ -22,6 +35,9 @@ def test_scheduler_step(tiny_sched: Scheduler) -> None:
     assert_basic_invariants(tiny_sched)
 
 
+# --------------------------------------------------------------------------- #
+#   multi-period                                                              #
+# --------------------------------------------------------------------------- #
 @pytest.mark.parametrize("steps", [10])
 def test_scheduler_state_stable_over_time(steps: int) -> None:
     """
@@ -43,13 +59,17 @@ def test_scheduler_state_stable_over_time(steps: int) -> None:
         assert_basic_invariants(sch)
 
 
+
+# --------------------------------------------------------------------------- #
+#   property-based size & seed fuzzing                                        #
+# --------------------------------------------------------------------------- #
 @given(
     n_firms=st.integers(20, 50),
     n_households=st.integers(100, 250),
     n_banks=st.integers(2, 5),
     seed=st.integers(0, 2**32 - 1),
 )
-@settings(max_examples=50)  # keeps CI fast; can raise for more fuzzing
+@settings(max_examples=50)
 def test_scheduler_step_properties(
     n_firms: int, n_households: int, n_banks: int, seed: int
 ) -> None:
@@ -67,6 +87,9 @@ def test_scheduler_step_properties(
     assert_basic_invariants(sch)
 
 
+# --------------------------------------------------------------------------- #
+#   hook order                                                                #
+# --------------------------------------------------------------------------- #
 def test_scheduler_hooks_called() -> None:
     """
     Attach a simple recorder callable to **every** defined hook.  After one
@@ -85,6 +108,9 @@ def test_scheduler_hooks_called() -> None:
     assert call_order == list(HOOK_NAMES)
 
 
+# --------------------------------------------------------------------------- #
+#   hook side-effects                                                         #
+# --------------------------------------------------------------------------- #
 def test_hook_after_stub_forces_no_inventory() -> None:
 
     def _zero_out_inventory(sched: Scheduler) -> None:
@@ -92,23 +118,39 @@ def test_hook_after_stub_forces_no_inventory() -> None:
         sched.prod.inventory[:] = 0.0
 
     sch = Scheduler.init(n_firms=10, n_households=40, n_banks=5, seed=123)
+    sch.step(after_stub=_zero_out_inventory)     # period t
+    assert np.allclose(sch.prod.inventory, 0.0)  # enforced
 
-    # --- period t --------------------------------------------------------
-    sch.step(after_stub=_zero_out_inventory)  # <-- new hook name
-
-    # Inventories stay zero because the stub already ran
-    assert np.allclose(sch.prod.inventory, 0.0)
-
-    # --- period t+1 ------------------------------------------------------
-    # Plan again; with zero stock every firm takes the “up” branch
-    p_avg = float(sch.prod.price.mean())
+    # one more step ⇒ planning should see zero stocks
     from bamengine.systems.planning import firms_decide_desired_production
-
+    p_avg = float(sch.prod.price.mean())
     firms_decide_desired_production(sch.prod, p_avg=p_avg, h_rho=sch.h_rho, rng=sch.rng)
-
     assert (sch.prod.desired_production >= sch.prod.production).all()
 
 
-@pytest.mark.xfail(reason="Cover snapshot later")
-def test_scheduler_snapshot() -> None:  # pragma: no cover
-    raise NotImplementedError
+# --------------------------------------------------------------------------- #
+#   snapshot semantics                                                        #
+# --------------------------------------------------------------------------- #
+def test_scheduler_snapshot_copy_vs_view() -> None:
+    """
+    * copy=True  → returns deep copies (mutation-safe)
+    * copy=False → returns views (live linkage)
+    Test is **independent** of which keys are present in the snap dict.
+    """
+    sch  = Scheduler.init(n_firms=4, n_households=10, n_banks=2, seed=7)
+
+    snap_copy = sch.snapshot(copy=True)
+    snap_view = sch.snapshot(copy=False)
+
+    # mutate one *known* array in the scheduler
+    sch.wrk.employed[:] = 1 - sch.wrk.employed  # flip flags
+
+    # --- copies remain unchanged ----------------------------------------
+    for arr in snap_copy.values():
+        if isinstance(arr, np.ndarray):
+            assert not np.shares_memory(arr, sch.wrk.employed)
+
+    # --- views must reflect the change ----------------------------------
+    for arr in snap_view.values():
+        if np.shares_memory(arr, sch.wrk.employed):
+            assert (arr == sch.wrk.employed).all()

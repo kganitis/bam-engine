@@ -1,21 +1,21 @@
 # tests/helpers/invariants.py
+"""
+High-level invariants that must hold after *every* ``Scheduler.step``.
+They deliberately stay coarse-grained so they remain valid even when the
+micro-rules evolve.
+"""
+from __future__ import annotations
+
 import numpy as np
 
 from bamengine.scheduler import Scheduler
 
 
-def assert_basic_invariants(sch: Scheduler) -> None:
-    """
-    Core invariants that must hold after *any* `Scheduler.step()`.
-
-    They deliberately cover only high-level algebra and cross-component
-    consistency—detailed event logic is unit-tested elsewhere.
-    """
-
+def assert_basic_invariants(sch: Scheduler) -> None:  # noqa: C901  (long but flat)
     # ------------------------------------------------------------------ #
     # 1. Planning & labour-market                                        #
     # ------------------------------------------------------------------ #
-    # Desired production never negative / NaN
+    # Desired production – finite & non-negative
     assert not np.isnan(sch.prod.desired_production).any()
     assert (sch.prod.desired_production >= 0).all()
 
@@ -23,11 +23,11 @@ def assert_basic_invariants(sch: Scheduler) -> None:
     assert (sch.emp.n_vacancies >= 0).all()
     assert (sch.emp.wage_offer >= sch.ec.min_wage).all()
 
-    # Employment flags are boolean and mirror firm labour counts
+    # Employment flags mirror firm labour counts
     assert set(np.unique(sch.wrk.employed)).issubset({0, 1})
     assert sch.wrk.employed.sum() == sch.emp.current_labor.sum()
 
-    # Wage-bill must equal L_i · w_i  **after** production event
+    # Wage-bill consistency
     np.testing.assert_allclose(
         sch.emp.wage_bill,
         sch.emp.current_labor * sch.emp.wage_offer,
@@ -37,31 +37,38 @@ def assert_basic_invariants(sch: Scheduler) -> None:
     # ------------------------------------------------------------------ #
     # 2. Credit-market                                                   #
     # ------------------------------------------------------------------ #
-    # No negative balances anywhere
-    assert (sch.bor.credit_demand >= -1e-9).all()
-    assert (sch.lend.credit_supply >= -1e-9).all()
-    assert (sch.emp.total_funds >= -1e-9).all()
+    # Non-negative balances
+    assert (sch.bor.credit_demand   >= -1e-9).all()
+    assert (sch.lend.credit_supply  >= -1e-9).all()
+    assert (sch.emp.total_funds     >= -1e-9).all()
 
-    # Ledger capacity never exceeded & indices within bounds
+    # Ledger bounds & arithmetic
     assert sch.lb.size <= sch.lb.capacity
-    n_borrowers = sch.bor.net_worth.size
-    n_lenders = sch.lend.credit_supply.size
-    assert np.all((sch.lb.borrower[: sch.lb.size] < n_borrowers))
-    assert np.all((sch.lb.lender[: sch.lb.size] < n_lenders))
+    nb, nl = sch.bor.net_worth.size, sch.lend.credit_supply.size
+    assert (sch.lb.borrower[: sch.lb.size] < nb).all()
+    assert (sch.lb.lender [: sch.lb.size] < nl).all()
 
-    # Ledger arithmetic:  interest = p · r    debt = p · (1+r)
     if sch.lb.size:
         p = sch.lb.principal[: sch.lb.size]
-        r = sch.lb.rate[: sch.lb.size]
-        np.testing.assert_allclose(sch.lb.interest[: sch.lb.size], p * r, rtol=1e-8)
-        np.testing.assert_allclose(sch.lb.debt[: sch.lb.size], p * (1.0 + r), rtol=1e-8)
+        r = sch.lb.rate     [: sch.lb.size]
+        np.testing.assert_allclose(sch.lb.interest[: sch.lb.size], p * r,         rtol=1e-8)
+        np.testing.assert_allclose(sch.lb.debt    [: sch.lb.size], p * (1 + r),   rtol=1e-8)
 
-    # Regulatory lending cap respected
-    cap_per_bank = sch.lend.equity_base * sch.ec.v
-    assert (sch.lend.credit_supply <= cap_per_bank + 1e-9).all()
+    # Regulatory cap
+    cap = sch.lend.equity_base * sch.ec.v
+    assert (sch.lend.credit_supply <= cap + 1e-9).all()
 
     # ------------------------------------------------------------------ #
-    # 3. Production & households                                         #
+    # 3. Production & Goods-market                                       #
     # ------------------------------------------------------------------ #
-    # Household income must stay non-negative
-    assert (sch.con.income >= -1e-9).all()
+    # Inventories & prices
+    assert (sch.prod.inventory >= -1e-9).all()
+    assert (sch.prod.price > 0).all() and not np.isnan(sch.prod.price).any()
+
+    # Savings & income never negative
+    assert (sch.con.savings >= -1e-9).all()
+    assert (sch.con.income  >= -1e-9).all()
+
+    # Propensity bounded (0,1] whenever present
+    if hasattr(sch.con, "propensity"):
+        assert ((0 < sch.con.propensity) & (sch.con.propensity <= 1)).all()
