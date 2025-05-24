@@ -4,9 +4,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Dict, TypeAlias
 
 import numpy as np
 from numpy.random import Generator, default_rng
@@ -64,37 +62,12 @@ from bamengine.systems.revenue import (
     firms_pay_dividends,
     firms_validate_debt_commitments,
 )
-from bamengine.typing import Bool1D, Float1D, Int1D
 
-__all__ = ["Scheduler", "HOOK_NAMES"]
+__all__ = [
+    "Scheduler",
+]
 
 log = logging.getLogger(__name__)
-
-
-# ------------------------------------------------------------------ #
-#  Hook infrastructure                                               #
-# ------------------------------------------------------------------ #
-
-# A hook is any callable that receives the ``Scheduler`` instance.
-SchedulerHook: TypeAlias = Callable[["Scheduler"], None]
-
-# Central list that defines **all** available hook points and their order.
-# Add / remove / reorder entries here and both the `step` method and the
-# tests pick the change up automatically.
-HOOK_NAMES: tuple[str, ...] = (
-    "before_planning",
-    "after_planning",
-    "before_labor_market",
-    "after_labor_market",
-    "before_credit_market",
-    "after_credit_market",
-    "before_production",
-    "after_production",
-    "before_goods_market",
-    "after_goods_market",
-    "before_revenue",
-    "after_revenue",
-)
 
 
 # --------------------------------------------------------------------- #
@@ -311,20 +284,10 @@ class Scheduler:
     # ------------------------------------------------------------------ #
     #                               one step                             #
     # ------------------------------------------------------------------ #
-    def step(self, **hooks: SchedulerHook) -> None:
-        """Advance the economy by one period.
-
-        Any keyword whose name appears in ``HOOK_NAMES`` may be supplied
-        with a callable that is executed at the documented point.
-        """
-
-        def _hook(name: str) -> None:
-            hook = hooks.get(name)
-            if hook is not None:
-                hook(self)
+    def step(self) -> None:
+        """Advance the economy by one period."""
 
         # ===== Event 1 – planning ======================================
-        _hook("before_planning")
 
         firms_decide_desired_production(
             self.prod, p_avg=self.ec.avg_mkt_price, h_rho=self.h_rho, rng=self.rng
@@ -332,11 +295,7 @@ class Scheduler:
         firms_decide_desired_labor(self.prod, self.emp)
         firms_decide_vacancies(self.emp)
 
-        _hook("after_planning")
-        # ===============================================================
-
         # ===== Event 2 – labor-market ==================================
-        _hook("before_labor_market")
 
         adjust_minimum_wage(self.ec)
         firms_decide_wage_offer(
@@ -350,11 +309,7 @@ class Scheduler:
             firms_hire_workers(self.wrk, self.emp, theta=self.theta)
         firms_calc_wage_bill(self.emp)
 
-        _hook("after_labor_market")
-        # ===============================================================
-
         # ===== Event 3 – credit-market =================================
-        _hook("before_credit_market")
 
         banks_decide_credit_supply(self.lend, v=self.ec.v)
         banks_decide_interest_rate(
@@ -370,11 +325,7 @@ class Scheduler:
             banks_provide_loans(self.bor, self.lb, self.lend, r_bar=self.ec.r_bar)
         firms_fire_workers(self.emp, self.wrk, rng=self.rng)
 
-        _hook("after_credit_market")
-        # ===============================================================
-
         # ===== Event 4 – production ====================================
-        _hook("before_production")
 
         firms_decide_price(
             self.prod,
@@ -391,11 +342,7 @@ class Scheduler:
         firms_run_production(self.prod, self.emp)
         workers_update_contracts(self.wrk, self.emp)
 
-        _hook("after_production")
-        # ===============================================================
-
         # ===== Event 5 – goods-market ==================================
-        _hook("before_goods_market")
 
         _avg_sav = float(self.con.savings.mean())
         consumers_calc_propensity(self.con, avg_sav=_avg_sav, beta=self.beta)
@@ -407,48 +354,8 @@ class Scheduler:
             consumers_visit_one_round(self.con, self.prod)
         consumers_finalize_purchases(self.con)
 
-        _hook("after_goods_market")
-        # ===============================================================
-
         # ===== Event 6 – revenue =======================================
-        _hook("before_revenue")
 
         firms_collect_revenue(self.prod, self.bor)
         firms_validate_debt_commitments(self.bor, self.lend, self.lb)
         firms_pay_dividends(self.bor, delta=self.delta)
-
-        _hook("after_revenue")
-
-    # --------------------------------------------------------------------- #
-    #                               snapshot                                #
-    # --------------------------------------------------------------------- #
-    def snapshot(
-        self, *, copy: bool = True
-    ) -> Dict[str, Float1D | Int1D | Bool1D | float]:
-        """
-        Return a read‑only view (or copy) of key state arrays.
-
-        Parameters
-        ----------
-        copy : bool, default True
-            * True  – return **copies** so the caller can mutate freely.
-            * False – return **views**; cheap but mutation‑unsafe.
-        """
-        cp = np.copy if copy else lambda x: x  # cheap inline helper
-
-        return {
-            "net_worth": cp(self.bor.net_worth),
-            "price": cp(self.prod.price),
-            "inventory": cp(self.prod.inventory),
-            "labor": cp(self.emp.current_labor),
-            "min_wage": float(self.ec.min_wage),
-            "wage": cp(self.wrk.wage),
-            "wage_bill": cp(self.emp.wage_bill),
-            "employed": cp(self.wrk.employed),
-            "debt": cp(self.lb.debt),
-            "production": cp(self.prod.production),
-            "income": cp(self.con.income),
-            "savings": cp(self.con.savings),
-            "income_to_spend": cp(self.con.income_to_spend),
-            "avg_mkt_price": float(self.ec.avg_mkt_price),
-        }
