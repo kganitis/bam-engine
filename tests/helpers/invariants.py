@@ -11,7 +11,15 @@ import numpy as np
 from bamengine.scheduler import Scheduler
 
 
-def assert_basic_invariants(sch: Scheduler) -> None:  # noqa: C901  (long but flat)
+def assert_basic_invariants(sch: Scheduler) -> None:  # noqa: C901  (flat, long)
+    """
+    Raise ``AssertionError`` if *any* fundamental cross-component relationship
+    is violated after a full period.
+
+    The assertions are grouped by event “domain” so failures give a useful hint
+    where the bug lives.
+    """
+
     # ------------------------------------------------------------------ #
     # 1. Planning & labour-market                                        #
     # ------------------------------------------------------------------ #
@@ -35,7 +43,7 @@ def assert_basic_invariants(sch: Scheduler) -> None:  # noqa: C901  (long but fl
     )
 
     # ------------------------------------------------------------------ #
-    # 2. Credit-market                                                   #
+    # 2. Credit-market & finance                                         #
     # ------------------------------------------------------------------ #
     # Non-negative balances
     assert (sch.bor.credit_demand >= -1e-9).all()
@@ -69,11 +77,27 @@ def assert_basic_invariants(sch: Scheduler) -> None:  # noqa: C901  (long but fl
     if hasattr(sch.con, "propensity"):
         assert ((0 < sch.con.propensity) & (sch.con.propensity <= 1)).all()
 
-    # ──────────────────────────────────────────────────────────────────────
-    # 4. Revenue event bookkeeping
-    # ──────────────────────────────────────────────────────────────────────
+    # ------------------------------------------------------------------ #
+    # 4. Revenue event bookkeeping                                       #
+    # ------------------------------------------------------------------ #
     # gross_profit = revenue – wage_bill  (checked indirectly: retained/net set)
     # retained ≤ net_profit   and   dividends ≥ 0
     pos = sch.bor.net_profit > 0
-    assert (sch.bor.retained_profit[~pos] == sch.bor.net_profit[~pos]).all()
-    assert (sch.bor.retained_profit[pos] < sch.bor.net_profit[pos] + 1e-12).all()
+    assert np.all((sch.bor.retained_profit[~pos] == sch.bor.net_profit[~pos]))
+    assert np.all((sch.bor.retained_profit[pos] < sch.bor.net_profit[pos] + 1e-12))
+
+    # ------------------------------------------------------------------ #
+    # 5. Exit & entry                                                    #
+    # ------------------------------------------------------------------ #
+    # After replacement, ALL equities must be non-negative again
+    assert (sch.bor.net_worth >= -1e-9).all()
+    assert (sch.lend.equity_base >= -1e-9).all()
+
+    # LoanBook rows may only reference healthy agents
+    if sch.lb.size:
+        assert not np.isin(
+            sch.lb.borrower[: sch.lb.size], sch.ec.exiting_firms
+        ).any(), "ledger row still references exited firm"
+        assert not np.isin(
+            sch.lb.lender[: sch.lb.size], sch.ec.exiting_banks
+        ).any(), "ledger row still references exited bank"
