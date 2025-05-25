@@ -19,6 +19,13 @@ from bamengine.components import (
     Producer,
     Worker,
 )
+from bamengine.systems.bankruptcy import (
+    firms_update_net_worth,
+    mark_bankrupt_firms,
+    mark_bankrupt_banks,
+    spawn_replacement_firms,
+    spawn_replacement_banks,
+)
 from bamengine.systems.credit_market import (
     banks_decide_credit_supply,
     banks_decide_interest_rate,
@@ -359,3 +366,14 @@ class Scheduler:
         firms_collect_revenue(self.prod, self.bor)
         firms_validate_debt_commitments(self.bor, self.lend, self.lb)
         firms_pay_dividends(self.bor, delta=self.delta)
+
+        # ===== Event 7 – Bankruptcy ====================================
+
+        firms_update_net_worth(self.bor)
+        mark_bankrupt_firms(self.ec, self.prod, self.emp, self.bor, self.wrk, self.lb)
+        mark_bankrupt_banks(self.ec, self.lend, self.lb)
+
+        # ===== Event 8 – Entry =========================================
+
+        spawn_replacement_firms(self.ec, self.prod, self.emp, self.bor, rng=self.rng)
+        spawn_replacement_banks(self.ec, self.lend, rng=self.rng)

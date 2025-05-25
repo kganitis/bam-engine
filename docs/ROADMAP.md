@@ -2,17 +2,6 @@
 
 ### Incremental event implementation
 
-Implement the next events one by one
-
-* Specify the required components and systems
-* Write unit tests that cover edge cases and buffer reuse
-* Raise the test coverage
-* Wire the event into the scheduler
-* Write an event-level integration test
-* Update the scheduler integration test
-
-Repeat until the full event chain is implemented, then:
-
 * Run simulation and visualize the results
 * Cross-check with the original BAM paper
 

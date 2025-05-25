@@ -1,0 +1,196 @@
+# src/bamengine/systems/bankruptcy.py
+"""
+Event-7  ─  Bankruptcy (mark exits, fire workers, purge loans)
+Event-8  ─  Entry (spawn replacements for those exits)
+
+Each event is exposed as an *independent* system so a user can
+override / reorder them freely.
+"""
+from __future__ import annotations
+
+import numpy as np
+from numpy.random import Generator
+
+from bamengine.components import (
+    Borrower,
+    Employer,
+    Economy,
+    Lender,
+    LoanBook,
+    Producer,
+    Worker,
+)
+from numpy.typing import NDArray
+
+_EPS = 1.0e-12
+
+
+# ───────────────────────── helpers ──────────────────────────
+def _trim_mean(x: NDArray[np.float64], p: float = 0.05) -> float:
+    """Return the ``p`` % two-sided trimmed mean ( SciPy-style )."""
+    if x.size == 0:
+        return 0.0
+    k = int(round(p * x.size))
+    if k == 0:
+        return float(x.mean())
+    idx = np.argpartition(x, (k, x.size - k - 1))
+    core = x[idx[k : x.size - k]]
+    return float(core.mean())
+
+
+# ───────────────────────── Event-7  ─  Bankruptcy ───────────
+def firms_update_net_worth(bor: Borrower) -> None:
+    """Retained profit is added to equity; syncs the cash column too."""
+    np.add(bor.net_worth, bor.retained_profit, out=bor.net_worth)
+    bor.total_funds[:] = bor.net_worth
+
+
+def mark_bankrupt_firms(
+    ec: Economy,
+    prod: Producer,
+    emp: Employer,
+    bor: Borrower,
+    wrk: Worker,
+    lb: LoanBook,
+) -> None:
+    """
+    • Detect A_i < 0.
+    • Fire every employee of those firms.
+    • Remove their loan rows from the ledger.
+    • Record indices in `ec.exiting_firms`.
+    """
+    bankrupt = np.where(bor.net_worth < -_EPS)[0]
+    ec.exiting_firms = bankrupt.astype(np.int64)
+
+    if bankrupt.size == 0:
+        return
+
+    # ---- fire *all* workers whose employer just went bust --------------
+    mask = np.isin(wrk.employer, bankrupt)
+    if mask.any():
+        wrk.employed[mask] = 0
+        wrk.employer_prev[mask] = wrk.employer[mask]
+        wrk.employer[mask] = -1
+        wrk.wage[mask] = 0.0
+        wrk.periods_left[mask] = 0
+        wrk.contract_expired[mask] = 0
+        wrk.fired[mask] = 1
+
+    emp.current_labor[bankrupt] = 0
+    emp.wage_bill[bankrupt] = 0.0
+
+    # ---- purge loans ---------------------------------------------------
+    if lb.size:
+        bad = np.isin(lb.borrower[: lb.size], bankrupt)
+        if bad.any():
+            keep = ~bad
+            keep_size = int(keep.sum())
+            for name in ("borrower", "lender", "principal", "rate", "interest", "debt"):
+                arr = getattr(lb, name)
+                if arr.size == 0:  # column not initialised
+                    continue
+                arr[:keep_size] = arr[: lb.size][keep]
+            lb.size = keep_size
+
+
+def mark_bankrupt_banks(
+    ec: Economy,
+    lend: Lender,
+    lb: LoanBook,
+) -> None:
+    """
+    • Detect E_k < 0.
+    • Purge every loan row that references the bankrupt bank.
+    • Record indices in `ec.exiting_banks`.
+    """
+    bankrupt = np.where(lend.equity_base < -_EPS)[0]
+    ec.exiting_banks = bankrupt.astype(np.int64)
+
+    if bankrupt.size == 0:
+        return
+
+    if lb.size:
+        bad = np.isin(lb.lender[: lb.size], bankrupt)
+        if bad.any():
+            keep = ~bad
+            keep_size = int(keep.sum())
+            for name in ("borrower", "lender", "principal", "rate", "interest", "debt"):
+                arr = getattr(lb, name)
+                if arr.size == 0:
+                    continue
+                arr[:keep_size] = arr[: lb.size][keep]
+            lb.size = keep_size
+
+
+# ───────────────────────── Event-8  ─  Entry  ─────────────────
+def spawn_replacement_firms(
+    ec: Economy,
+    prod: Producer,
+    emp: Employer,
+    bor: Borrower,
+    *,
+    rng: Generator,
+) -> None:
+    """Create one brand-new firm *per* index stored in `ec.exiting_firms`."""
+    exiting = ec.exiting_firms
+    if exiting.size == 0:
+        return
+
+    # trimmed means of survivors
+    survivors = np.setdiff1d(np.arange(bor.net_worth.size), exiting, assume_unique=True)
+    mean_net = _trim_mean(bor.net_worth[survivors])
+    mean_prod = _trim_mean(prod.production[survivors])
+    mean_wage = _trim_mean(emp.wage_offer[survivors])
+    mean_price = _trim_mean(prod.price[survivors])
+
+    for i in exiting:
+        s = rng.uniform(0.01, 0.99)  # random scale
+        bor.net_worth[i] = mean_net * s
+        bor.total_funds[i] = bor.net_worth[i]
+        bor.gross_profit[i] = bor.net_profit[i] = 0.0
+        bor.retained_profit[i] = 0.0
+        bor.credit_demand[i] = 0.0
+
+        prod.production[i] = mean_prod * s
+        prod.inventory[i] = prod.production[i]
+        prod.expected_demand[i] = prod.production[i]
+        prod.desired_production[i] = prod.production[i]
+        prod.price[i] = mean_price * rng.uniform(0.95, 1.05)
+
+        emp.current_labor[i] = 0
+        emp.desired_labor[i] = 0
+        # keep above statutory floor
+        emp.wage_offer[i] = max(mean_wage * rng.uniform(0.95, 1.05), ec.min_wage)
+        emp.n_vacancies[i] = 0
+        emp.total_funds[i] = bor.total_funds[i]
+        emp.wage_bill[i] = 0.0
+
+    ec.exiting_firms = np.empty(0, np.int64)  # clear list
+
+
+def spawn_replacement_banks(
+    ec: Economy,
+    lend: Lender,
+    *,
+    rng: Generator,
+) -> None:
+    """Clone parameters from a random healthy peer for each exiting bank."""
+    exiting = ec.exiting_banks
+    if exiting.size == 0:
+        return
+
+    alive = np.setdiff1d(np.arange(lend.equity_base.size), exiting, assume_unique=True)
+
+    for k in exiting:
+        if alive.size:  # clone from peer
+            src = int(rng.choice(alive))
+            lend.equity_base[k] = lend.equity_base[src] * rng.uniform(0.5, 1.0)
+            lend.interest_rate[k] = lend.interest_rate[src]
+        else:  # fallback
+            lend.equity_base[k] = 10_000.0
+            lend.interest_rate[k] = 0.0
+        lend.credit_supply[k] = 0.0
+        lend.recv_apps_head[k] = -1
+        lend.recv_apps[k, :] = -1
+
+    ec.exiting_banks = np.empty(0, np.int64)  # clear list
