@@ -64,6 +64,8 @@ from bamengine.systems.production import (
     update_avg_mkt_price,
     workers_receive_wage,
     workers_update_contracts,
+    calc_unemployment_rate,
+    calc_annual_inflation_rate,
 )
 from bamengine.systems.revenue import (
     firms_collect_revenue,
@@ -165,6 +167,8 @@ class Scheduler:
             r_bar=0.07,
             v=0.23,
             avg_mkt_price_history=np.array([1.5]),
+            unemp_rate_history=np.array([1.0]),
+            inflation_history=np.array([0.0]),
         )
         if economy:
             eco_cfg.update(economy)
@@ -178,9 +182,11 @@ class Scheduler:
         net_worth_seed = 10.0 if net_worth_init is None else net_worth_init
         price_seed = 1.5 if price_init is None else price_init
         if equity_base_init is None:
-            equity_base_seed = np.random.poisson(10_000, size=n_banks).astype(float) + 10
-        else:
-            equity_base_seed = equity_base_init
+            equity_base_seed = (
+                np.random.poisson(10_000, size=n_banks).astype(np.float64) + 10
+            )
+        # else:
+        #     equity_base_seed = equity_base_init
 
         try:
             net_worth = np.broadcast_to(net_worth_seed, n_firms).copy()
@@ -201,7 +207,7 @@ class Scheduler:
         inventory = np.zeros_like(production)
         expected_demand = np.ones_like(production)
         desired_production = np.zeros_like(production)
-        labor_productivity = np.ones_like(production)
+        labor_productivity = np.full(n_firms, 1.0)
 
         # employer
         labor = np.zeros(n_firms, dtype=np.int64)
@@ -240,7 +246,7 @@ class Scheduler:
 
         # consumer
         income = np.zeros_like(wage)
-        savings = np.random.poisson(lam=1, size=n_households).astype(float) + 2
+        savings = np.random.poisson(lam=1, size=n_households).astype(np.float64) + 2
         income_to_spend = np.zeros_like(wage)
         propensity = np.zeros(n_households)
         largest_prod_prev = np.full(n_households, -1, dtype=np.int64)
@@ -395,6 +401,7 @@ class Scheduler:
 
         # ===== Event 4 – production ====================================
 
+        calc_unemployment_rate(self.ec, self.wrk)
         firms_decide_price(
             self.prod,
             self.emp,
@@ -404,6 +411,7 @@ class Scheduler:
             rng=self.rng,
         )
         update_avg_mkt_price(self.ec, self.prod)
+        calc_annual_inflation_rate(self.ec)
 
         firms_pay_wages(self.emp)
         workers_receive_wage(self.con, self.wrk)

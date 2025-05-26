@@ -4,10 +4,30 @@ Event-4 – Production systems (vectorised, zero allocations)
 """
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 from numpy.random import Generator
 
 from bamengine.components import Consumer, Economy, Employer, LoanBook, Producer, Worker
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
+
+
+# ------------------------------------------------------------------ #
+# 0.  Calc unemployment rate                                         #
+# ------------------------------------------------------------------ #
+def calc_unemployment_rate(
+    ec: Economy,
+    wrk: Worker,
+) -> None:
+    # Number of unemployed agents / total household population
+    n_workers = wrk.employed.size
+    unemployed_count = wrk.employed.size - wrk.employed.sum()
+    ec.unemp_rate_history = np.append(
+        ec.unemp_rate_history, unemployed_count / n_workers
+    )
 
 
 # ------------------------------------------------------------------ #
@@ -64,6 +84,28 @@ def update_avg_mkt_price(ec: Economy, prod: Producer) -> None:
     """ """
     ec.avg_mkt_price = float(prod.price.mean())
     ec.avg_mkt_price_history = np.append(ec.avg_mkt_price_history, ec.avg_mkt_price)
+
+
+# --------------------------------------------------------------------- #
+# 3.  Calculate inflation rate                                          #
+# --------------------------------------------------------------------- #
+def calc_annual_inflation_rate(ec: Economy) -> None:
+    """
+    Calculate and store the annual inflation rate for the current period.
+
+    π_t = (P_{t} - P_{t-4}) / P_{t-4}
+    Stores result in ec.inflation_history (appended each call).
+    """
+    hist = ec.avg_mkt_price_history
+    if hist.size <= 4:
+        # not enough periods
+        ec.inflation_history = np.append(ec.inflation_history, 0.0)
+        return
+
+    p_now = hist[-1]
+    p_prev = hist[-5]
+    inflation = (p_now - p_prev) / p_prev
+    ec.inflation_history = np.append(ec.inflation_history, inflation)
 
 
 # --------------------------------------------------------------------- #

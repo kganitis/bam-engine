@@ -1,4 +1,4 @@
-# src/bamengine/results.py
+# src/results.py
 """
 Runs a baseline simulation of the BAM Engine and plots key macroeconomic time series.
 """
@@ -11,6 +11,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from bamengine.scheduler import Scheduler
+from diagnostics import log_firm_strategy_distribution
 
 # --- Basic logging setup ---
 logging.basicConfig(
@@ -28,25 +29,23 @@ class DataCollector:
     # Raw data collected each period
     gdp: list[float] = field(default_factory=list)
     unemployment_rate: list[float] = field(default_factory=list)
-    avg_price_level: list[float] = field(default_factory=list)
+    inflation_rate: list[float] = field(default_factory=list)
     productivity_wage_ratio: list[float] = field(default_factory=list)
 
     def capture(self, sched: Scheduler) -> None:
         """Calculates and stores metrics for the current period."""
+
         # --- Real GDP ---
-        # Sum of all firm production in the period
         current_gdp = float(sched.prod.production.sum())
         self.gdp.append(current_gdp)
 
         # --- Unemployment Rate ---
-        # Number of unemployed agents / total household population
-        unemployed_count = sched.n_households - sched.wrk.employed.sum()
-        current_unemployment = unemployed_count / sched.n_households
+        current_unemployment = float(sched.ec.unemp_rate_history[-1])
         self.unemployment_rate.append(current_unemployment)
 
         # --- Average Price Level ---
-        # Use the average market price calculated by the engine
-        self.avg_price_level.append(sched.ec.avg_mkt_price)
+        current_inflation = float(sched.ec.inflation_history[-1])
+        self.inflation_rate.append(current_inflation)
 
         # --- Productivity to Real Wage Ratio ---
         # (Avg Labor Productivity) / (Avg Nominal Wage / Price Level)
@@ -60,14 +59,15 @@ class DataCollector:
             )
             avg_real_wage = avg_nominal_wage / sched.ec.avg_mkt_price
             ratio = avg_productivity / avg_real_wage if avg_real_wage > 0 else 0.0
-            self.productivity_wage_ratio.append(ratio)
         else:
-            self.productivity_wage_ratio.append(0.0)
+            ratio = 0.0
+        self.productivity_wage_ratio.append(ratio)
 
         log.debug(
             f"GDP={current_gdp:.2f}, "
             f"Unemployment={current_unemployment:.3f}, "
-            f"P_avg={sched.ec.avg_mkt_price:.2f}"
+            f"Inflation={current_inflation * 100:.2f}, "
+            f"Prod / Real Wage={ratio:.2f}, "
         )
 
     def get_arrays(self) -> dict[str, NDArray[np.float64]]:
@@ -75,7 +75,7 @@ class DataCollector:
         return {
             "gdp": np.array(self.gdp),
             "unemployment_rate": np.array(self.unemployment_rate),
-            "avg_price_level": np.array(self.avg_price_level),
+            "inflation_rate": np.array(self.inflation_rate),
             "productivity_wage_ratio": np.array(self.productivity_wage_ratio),
         }
 
@@ -89,19 +89,21 @@ def run_baseline_simulation() -> dict[str, NDArray[np.float64]]:
         "n_firms": 100,
         "n_banks": 10,
         "periods": 100,
-        "seed": 42,  # for reproducibility
+        "seed": 42,
     }
 
-    sched = Scheduler.init(**params)
+    sched = Scheduler.init(
+        n_firms=params["n_firms"],
+        n_households=params["n_households"],
+        n_banks=params["n_banks"],
+        periods=params["periods"],
+        seed=params["seed"],
+    )
     collector = DataCollector()
 
-    log.info(
-        f"Starting simulation for {params['periods']} periods. "
-        f"This may take a moment..."
-    )
     for t in range(params["periods"]):
-        if t % 100 == 0:
-            log.info(f"--> Simulating period {t}/{params['periods']}")
+        log.info(f"--> Simulating period {t+1}/{params['periods']} ----------------")
+        log_firm_strategy_distribution(sched)
         sched.step()
         collector.capture(sched)
 
@@ -119,19 +121,8 @@ def plot_results(data: dict[str, NDArray[np.float64]], burn_in: int) -> None:
     # Slice data to remove the burn-in period
     log_gdp = np.log(data["gdp"][burn_in:])
     unemployment = data["unemployment_rate"][burn_in:]
+    annual_inflation = data["inflation_rate"][burn_in:] * 100  # as percentage
     prod_wage_ratio = data["productivity_wage_ratio"][burn_in:]
-
-    # Calculate annual inflation (assuming 4 periods = 1 year, e.g., quarterly)
-    # Inflation at t = (P_t / P_{t-4}) - 1
-    price_level = data["avg_price_level"]
-    # Ensure we have enough data points to look back 4 periods
-    inflation = np.zeros_like(price_level)
-    for t in range(4, len(price_level)):
-        if price_level[t - 4] > 0:
-            inflation[t] = (price_level[t] / price_level[t - 4]) - 1
-        else:
-            inflation[t] = 0.0
-    annual_inflation = inflation[burn_in:] * 100  # As percentage
 
     # --- Create Plots ---
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
@@ -166,7 +157,7 @@ def plot_results(data: dict[str, NDArray[np.float64]], burn_in: int) -> None:
     axes[1, 1].set_ylabel("Ratio")
     axes[1, 1].grid(True, linestyle="--", alpha=0.6)
 
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.tight_layout(rect=(0.0, 0.03, 1.0, 0.95))
     plt.show()
 
 

@@ -6,7 +6,7 @@ Vectorised, allocation-free during the hot path.
 from __future__ import annotations
 
 import numpy as np
-from numpy.random import Generator
+from numpy.random import Generator, default_rng
 
 from bamengine.components import Consumer, Producer
 
@@ -110,15 +110,20 @@ def consumers_decide_firms_to_visit(
 
 
 # ------------------------------------------------------------------ #
-# 3.  One “shopping round”                                            #
+# 3.  One “shopping round”                                           #
 # ------------------------------------------------------------------ #
-def consumers_visit_one_round(con: Consumer, prod: Producer) -> None:
+def consumers_visit_one_round(
+    con: Consumer, prod: Producer, rng: Generator = default_rng(0)
+) -> None:
     """
     Execute *one* round of purchases for **all** households.
     """
     stride = con.shop_visits_targets.shape[1]
 
-    for h in np.where(con.income_to_spend > 0.0)[0]:
+    buyers_indices = np.where(con.income_to_spend > 0.0)[0]
+    rng.shuffle(buyers_indices)
+
+    for h in buyers_indices:
         ptr = con.shop_visits_head[h]
         if ptr < 0:
             continue

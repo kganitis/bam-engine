@@ -23,6 +23,8 @@ class Economy:
 
     # ── time-series ──────────────────────────────────────────────────────
     avg_mkt_price_history: Float1D  # shape  (t+1,)
+    unemp_rate_history: Float1D  # shape  (t+1,)
+    inflation_history: Float1D  # shape  (t+1,)
 
     # ── transient exit lists (flushed each Entry event) ──────────────────
     exiting_firms: Int1D = field(default_factory=lambda: np.empty(0, np.int64))

@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 
 import numpy as np
-from numpy.random import Generator
+from numpy.random import Generator, default_rng
 
 from bamengine.components import Borrower, Employer, Lender, LoanBook, Worker
 from bamengine.typing import Float1D, Idx1D
@@ -126,11 +126,16 @@ def firms_prepare_loan_applications(
         bor.loan_apps_head[f] = f * stride  # start of that row
 
 
-def firms_send_one_loan_app(bor: Borrower, lend: Lender) -> None:
+def firms_send_one_loan_app(
+    bor: Borrower, lend: Lender, rng: Generator = default_rng(0)
+) -> None:
     """ """
     stride = bor.loan_apps_targets.shape[1]
 
-    for f in np.where(bor.credit_demand > 0.0)[0]:
+    borrowers_indices = np.where(bor.credit_demand > 0.0)[0]
+    rng.shuffle(borrowers_indices)
+
+    for f in borrowers_indices:
         h = bor.loan_apps_head[f]
         if h < 0:
             continue
@@ -197,6 +202,7 @@ def banks_provide_loans(
     lend: Lender,
     *,
     r_bar: float,
+    rng: Generator = default_rng(0),
 ) -> None:
     """
     Process queued applications **in‑place**:
@@ -205,7 +211,10 @@ def banks_provide_loans(
         • satisfy queues until each bank’s credit_supply is exhausted
         • update both firm credit-demand **and** edge-list ledger
     """
-    for k in np.where(lend.credit_supply > 0.0)[0]:
+    lenders_indices = np.where(lend.credit_supply > 0.0)[0]
+    rng.shuffle(lenders_indices)
+
+    for k in lenders_indices:
         n_recv = lend.recv_apps_head[k] + 1
         if n_recv <= 0:
             continue
