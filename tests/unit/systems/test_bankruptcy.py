@@ -6,15 +6,15 @@ from numpy.random import default_rng
 
 from bamengine.systems.bankruptcy import (
     firms_update_net_worth,
-    mark_bankrupt_firms,
     mark_bankrupt_banks,
-    spawn_replacement_firms,
+    mark_bankrupt_firms,
     spawn_replacement_banks,
+    spawn_replacement_firms,
 )
 from tests.helpers.factories import (
     mock_borrower,
-    mock_employer,
     mock_economy,
+    mock_employer,
     mock_lender,
     mock_loanbook,
     mock_producer,

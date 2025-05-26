@@ -17,12 +17,6 @@ from tests.helpers.invariants import assert_basic_invariants
 def test_scheduler_step(tiny_sched: Scheduler) -> None:
     """
     Smoke integration test: one `Scheduler.step()`.
-
-    The goal is **not** to retest algebra already covered by unit tests, but to
-    confirm that the driver glues the systems together correctly and keeps basic
-    state invariants intact.
-
-    Its job is to answer “Did anything explode when I call step()?”
     """
     tiny_sched.step()
     assert_basic_invariants(tiny_sched)
@@ -31,8 +25,8 @@ def test_scheduler_step(tiny_sched: Scheduler) -> None:
 # --------------------------------------------------------------------------- #
 #   multi-period                                                              #
 # --------------------------------------------------------------------------- #
-@pytest.mark.parametrize("steps", [10])
-def test_scheduler_state_stable_over_time(steps: int) -> None:
+@pytest.mark.parametrize("n_periods", [100])
+def test_scheduler_state_stable_over_time(n_periods: int) -> None:
     """
     Multi‑period smoke test: run consecutive Scheduler steps on a medium‑sized
     economy and assert that key invariants hold after **each** period.
@@ -47,7 +41,7 @@ def test_scheduler_state_stable_over_time(steps: int) -> None:
         seed=9,
     )
 
-    for _ in range(steps):
+    for _ in range(n_periods):
         sch.step()
         assert_basic_invariants(sch)
 

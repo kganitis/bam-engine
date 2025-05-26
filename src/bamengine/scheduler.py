@@ -1,10 +1,11 @@
 # src/bamengine/scheduler.py
-"""BAM Engine – tiny driver that wires components ↔ systems for 1 period."""
+"""BAM Engine – tiny driver that wires components ↔ systems."""
 
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from typing import Any, Dict, cast
 
 import numpy as np
 from numpy.random import Generator, default_rng
@@ -21,10 +22,10 @@ from bamengine.components import (
 )
 from bamengine.systems.bankruptcy import (
     firms_update_net_worth,
-    mark_bankrupt_firms,
     mark_bankrupt_banks,
-    spawn_replacement_firms,
+    mark_bankrupt_firms,
     spawn_replacement_banks,
+    spawn_replacement_firms,
 )
 from bamengine.systems.credit_market import (
     banks_decide_credit_supply,
@@ -69,6 +70,7 @@ from bamengine.systems.revenue import (
     firms_pay_dividends,
     firms_validate_debt_commitments,
 )
+from bamengine.typing import Float1D
 
 __all__ = [
     "Scheduler",
@@ -83,9 +85,12 @@ log = logging.getLogger(__name__)
 @dataclass(slots=True)
 class Scheduler:
     """
-    Facade that drives a BAM economy for one or more periods.
+    Facade that drives one Economy instance through *n* consecutive periods.
+
+    One call to :py:meth:`run` → *n* calls to :py:meth:`step`.
     """
 
+    # ── core state ───────────────────────────────────────────────────────
     rng: Generator
     ec: Economy
     prod: Producer
@@ -96,10 +101,11 @@ class Scheduler:
     con: Consumer
     lb: LoanBook
 
-    # global parameters
+    # ── simulation-level parameters (shock bounds, queue widths …) ──────
     n_firms: int
     n_households: int
     n_banks: int
+    n_periods: int
     h_rho: float  # max production-growth shock
     h_xi: float  # max wage-growth shock
     h_phi: float  # max bank operational costs shock
@@ -118,13 +124,23 @@ class Scheduler:
     def init(
         cls,
         *,
+        # ----- population sizes -----------------------------------------
         n_firms: int,
         n_households: int,
         n_banks: int,
-        h_rho: float = 0.1,
+        # ----- run length -----------------------------------------------
+        periods: int = 1,
+        # ----- economy-level scalars ------------------------------------
+        economy: dict[str, Any] | None = None,
+        # ----- initial balance-sheet seeds ------------------------------
+        net_worth_init: float | Float1D | None = None,
+        price_init: float | Float1D | None = None,
+        equity_base_init: float | Float1D | None = None,
+        # ----- simulation parameters ------------------------------------
+        h_rho: float = 0.10,
         h_xi: float = 0.05,
-        h_phi: float = 0.1,
-        h_eta: float = 0.1,
+        h_phi: float = 0.10,
+        h_eta: float = 0.10,
         max_M: int = 4,
         max_H: int = 2,
         max_Z: int = 2,
@@ -133,23 +149,58 @@ class Scheduler:
         delta: float = 0.15,
         seed: int | Generator = 0,
     ) -> "Scheduler":
+        """
+        Factory with *one* giant signature so downstream notebooks/tests can
+        tweak **everything** from a single place.
+        """
         rng = seed if isinstance(seed, Generator) else default_rng(seed)
 
-        # finance vectors
-        net_worth = np.full(n_firms, 10.0)
-        total_funds = np.copy(net_worth)
+        # ──────────────────────────────────────────────────────────
+        # 0.  Economy-wide parameters (policy / structure)
+        # ──────────────────────────────────────────────────────────
+        eco_cfg = dict(
+            avg_mkt_price=1.5,
+            min_wage=1.0,
+            min_wage_rev_period=4,
+            r_bar=0.07,
+            v=0.23,
+            avg_mkt_price_history=np.array([1.5]),
+        )
+        if economy:
+            eco_cfg.update(economy)
+        ec = Economy(**cast(Dict[str, Any], eco_cfg))
+
+        # ──────────────────────────────────────────────────────────
+        # 1.  Initial balance-sheet seeds
+        # ──────────────────────────────────────────────────────────
+        # Set default if None, then broadcast scalar/array to the correct length.
+        # This handles validation and broadcasting in one clean step.
+        net_worth_seed = 10.0 if net_worth_init is None else net_worth_init
+        price_seed = 1.5 if price_init is None else price_init
+        equity_base_seed = 10_000.0 if equity_base_init is None else equity_base_init
+
+        try:
+            net_worth = np.broadcast_to(net_worth_seed, n_firms).copy()
+            price = np.broadcast_to(price_seed, n_firms).copy()
+            equity_base = np.broadcast_to(equity_base_seed, n_banks).copy()
+        except ValueError as e:
+            raise ValueError(
+                "Seed array length mismatch. An initial array had a size that "
+                "is not 1 and does not match the required population size."
+            ) from e
+
+        # finance
+        total_funds = net_worth.copy()
         rnd_intensity = np.ones(n_firms)
 
-        # producer vectors
+        # producer
         production = np.ones(n_firms)
         inventory = np.zeros_like(production)
         expected_demand = np.ones_like(production)
         desired_production = np.zeros_like(production)
         labor_productivity = np.ones_like(production)
 
-        price = np.full(n_firms, 1.5)
-
-        # employer vectors
+        # employer
         labor = np.zeros(n_firms, dtype=np.int64)
         desired_labor = np.zeros_like(labor)
         wage_offer = np.ones(n_firms)
@@ -158,7 +209,7 @@ class Scheduler:
         recv_job_apps_head = np.full(n_firms, -1, dtype=np.int64)
         recv_job_apps = np.full((n_firms, max_M), -1, dtype=np.int64)
 
-        # worker vectors
+        # worker
         employed = np.zeros(n_households, dtype=np.bool_)
         employer = np.full(n_households, -1, dtype=np.int64)
         employer_prev = np.full_like(employer, -1)
@@ -169,7 +220,7 @@ class Scheduler:
         job_apps_head = np.full(n_households, -1, dtype=np.int64)
         job_apps_targets = np.full((n_households, max_M), -1, dtype=np.int64)
 
-        # borrower vectors
+        # borrower
         credit_demand = np.zeros_like(net_worth)
         projected_fragility = np.zeros(n_firms)
         gross_profit = np.zeros_like(net_worth)
@@ -178,14 +229,13 @@ class Scheduler:
         loan_apps_head = np.full(n_firms, -1, dtype=np.int64)
         loan_apps_targets = np.full((n_firms, max_H), -1, dtype=np.int64)
 
-        # lender vectors
-        equity_base = np.full(n_banks, 10_000.00)
+        # lender
         credit_supply = np.zeros_like(equity_base)
         interest_rate = np.zeros(n_banks)
         recv_loan_apps_head = np.full(n_banks, -1, dtype=np.int64)
         recv_loan_apps = np.full((n_banks, max_H), -1, dtype=np.int64)
 
-        # consumer vectors
+        # consumer
         income = np.zeros_like(wage)
         savings = np.zeros_like(wage)
         income_to_spend = np.zeros_like(wage)
@@ -195,14 +245,6 @@ class Scheduler:
         shop_visits_targets = np.full((n_households, max_Z), -1, dtype=np.int64)
 
         # ---------- wrap into components ----------------------------------
-        ec = Economy(
-            min_wage=1.0,
-            min_wage_rev_period=4,
-            avg_mkt_price=1.5,
-            avg_mkt_price_history=np.array([1.5]),
-            r_bar=0.07,
-            v=0.23,
-        )
         prod = Producer(
             price=price,
             production=production,
@@ -252,7 +294,6 @@ class Scheduler:
             recv_apps_head=recv_loan_apps_head,
             recv_apps=recv_loan_apps,
         )
-        lb = LoanBook()
         con = Consumer(
             income=income,
             savings=savings,
@@ -264,9 +305,6 @@ class Scheduler:
         )
 
         return cls(
-            n_firms=n_firms,
-            n_households=n_households,
-            n_banks=n_banks,
             rng=rng,
             ec=ec,
             prod=prod,
@@ -274,8 +312,12 @@ class Scheduler:
             emp=emp,
             bor=bor,
             lend=lend,
-            lb=lb,
+            lb=LoanBook(),
             con=con,
+            n_firms=n_firms,
+            n_households=n_households,
+            n_banks=n_banks,
+            n_periods=periods,
             h_rho=h_rho,
             h_xi=h_xi,
             h_phi=h_phi,
@@ -288,11 +330,27 @@ class Scheduler:
             delta=delta,
         )
 
-    # ------------------------------------------------------------------ #
-    #                               one step                             #
-    # ------------------------------------------------------------------ #
+    # ------------------------------------------------------------------- #
+    #   public API                                                        #
+    # ------------------------------------------------------------------- #
+    def run(self, periods: int | None = None) -> None:
+        """
+        Advance the simulation *periods* times (defaults to the ``n_periods``
+        passed at construction).
+
+        Returns
+        -------
+        None   (state is mutated in-place)
+        """
+        n = periods if periods is not None else self.n_periods
+        for _ in range(int(n)):
+            self.step()
+
+    # ------------------------------------------------------------------- #
+    #   one period                                                        #
+    # ------------------------------------------------------------------- #
     def step(self) -> None:
-        """Advance the economy by one period."""
+        """Advance the economy by exactly **one** period."""
 
         # ===== Event 1 – planning ======================================
 

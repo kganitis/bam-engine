@@ -1,4 +1,6 @@
 # src/bamengine/components/economy.py
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -8,16 +10,21 @@ from bamengine.typing import Float1D, Int1D
 
 @dataclass(slots=True)
 class Economy:
-    """Global, economy-level lists, scalars & time-series."""
+    """
+    Pure *state* container for economy-wide parameters and transient lists.
+    """
 
+    # ── policy / structural scalars ──────────────────────────────────────
     avg_mkt_price: float
-    avg_mkt_price_history: Float1D  # P_0 … P_t
-    min_wage: float  # ŵ_t
-    min_wage_rev_period: int  # constant
-    r_bar: float  # base interest rate
-    v: float  # capital requirement coefficient
+    min_wage: float
+    min_wage_rev_period: int
+    r_bar: float  # base interest-rate
+    v: float  # capital-adequacy coefficient
 
-    # ── transient “exit-lists” (empty after each entry event) ──
+    # ── time-series ──────────────────────────────────────────────────────
+    avg_mkt_price_history: Float1D  # shape  (t+1,)
+
+    # ── transient exit lists (flushed each Entry event) ──────────────────
     exiting_firms: Int1D = field(default_factory=lambda: np.empty(0, np.int64))
     exiting_banks: Int1D = field(default_factory=lambda: np.empty(0, np.int64))
 

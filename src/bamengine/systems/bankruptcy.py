@@ -10,17 +10,17 @@ from __future__ import annotations
 
 import numpy as np
 from numpy.random import Generator
+from numpy.typing import NDArray
 
 from bamengine.components import (
     Borrower,
-    Employer,
     Economy,
+    Employer,
     Lender,
     LoanBook,
     Producer,
     Worker,
 )
-from numpy.typing import NDArray
 
 _EPS = 1.0e-12
 
