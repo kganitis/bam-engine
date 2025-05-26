@@ -2,7 +2,7 @@
 import logging
 
 import numpy as np
-from numpy.random import Generator
+from numpy.random import Generator, default_rng
 
 from bamengine.components.economy import Economy
 from bamengine.components.employer import Employer
@@ -140,10 +140,13 @@ def workers_decide_firms_to_apply(
 
 
 # ---------------------------------------------------------------------
-def workers_send_one_round(wrk: Worker, emp: Employer) -> None:
+def workers_send_one_round(
+    wrk: Worker, emp: Employer, rng: Generator = default_rng(0)
+) -> None:
     stride = wrk.job_apps_targets.shape[1]
-
-    for w in np.where(wrk.employed == 0)[0]:
+    unemp_indices = np.where(wrk.employed == 0)[0]
+    rng.shuffle(unemp_indices)
+    for w in unemp_indices:
         h = wrk.job_apps_head[w]
         if h < 0:
             continue
@@ -172,9 +175,13 @@ def firms_hire_workers(
     emp: Employer,
     *,
     theta: int,
+    rng: Generator = default_rng(0),
 ) -> None:
     """Match firms with queued applicants and update all related state."""
-    for i in np.where(emp.n_vacancies > 0)[0]:
+    vacancy_indices = np.where(emp.n_vacancies > 0)[0]
+    rng.shuffle(vacancy_indices)
+
+    for i in vacancy_indices:
         n_recv = emp.recv_job_apps_head[i] + 1  # queue length (−1 ⇒ 0)
         if n_recv <= 0:
             continue
@@ -194,7 +201,7 @@ def firms_hire_workers(
         # if wages become worker-specific replace with np.put(…) / gather logic
         wrk.wage[hires] = emp.wage_offer[i]
 
-        wrk.periods_left[hires] = theta
+        wrk.periods_left[hires] = theta + np.random.poisson(10, size=hires.size)
         wrk.contract_expired[hires] = 0
         wrk.fired[hires] = 0
 

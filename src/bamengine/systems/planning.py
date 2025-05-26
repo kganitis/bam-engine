@@ -31,7 +31,6 @@ def firms_decide_desired_production(  # noqa: C901
       if S_i  > 0 and P_i < p̄   → cut     by (1 − shock)
       otherwise                 → keep previous level
     """
-    log.info("Firms deciding desired production...")
     shape = prod.price.shape
 
     # ── 1. permanent scratches ---------------
@@ -92,7 +91,6 @@ def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
 
         Ld_i = ceil(Yd_i / a_i)
     """
-    log.info("Firms deciding desired labor...")
     invalid = (~np.isfinite(prod.labor_productivity)) | (
         prod.labor_productivity <= CAP_LAB_PROD
     )
@@ -125,7 +123,6 @@ def firms_decide_vacancies(emp: Employer) -> None:
     """
     Vector rule: V_i = max( Ld_i – L_i , 0 )
     """
-    log.info("Firms deciding vacancies...")
     np.subtract(
         emp.desired_labor,
         emp.current_labor,
