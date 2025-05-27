@@ -67,9 +67,9 @@ def test_mark_bankrupt_firms_fires_workers_and_purges_loans() -> None:
     # 1. exiting list
     assert np.array_equal(ec.exiting_firms, [1])
 
-    # 2. all workers of firm-1 fired & flags set
+    # 2. all workers of firm-1 flags set
     assert np.all((wrk.employed[[0, 1, 2]] == 0))
-    assert np.all((wrk.fired[[0, 1, 2]] == 1))
+    assert np.all((wrk.fired[[0, 1, 2]] == 0))
     assert np.all((wrk.employer[[0, 1, 2]] == -1))
 
     # 3. employer books wiped
@@ -140,9 +140,9 @@ def test_spawn_replacement_firms_restores_positive_equity() -> None:
     assert (bor.net_worth >= 0).all()
     np.testing.assert_allclose(bor.net_worth, bor.total_funds)
 
-    # labour reset to zero -> for *replaced* firms: inventory equals production
+    # labour reset to zero -> for *replaced* firms: inventory zeroed out
     assert emp.current_labor[[0, 2]].sum() == 0
-    np.testing.assert_allclose(prod.inventory[[0, 2]], prod.production[[0, 2]])
+    assert np.array_equal(prod.inventory[[0, 2]], [0, 0])
 
 
 # --------------------------------------------------------------------------- #

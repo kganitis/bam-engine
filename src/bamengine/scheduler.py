@@ -58,14 +58,14 @@ from bamengine.systems.planning import (
     firms_decide_vacancies,
 )
 from bamengine.systems.production import (
+    calc_annual_inflation_rate,
+    calc_unemployment_rate,
     firms_decide_price,
     firms_pay_wages,
     firms_run_production,
     update_avg_mkt_price,
     workers_receive_wage,
     workers_update_contracts,
-    calc_unemployment_rate,
-    calc_annual_inflation_rate,
 )
 from bamengine.systems.revenue import (
     firms_collect_revenue,
@@ -182,11 +182,11 @@ class Scheduler:
         net_worth_seed = 10.0 if net_worth_init is None else net_worth_init
         price_seed = 1.5 if price_init is None else price_init
         if equity_base_init is None:
-            equity_base_seed = (
-                np.random.poisson(10_000, size=n_banks).astype(np.float64) + 10
+            equity_base_seed: float | Float1D = (
+                rng.poisson(10_000.0, size=n_banks).astype(np.float64) + 10
             )
-        # else:
-        #     equity_base_seed = equity_base_init
+        else:
+            equity_base_seed = equity_base_init
 
         try:
             net_worth = np.broadcast_to(net_worth_seed, n_firms).copy()
@@ -246,7 +246,7 @@ class Scheduler:
 
         # consumer
         income = np.zeros_like(wage)
-        savings = np.random.poisson(lam=1, size=n_households).astype(np.float64) + 2
+        savings = rng.poisson(lam=1.0, size=n_households).astype(np.float64) + 2
         income_to_spend = np.zeros_like(wage)
         propensity = np.zeros(n_households)
         largest_prod_prev = np.full(n_households, -1, dtype=np.int64)

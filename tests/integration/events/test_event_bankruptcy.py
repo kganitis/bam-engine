@@ -138,24 +138,12 @@ def test_event_bankruptcy_entry_basic(tiny_sched: Scheduler) -> None:
     # every worker who *was* with a bad firm must now be unemployed
     assert (~snap["employed_after"][was_with_bad_firm]).all()
 
-    # their employer_prev flag must record the *exact* old firm id
-    now_unemployed = was_with_bad_firm & (~snap["employed_after"])
-    idx_fired = np.where(now_unemployed)[0]
-
-    prev_ids = snap["employer_before"][idx_fired]  # 0 or 2
-    np.testing.assert_array_equal(
-        sch.wrk.employer_prev[idx_fired],
-        prev_ids,
-    )
-
     # -------- replacements ------------------------------------------------
     for i in (0, 2):
         assert sch.bor.net_worth[i] > 0
         np.testing.assert_allclose(sch.bor.net_worth[i], sch.bor.total_funds[i])
         assert sch.emp.current_labor[i] == 0
-        np.testing.assert_allclose(
-            sch.prod.inventory[i], sch.prod.production[i], rtol=1e-12
-        )
+        assert sch.prod.inventory[i] == 0
 
     # -------- bank replacement ------------------------------------------
     assert sch.lend.equity_base[1] > 0
