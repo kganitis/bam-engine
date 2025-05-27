@@ -13,7 +13,7 @@ from numpy.typing import NDArray
 from bamengine.scheduler import Scheduler
 from diagnostics import log_firm_strategy_distribution
 
-# --- Basic logging setup ---
+logging.getLogger("matplotlib").setLevel(logging.INFO)
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -84,10 +84,11 @@ def run_baseline_simulation() -> dict[str, NDArray[np.float64]]:
     """Initializes and runs the simulation, returning the collected data."""
     log.info("Initializing baseline simulation...")
     # --- Simulation Parameters ---
+    n = 100
     params = {
-        "n_households": 50,
-        "n_firms": 10,
-        "n_banks": 3,
+        "n_households": n * 5,
+        "n_firms": n,
+        "n_banks": int(max(n / 10, 3)),
         "periods": 1000,
         "seed": 42,
     }
@@ -102,7 +103,12 @@ def run_baseline_simulation() -> dict[str, NDArray[np.float64]]:
     collector = DataCollector()
 
     for t in range(params["periods"]):
-        log.info(f"--> Simulating period {t+1}/{params['periods']} ----------------")
+        log.info(f"\n\n--> Simulating period {t+1}/{params['periods']} "
+                 f"---------------------------------------------------------------"
+                 f"---------------------------------------------------------------"
+                 f"---------------------------------------------------------------"
+                 f"---------------------------------------------------------------\n"
+                 )
         log_firm_strategy_distribution(sched)
         sched.step()
         collector.capture(sched)
@@ -162,7 +168,6 @@ def plot_results(data: dict[str, NDArray[np.float64]], burn_in: int) -> None:
 
 
 if __name__ == "__main__":
-    # To see debug messages, change level to logging.DEBUG
     log.setLevel(logging.DEBUG)
 
     sim_data = run_baseline_simulation()

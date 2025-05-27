@@ -183,7 +183,7 @@ class Scheduler:
         price_seed = 1.5 if price_init is None else price_init
         if equity_base_init is None:
             equity_base_seed: float | Float1D = (
-                rng.poisson(10_000.0, size=n_banks).astype(np.float64) + 10
+                rng.poisson(10_000.0, size=n_banks) + 10.0
             )
         else:
             equity_base_seed = equity_base_init
@@ -402,6 +402,10 @@ class Scheduler:
         # ===== Event 4 – production ====================================
 
         calc_unemployment_rate(self.ec, self.wrk)
+
+        firms_pay_wages(self.emp)
+        workers_receive_wage(self.con, self.wrk)
+
         firms_decide_price(
             self.prod,
             self.emp,
@@ -413,9 +417,8 @@ class Scheduler:
         update_avg_mkt_price(self.ec, self.prod)
         calc_annual_inflation_rate(self.ec)
 
-        firms_pay_wages(self.emp)
-        workers_receive_wage(self.con, self.wrk)
         firms_run_production(self.prod, self.emp)
+
         workers_update_contracts(self.wrk, self.emp)
 
         # ===== Event 5 – goods-market ==================================
