@@ -10,7 +10,7 @@ from bamengine.components.worker import Worker
 from bamengine.typing import Float1D, Idx1D
 
 log = logging.getLogger(__name__)
-# log.setLevel(logging.DEBUG)
+log.setLevel(logging.DEBUG)
 
 
 def adjust_minimum_wage(ec: Economy) -> None:
@@ -26,9 +26,18 @@ def adjust_minimum_wage(ec: Economy) -> None:
     if (ec.avg_mkt_price_history.size - 1) % m != 0:
         return  # not a revision step
 
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug("Minimum-wage revision step reached – computing inflation …")
+
     p_now = ec.avg_mkt_price_history[-1]  # price of period t-1
     p_prev = ec.avg_mkt_price_history[-m - 1]  # price of period t-m
     inflation = (p_now - p_prev) / p_prev
+
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug(
+            f"Min-wage revision: p_now={p_now:.3f}, "
+            f"p_prev={p_prev:.3f}, π={inflation:+.3%}"
+        )
 
     new_min_wage = ec.min_wage * (1.0 + inflation)
     log.info(

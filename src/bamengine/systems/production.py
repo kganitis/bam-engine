@@ -68,6 +68,18 @@ def firms_decide_price(
     interest = lb.interest_per_borrower(prod.price.size)
     breakeven = (emp.wage_bill + interest) / np.maximum(prod.production, 1.0e-12)
 
+    # ── DEBUG pre-update snapshot ────────────────────────────────────────
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug("----- PRICE UPDATE -----")
+        log.debug("p̄ (avg market price) : %.4f", p_avg)
+        log.debug(
+            "mask_up: %d firms → raise  |  mask_dn: %d firms → cut",
+            mask_up.sum(),
+            mask_dn.sum(),
+        )
+
+    old_prices = prod.price.copy()
+
     # ── raise prices ─────────────────────────────────────────────────────
     if mask_up.any():
         np.multiply(prod.price, 1.0 + shock, out=prod.price, where=mask_up)
@@ -77,6 +89,26 @@ def firms_decide_price(
     if mask_dn.any():
         np.multiply(prod.price, 1.0 - shock, out=prod.price, where=mask_dn)
         np.maximum(prod.price, breakeven, out=prod.price, where=mask_dn)
+
+    bad_mask = (prod.price > old_prices * 10.0)
+    if np.any(bad_mask):
+        bad = np.where(bad_mask)[0]
+        log.debug(f"!!! runaway price at firm(s) {bad}: {prod.price[bad]}, old: {old_prices[bad]}, "
+                  f"breakeven: {breakeven[bad]}, production: {prod.production[bad]}"
+                  )
+        capped_price = old_prices[bad_mask] * (1.0 + h_eta)
+        prod.price[bad_mask] = capped_price
+
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug(
+            f"[PRICE SANITY] max price={prod.price.max():.3g}, "
+            f"min shock={shock.min():.12g} "
+            f"max shock={shock.max():.12g} "
+        )
+        log.debug(
+            f"  Detailed Prices:\n"
+            f"{np.array2string(prod.price, precision=2)}"
+        )
 
 
 # --------------------------------------------------------------------- #
@@ -107,6 +139,14 @@ def calc_annual_inflation_rate(ec: Economy) -> None:
     p_now = hist[-1]
     p_prev = hist[-5]
     inflation = (p_now - p_prev) / p_prev
+
+    # ── debug -------------------------------------------------------------
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug(
+            f"Inflation calc – t={hist.size - 1}: "
+            f"p_now={p_now:.4f}, p_prev={p_prev:.4f}, π={inflation:+.3%}"
+        )
+
     ec.inflation_history = np.append(ec.inflation_history, inflation)
 
 
@@ -145,6 +185,11 @@ def firms_run_production(prod: Producer, emp: Employer) -> None:
     """
     np.multiply(prod.labor_productivity, emp.current_labor, out=prod.production)
     prod.inventory[:] = prod.production  # overwrite, do **not** add
+
+    log.debug(
+        f"  Detailed Production:\n"
+        f"{np.array2string(prod.production, precision=2)}"
+    )
 
 
 # --------------------------------------------------------------------- #

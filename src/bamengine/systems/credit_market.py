@@ -26,6 +26,12 @@ def banks_decide_credit_supply(lend: Lender, *, v: float) -> None:
     """
     np.multiply(lend.equity_base, v, out=lend.credit_supply)
 
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug(
+            f"Credit-supply update: ΣC = {lend.credit_supply.sum():.2f} "
+            f"(v = {v:.3f})"
+        )
+
 
 def banks_decide_interest_rate(
     lend: Lender,

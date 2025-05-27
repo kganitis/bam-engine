@@ -4,11 +4,13 @@ Event-5 – Goods-market systems
 Vectorised, allocation-free during the hot path.
 """
 from __future__ import annotations
-
+import logging
 import numpy as np
 from numpy.random import Generator, default_rng
 
 from bamengine.components import Consumer, Producer
+
+log = logging.getLogger(__name__)
 
 
 # ------------------------------------------------------------------ #
@@ -103,7 +105,7 @@ def consumers_decide_firms_to_visit(
             # guarantee loyalty stays at slot-0
             # (defensive; never triggered in practice)
             j = np.where(row[:filled] == prev)[0][0]  # pragma: no cover
-            row[0], row[j] = row[j], row[0]  ## pragma: no cover
+            row[0], row[j] = row[j], row[0]  # pragma: no cover
 
         if filled > 0:
             con.shop_visits_head[h] = h * stride
@@ -141,7 +143,7 @@ def consumers_visit_one_round(
             continue
 
         price = prod.price[firm_idx]
-        qty = min(prod.inventory[firm_idx], con.income_to_spend[h] / price)
+        qty = min(float(prod.inventory[firm_idx]), con.income_to_spend[h] / price)
         spent = qty * price
         prod.inventory[firm_idx] -= qty
         con.income_to_spend[h] -= spent
@@ -154,6 +156,16 @@ def consumers_visit_one_round(
         # advance pointer & clear slot
         con.shop_visits_head[h] = ptr + 1
         con.shop_visits_targets[row, col] = -1
+
+    # ── summary log ------------------------------------------------------
+    if log.isEnabledFor(logging.DEBUG):
+        total_leftover = float(con.income_to_spend.sum())
+        unsold_inv = float(prod.inventory.sum())
+        log.debug(
+            f"Goods-market round done. "
+            f"Left-over household budget: {total_leftover:.2f}; "
+            f"Unsold inventory: {unsold_inv:.2f}"
+        )
 
 
 # ------------------------------------------------------------------ #

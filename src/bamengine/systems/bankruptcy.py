@@ -150,6 +150,7 @@ def spawn_replacement_firms(
     s = 0.9
 
     for i in exiting:
+
         bor.net_worth[i] = mean_net * s
         bor.total_funds[i] = bor.net_worth[i]
         bor.gross_profit[i] = bor.net_profit[i] = 0.0
@@ -157,7 +158,7 @@ def spawn_replacement_firms(
         bor.credit_demand[i] = 0.0
         bor.projected_fragility[i] = 0.0
 
-        prod.production[i] = mean_prod * s
+        prod.production[i] = mean_prod
         prod.inventory[i] = 0.0
         prod.expected_demand[i] = 0.0
         prod.desired_production[i] = 0.0
@@ -193,7 +194,7 @@ def spawn_replacement_banks(
             lend.equity_base[k] = lend.equity_base[src]
             lend.interest_rate[k] = lend.interest_rate[src]
         else:  # fallback
-            lend.equity_base[k] = rng.poisson(10_000.0) + 10
+            lend.equity_base[k] = rng.poisson(10_000.0) + 10.0
             lend.interest_rate[k] = 0.0
         lend.credit_supply[k] = 0.0
         lend.recv_apps_head[k] = -1
