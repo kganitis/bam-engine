@@ -1,6 +1,6 @@
 # src/bamengine/systems/production.py
 """
-Event-4 – Production systems (vectorised, zero allocations)
+Event-4 – Production systems
 """
 from __future__ import annotations
 
@@ -47,34 +47,36 @@ def firms_decide_price(
 
         shock_i ~ U(0, h_eta)
 
-        if S_i == 0 and p_i < p̄:      p_i ← max( breakeven_i , p_i·(1+shock) )
-        if S_i  > 0 and p_i ≥ p̄:      p_i ← max( breakeven_i , p_i·(1-shock) )
+        if S_i == 0 and p_i < p̄:     p_i ← max(breakeven_i , p_i·(1+shock))
+        if S_i  > 0 and p_i ≥ p̄:     p_i ← max(breakeven_i , p_i·(1-shock))
     """
     shape = prod.price.shape
 
+    # ── scratch buffer for shocks ─────────────────────────────────────────
     shock = prod.price_shock
     if shock is None or shock.shape != shape:
         shock = np.empty(shape, dtype=np.float64)
         prod.price_shock = shock
 
-    # fill scratch
     shock[:] = rng.uniform(0.0, h_eta, size=shape)
 
+    # ── masks ─────────────────────────────────────────────────────────────
     mask_up = (prod.inventory == 0.0) & (prod.price < p_avg)
     mask_dn = (prod.inventory > 0.0) & (prod.price >= p_avg)
 
+    # ── breakeven price: (wage bill + interest) / output ─────────────────
     interest = lb.interest_per_borrower(prod.price.size)
     breakeven = (emp.wage_bill + interest) / np.maximum(prod.production, 1.0e-12)
 
-    # raise prices
+    # ── raise prices ─────────────────────────────────────────────────────
     if mask_up.any():
-        np.multiply(prod.price[mask_up], 1.0 + shock[mask_up], out=prod.price[mask_up])
-        np.maximum(prod.price[mask_up], breakeven[mask_up], out=prod.price[mask_up])
+        np.multiply(prod.price, 1.0 + shock, out=prod.price, where=mask_up)
+        np.maximum(prod.price, breakeven, out=prod.price, where=mask_up)
 
-    # cut prices
+    # ── cut prices ────────────────────────────────────────────────────────
     if mask_dn.any():
-        np.multiply(prod.price[mask_dn], 1.0 - shock[mask_dn], out=prod.price[mask_dn])
-        np.maximum(prod.price[mask_dn], breakeven[mask_dn], out=prod.price[mask_dn])
+        np.multiply(prod.price, 1.0 - shock, out=prod.price, where=mask_dn)
+        np.maximum(prod.price, breakeven, out=prod.price, where=mask_dn)
 
 
 # --------------------------------------------------------------------- #

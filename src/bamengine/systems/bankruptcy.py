@@ -8,6 +8,8 @@ override / reorder them freely.
 """
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 from numpy.random import Generator
 from numpy.typing import NDArray
@@ -21,6 +23,8 @@ from bamengine.components import (
     Producer,
     Worker,
 )
+
+log = logging.getLogger(__name__)
 
 _EPS = 1.0e-12
 
@@ -69,12 +73,12 @@ def mark_bankrupt_firms(
     mask = np.isin(wrk.employer, bankrupt)
     if mask.any():
         wrk.employed[mask] = 0
-        wrk.employer_prev[mask] = wrk.employer[mask]
+        wrk.employer_prev[mask] = -1
         wrk.employer[mask] = -1
         wrk.wage[mask] = 0.0
         wrk.periods_left[mask] = 0
         wrk.contract_expired[mask] = 0
-        wrk.fired[mask] = 1
+        wrk.fired[mask] = 0
 
     emp.current_labor[bankrupt] = 0
     emp.wage_bill[bankrupt] = 0.0
@@ -135,32 +139,34 @@ def spawn_replacement_firms(
     exiting = ec.exiting_firms
     if exiting.size == 0:
         return
+    if exiting.size == bor.net_worth.size:
+        log.critical("ALL FIRMS BANKRUPT")
 
     # trimmed means of survivors
     survivors = np.setdiff1d(np.arange(bor.net_worth.size), exiting, assume_unique=True)
     mean_net = _trim_mean(bor.net_worth[survivors])
     mean_prod = _trim_mean(prod.production[survivors])
     mean_wage = _trim_mean(emp.wage_offer[survivors])
-    mean_price = _trim_mean(prod.price[survivors])
+    s = 0.9
 
     for i in exiting:
-        s = rng.uniform(0.01, 0.99)  # random scale
         bor.net_worth[i] = mean_net * s
         bor.total_funds[i] = bor.net_worth[i]
         bor.gross_profit[i] = bor.net_profit[i] = 0.0
         bor.retained_profit[i] = 0.0
         bor.credit_demand[i] = 0.0
+        bor.projected_fragility[i] = 0.0
 
         prod.production[i] = mean_prod * s
-        prod.inventory[i] = prod.production[i]
-        prod.expected_demand[i] = prod.production[i]
-        prod.desired_production[i] = prod.production[i]
-        prod.price[i] = mean_price * rng.uniform(0.95, 1.05)
+        prod.inventory[i] = 0.0
+        prod.expected_demand[i] = 0.0
+        prod.desired_production[i] = 0.0
+        prod.labor_productivity[i] = 1.0
+        prod.price[i] = ec.avg_mkt_price
 
         emp.current_labor[i] = 0
         emp.desired_labor[i] = 0
-        # keep above statutory floor
-        emp.wage_offer[i] = max(mean_wage * rng.uniform(0.95, 1.05), ec.min_wage)
+        emp.wage_offer[i] = np.maximum(mean_wage * s, ec.min_wage)
         emp.n_vacancies[i] = 0
         emp.total_funds[i] = bor.total_funds[i]
         emp.wage_bill[i] = 0.0
@@ -184,10 +190,10 @@ def spawn_replacement_banks(
     for k in exiting:
         if alive.size:  # clone from peer
             src = int(rng.choice(alive))
-            lend.equity_base[k] = lend.equity_base[src] * rng.uniform(0.5, 1.0)
+            lend.equity_base[k] = lend.equity_base[src]
             lend.interest_rate[k] = lend.interest_rate[src]
         else:  # fallback
-            lend.equity_base[k] = 10_000.0
+            lend.equity_base[k] = rng.poisson(10_000.0) + 10
             lend.interest_rate[k] = 0.0
         lend.credit_supply[k] = 0.0
         lend.recv_apps_head[k] = -1

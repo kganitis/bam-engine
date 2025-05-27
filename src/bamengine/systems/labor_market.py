@@ -10,6 +10,7 @@ from bamengine.components.worker import Worker
 from bamengine.typing import Float1D, Idx1D
 
 log = logging.getLogger(__name__)
+# log.setLevel(logging.DEBUG)
 
 
 def adjust_minimum_wage(ec: Economy) -> None:
@@ -29,7 +30,12 @@ def adjust_minimum_wage(ec: Economy) -> None:
     p_prev = ec.avg_mkt_price_history[-m - 1]  # price of period t-m
     inflation = (p_now - p_prev) / p_prev
 
-    ec.min_wage *= 1.0 + inflation
+    new_min_wage = ec.min_wage * (1.0 + inflation)
+    log.info(
+        f"Revision period. Inflation over last {m} periods: {inflation:+.3%}. "
+        f"Min wage: {ec.min_wage:.3f} → {new_min_wage:.3f}"
+    )
+    ec.min_wage = new_min_wage
 
 
 def firms_decide_wage_offer(
@@ -63,19 +69,18 @@ def firms_decide_wage_offer(
     np.multiply(emp.wage_offer, 1.0 + shock, out=emp.wage_offer)
     np.maximum(emp.wage_offer, w_min, out=emp.wage_offer)
 
+    log.info(
+        f"Min wage: {w_min:.3f}. "
+        f"Average offer from firms with vacancies: {emp.wage_offer.mean():.3f}"
+    )
+    log.debug(f"Detailed wage offers:\n{np.array2string(emp.wage_offer, precision=2)}")
+
 
 # --------------------------------------------------------------------------- #
 def _topk_indices_desc(values: Float1D, k: int) -> Idx1D:
     """
     Return indices of the *k* largest elements along the last axis
     (unsorted, descending).
-
-    Complexity
-    ----------
-    argpartition : O(n)   – finds the split position,
-                          - ascending -> we call it on **‑values**
-    slicing      : O(k)   – keeps only the first k
-    Total        : O(n + k)  vs. full argsort O(n logn)
     """
     if k >= values.shape[-1]:  # degenerate: keep all
         return np.argpartition(-values, kth=0, axis=-1)
@@ -91,10 +96,13 @@ def workers_decide_firms_to_apply(
     max_M: int,
     rng: Generator,
 ) -> None:
+    """Unemployed workers choose up to `max_M` firms to apply to, sorted by wage."""
+
     n_firms = emp.wage_offer.size
     unem = np.where(wrk.employed == 0)[0]  # unemployed ids
 
     if unem.size == 0:  # early-exit → nothing to do
+        log.info("No unemployed workers; skipping application phase.")
         wrk.job_apps_head.fill(-1)
         return
 
@@ -138,11 +146,14 @@ def workers_decide_firms_to_apply(
     wrk.contract_expired[unem] = 0
     wrk.fired[unem] = 0
 
+    log.info(f"{unem.size} workers send up to {max_M} applications each.")
+
 
 # ---------------------------------------------------------------------
 def workers_send_one_round(
     wrk: Worker, emp: Employer, rng: Generator = default_rng(0)
 ) -> None:
+    """A single round of job applications being sent and received."""
     stride = wrk.job_apps_targets.shape[1]
     unemp_indices = np.where(wrk.employed == 0)[0]
     rng.shuffle(unemp_indices)
@@ -181,6 +192,8 @@ def firms_hire_workers(
     vacancy_indices = np.where(emp.n_vacancies > 0)[0]
     rng.shuffle(vacancy_indices)
 
+    total_hired_count = 0
+
     for i in vacancy_indices:
         n_recv = emp.recv_job_apps_head[i] + 1  # queue length (−1 ⇒ 0)
         if n_recv <= 0:
@@ -201,7 +214,7 @@ def firms_hire_workers(
         # if wages become worker-specific replace with np.put(…) / gather logic
         wrk.wage[hires] = emp.wage_offer[i]
 
-        wrk.periods_left[hires] = theta + np.random.poisson(10, size=hires.size)
+        wrk.periods_left[hires] = theta  # + rng.poisson(10.0, size=hires.size)
         wrk.contract_expired[hires] = 0
         wrk.fired[hires] = 0
 
@@ -211,9 +224,13 @@ def firms_hire_workers(
         # ---- firm‑side updates ------------------------------------------
         emp.current_labor[i] += hires.size
         emp.n_vacancies[i] -= hires.size
+        total_hired_count += hires.size
 
         emp.recv_job_apps_head[i] = -1  # clear queue
         emp.recv_job_apps[i, :n_recv] = -1
+
+    log.debug(f"Hiring round complete. Total new hires: {total_hired_count}.")
+    log.debug(f"  Current Labor (L_i):\n{emp.current_labor}")
 
 
 def firms_calc_wage_bill(emp: Employer) -> None:
@@ -221,3 +238,4 @@ def firms_calc_wage_bill(emp: Employer) -> None:
     W_i = L_i · w_i
     """
     np.multiply(emp.current_labor, emp.wage_offer, out=emp.wage_bill)
+    log.debug(f"Wage bills:\n{np.array2string(emp.wage_bill, precision=2)}")

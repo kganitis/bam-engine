@@ -59,15 +59,11 @@ def firms_decide_desired_production(  # noqa: C901
     n_keep = len(prod.price) - n_up - n_dn
     log.info(f"Production changes: {n_up} firms ↑, {n_dn} firms ↓, {n_keep} firms ↔.")
 
-    # Add detailed vector logging only if DEBUG is enabled to avoid performance hit
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Avg market price (p_avg): {p_avg:.4f}")
         log.debug(
             f"  Inventories (S_i):\n{np.array2string(prod.inventory, precision=2)}"
         )
-        log.debug(f"  Prices (P_i):\n{np.array2string(prod.price, precision=2)}")
-        log.debug(f"  Up mask:\n{up_mask}")
-        log.debug(f"  Down mask:\n{dn_mask}")
         log.debug(
             f"  Previous Production (Y_{{t-1}}):\n"
             f"{np.array2string(prod.production, precision=2)}"
@@ -112,10 +108,6 @@ def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
     emp.desired_labor[:] = ratio.astype(np.int64)  # safe int cast
     log.info(f"Total desired labor across all firms: {emp.desired_labor.sum()}")
     if log.isEnabledFor(logging.DEBUG):
-        log.debug(
-            f"  Labor Productivity (a_i):\n"
-            f"{np.array2string(prod.labor_productivity, precision=2)}"
-        )
         log.debug(f"  Desired Labor (Ld_i):\n{emp.desired_labor}")
 
 

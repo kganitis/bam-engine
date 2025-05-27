@@ -15,7 +15,7 @@ from diagnostics import log_firm_strategy_distribution
 
 # --- Basic logging setup ---
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(message)s",
     datefmt="%H:%M:%S",
 )
@@ -85,10 +85,10 @@ def run_baseline_simulation() -> dict[str, NDArray[np.float64]]:
     log.info("Initializing baseline simulation...")
     # --- Simulation Parameters ---
     params = {
-        "n_households": 500,
-        "n_firms": 100,
-        "n_banks": 10,
-        "periods": 100,
+        "n_households": 50,
+        "n_firms": 10,
+        "n_banks": 3,
+        "periods": 1000,
         "seed": 42,
     }
 
