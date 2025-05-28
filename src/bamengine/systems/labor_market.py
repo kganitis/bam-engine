@@ -1,8 +1,10 @@
 # src/bamengine/systems/labor_market.py
 import logging
+from typing import cast
 
 import numpy as np
 from numpy.random import Generator, default_rng
+from numpy.typing import NDArray
 
 from bamengine.components.economy import Economy
 from bamengine.components.employer import Employer
@@ -190,6 +192,64 @@ def workers_send_one_round(
 
 
 # ---------------------------------------------------------------------
+def _check_consistency(tag: str, i: int, wrk: Worker, emp: Employer) -> bool:
+    """
+    Compare firm‐side bookkeeping (`emp.current_labor[i]`)
+    with the ground truth reconstructed from the Worker table.
+    """
+    true_headcount = np.count_nonzero((wrk.employed == 1) & (wrk.employer == i))
+    recorded = int(emp.current_labor[i])
+
+    if true_headcount != recorded and log.isEnabledFor(logging.DEBUG):
+        log.debug(
+            f"[{tag}] \t firm={i:4d} \t recorded={recorded:4d} \t"
+            f"true={true_headcount:4d} \t Δ={true_headcount-recorded:+d}"
+        )
+        return False
+
+    return True
+
+
+def _safe_bincount_employed(wrk: Worker, n_firms: int) -> NDArray[np.int64]:
+    """
+    Return head-counts per firm, *ignoring* any corrupted rows where
+    wrk.employed == 1 but wrk.employer < 0.
+    Also logs those rows so you can trace them later.
+    """
+    mask_good = (wrk.employed == 1) & (wrk.employer >= 0)
+    mask_bad = (wrk.employed == 1) & (wrk.employer < 0)
+
+    if mask_bad.any() and log.isEnabledFor(logging.DEBUG):
+        bad_idx = np.where(mask_bad)[0]
+        log.debug(
+            f"[CORRUPT] {bad_idx.size} worker rows have "
+            f"employed=1 but employer<0; indices={bad_idx.tolist()}"
+        )
+
+    return np.bincount(
+        wrk.employer[mask_good],
+        minlength=n_firms,
+    )
+
+
+def _clean_queue(slice_: NDArray[np.intp], wrk: Worker) -> NDArray[np.intp]:
+    """
+    Return a *unique* array of still-unemployed worker ids
+    from the raw queue slice (may contain -1 sentinels and duplicates).
+    """
+    # drop -1 sentinels
+    slice_ = slice_[slice_ >= 0]
+    if slice_.size == 0:
+        return slice_
+
+    # uniqueness first (cheaper than masking twice)
+    slice_ = np.unique(slice_)
+
+    # keep only unemployed
+    unemployed_mask: NDArray[np.bool_] = wrk.employed[slice_] == 0
+    return cast(NDArray[np.intp], slice_[unemployed_mask])
+
+
 def firms_hire_workers(
     wrk: Worker,
     emp: Employer,
@@ -202,38 +262,59 @@ def firms_hire_workers(
     rng.shuffle(vacancy_indices)
 
     for i in vacancy_indices:
+        # ── PRE–hire sanity check ───────────────────────────────────────
+        _check_consistency("PRE-hire", i, wrk, emp)
+
         n_recv = emp.recv_job_apps_head[i] + 1  # queue length (−1 ⇒ 0)
         if n_recv <= 0:
             continue
 
-        n_hire = int(min(n_recv, emp.n_vacancies[i]))
-        hires = emp.recv_job_apps[i, :n_hire]
-        hires = hires[hires >= 0]  # drop sentinel slots
+        queue = emp.recv_job_apps[i, :n_recv]
+        hires = _clean_queue(queue, wrk)  # <— all the cleaning
+
         if hires.size == 0:
-            emp.recv_job_apps_head[i] = -1  # clear queue
+            # nothing useful in the queue → just flush it
+            emp.recv_job_apps_head[i] = -1
             emp.recv_job_apps[i, :n_recv] = -1
             continue
 
+        # cap by remaining vacancies
+        hires = hires[: emp.n_vacancies[i]]
+
         # ---- worker‑side updates ----------------------------------------
         wrk.employed[hires] = 1
-        wrk.employer[hires] = i  # update contract
-
-        # if wages become worker-specific replace with np.put(…) / gather logic
+        wrk.employer[hires] = i
         wrk.wage[hires] = emp.wage_offer[i]
-
         wrk.periods_left[hires] = theta  # + rng.poisson(10.0, size=hires.size)
         wrk.contract_expired[hires] = 0
         wrk.fired[hires] = 0
-
-        wrk.job_apps_head[hires] = -1  # clear queue
+        wrk.job_apps_head[hires] = -1
         wrk.job_apps_targets[hires, :] = -1
 
         # ---- firm‑side updates ------------------------------------------
         emp.current_labor[i] += hires.size
         emp.n_vacancies[i] -= hires.size
 
-        emp.recv_job_apps_head[i] = -1  # clear queue
+        # flush inbound queue
+        emp.recv_job_apps_head[i] = -1
         emp.recv_job_apps[i, :n_recv] = -1
+
+        # ── POST-hire sanity check ──────────────────────────────────────
+        _check_consistency("POST-hire", i, wrk, emp)
+
+    # -------- global cross-check -----------------------------------------
+    if log.isEnabledFor(logging.DEBUG):
+        true = _safe_bincount_employed(wrk, emp.current_labor.size)
+        bad = np.flatnonzero(emp.current_labor != true)
+        if bad.size:
+            log.debug(
+                f"[SUMMARY] {bad.size} firm(s) out of sync after hiring: "
+                f"indices={bad.tolist()}"
+            )
+            for i in bad:
+                log.debug(
+                    f"  firm {i}: recorded {emp.current_labor[i]}, true {true[i]}"
+                )
 
 
 def firms_calc_wage_bill(emp: Employer) -> None:

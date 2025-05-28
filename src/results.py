@@ -36,7 +36,7 @@ class DataCollector:
         """Calculates and stores metrics for the current period."""
 
         # --- Real GDP ---
-        current_real_gdp = float(sched.prod.production.sum() / sched.ec.avg_mkt_price)
+        current_real_gdp = float(sched.prod.production.sum())
         self.gdp.append(current_real_gdp)
 
         # --- Unemployment Rate ---
@@ -84,12 +84,12 @@ def run_baseline_simulation() -> dict[str, NDArray[np.float64]]:
     """Initializes and runs the simulation, returning the collected data."""
     log.info("Initializing baseline simulation...")
     # --- Simulation Parameters ---
-    n = 20
+    n = 10
     params = {
         "n_households": n * 5,
         "n_firms": n,
         "n_banks": max(int(n / 10), 3),
-        "periods": 20,
+        "periods": 100,
         "seed": 42,
     }
 

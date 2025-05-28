@@ -5,7 +5,7 @@ Labor-market systems unit tests.
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any, cast, List, Tuple, Callable
 
 import numpy as np
 import pytest
@@ -503,102 +503,115 @@ def test_hire_workers_skips_invalid_slots() -> None:
 # --------------------------------------------------------------------------- #
 #  firms_hire_workers – property-based invariant                              #
 # --------------------------------------------------------------------------- #
-@settings(max_examples=250, deadline=None)
+def _queues_with_dupes(
+    *,
+    n_firms: int,
+    M: int,
+    n_workers: int,
+) -> st.SearchStrategy[List[List[int]]]:
+    """
+    Strategy: per firm build a raw queue (list[int]) of length ≤ M that may
+    contain duplicates, cross–firm overlaps and “-1” sentinels.
+    """
+    return st.lists(
+        st.lists(
+            st.integers(-1, n_workers - 1),
+            min_size=0,
+            max_size=M,
+        ),
+        min_size=n_firms,
+        max_size=n_firms,
+    )
+
+
+@settings(max_examples=300, deadline=None)
 @given(
-    st.integers(min_value=1, max_value=6).flatmap(  # random number of firms
+    st.integers(1, 6).flatmap(  # number of firms
         lambda n_firms: st.tuples(
-            st.integers(1, 5),  # queue width  M
-            st.lists(
-                st.integers(0, 5), min_size=n_firms, max_size=n_firms  # vacancies  V_i
-            ),
-            st.lists(
-                st.integers(0, 5),  # queue-lengths  n_recv_i
-                min_size=n_firms,
-                max_size=n_firms,
-            ),
-            st.integers(n_firms, n_firms + 50),  # #workers  (enough to fill queues)
-        ).map(lambda t: (n_firms, *t))
+            st.integers(1, 5),  # M
+            st.lists(st.integers(0, 5), min_size=n_firms, max_size=n_firms),  # V_i
+            st.integers(n_firms + 10, n_firms + 60),  # workers
+        ).flatmap(
+            lambda t: st.tuples(
+                st.just(n_firms),
+                st.just(t[0]),
+                st.just(np.asarray(t[1], dtype=np.int64)),  # vacancies
+                st.just(t[2]),  # n_workers
+                _queues_with_dupes(
+                    n_firms=n_firms,
+                    M=t[0],
+                    n_workers=t[2],
+                ),
+            )
+        )
     )
 )
-def test_hire_invariants(
-    random_case: tuple[int, int, list[int], list[int], int],
+def test_hire_invariants_with_duplicates(
+    random_case: Tuple[int, int, NDArray[np.int64], int, List[List[int]]],
 ) -> None:
     """
-    Invariant (per firm *i*) that must hold **after** `firms_hire_workers`:
+    After `firms_hire_workers` :
 
-        ΔL_i  ==  hires_i  == min(n_recv_i, V_i)
-        ΔV_i  == −hires_i
+        • 0 ≤ ΔLᵢ ≤ min(Uᵢ , Vᵢ)
+        • ΔVᵢ == −ΔLᵢ
+        • global hired-once guarantee  (Σ ΔL == Σ hired workers)
 
-    where
-        n_recv_i  = recv_job_apps_head + 1   (queue length before the call)
+    with
+        Uᵢ … #unique, *still unemployed* applicants in firm-i queue *before* call
+        Vᵢ … vacancies before call
     """
-    # ── unpack & clip the random draw -----------------------------------------
-    n_firms, M, vacancies_lst, qlens_lst, n_workers = random_case
+    # ── unpack ----------------------------------------------------------------
+    n_firms, M, V_in, n_workers, q_raw = random_case
+    vacancies: NDArray[np.int64] = V_in
 
-    # cast the *lists* returned by Hypothesis to ndarrays right away
-    vacancies: NDArray[np.int64] = np.asarray(vacancies_lst, dtype=np.int64)
-    qlens: NDArray[np.int64] = np.asarray(qlens_lst, dtype=np.int64)
-
-    # clip queue-lengths so they fit inside the buffer width M
-    qlens = np.minimum(qlens, M)  # still NDArray[int]
-
-    # total #slots we will fill with **unique** worker ids
-    total_slots = int(qlens.sum())
-    assume(total_slots <= n_workers)  # safe guard for uniqueness
-
-    # ── build Employer & Worker components ------------------------------------
+    # ── build minimal components ---------------------------------------------
     emp = mock_employer(
         n=n_firms,
         queue_m=M,
-        n_vacancies=vacancies.copy(),  # copy: we reuse originals later
+        n_vacancies=vacancies.copy(),  # keep original untouched
     )
+    wrk = mock_worker(n=n_workers, queue_m=M)
+    wrk.employed[:] = False  # everyone unemployed at t₀
 
-    wrk = mock_worker(
-        n=n_workers,
-        queue_m=M,
-    )
-
-    # ------------------------------------------------------------------ #
-    # 1.  populate inbound queues with unique, unemployed workers        #
-    # ------------------------------------------------------------------ #
-    w_idx = 0
+    # ── load raw queues into the employer buffers -----------------------------
     for i in range(n_firms):
-        n_recv = int(qlens[i])
-        emp.recv_job_apps_head[i] = n_recv - 1  # -1  →  queue length = 0
-        if n_recv:
-            emp.recv_job_apps[i, :n_recv] = np.arange(w_idx, w_idx + n_recv)
-            w_idx += n_recv
-    # all workers in the queues are *currently* unemployed
-    wrk.employed[:] = False
+        q: List[int] = q_raw[i]
+        q_arr: NDArray[np.intp] = np.asarray(q[:M], dtype=np.intp)  # trim to M
+        emp.recv_job_apps_head[i] = q_arr.size - 1  # −1 ⇒ empty
+        if q_arr.size:
+            emp.recv_job_apps[i, : q_arr.size] = q_arr
 
-    # --- snapshots before call ----------------------------------------
+    # ── oracle values BEFORE hiring ------------------------------------------
+    def _U_before(queue: NDArray[np.intp]) -> int:
+        queue = queue[queue >= 0]  # drop sentinels
+        if queue.size == 0:
+            return 0
+        return int(np.unique(queue).size)  # all unemployed at this point
+
+    U_before: NDArray[np.int64] = np.array(
+        [_U_before(emp.recv_job_apps[i]) for i in range(n_firms)],
+        dtype=np.int64,
+    )
     L_before = emp.current_labor.copy()
     V_before = emp.n_vacancies.copy()
 
-    # ------------------------------------------------------------------ #
-    # 2.  run system under test                                          #
-    # ------------------------------------------------------------------ #
+    # ── run system under test -------------------------------------------------
     firms_hire_workers(wrk, emp, theta=8)
 
-    # --- deltas --------------------------------------------------------
-    delta_L = emp.current_labor - L_before
+    # ── deltas ----------------------------------------------------------------
+    delta_L = emp.current_labor - L_before  # hires per firm
     delta_V = emp.n_vacancies - V_before
 
-    # expected hires_i = min(n_recv_i, V_i)  (with the pre-call values!)
-    hires_expected = np.minimum(qlens, V_before)
+    # ── assertions ------------------------------------------------------------
+    # 1. bounds: 0 ≤ ΔLᵢ ≤ min(Uᵢ , Vᵢ)
+    assert (delta_L >= 0).all()
+    assert (delta_L <= np.minimum(U_before, V_before)).all()
 
-    # ------------------------------------------------------------------ #
-    # 3.  invariants                                                     #
-    # ------------------------------------------------------------------ #
-    np.testing.assert_array_equal(
-        delta_L, hires_expected, err_msg="Δlabor != expected hires"
-    )
-    np.testing.assert_array_equal(
-        delta_V, -hires_expected, err_msg="Δvacancies wrong sign / magnitude"
-    )
+    # 2. vacancies mirror labour changes
+    np.testing.assert_array_equal(delta_V, -delta_L, err_msg="Δvacancies mismatch")
 
-    # additional sanity: no firm can hire more than its queue capacity
-    assert (delta_L <= M).all()
+    # 3. every worker hired at most once  (global sanity)
+    assert emp.current_labor.sum() == wrk.employed.sum()
 
 
 # --------------------------------------------------------------------------- #
