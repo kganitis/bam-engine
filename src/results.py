@@ -36,16 +36,16 @@ class DataCollector:
         """Calculates and stores metrics for the current period."""
 
         # --- Real GDP ---
-        current_gdp = float(sched.prod.production.sum())
-        self.gdp.append(current_gdp)
+        current_real_gdp = float(sched.prod.production.sum() / sched.ec.avg_mkt_price)
+        self.gdp.append(current_real_gdp)
 
         # --- Unemployment Rate ---
         current_unemployment = float(sched.ec.unemp_rate_history[-1])
         self.unemployment_rate.append(current_unemployment)
 
-        # --- Average Price Level ---
-        current_inflation = float(sched.ec.inflation_history[-1])
-        self.inflation_rate.append(current_inflation)
+        # --- Annual Inflation Rate ---
+        current_annual_inflation = float(sched.ec.inflation_history[-1])
+        self.inflation_rate.append(current_annual_inflation)
 
         # --- Productivity to Real Wage Ratio ---
         # (Avg Labor Productivity) / (Avg Nominal Wage / Price Level)
@@ -64,9 +64,9 @@ class DataCollector:
         self.productivity_wage_ratio.append(ratio)
 
         log.debug(
-            f"GDP={current_gdp:.2f}, "
+            f"Real GDP={current_real_gdp:.2f}, "
             f"Unemployment={current_unemployment:.3f}, "
-            f"Inflation={current_inflation * 100:.2f}, "
+            f"Inflation={current_annual_inflation * 100:.2f}, "
             f"Prod / Real Wage={ratio:.2f}, "
         )
 
@@ -84,12 +84,12 @@ def run_baseline_simulation() -> dict[str, NDArray[np.float64]]:
     """Initializes and runs the simulation, returning the collected data."""
     log.info("Initializing baseline simulation...")
     # --- Simulation Parameters ---
-    n = 100
+    n = 20
     params = {
         "n_households": n * 5,
         "n_firms": n,
-        "n_banks": int(max(n / 10, 3)),
-        "periods": 1000,
+        "n_banks": max(int(n / 10), 3),
+        "periods": 20,
         "seed": 42,
     }
 
@@ -103,12 +103,13 @@ def run_baseline_simulation() -> dict[str, NDArray[np.float64]]:
     collector = DataCollector()
 
     for t in range(params["periods"]):
-        log.info(f"\n\n--> Simulating period {t+1}/{params['periods']} "
-                 f"---------------------------------------------------------------"
-                 f"---------------------------------------------------------------"
-                 f"---------------------------------------------------------------"
-                 f"---------------------------------------------------------------\n"
-                 )
+        log.info(
+            f"\n\n--> Simulating period {t+1}/{params['periods']} "
+            f"---------------------------------------------------------------"
+            f"---------------------------------------------------------------"
+            f"---------------------------------------------------------------"
+            f"---------------------------------------------------------------\n"
+        )
         log_firm_strategy_distribution(sched)
         sched.step()
         collector.capture(sched)

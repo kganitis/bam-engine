@@ -33,6 +33,7 @@
   * Need of fields reshuffling, combine components or break them into pieces
   * Based on the systems, so that we optimize speed and memory
   * Remove any shared vector references
+  * Introduce job contracts ledger
 * Also review which systems belong to which events, general event structure
 * Watch vectors lifetime, review which are needed temporarily and which permanently, then optimize
 * Dynamic scheduler re-wiring by the user, add/remove systems, change their order

@@ -14,6 +14,7 @@ from bamengine.components import Borrower, Employer, Lender, LoanBook, Worker
 from bamengine.typing import Float1D, Idx1D
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 
 CAP_FRAG = 1.0e6  # fragility cap when net worth is zero
 
@@ -25,11 +26,12 @@ def banks_decide_credit_supply(lend: Lender, *, v: float) -> None:
     v : capital requirement coefficient
     """
     np.multiply(lend.equity_base, v, out=lend.credit_supply)
-
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
-            f"Credit-supply update: ΣC = {lend.credit_supply.sum():.2f} "
-            f"(v = {v:.3f})"
+            f"banks_decide_credit_supply: v={v:.3f}\n"
+            f"equity_base={lend.equity_base}\n"
+            f"credit_supply={lend.credit_supply}\n"
+            f"Total credit supply update = {lend.credit_supply.sum():.2f} "
         )
 
 
@@ -55,9 +57,14 @@ def banks_decide_interest_rate(
 
     # fill buffer in-place
     shock[:] = rng.uniform(0.0, h_phi, size=shape)
-
-    # core rule
     lend.interest_rate[:] = r_bar * (1.0 + shock)
+
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug(
+            f"banks_decide_interest_rate: r_bar={r_bar:.4f}, h_phi={h_phi:.4f}\n"
+            f"shocks={shock}\n"
+            f"interest rates={lend.interest_rate}"
+        )
 
 
 def firms_decide_credit_demand(bor: Borrower) -> None:
@@ -66,6 +73,8 @@ def firms_decide_credit_demand(bor: Borrower) -> None:
     """
     np.subtract(bor.wage_bill, bor.net_worth, out=bor.credit_demand)
     np.maximum(bor.credit_demand, 0.0, out=bor.credit_demand)
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug(f"firms_decide_credit_demand:\n" f"credit_demand={bor.credit_demand}")
 
 
 def firms_calc_credit_metrics(bor: Borrower) -> None:
@@ -90,6 +99,12 @@ def firms_calc_credit_metrics(bor: Borrower) -> None:
 
     # frag *= μ_i
     np.multiply(frag, bor.rnd_intensity, out=frag)
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug(
+            f"firms_calc_credit_metrics:\n"
+            f"net_worth={bor.net_worth}\n"
+            f"projected_fragility={frag}"
+        )
 
 
 def _topk_lowest_rate(values: Float1D, k: int) -> Idx1D:
@@ -137,7 +152,6 @@ def firms_send_one_loan_app(
 ) -> None:
     """ """
     stride = bor.loan_apps_targets.shape[1]
-
     borrowers_indices = np.where(bor.credit_demand > 0.0)[0]
     rng.shuffle(borrowers_indices)
 
@@ -254,6 +268,13 @@ def banks_provide_loans(
         borrowers = queue[mask]
         rate = r_bar * (1.0 + frag[mask])
 
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug(
+                f"Bank {k}: granting loans to borrowers {borrowers}\n"
+                f"amounts={amount}\n"
+                f"rates={rate}"
+            )
+
         # --- update ledger (vectorised append) ---------------------------------
         _append_loans(ledger, borrowers, k, amount, rate)
 
@@ -297,6 +318,7 @@ def firms_fire_workers(
             continue
 
         victims = rng.choice(workforce, size=n_fire, replace=False)
+        log.debug(f"Firm {i}: calculated {n_fire} workers to fire.")
 
         # -------- worker-side updates --------------------------------
         wrk.employed[victims] = 0
@@ -307,10 +329,19 @@ def firms_fire_workers(
         wrk.contract_expired[victims] = 0
         wrk.fired[victims] = 1
 
+        emp.current_labor[i] -= n_fire
+        np.multiply(emp.current_labor, emp.wage_offer, out=emp.wage_bill)
+
+    log.debug("Firing complete")
+    log.debug(f"  Current Labor after firing (L_i):\n{emp.current_labor}")
+    log.debug(
+        f"  Wage bills after firing:\n{np.array2string(emp.wage_bill, precision=2)}"
+    )
+
     # -----------------------------------------------------------------
     # After all firms processed, rebuild labour books + wage-bill once
     # to ensure firm and worker tables are totally in-sync.
-    _sync_labor_and_wages(wrk, emp)
+    # _sync_labor_and_wages(wrk, emp)
 
 
 def _sync_labor_and_wages(wrk: Worker, emp: Employer) -> None:
@@ -326,3 +357,9 @@ def _sync_labor_and_wages(wrk: Worker, emp: Employer) -> None:
     )
     emp.current_labor[:] = counts
     np.multiply(emp.current_labor, emp.wage_offer, out=emp.wage_bill)
+
+    log.debug("Syncing labor and wages")
+    log.debug(f"  Current Labor after sync (L_i):\n{emp.current_labor}")
+    log.debug(
+        f"  Wage bills after sync:\n{np.array2string(emp.wage_bill, precision=2)}"
+    )
