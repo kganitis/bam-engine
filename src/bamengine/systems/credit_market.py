@@ -337,29 +337,3 @@ def firms_fire_workers(
     log.debug(
         f"  Wage bills after firing:\n{np.array2string(emp.wage_bill, precision=2)}"
     )
-
-    # -----------------------------------------------------------------
-    # After all firms processed, rebuild labour books + wage-bill once
-    # to ensure firm and worker tables are totally in-sync.
-    # _sync_labor_and_wages(wrk, emp)
-
-
-def _sync_labor_and_wages(wrk: Worker, emp: Employer) -> None:
-    """
-    Recompute firm-side head-counts and wage-bills from worker records.
-
-        L_i = Σ 1{ employed_h & employer_h == i }
-        W_i = L_i · w_i
-    """
-    counts = np.bincount(
-        wrk.employer[wrk.employed == 1],
-        minlength=emp.current_labor.size,
-    )
-    emp.current_labor[:] = counts
-    np.multiply(emp.current_labor, emp.wage_offer, out=emp.wage_bill)
-
-    log.debug("Syncing labor and wages")
-    log.debug(f"  Current Labor after sync (L_i):\n{emp.current_labor}")
-    log.debug(
-        f"  Wage bills after sync:\n{np.array2string(emp.wage_bill, precision=2)}"
-    )
