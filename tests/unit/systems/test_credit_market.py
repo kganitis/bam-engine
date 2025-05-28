@@ -470,7 +470,8 @@ def test_firms_fire_workers_roster_smaller_than_counter() -> None:
     firms_fire_workers(emp, wrk, rng=default_rng(123))
 
     # the function must not raise and the counter is now consistent
-    assert emp.current_labor[0] == wrk.employed.sum() >= 0
+    assert wrk.employed.sum() == 0
+    assert emp.current_labor[0] == wrk.employed.sum()
 
 
 # --------------------------------------------------------------------------- #

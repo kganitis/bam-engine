@@ -155,7 +155,7 @@ def workers_decide_firms_to_apply(
     wrk.contract_expired[unem] = 0
     wrk.fired[unem] = 0
 
-    log.info(f"{unem.size} workers send up to {max_M} applications each.")
+    log.info(f"{unem.size} unemployed workers send up to {max_M} applications each.")
 
 
 # ---------------------------------------------------------------------
@@ -201,8 +201,6 @@ def firms_hire_workers(
     vacancy_indices = np.where(emp.n_vacancies > 0)[0]
     rng.shuffle(vacancy_indices)
 
-    total_hired_count = 0
-
     for i in vacancy_indices:
         n_recv = emp.recv_job_apps_head[i] + 1  # queue length (−1 ⇒ 0)
         if n_recv <= 0:
@@ -233,13 +231,9 @@ def firms_hire_workers(
         # ---- firm‑side updates ------------------------------------------
         emp.current_labor[i] += hires.size
         emp.n_vacancies[i] -= hires.size
-        total_hired_count += hires.size
 
         emp.recv_job_apps_head[i] = -1  # clear queue
         emp.recv_job_apps[i, :n_recv] = -1
-
-    log.debug(f"Hiring round complete. Total new hires: {total_hired_count}.")
-    log.debug(f"  Current Labor (L_i):\n{emp.current_labor}")
 
 
 def firms_calc_wage_bill(emp: Employer) -> None:
@@ -247,4 +241,8 @@ def firms_calc_wage_bill(emp: Employer) -> None:
     W_i = L_i · w_i
     """
     np.multiply(emp.current_labor, emp.wage_offer, out=emp.wage_bill)
-    log.debug(f"Wage bills:\n{np.array2string(emp.wage_bill, precision=2)}")
+    log.debug("Hiring complete")
+    log.debug(f"  Current Labor after hiring (L_i):\n{emp.current_labor}")
+    log.debug(
+        f"  Wage bills after hiring:\n{np.array2string(emp.wage_bill, precision=2)}"
+    )

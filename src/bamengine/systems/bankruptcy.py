@@ -23,8 +23,10 @@ from bamengine.components import (
     Producer,
     Worker,
 )
+from bamengine.helpers import sample_beta_with_mean
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 
 _EPS = 1.0e-12
 
@@ -45,8 +47,18 @@ def _trim_mean(x: NDArray[np.float64], p: float = 0.05) -> float:
 # ───────────────────────── Event-7  ─  Bankruptcy ───────────
 def firms_update_net_worth(bor: Borrower) -> None:
     """Retained profit is added to equity; syncs the cash column too."""
+    retained_profit_sum = bor.retained_profit.sum()
+    log.info(
+        f"Total retained profits being added to net worth: {retained_profit_sum:,.2f}"
+    )
+
     np.add(bor.net_worth, bor.retained_profit, out=bor.net_worth)
     bor.total_funds[:] = bor.net_worth
+
+    log.debug(
+        f"  Detailed Net Worths after update:\n"
+        f"{np.array2string(bor.net_worth, precision=2)}"
+    )
 
 
 def mark_bankrupt_firms(
@@ -67,7 +79,10 @@ def mark_bankrupt_firms(
     ec.exiting_firms = bankrupt.astype(np.int64)
 
     if bankrupt.size == 0:
+        log.info("No new firm bankruptcies this period.")
         return
+
+    log.warning(f"--> {bankrupt.size} FIRM(S) HAVE GONE BANKRUPT: {bankrupt}")
 
     # ---- fire *all* workers whose employer just went bust --------------
     mask = np.isin(wrk.employer, bankrupt)
@@ -111,7 +126,10 @@ def mark_bankrupt_banks(
     ec.exiting_banks = bankrupt.astype(np.int64)
 
     if bankrupt.size == 0:
+        log.info("No new bank bankruptcies this period.")
         return
+
+    log.critical(f"!!! {bankrupt.size} BANK(S) HAVE GONE BANKRUPT: {bankrupt} !!!")
 
     if lb.size:
         bad = np.isin(lb.lender[: lb.size], bankrupt)
@@ -139,17 +157,29 @@ def spawn_replacement_firms(
     exiting = ec.exiting_firms
     if exiting.size == 0:
         return
-    if exiting.size == bor.net_worth.size:
-        log.critical("ALL FIRMS BANKRUPT")
 
-    # trimmed means of survivors
-    survivors = np.setdiff1d(np.arange(bor.net_worth.size), exiting, assume_unique=True)
-    mean_net = _trim_mean(bor.net_worth[survivors])
-    mean_prod = _trim_mean(prod.production[survivors])
-    mean_wage = _trim_mean(emp.wage_offer[survivors])
-    s = 0.9
+    if exiting.size == bor.net_worth.size:
+        log.critical("ALL FIRMS BANKRUPT. Attempting to respawn from defaults.")
+        # Fallback to avoid division by zero if all firms fail
+        mean_net = 10.0
+        mean_prod = 1.0
+        mean_wage = ec.min_wage
+    else:
+        # trimmed means of survivors
+        survivors = np.setdiff1d(
+            np.arange(bor.net_worth.size), exiting, assume_unique=True
+        )
+        mean_net = _trim_mean(bor.net_worth[survivors])
+        mean_prod = _trim_mean(prod.production[survivors])
+        mean_wage = _trim_mean(emp.wage_offer[survivors])
+        log.debug(
+            f"  New firms initialized based on survivor averages: "
+            f"mean_net={mean_net:.2f}, mean_prod={mean_prod:.2f}, "
+            f"mean_wage={mean_wage:.2f}"
+        )
 
     for i in exiting:
+        s = sample_beta_with_mean(0.5, concentration=6, rng=rng)
 
         bor.net_worth[i] = mean_net * s
         bor.total_funds[i] = bor.net_worth[i]
@@ -167,7 +197,7 @@ def spawn_replacement_firms(
 
         emp.current_labor[i] = 0
         emp.desired_labor[i] = 0
-        emp.wage_offer[i] = np.maximum(mean_wage * s, ec.min_wage)
+        emp.wage_offer[i] = mean_wage
         emp.n_vacancies[i] = 0
         emp.total_funds[i] = bor.total_funds[i]
         emp.wage_bill[i] = 0.0
@@ -191,11 +221,17 @@ def spawn_replacement_banks(
     for k in exiting:
         if alive.size:  # clone from peer
             src = int(rng.choice(alive))
+            log.debug(f"  Cloning healthy bank {src} to replace bankrupt bank {k}.")
             lend.equity_base[k] = lend.equity_base[src]
             lend.interest_rate[k] = lend.interest_rate[src]
         else:  # fallback
+            log.warning(
+                "  No surviving banks to clone! Spawning new bank from default values."
+            )
             lend.equity_base[k] = rng.poisson(10_000.0) + 10.0
             lend.interest_rate[k] = 0.0
+
+        # Reset state for the new bank
         lend.credit_supply[k] = 0.0
         lend.recv_apps_head[k] = -1
         lend.recv_apps[k, :] = -1
