@@ -4,12 +4,12 @@ from typing import cast
 
 import numpy as np
 from numpy.random import Generator, default_rng
-from numpy.typing import NDArray
 
 from bamengine.components.economy import Economy
 from bamengine.components.employer import Employer
 from bamengine.components.worker import Worker
-from bamengine.typing import Float1D, Idx1D
+from bamengine.helpers import select_top_k_indices
+from bamengine.typing import Idx1D, Int1D
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.CRITICAL)
@@ -54,7 +54,7 @@ def firms_decide_wage_offer(
     *,
     w_min: float,
     h_xi: float,
-    rng: Generator,
+    rng: Generator = default_rng(),
 ) -> None:
     """
     Vector rule:
@@ -87,25 +87,13 @@ def firms_decide_wage_offer(
     log.debug(f"Detailed wage offers:\n{np.array2string(emp.wage_offer, precision=2)}")
 
 
-# --------------------------------------------------------------------------- #
-def _topk_indices_desc(values: Float1D, k: int) -> Idx1D:
-    """
-    Return indices of the *k* largest elements along the last axis
-    (unsorted, descending).
-    """
-    if k >= values.shape[-1]:  # degenerate: keep all
-        return np.argpartition(-values, kth=0, axis=-1)
-    part = np.argpartition(-values, kth=k - 1, axis=-1)  # top‑k to the left
-    return part[..., :k]  # [:, :k] for 2‑D case, same ndim as input
-
-
 # ---------------------------------------------------------------------
 def workers_decide_firms_to_apply(
     wrk: Worker,
     emp: Employer,
     *,
     max_M: int,
-    rng: Generator,
+    rng: Generator = default_rng(),
 ) -> None:
     """Unemployed workers choose up to `max_M` firms to apply to, sorted by wage."""
 
@@ -129,7 +117,7 @@ def workers_decide_firms_to_apply(
         sample[loyal, 0] = wrk.employer_prev[unem[loyal]]
 
     # -------- wage‑descending *partial* sort ----------------------------
-    topk = _topk_indices_desc(emp.wage_offer[sample], k=max_M)
+    topk = select_top_k_indices(emp.wage_offer[sample], k=max_M, descending=True)
     sorted_sample = np.take_along_axis(sample, topk, axis=1)
 
     #
@@ -162,7 +150,7 @@ def workers_decide_firms_to_apply(
 
 # ---------------------------------------------------------------------
 def workers_send_one_round(
-    wrk: Worker, emp: Employer, rng: Generator = default_rng(0)
+    wrk: Worker, emp: Employer, rng: Generator = default_rng()
 ) -> None:
     """A single round of job applications being sent and received."""
     stride = wrk.job_apps_targets.shape[1]
@@ -192,7 +180,7 @@ def workers_send_one_round(
 
 
 # ---------------------------------------------------------------------
-def _check_consistency(tag: str, i: int, wrk: Worker, emp: Employer) -> bool:
+def _check_labor_consistency(tag: str, i: int, wrk: Worker, emp: Employer) -> bool:
     """
     Compare firm‐side bookkeeping (`emp.current_labor[i]`)
     with the ground truth reconstructed from the Worker table.
@@ -210,7 +198,7 @@ def _check_consistency(tag: str, i: int, wrk: Worker, emp: Employer) -> bool:
     return True
 
 
-def _safe_bincount_employed(wrk: Worker, n_firms: int) -> NDArray[np.int64]:
+def _safe_bincount_employed(wrk: Worker, n_firms: int) -> Int1D:
     """
     Return head-counts per firm, *ignoring* any corrupted rows where
     wrk.employed == 1 but wrk.employer < 0.
@@ -232,7 +220,7 @@ def _safe_bincount_employed(wrk: Worker, n_firms: int) -> NDArray[np.int64]:
     )
 
 
-def _clean_queue(slice_: NDArray[np.intp], wrk: Worker) -> NDArray[np.intp]:
+def _clean_queue(slice_: Idx1D, wrk: Worker) -> Idx1D:
     """
     Return a *unique* array of still-unemployed worker ids
     from the raw queue slice (may contain -1 sentinels and duplicates).
@@ -246,8 +234,8 @@ def _clean_queue(slice_: NDArray[np.intp], wrk: Worker) -> NDArray[np.intp]:
     slice_ = np.unique(slice_)
 
     # keep only unemployed
-    unemployed_mask: NDArray[np.bool_] = wrk.employed[slice_] == 0
-    return cast(NDArray[np.intp], slice_[unemployed_mask])
+    unemployed_mask = wrk.employed[slice_] == 0
+    return cast(Idx1D, slice_[unemployed_mask])
 
 
 def firms_hire_workers(
@@ -255,7 +243,7 @@ def firms_hire_workers(
     emp: Employer,
     *,
     theta: int,
-    rng: Generator = default_rng(0),
+    rng: Generator = default_rng(),
 ) -> None:
     """Match firms with queued applicants and update all related state."""
     vacancy_indices = np.where(emp.n_vacancies > 0)[0]
@@ -263,7 +251,7 @@ def firms_hire_workers(
 
     for i in vacancy_indices:
         # ── PRE–hire sanity check ───────────────────────────────────────
-        _check_consistency("PRE-hire", i, wrk, emp)
+        _check_labor_consistency("PRE-hire", i, wrk, emp)
 
         n_recv = emp.recv_job_apps_head[i] + 1  # queue length (−1 ⇒ 0)
         if n_recv <= 0:
@@ -300,7 +288,7 @@ def firms_hire_workers(
         emp.recv_job_apps[i, :n_recv] = -1
 
         # ── POST-hire sanity check ──────────────────────────────────────
-        _check_consistency("POST-hire", i, wrk, emp)
+        _check_labor_consistency("POST-hire", i, wrk, emp)
 
     # -------- global cross-check -----------------------------------------
     if log.isEnabledFor(logging.DEBUG):

@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 
 import numpy as np
-from numpy.random import Generator
+from numpy.random import Generator, default_rng
 
 from bamengine.components import Consumer, Economy, Employer, LoanBook, Producer, Worker
 
@@ -40,7 +40,7 @@ def firms_decide_price(
     *,
     p_avg: float,
     h_eta: float,
-    rng: Generator,
+    rng: Generator = default_rng(),
 ) -> None:
     """
     Nominal price-adjustment rule (vectorised):
@@ -117,6 +117,7 @@ def firms_decide_price(
 def update_avg_mkt_price(ec: Economy, prod: Producer) -> None:
     """ """
     ec.avg_mkt_price = float(prod.price.mean())
+    # ec.avg_mkt_price = np.sum(prod.price * prod.production) / np.sum(prod.production)
     ec.avg_mkt_price_history = np.append(ec.avg_mkt_price_history, ec.avg_mkt_price)
 
 
@@ -206,19 +207,19 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
 
     # ---- step 0: guard against impossible ‘already-0’ contracts ----------
     already_expired = (wrk.employed == 1) & (wrk.periods_left == 0)
-    if already_expired.any():  # treat them as “1 → 0”
+    if np.any(already_expired):  # treat them as “1 → 0”
         wrk.periods_left[already_expired] = 1
 
     # ---- step 1: tick down only for currently employed -------------------
     mask_emp = wrk.employed == 1
-    if not mask_emp.any():  # nothing to do
+    if not np.any(mask_emp):  # nothing to do
         return
 
     wrk.periods_left[mask_emp] -= 1
 
     # ---- step 2: detect expirations --------------------------------------
     expired = mask_emp & (wrk.periods_left == 0)
-    if not expired.any():  # no contract hit zero
+    if not np.any(expired):  # no contract hit zero
         return
 
     firms = wrk.employer[expired]  # snapshot before overwrite

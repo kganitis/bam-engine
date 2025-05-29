@@ -61,7 +61,7 @@ def consumers_decide_firms_to_visit(
     prod: Producer,
     *,
     max_Z: int,
-    rng: Generator,
+    rng: Generator = default_rng(),
 ) -> None:
     """
     Each household draws Z candidate firms (with `inventory>0`).
@@ -117,7 +117,7 @@ def consumers_decide_firms_to_visit(
 # 3.  One “shopping round”                                           #
 # ------------------------------------------------------------------ #
 def consumers_visit_one_round(
-    con: Consumer, prod: Producer, rng: Generator = default_rng(0)
+    con: Consumer, prod: Producer, rng: Generator = default_rng()
 ) -> None:
     """
     Execute *one* round of purchases for **all** households.

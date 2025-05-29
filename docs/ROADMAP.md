@@ -1,8 +1,12 @@
 # BAM-Engine roadmap
 
-### Incremental event implementation
+### TODO Next
 
-* parameter calibration
+* continue cross-checking
+* test coverage
+* logging
+* visualization
+* presentation
 
 ---
 
@@ -21,6 +25,7 @@
 * Keep the Ruff rule set minimal (`E, F, W, I` plus docstrings later)
 * Introduce pytest-benchmark and fail the suite on measurable performance regressions
 * Remove dead lint-ignore comments and finalise design diagrams once the API is frozen
+* Review project.optional-dependencies and write the minimum required
 
 ---
 
@@ -28,7 +33,7 @@
 * Refactor to a true ECS architecture, with `World` object & components query mechanism
 * Prototype the systems so that each system by default accepts a before & after hook, or other common logic
 * Each system must update the minimum possible number of vectors
-* Review of the components structure
+* Review the components structure
   * Need of fields reshuffling, combine components or break them into pieces
   * Based on the systems, so that we optimize speed and memory
   * Remove any shared vector references

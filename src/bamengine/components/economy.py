@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from bamengine.typing import Float1D, Int1D
+from bamengine.typing import Float1D, Int1D, Idx1D
 
 
 @dataclass(slots=True)
@@ -31,6 +31,8 @@ class Economy:
     exiting_banks: Int1D = field(default_factory=lambda: np.empty(0, np.int64))
 
 
+# TODO Move LoanBook and its tests to a separate module
+#  - also consider moving the methods into systems
 @dataclass(slots=True)
 class LoanBook:
     # noinspection PyUnresolvedReferences
@@ -114,3 +116,44 @@ class LoanBook:
         out = np.zeros(n_borrowers, dtype=np.float64)
         np.add.at(out, self.borrower[: self.size], self.interest[: self.size])
         return out
+
+    # ------------------------------------------------------------------ #
+    # helpers                                                            #
+    # ------------------------------------------------------------------ #
+    def _ensure_capacity(self, extra: int) -> None:
+        needed = self.size + extra
+        if needed <= self.capacity:
+            new_cap = self.capacity
+        else:
+            new_cap = max(self.capacity * 2, needed, 128)
+
+        for name in ("borrower", "lender", "principal", "rate", "interest", "debt"):
+            arr = getattr(self, name)
+            if arr.size != new_cap:  # only when really needed
+                new_arr = np.resize(arr, new_cap)
+                setattr(self, name, new_arr)
+
+        self.capacity = new_cap
+        # sanity
+        assert all(
+            getattr(self, n).size == new_cap
+            for n in ("borrower", "lender", "principal", "rate", "interest", "debt")
+        )
+
+    def append_loans(
+        self,
+        borrowers_indices: Idx1D,
+        lender_idx: int,
+        amount: Float1D,
+        rate: Float1D,
+    ) -> None:
+        self._ensure_capacity(amount.size)
+        start, stop = self.size, self.size + amount.size
+
+        self.borrower[start:stop] = borrowers_indices
+        self.lender[start:stop] = lender_idx  # ← scalar broadcast
+        self.principal[start:stop] = amount
+        self.rate[start:stop] = rate
+        self.interest[start:stop] = amount * rate
+        self.debt[start:stop] = amount * (1.0 + rate)
+        self.size = stop

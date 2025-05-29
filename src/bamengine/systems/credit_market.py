@@ -11,7 +11,7 @@ import numpy as np
 from numpy.random import Generator, default_rng
 
 from bamengine.components import Borrower, Employer, Lender, LoanBook, Worker
-from bamengine.typing import Float1D, Idx1D
+from bamengine.helpers import select_top_k_indices
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.CRITICAL)
@@ -40,7 +40,7 @@ def banks_decide_interest_rate(
     *,
     r_bar: float,
     h_phi: float,
-    rng: Generator,
+    rng: Generator = default_rng(),
 ) -> None:
     """
     Nominal interest rate rule:
@@ -107,20 +107,12 @@ def firms_calc_credit_metrics(bor: Borrower) -> None:
         )
 
 
-def _topk_lowest_rate(values: Float1D, k: int) -> Idx1D:
-    """Return indices of the *k* cheapest elements (unsorted)."""
-    if k >= values.shape[-1]:
-        return np.argpartition(values, kth=0, axis=-1)
-    part = np.argpartition(values, kth=k - 1, axis=-1)
-    return part[..., :k]
-
-
 def firms_prepare_loan_applications(
     bor: Borrower,
     lend: Lender,
     *,
     max_H: int,
-    rng: Generator,
+    rng: Generator = default_rng(),
 ) -> None:
     """
     * draws H random banks per borrower
@@ -134,7 +126,7 @@ def firms_prepare_loan_applications(
         return
 
     sample = rng.integers(0, n_banks, size=(borrowers.size, max_H), dtype=np.int64)
-    topk = _topk_lowest_rate(lend.interest_rate[sample], k=max_H)
+    topk = select_top_k_indices(lend.interest_rate[sample], k=max_H)
     sorted_sample = np.take_along_axis(sample, topk, axis=1)
 
     # flush vectors
@@ -148,7 +140,7 @@ def firms_prepare_loan_applications(
 
 
 def firms_send_one_loan_app(
-    bor: Borrower, lend: Lender, rng: Generator = default_rng(0)
+    bor: Borrower, lend: Lender, rng: Generator = default_rng()
 ) -> None:
     """ """
     stride = bor.loan_apps_targets.shape[1]
@@ -176,49 +168,9 @@ def firms_send_one_loan_app(
         bor.loan_apps_targets[row, col] = -1
 
 
-def _ensure_capacity(book: LoanBook, extra: int) -> None:
-    needed = book.size + extra
-    if needed <= book.capacity:
-        new_cap = book.capacity
-    else:
-        new_cap = max(book.capacity * 2, needed, 128)
-
-    for name in ("borrower", "lender", "principal", "rate", "interest", "debt"):
-        arr = getattr(book, name)
-        if arr.size != new_cap:  # only when really needed
-            new_arr = np.resize(arr, new_cap)
-            setattr(book, name, new_arr)
-
-    book.capacity = new_cap
-    # sanity
-    assert all(
-        getattr(book, n).size == new_cap
-        for n in ("borrower", "lender", "principal", "rate", "interest", "debt")
-    )
-
-
-def _append_loans(
-    ledger: LoanBook,
-    bor: Idx1D,
-    lender_idx: int,
-    amount: Float1D,
-    rate: Float1D,
-) -> None:
-    _ensure_capacity(ledger, amount.size)
-    start, stop = ledger.size, ledger.size + amount.size
-
-    ledger.borrower[start:stop] = bor
-    ledger.lender[start:stop] = lender_idx  # ← scalar broadcast
-    ledger.principal[start:stop] = amount
-    ledger.rate[start:stop] = rate
-    ledger.interest[start:stop] = amount * rate
-    ledger.debt[start:stop] = amount * (1.0 + rate)
-    ledger.size = stop
-
-
 def banks_provide_loans(
     bor: Borrower,
-    ledger: LoanBook,
+    lb: LoanBook,
     lend: Lender,
     *,
     r_bar: float,
@@ -276,7 +228,7 @@ def banks_provide_loans(
             )
 
         # --- update ledger (vectorised append) ---------------------------------
-        _append_loans(ledger, borrowers, k, amount, rate)
+        lb.append_loans(borrowers, k, amount, rate)
 
         # --- balances ---------------------------------------------------
         bor.total_funds[borrowers] += amount
@@ -293,7 +245,7 @@ def firms_fire_workers(
     emp: Employer,
     wrk: Worker,
     *,
-    rng: Generator,
+    rng: Generator = default_rng(),
 ) -> None:
     """
     If a firm’s wage-bill exceeds its cash, lay off just enough workers

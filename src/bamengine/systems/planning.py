@@ -4,10 +4,9 @@ from __future__ import annotations
 import logging
 
 import numpy as np
-from numpy.random import Generator
+from numpy.random import Generator, default_rng
 
-from bamengine.components.employer import Employer
-from bamengine.components.producer import Producer
+from bamengine.components import Employer, Producer
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.CRITICAL)
@@ -20,7 +19,7 @@ def firms_decide_desired_production(  # noqa: C901
     *,
     p_avg: float,
     h_rho: float,
-    rng: Generator,
+    rng: Generator = default_rng(),
 ) -> None:
     """
     Update `prod.expected_demand` and `prod.desired_production` **in‑place**.

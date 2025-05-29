@@ -148,32 +148,21 @@ def firms_pay_dividends(bor: Borrower, *, delta: float) -> None:
                = net_profit_i·(1-δ)   ( > 0 case)
 
     • Cash ↓ by dividends
-    • Net-worth ↑ by retained earnings
+    • Net-worth **not** updated here
     """
     log.info(
-        f"Firms paying out dividends (ratio δ={delta:.2f}) and retaining earnings..."
+        f"Firms paying out dividends (DPR δ={delta:.2f}) and retaining earnings..."
     )
-    pos = bor.net_profit > 0.0
-    num_profitable = pos.sum()
-    log.info(f"{num_profitable} firms were profitable this period.")
+    profitable = bor.net_profit > 0.0
+    log.info(f"{profitable.sum()} firms were profitable this period.")
 
     bor.retained_profit[:] = bor.net_profit  # default (≤0)
-    bor.retained_profit[pos] *= 1.0 - delta
+    bor.retained_profit[profitable] *= 1.0 - delta  # ( > 0 case)
 
     dividends = bor.net_profit - bor.retained_profit  # non-neg
-    total_dividends = dividends.sum()
-    total_retained = bor.retained_profit.sum()
+    np.subtract(bor.total_funds, dividends, out=bor.total_funds)
 
     log.info(
-        f"Total dividends paid out: {total_dividends:,.2f}. "
-        f"Total earnings retained: {total_retained:,.2f}."
-    )
-
-    np.subtract(bor.total_funds, dividends, out=bor.total_funds)
-    # NOTE: This net_worth update is also performed in `firms_update_net_worth`.
-    # Depending on execution order, this might be redundant or a double-count.
-    np.add(bor.net_worth, bor.retained_profit, out=bor.net_worth)
-    log.debug(
-        f"  Net worth after dividends/retention:\n"
-        f"{np.array2string(bor.net_worth, precision=2)}"
+        f"Total dividends paid out: {dividends.sum():,.2f}. "
+        f"Total earnings retained: {bor.retained_profit.sum():,.2f}."
     )

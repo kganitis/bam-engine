@@ -192,7 +192,6 @@ def test_pay_dividends_positive_profit(delta: float) -> None:
 
     assert bor.retained_profit[0] == pytest.approx(retained)
     assert bor.total_funds[0] == pytest.approx(50.0 - div)
-    assert bor.net_worth[0] == pytest.approx(40.0 + retained)
 
 
 def test_pay_dividends_negative_profit() -> None:
@@ -206,9 +205,7 @@ def test_pay_dividends_negative_profit() -> None:
         net_worth=np.array([30.0]),
     )
 
-    firms_pay_dividends(bor, delta=0.5)  # δ irrelevant
+    firms_pay_dividends(bor, delta=0.99)  # δ should be irrelevant
 
     assert bor.retained_profit[0] == -4.0
-    # cash unchanged, net_worth decreases by loss
-    assert bor.total_funds[0] == 20.0
-    assert bor.net_worth[0] == pytest.approx(26.0)
+    assert bor.total_funds[0] == 20.0  # cash unchanged

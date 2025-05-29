@@ -18,13 +18,13 @@ from bamengine.components import Employer, Worker
 
 # noinspection PyProtectedMember
 from bamengine.systems.labor_market import (  # system under test
-    _topk_indices_desc,
     adjust_minimum_wage,
     firms_decide_wage_offer,
     firms_hire_workers,
     workers_decide_firms_to_apply,
     workers_send_one_round,
 )
+from bamengine.helpers import select_top_k_indices
 from tests.helpers.factories import (
     mock_economy,
     mock_employer,
@@ -173,7 +173,7 @@ def test_topk_indices_desc_partial_sort() -> None:
     """
     vals = np.array([[5.0, 1.0, 3.0, 4.0]])
     k = 2
-    idx = _topk_indices_desc(vals, k=k)
+    idx = select_top_k_indices(vals, k=k, descending=True)
     # Extract the values referenced by idx and check they are the two maxima.
     top_vals = vals[0, idx[0]]
     assert set(top_vals) == {5.0, 4.0}

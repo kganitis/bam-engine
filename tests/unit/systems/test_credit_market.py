@@ -17,7 +17,6 @@ from bamengine.components import Borrower, Lender, LoanBook
 # noinspection PyProtectedMember
 from bamengine.systems.credit_market import (  # systems under test
     CAP_FRAG,
-    _topk_lowest_rate,
     banks_decide_credit_supply,
     banks_decide_interest_rate,
     banks_provide_loans,
@@ -27,6 +26,7 @@ from bamengine.systems.credit_market import (  # systems under test
     firms_prepare_loan_applications,
     firms_send_one_loan_app,
 )
+from bamengine.helpers import select_top_k_indices
 from tests.helpers.factories import (
     mock_borrower,
     mock_employer,
@@ -193,10 +193,11 @@ def test_calc_credit_metrics_allocates_buffer() -> None:
 # --------------------------------------------------------------------------- #
 
 
+# TODO move to loanbook tests
 def test_topk_lowest_rate_partial_sort() -> None:
     vals = np.array([0.09, 0.07, 0.12, 0.08])
     k = 2
-    idx = _topk_lowest_rate(vals, k=k)
+    idx = select_top_k_indices(vals, k=k, descending=False)
     chosen = set(vals[idx])
     assert chosen == {0.07, 0.08} and idx.shape == (k,)
 

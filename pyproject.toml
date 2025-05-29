@@ -17,7 +17,9 @@ dev = [
     "pytest-cov>=5.0",
     "numpy>=1.26",
     "numba<0.61",
-    "hypothesis>=6.131.9"
+    "hypothesis>=6.131.9",
+    "PyYAML>=6.0.2",
+    "matplotlib>=3.10.3"
 ]
 
 [tool.ruff]
