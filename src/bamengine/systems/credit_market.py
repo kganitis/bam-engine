@@ -14,7 +14,7 @@ from bamengine.components import Borrower, Employer, Lender, LoanBook, Worker
 from bamengine.typing import Float1D, Idx1D
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.CRITICAL)
 
 CAP_FRAG = 1.0e6  # fragility cap when net worth is zero
 

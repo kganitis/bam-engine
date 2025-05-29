@@ -12,7 +12,7 @@ from bamengine.components.worker import Worker
 from bamengine.typing import Float1D, Idx1D
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.CRITICAL)
 
 
 def adjust_minimum_wage(ec: Economy) -> None:
@@ -285,7 +285,7 @@ def firms_hire_workers(
         wrk.employed[hires] = 1
         wrk.employer[hires] = i
         wrk.wage[hires] = emp.wage_offer[i]
-        wrk.periods_left[hires] = theta  # + rng.poisson(10.0, size=hires.size)
+        wrk.periods_left[hires] = theta
         wrk.contract_expired[hires] = 0
         wrk.fired[hires] = 0
         wrk.job_apps_head[hires] = -1

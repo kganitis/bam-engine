@@ -9,6 +9,7 @@ override / reorder them freely.
 from __future__ import annotations
 
 import logging
+from typing import Final
 
 import numpy as np
 from numpy.random import Generator
@@ -26,9 +27,9 @@ from bamengine.components import (
 from bamengine.helpers import sample_beta_with_mean
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.CRITICAL)
 
-_EPS = 1.0e-12
+_EPS: Final[float] = 1.0e-9
 
 
 # ───────────────────────── helpers ──────────────────────────
@@ -70,46 +71,56 @@ def mark_bankrupt_firms(
     lb: LoanBook,
 ) -> None:
     """
-    • Detect A_i < 0.
-    • Fire every employee of those firms.
-    • Remove their loan rows from the ledger.
-    • Record indices in `ec.exiting_firms`.
+    Detect and process firm exits.
+
+    A firm exits when **either**
+    • net-worth A_i < 0   **or**
+    • current production Y_i == 0
+
+    For every exiting firm:
+      • all workers are released
+      • employer books are wiped
+      • its loan rows are removed from the ledger
+      • index is recorded in ``ec.exiting_firms``
     """
-    bankrupt = np.where(bor.net_worth < -_EPS)[0]
+    bankrupt = np.where((bor.net_worth < -_EPS) | (prod.production <= 0))[0]
+
     ec.exiting_firms = bankrupt.astype(np.int64)
 
     if bankrupt.size == 0:
         log.info("No new firm bankruptcies this period.")
         return
 
-    log.warning(f"--> {bankrupt.size} FIRM(S) HAVE GONE BANKRUPT: {bankrupt}")
+    log.info(f"--> {bankrupt.size} FIRM(S) HAVE GONE BANKRUPT: {bankrupt.tolist()}")
 
-    # ---- fire *all* workers whose employer just went bust --------------
-    mask = np.isin(wrk.employer, bankrupt)
-    if mask.any():
-        wrk.employed[mask] = 0
-        wrk.employer_prev[mask] = -1
-        wrk.employer[mask] = -1
-        wrk.wage[mask] = 0.0
-        wrk.periods_left[mask] = 0
-        wrk.contract_expired[mask] = 0
-        wrk.fired[mask] = 0
+    # ── fire all employees of those firms ───────────────────────────────
+    mask_bad_emp: NDArray[np.bool_] = np.isin(wrk.employer, bankrupt)
+    if mask_bad_emp.any():
+        wrk.employed[mask_bad_emp] = 0
+        wrk.employer_prev[mask_bad_emp] = -1
+        wrk.employer[mask_bad_emp] = -1
+        wrk.wage[mask_bad_emp] = 0.0
+        wrk.periods_left[mask_bad_emp] = 0
+        wrk.contract_expired[mask_bad_emp] = 0
+        wrk.fired[mask_bad_emp] = 0
 
+    # ── wipe firm-side labour books ─────────────────────────────────────
     emp.current_labor[bankrupt] = 0
     emp.wage_bill[bankrupt] = 0.0
 
-    # ---- purge loans ---------------------------------------------------
+    # ── purge their loans from the ledger ───────────────────────────────
     if lb.size:
-        bad = np.isin(lb.borrower[: lb.size], bankrupt)
-        if bad.any():
-            keep = ~bad
-            keep_size = int(keep.sum())
-            for name in ("borrower", "lender", "principal", "rate", "interest", "debt"):
-                arr = getattr(lb, name)
-                if arr.size == 0:  # column not initialised
-                    continue
-                arr[:keep_size] = arr[: lb.size][keep]
-            lb.size = keep_size
+        bad_rows: NDArray[np.bool_] = np.isin(lb.borrower[: lb.size], bankrupt)
+        if bad_rows.any():
+            keep_rows: NDArray[np.bool_] = ~bad_rows
+            new_size: int = int(keep_rows.sum())
+
+            for col in ("borrower", "lender", "principal", "rate", "interest", "debt"):
+                arr = getattr(lb, col)
+                if arr.size:  # column may be lazily initialised
+                    arr[:new_size] = arr[: lb.size][keep_rows]
+
+            lb.size = new_size
 
 
 def mark_bankrupt_banks(
@@ -129,7 +140,7 @@ def mark_bankrupt_banks(
         log.info("No new bank bankruptcies this period.")
         return
 
-    log.critical(f"!!! {bankrupt.size} BANK(S) HAVE GONE BANKRUPT: {bankrupt} !!!")
+    log.info(f"!!! {bankrupt.size} BANK(S) HAVE GONE BANKRUPT: {bankrupt} !!!")
 
     if lb.size:
         bad = np.isin(lb.lender[: lb.size], bankrupt)
