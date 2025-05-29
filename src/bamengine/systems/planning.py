@@ -10,7 +10,7 @@ from bamengine.components.employer import Employer
 from bamengine.components.producer import Producer
 
 log = logging.getLogger(__name__)
-# log.setLevel(logging.DEBUG)
+log.setLevel(logging.CRITICAL)
 
 CAP_LAB_PROD = 1.0e-6  # labor productivity cap if below from or equal to zero
 

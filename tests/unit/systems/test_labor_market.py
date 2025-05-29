@@ -5,11 +5,11 @@ Labor-market systems unit tests.
 
 from __future__ import annotations
 
-from typing import Any, cast, List, Tuple, Callable
+from typing import Any, List, Tuple, cast
 
 import numpy as np
 import pytest
-from hypothesis import assume, given, settings
+from hypothesis import given, settings
 from hypothesis import strategies as st
 from numpy.random import Generator, default_rng
 from numpy.typing import NDArray

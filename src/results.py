@@ -15,7 +15,7 @@ from diagnostics import log_firm_strategy_distribution
 
 logging.getLogger("matplotlib").setLevel(logging.INFO)
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     datefmt="%H:%M:%S",
 )
@@ -84,31 +84,31 @@ def run_baseline_simulation() -> dict[str, NDArray[np.float64]]:
     """Initializes and runs the simulation, returning the collected data."""
     log.info("Initializing baseline simulation...")
     # --- Simulation Parameters ---
-    n = 10
+    n = 100
     params = {
         "n_households": n * 5,
         "n_firms": n,
         "n_banks": max(int(n / 10), 3),
-        "periods": 100,
-        "seed": 42,
+        "periods": 1000,
+        "seed": 0,
     }
 
     sched = Scheduler.init(
         n_firms=params["n_firms"],
         n_households=params["n_households"],
         n_banks=params["n_banks"],
-        periods=params["periods"],
+        n_periods=params["periods"],
         seed=params["seed"],
     )
     collector = DataCollector()
 
     for t in range(params["periods"]):
         log.info(
-            f"\n\n--> Simulating period {t+1}/{params['periods']} "
+            f"--> Simulating period {t+1}/{params['periods']} "
             f"---------------------------------------------------------------"
             f"---------------------------------------------------------------"
             f"---------------------------------------------------------------"
-            f"---------------------------------------------------------------\n"
+            f"---------------------------------------------------------------"
         )
         log_firm_strategy_distribution(sched)
         sched.step()
@@ -169,7 +169,7 @@ def plot_results(data: dict[str, NDArray[np.float64]], burn_in: int) -> None:
 
 
 if __name__ == "__main__":
-    log.setLevel(logging.DEBUG)
+    log.setLevel(logging.INFO)
 
     sim_data = run_baseline_simulation()
-    plot_results(data=sim_data, burn_in=0)
+    plot_results(data=sim_data, burn_in=500)

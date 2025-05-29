@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, cast
 
 import numpy as np
 from numpy.random import Generator, default_rng
@@ -103,11 +102,16 @@ class Scheduler:
     con: Consumer
     lb: LoanBook
 
-    # ── simulation-level parameters (shock bounds, queue widths …) ──────
+    # ----- population sizes -----------------------------------------
     n_firms: int
     n_households: int
     n_banks: int
+
+    # ----- run length -----------------------------------------------
     n_periods: int
+    t: int
+
+    # ----- simulation parameters ------------------------------------
     h_rho: float  # max production-growth shock
     h_xi: float  # max wage-growth shock
     h_phi: float  # max bank operational costs shock
@@ -115,6 +119,8 @@ class Scheduler:
     max_M: int  # max job applications per unemployed worker
     max_H: int  # max loan applications per firm
     max_Z: int  # max firm visits per consumer
+
+    # ----- economy level parameters ---------------------------------
     theta: int  # job contract length
     beta: float  # propensity to consume parameter
     delta: float  # dividend payout ratio (DPR)
@@ -127,17 +133,11 @@ class Scheduler:
         cls,
         *,
         # ----- population sizes -----------------------------------------
-        n_firms: int,
-        n_households: int,
-        n_banks: int,
+        n_firms: int = 500,
+        n_households: int = 100,
+        n_banks: int = 10,
         # ----- run length -----------------------------------------------
-        periods: int = 1,
-        # ----- economy-level scalars ------------------------------------
-        economy: dict[str, Any] | None = None,
-        # ----- initial balance-sheet seeds ------------------------------
-        net_worth_init: float | Float1D | None = None,
-        price_init: float | Float1D | None = None,
-        equity_base_init: float | Float1D | None = None,
+        n_periods: int = 1000,
         # ----- simulation parameters ------------------------------------
         h_rho: float = 0.10,
         h_xi: float = 0.05,
@@ -146,37 +146,35 @@ class Scheduler:
         max_M: int = 4,
         max_H: int = 2,
         max_Z: int = 2,
+        # ----- economy level parameters ---------------------------------
         theta: int = 8,
         beta: float = 0.87,
         delta: float = 0.15,
-        seed: int | Generator = 0,
+        v: float = 0.23,
+        r_bar: float = 0.07,
+        min_wage: float = 1.0,
+        min_wage_rev_period: int = 4,
+        # ----- initial balance-sheet seeds ------------------------------
+        net_worth_init: float | Float1D | None = 10.0,
+        price_init: float | Float1D | None = 1.5,
+        equity_base_init: float | Float1D | None = None,
+        # ----- random seed ----------------------------------------------
+        seed: int | Generator | None = None,
     ) -> "Scheduler":
         """
         Factory with *one* giant signature so downstream notebooks/tests can
         tweak **everything** from a single place.
         """
-        rng = seed if isinstance(seed, Generator) else default_rng(seed)
+        if isinstance(seed, Generator):
+            rng = seed
+        elif isinstance(seed, int):
+            rng = default_rng(seed)
+        else:
+            rng = default_rng()
 
-        # ──────────────────────────────────────────────────────────
-        # 0.  Economy-wide parameters (policy / structure)
-        # ──────────────────────────────────────────────────────────
-        eco_cfg = dict(
-            avg_mkt_price=1.5,
-            min_wage=1.0,
-            min_wage_rev_period=4,
-            r_bar=0.07,
-            v=0.23,
-            avg_mkt_price_history=np.array([1.5]),
-            unemp_rate_history=np.array([1.0]),
-            inflation_history=np.array([0.0]),
-        )
-        if economy:
-            eco_cfg.update(economy)
-        ec = Economy(**cast(Dict[str, Any], eco_cfg))
-
-        # ──────────────────────────────────────────────────────────
-        # 1.  Initial balance-sheet seeds
-        # ──────────────────────────────────────────────────────────
+        # ---------------------------------------------------------- #
+        #   Initial balance-sheet seeds                              #
+        # ---------------------------------------------------------- #
         # Set default if None, then broadcast scalar/array to the correct length.
         # This handles validation and broadcasting in one clean step.
         net_worth_seed = 10.0 if net_worth_init is None else net_worth_init
@@ -187,7 +185,6 @@ class Scheduler:
             )
         else:
             equity_base_seed = equity_base_init
-
         try:
             net_worth = np.broadcast_to(net_worth_seed, n_firms).copy()
             price = np.broadcast_to(price_seed, n_firms).copy()
@@ -197,6 +194,12 @@ class Scheduler:
                 "Seed array length mismatch. An initial array had a size that "
                 "is not 1 and does not match the required population size."
             ) from e
+
+        # economy level scalars & time-series
+        avg_mkt_price = price.mean()
+        avg_mkt_price_history = np.array([avg_mkt_price])
+        unemp_rate_history = np.array([1.0])
+        inflation_history = np.array([0.0])
 
         # finance
         total_funds = net_worth.copy()
@@ -254,6 +257,17 @@ class Scheduler:
         shop_visits_targets = np.full((n_households, max_Z), -1, dtype=np.int64)
 
         # ---------- wrap into components ----------------------------------
+        ec = Economy(
+            avg_mkt_price=avg_mkt_price,
+            min_wage=min_wage,
+            min_wage_rev_period=min_wage_rev_period,
+            r_bar=r_bar,
+            v=v,
+            # move theta, beta and delta here
+            avg_mkt_price_history=avg_mkt_price_history,
+            unemp_rate_history=unemp_rate_history,
+            inflation_history=inflation_history,
+        )
         prod = Producer(
             price=price,
             production=production,
@@ -314,7 +328,6 @@ class Scheduler:
         )
 
         return cls(
-            rng=rng,
             ec=ec,
             prod=prod,
             wrk=wrk,
@@ -326,7 +339,8 @@ class Scheduler:
             n_firms=n_firms,
             n_households=n_households,
             n_banks=n_banks,
-            n_periods=periods,
+            n_periods=n_periods,
+            t=0,
             h_rho=h_rho,
             h_xi=h_xi,
             h_phi=h_phi,
@@ -334,24 +348,25 @@ class Scheduler:
             max_M=max_M,
             max_H=max_H,
             max_Z=max_Z,
-            theta=theta,
-            beta=beta,
-            delta=delta,
+            theta=theta,  # move to economy component
+            beta=beta,    # move to economy component
+            delta=delta,  # move to economy component
+            rng=rng,
         )
 
     # ------------------------------------------------------------------- #
     #   public API                                                        #
     # ------------------------------------------------------------------- #
-    def run(self, periods: int | None = None) -> None:
+    def run(self, n_periods: int | None = None) -> None:
         """
-        Advance the simulation *periods* times (defaults to the ``n_periods``
-        passed at construction).
+        Advance the simulation *n_periods* steps
+        (defaults to the ``n_periods`` passed at construction).
 
         Returns
         -------
         None   (state is mutated in-place)
         """
-        n = periods if periods is not None else self.n_periods
+        n = n_periods if n_periods is not None else self.n_periods
         for _ in range(int(n)):
             self.step()
 
@@ -360,6 +375,8 @@ class Scheduler:
     # ------------------------------------------------------------------- #
     def step(self) -> None:
         """Advance the economy by exactly **one** period."""
+
+        self.t += 1
 
         # ===== Event 1 – planning ======================================
 

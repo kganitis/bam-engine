@@ -6,6 +6,7 @@ import numpy as np
 from bamengine.scheduler import Scheduler
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.CRITICAL)
 
 
 def log_firm_strategy_distribution(sched: Scheduler) -> None:

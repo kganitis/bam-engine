@@ -2,9 +2,7 @@
 
 ### Incremental event implementation
 
-* Run simulation and visualize the results
-* Cross-check with the original BAM paper
-* Deal with enormous financial fragilities (cap price/interest?)
+* parameter calibration
 
 ---
 

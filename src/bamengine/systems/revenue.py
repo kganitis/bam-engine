@@ -14,6 +14,7 @@ from bamengine.components import Borrower, Lender, LoanBook, Producer
 _EPS = 1.0e-12
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.CRITICAL)
 
 
 # ------------------------------------------------------------------ #

@@ -12,7 +12,7 @@ from numpy.random import Generator
 from bamengine.components import Consumer, Economy, Employer, LoanBook, Producer, Worker
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.CRITICAL)
 
 
 # ------------------------------------------------------------------ #
@@ -90,17 +90,17 @@ def firms_decide_price(
         np.multiply(prod.price, 1.0 - shock, out=prod.price, where=mask_dn)
         np.maximum(prod.price, breakeven, out=prod.price, where=mask_dn)
 
-    # bad_mask = prod.price > old_prices * 10.0
-    # if np.any(bad_mask):
-    #     bad = np.where(bad_mask)[0]
-    #     log.debug(
-    #         f"!!! runaway price at firm(s) {bad}: {prod.price[bad]}, "
-    #         f"old: {old_prices[bad]}, "
-    #         f"breakeven: {breakeven[bad]}, "
-    #         f"production: {prod.production[bad]}"
-    #     )
-    #     capped_price = old_prices[bad_mask] * (1.0 + h_eta)
-    #     prod.price[bad_mask] = capped_price
+    bad_mask = prod.price > old_prices * 10.0
+    if np.any(bad_mask):
+        bad = np.where(bad_mask)[0]
+        log.debug(
+            f"!!! runaway price at firm(s) {bad}: {prod.price[bad]}, "
+            f"old: {old_prices[bad]}, "
+            f"breakeven: {breakeven[bad]}, "
+            f"production: {prod.production[bad]}"
+        )
+        capped_price = old_prices[bad_mask] * (1.0 + h_eta)
+        prod.price[bad_mask] = capped_price
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(

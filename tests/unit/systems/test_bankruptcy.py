@@ -81,21 +81,37 @@ def test_mark_bankrupt_firms_fires_workers_and_purges_loans() -> None:
     assert not np.isin(lb.borrower[: lb.size], 1).any()
 
 
-def test_mark_bankrupt_firms_noop_when_all_viable() -> None:
+def test_mark_bankrupt_firms_exits_zero_production() -> None:
+    """Positive equity but zero output ⇒ exit (ghost-firm rule)."""
+    prod = mock_producer(2, production=np.array([0.0, 3.0]))  # firm-0 is a ghost
+    emp = mock_employer(2)
+    bor = mock_borrower(2, net_worth=np.array([10.0, 4.0]))
+    wrk = mock_worker(0)
+
     ec = mock_economy()
+    mark_bankrupt_firms(ec, prod, emp, bor, wrk, mock_loanbook(size=0))
+
+    assert np.array_equal(ec.exiting_firms, np.array([0]))
+
+
+def test_mark_bankrupt_firms_noop_when_all_viable() -> None:
+    """All firms have positive equity **and** production."""
+    prod = mock_producer(2, production=np.array([4.0, 3.0]))
     bor = mock_borrower(2, net_worth=np.array([3.0, 1.0]))
-    res_before = bor.net_worth.copy()
+    ec = mock_economy()
+    before = bor.net_worth.copy()
 
     mark_bankrupt_firms(
         ec,
-        mock_producer(2),
+        prod,
         mock_employer(2),
         bor,
         mock_worker(0),
         mock_loanbook(size=0),
     )
+
     assert ec.exiting_firms.size == 0
-    np.testing.assert_array_equal(bor.net_worth, res_before)
+    np.testing.assert_array_equal(bor.net_worth, before)
 
 
 # --------------------------------------------------------------------------- #
