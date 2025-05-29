@@ -9,11 +9,9 @@ override / reorder them freely.
 from __future__ import annotations
 
 import logging
-from typing import Final
 
 import numpy as np
 from numpy.random import Generator
-from numpy.typing import NDArray
 
 from bamengine.components import (
     Borrower,
@@ -24,30 +22,18 @@ from bamengine.components import (
     Producer,
     Worker,
 )
-from bamengine.helpers import sample_beta_with_mean
+from bamengine.helpers import sample_beta_with_mean, trim_mean
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.CRITICAL)
 
-_EPS: Final[float] = 1.0e-9
-
-
-# ───────────────────────── helpers ──────────────────────────
-def _trim_mean(x: NDArray[np.float64], p: float = 0.05) -> float:
-    """Return the ``p`` % two-sided trimmed mean ( SciPy-style )."""
-    if x.size == 0:
-        return 0.0
-    k = int(round(p * x.size))
-    if k == 0:
-        return float(x.mean())
-    idx = np.argpartition(x, (k, x.size - k - 1))
-    core = x[idx[k : x.size - k]]
-    return float(core.mean())
+_EPS = 1.0e-9
 
 
 # ───────────────────────── Event-7  ─  Bankruptcy ───────────
 def firms_update_net_worth(bor: Borrower) -> None:
-    """Retained profit is added to equity; syncs the cash column too."""
+    """Retained profit is added to net worth; syncs the cash column too."""
+
     retained_profit_sum = bor.retained_profit.sum()
     log.info(
         f"Total retained profits being added to net worth: {retained_profit_sum:,.2f}"
@@ -94,7 +80,7 @@ def mark_bankrupt_firms(
     log.info(f"--> {bankrupt.size} FIRM(S) HAVE GONE BANKRUPT: {bankrupt.tolist()}")
 
     # ── fire all employees of those firms ───────────────────────────────
-    mask_bad_emp: NDArray[np.bool_] = np.isin(wrk.employer, bankrupt)
+    mask_bad_emp = np.isin(wrk.employer, bankrupt)
     if mask_bad_emp.any():
         wrk.employed[mask_bad_emp] = 0
         wrk.employer_prev[mask_bad_emp] = -1
@@ -110,9 +96,9 @@ def mark_bankrupt_firms(
 
     # ── purge their loans from the ledger ───────────────────────────────
     if lb.size:
-        bad_rows: NDArray[np.bool_] = np.isin(lb.borrower[: lb.size], bankrupt)
+        bad_rows = np.isin(lb.borrower[: lb.size], bankrupt)
         if bad_rows.any():
-            keep_rows: NDArray[np.bool_] = ~bad_rows
+            keep_rows = ~bad_rows
             new_size: int = int(keep_rows.sum())
 
             for col in ("borrower", "lender", "principal", "rate", "interest", "debt"):
@@ -180,9 +166,9 @@ def spawn_replacement_firms(
         survivors = np.setdiff1d(
             np.arange(bor.net_worth.size), exiting, assume_unique=True
         )
-        mean_net = _trim_mean(bor.net_worth[survivors])
-        mean_prod = _trim_mean(prod.production[survivors])
-        mean_wage = _trim_mean(emp.wage_offer[survivors])
+        mean_net = trim_mean(bor.net_worth[survivors])
+        mean_prod = trim_mean(prod.production[survivors])
+        mean_wage = trim_mean(emp.wage_offer[survivors])
         log.debug(
             f"  New firms initialized based on survivor averages: "
             f"mean_net={mean_net:.2f}, mean_prod={mean_prod:.2f}, "

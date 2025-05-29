@@ -130,16 +130,6 @@ def test_event_revenue_basic(tiny_sched: Scheduler) -> None:
     assert 0 not in sch.lb.borrower[: sch.lb.size]  # firm-0 repaid
     assert sch.lb.size == 1
 
-    # ---- net-worth increase by retained earnings -----------------------
-    retained = np.where(
-        sch.bor.net_profit > 0.0,
-        sch.bor.net_profit * (1.0 - delta),
-        sch.bor.net_profit,
-    )
-    np.testing.assert_allclose(
-        sch.bor.net_worth, snap["net_w_before"] + retained, rtol=1e-12
-    )
-
 
 # --------------------------------------------------------------------------- #
 # 2. Post-event invariants                                                    #
@@ -148,7 +138,7 @@ def test_revenue_post_state_consistency(tiny_sched: Scheduler) -> None:
     sch = tiny_sched
     rng, delta = sch.rng, 0.15
 
-    # mild randomisation ---------------------------------------------------
+    # ---- mild randomisation ---------------------------------------------------
     sch.prod.production[:] = rng.uniform(5.0, 15.0, sch.prod.production.size)
     sch.prod.inventory[:] = sch.prod.production * rng.uniform(
         0.0, 0.8, sch.prod.production.size
@@ -162,24 +152,26 @@ def test_revenue_post_state_consistency(tiny_sched: Scheduler) -> None:
     sch.lend.equity_base[:] = rng.uniform(5_000.0, 12_000.0, sch.lend.equity_base.size)
     sch.lb.size = 0
 
-    snap = _run_revenue_event(sch, delta=delta)
+    _run_revenue_event(sch, delta=delta)
 
-    # borrower accounting identity ---------------------------------------
-    retained = np.where(
+    # ---- Verify Borrower's Retained Profit Calculation ----
+    expected_retained_profit = np.where(
         sch.bor.net_profit > 0.0,
         sch.bor.net_profit * (1.0 - delta),
         sch.bor.net_profit,
     )
     np.testing.assert_allclose(
-        sch.bor.net_worth - snap["net_w_before"], retained, rtol=1e-9
+        sch.bor.retained_profit,
+        expected_retained_profit,
+        rtol=1e-9,
     )
 
-    # lender equity non-negative & within cap ----------------------------
+    # ---- Lender equity non-negative & within cap ----
     assert (sch.lend.equity_base >= -1e-9).all()
     cap = sch.lend.equity_base * sch.ec.v
     assert (sch.lend.credit_supply <= cap + 1e-9).all()
 
-    # LoanBook structural guards -----------------------------------------
+    # ---- LoanBook structural guards ----
     assert sch.lb.size <= sch.lb.capacity
     assert (sch.lb.borrower[: sch.lb.size] < sch.bor.total_funds.size).all()
     assert (sch.lb.lender[: sch.lb.size] < sch.lend.equity_base.size).all()
