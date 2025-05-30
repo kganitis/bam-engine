@@ -1,0 +1,38 @@
+# ── population sizes ───────────────────────────────────────────────────
+n_firms:              500        # number of producer / employer agents
+n_households:         100        # number of worker / consumer agents
+n_banks:               10        # commercial banks
+
+# ── run length ─────────────────────────────────────────────────────────
+n_periods:            1000       # how many periods Scheduler.run() will iterate
+
+# ── stochastic shock widths ────────────────────────────────────────────
+h_rho:                0.10       # production-growth shock cap
+h_xi:                 0.05       # wage-growth shock cap
+h_phi:                0.10       # bank opex shock cap
+h_eta:                0.10       # price-growth shock cap
+
+# ── search frictions ───────────────────────────────────────────────────
+max_M:                4          # job applications per unemployed worker (per period)
+max_H:                2          # loan applications per firm (per period)
+max_Z:                2          # shops a household can visit (per period)
+
+# ── economy-wide structural params ─────────────────────────────────────
+theta:                8          # job contract length (periods)
+beta:                 2.00       # consumption propensity exponent where => (```π_j  = 1 / (1 + tanh(SA_j / SA_avg) ** beta)```, SA_j: savings of consumer j, SA_avg: avg consumer savings)
+delta:                0.30       # dividend pay-out ratio
+v:                    0.08       # bank capital-requirement coefficient => 1/v: banks maximum allowable leverage
+r_bar:                0.01       # baseline nominal interest rate (quarterly)
+min_wage:             1.0        # initial minimum wage
+min_wage_rev_period:  8          # periods between minimum wage revisions
+
+# ── initial balance-sheet scalars ──────────────────────────────────────
+net_worth_init:      50.0        # initial per firm net worth
+production_init:    100.0        # initial per firm production
+price_init:           1.0        # initial (universal) goods price
+savings_init:        20.0        # initial (per consumer) savings
+wage_offer_init:      1.1        # initial (universal) wage offer by firms
+equity_base_init:  1000.0        # initial (per bank) equity base
+
+# ── RNG seed ───────────────────────────────────────────────────────────
+seed:               12345        # int; Generator in code to override

@@ -10,6 +10,7 @@ import numpy as np
 from numpy.random import Generator, default_rng
 
 from bamengine.components import Consumer, Economy, Employer, LoanBook, Producer, Worker
+from bamengine.helpers import trimmed_weighted_mean
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.CRITICAL)
@@ -114,10 +115,59 @@ def firms_decide_price(
 # --------------------------------------------------------------------- #
 # 2.  Update average market price                                       #
 # --------------------------------------------------------------------- #
-def update_avg_mkt_price(ec: Economy, prod: Producer) -> None:
-    """ """
-    ec.avg_mkt_price = float(prod.price.mean())
-    # ec.avg_mkt_price = np.sum(prod.price * prod.production) / np.sum(prod.production)
+def update_avg_mkt_price(
+    ec: Economy,
+    prod: Producer,
+    weighted: bool = False,
+    alpha: float = 1.0,
+    trim_pct: float = 0.0,
+    min_production: float = 0.0,
+) -> None:
+    """
+    Update the exponentially smoothed average market price in the Economy.
+
+    Parameters
+    ----------
+    ec : Economy
+        The economy state, which will be updated in-place.
+    prod : Producer
+        Producer state, containing price and production arrays.
+    weighted : bool, optional
+        If True, average price is weighted by each firm's current production.
+        If False (default), uses a simple or trimmed mean.
+    alpha : float, optional
+        Exponential smoothing factor, in [0, 1]. alpha=1 means no smoothing
+        (just use the current computed average). alpha < 1 blends the new
+        average with the previous average.
+    trim_pct : float, optional
+        Fraction (0 to 0.5) to trim from both ends of the price distribution
+        (by price value) before averaging, for robustness to outliers.
+    min_production : float, optional
+        If weighted is True, producers with production below this threshold
+        are excluded from the average.
+    Returns
+    -------
+    None. Updates ec.avg_mkt_price and ec.avg_mkt_price_history in-place.
+    """
+    # Sanitize alpha
+    if not (0.0 <= alpha <= 1.0):
+        raise ValueError(f"alpha must be in [0, 1], got {alpha}")
+
+    # Set weights if using production-weighted mean; else None
+    weights = prod.production if weighted else None
+
+    # Only apply min_production if weighted
+    min_weight = min_production if weighted else 0.0
+
+    p_avg_new = trimmed_weighted_mean(
+        prod.price,
+        weights=weights,
+        trim_pct=trim_pct,
+        min_weight=min_weight,
+    )
+
+    # Exponential smoothing
+    ec.avg_mkt_price = alpha * p_avg_new + (1.0 - alpha) * ec.avg_mkt_price
     ec.avg_mkt_price_history = np.append(ec.avg_mkt_price_history, ec.avg_mkt_price)
 
 

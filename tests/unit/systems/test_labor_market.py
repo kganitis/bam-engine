@@ -15,6 +15,7 @@ from numpy.random import Generator, default_rng
 from numpy.typing import NDArray
 
 from bamengine.components import Employer, Worker
+from bamengine.helpers import select_top_k_indices
 
 # noinspection PyProtectedMember
 from bamengine.systems.labor_market import (  # system under test
@@ -24,7 +25,6 @@ from bamengine.systems.labor_market import (  # system under test
     workers_decide_firms_to_apply,
     workers_send_one_round,
 )
-from bamengine.helpers import select_top_k_indices
 from tests.helpers.factories import (
     mock_economy,
     mock_employer,

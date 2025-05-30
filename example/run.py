@@ -12,8 +12,8 @@ from numpy.typing import NDArray
 from bamengine.helpers import sample_beta_with_mean
 from bamengine.scheduler import Scheduler
 from diagnostics import log_firm_strategy_distribution
-from example.data_collector import DataCollector
-from example.plotting import plot_results
+from data_collector import DataCollector
+from plotting import plot_results
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,17 +34,17 @@ def run_baseline_simulation(n=100, seed=42) -> dict[str, NDArray[np.float64]]:
     }
 
     savings_seed = sample_beta_with_mean(
-        mean=3.0,
+        mean=20.0,
         n=params["n_households"],
-        low=2.0, high=10.0,
-        concentration=6,
+        low=10.0, high=40.0,
+        concentration=20,
         rng=params["seed"])
 
     equity_base_seed = sample_beta_with_mean(
-        mean=10_000.0,
+        mean=1000.0,
         n=params["n_banks"],
-        low=5_000.0,
-        high=15_000.0,
+        low=500.0,
+        high=1500.0,
         concentration=20,
         rng=params["seed"])
 
@@ -55,13 +55,13 @@ def run_baseline_simulation(n=100, seed=42) -> dict[str, NDArray[np.float64]]:
                                                  params["n_banks"]).copy()
 
     sched = Scheduler.init(
-        Path("config.yml"),
+        Path("config-gpt.yml"),
         n_firms=params["n_firms"],
         n_households=params["n_households"],
         n_banks=params["n_banks"],
         n_periods=params["periods"],
-        savings_init=params["savings_init"],
-        equity_base_init=params["equity_base_init"],
+        # savings_init=params["savings_init"],
+        # equity_base_init=params["equity_base_init"],
         seed=params["seed"],
     )
     collector = DataCollector()
