@@ -13,6 +13,7 @@ from numpy.random import Generator, default_rng
 from numpy.typing import NDArray
 
 from bamengine.components import Borrower, Lender, LoanBook
+from bamengine.helpers import select_top_k_indices
 
 # noinspection PyProtectedMember
 from bamengine.systems.credit_market import (  # systems under test
@@ -26,7 +27,6 @@ from bamengine.systems.credit_market import (  # systems under test
     firms_prepare_loan_applications,
     firms_send_one_loan_app,
 )
-from bamengine.helpers import select_top_k_indices
 from tests.helpers.factories import (
     mock_borrower,
     mock_employer,

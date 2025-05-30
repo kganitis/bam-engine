@@ -10,9 +10,8 @@ from pathlib import Path
 from typing import Any, Mapping
 
 import numpy as np
-from numpy.random import Generator, default_rng
-
 import yaml
+from numpy.random import Generator, default_rng
 
 from bamengine.components import (
     Borrower,
@@ -111,7 +110,7 @@ def _validate_float1d_vector(
 ) -> Float1D | float:
     """Ensure Float1D has the right length; scalars are accepted verbatim."""
     if np.isscalar(arr):
-        return arr
+        return float(arr)  # type: ignore[arg-type]
     arr = np.asarray(arr)
     if arr.ndim != 1 or arr.shape[0] != expected_len:
         raise ValueError(
@@ -170,7 +169,7 @@ class Scheduler:
     #   Constructor                                                         #
     # --------------------------------------------------------------------- #
     @classmethod
-    def init(                                                  # noqa: C901
+    def init(  # noqa: C901
         cls,
         config: str | Path | Mapping[str, Any] | None = None,
         *,
@@ -243,15 +242,19 @@ class Scheduler:
         # ------------------------------------------------------------------ #
         #   Validation of per-agent vectors                                  #
         # ------------------------------------------------------------------ #
-        net_worth_init = _validate_float1d_vector("net_worth_init", net_worth_init,
-                                                  n_firms)
-        production_init = _validate_float1d_vector("production_init", production_init,
-                                                   n_firms)
+        net_worth_init = _validate_float1d_vector(
+            "net_worth_init", net_worth_init, n_firms
+        )
+        production_init = _validate_float1d_vector(
+            "production_init", production_init, n_firms
+        )
         price_init = _validate_float1d_vector("price_init", price_init, n_firms)
-        wage_offer_init = _validate_float1d_vector("wage_offer_init", wage_offer_init,
-                                                   n_firms)
-        savings_init = _validate_float1d_vector("savings_init", savings_init,
-                                                n_households)
+        wage_offer_init = _validate_float1d_vector(
+            "wage_offer_init", wage_offer_init, n_firms
+        )
+        savings_init = _validate_float1d_vector(
+            "savings_init", savings_init, n_households
+        )
         equity_base_init = _validate_float1d_vector(
             "equity_base_init", equity_base_init, n_banks
         )
@@ -259,9 +262,7 @@ class Scheduler:
         # ------------------------------------------------------------------ #
         #   RNG                                                              #
         # ------------------------------------------------------------------ #
-        rng: Generator = (
-            seed if isinstance(seed, Generator) else default_rng(seed)
-        )
+        rng: Generator = seed if isinstance(seed, Generator) else default_rng(seed)
 
         # ----------------------------------------------------------------- #
         #   Vector initilization                                            #
@@ -448,9 +449,6 @@ class Scheduler:
         for _ in range(int(n)):
             self.step()
 
-    # --------------------------------------------------------------------- #
-    #   one period                                                          #
-    # --------------------------------------------------------------------- #
     def step(self) -> None:
         """Advance the economy by exactly **one** period."""
 
