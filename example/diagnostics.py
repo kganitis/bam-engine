@@ -5,8 +5,7 @@ import numpy as np
 
 from bamengine.scheduler import Scheduler
 
-log = logging.getLogger(__name__)
-log.setLevel(logging.CRITICAL)
+log = logging.getLogger("example")
 
 
 def log_firm_strategy_distribution(sched: Scheduler) -> None:
@@ -41,7 +40,7 @@ def log_firm_strategy_distribution(sched: Scheduler) -> None:
             f"Sum is {total}, expected {sched.n_firms}"
         )
 
-    log.info(
+    log.debug(
         f"[STRATEGY MATRIX] "
         f"Reduce Price (a): {n_a:3d} | "
         f"Increase Price (b): {n_b:3d} | "

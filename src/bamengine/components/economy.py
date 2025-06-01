@@ -27,8 +27,11 @@ class Economy:
     inflation_history: Float1D  # shape  (t+1,)
 
     # ── transient exit lists (flushed each Entry event) ──────────────────
-    exiting_firms: Int1D = field(default_factory=lambda: np.empty(0, np.int64))
-    exiting_banks: Int1D = field(default_factory=lambda: np.empty(0, np.int64))
+    exiting_firms: Idx1D = field(default_factory=lambda: np.empty(0, np.intp))
+    exiting_banks: Idx1D = field(default_factory=lambda: np.empty(0, np.intp))
+
+    # End simulation flag
+    destroyed: bool = False
 
 
 # TODO Move LoanBook and its tests to a separate module

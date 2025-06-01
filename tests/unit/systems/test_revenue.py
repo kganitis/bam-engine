@@ -114,8 +114,8 @@ def test_validate_debt_full_repayment() -> None:
     # symmetric money-flow
     assert lend.equity_base[0] == pytest.approx(1_000.0 + debt)
     assert bor.total_funds[0] == pytest.approx(100.0 - debt)
-    # net_profit = gross_profit − debt
-    assert bor.net_profit[0] == pytest.approx(3.0)
+    # net_profit = gross_profit − interest
+    assert bor.net_profit[0] == pytest.approx(9.0)
 
 
 def test_validate_debt_partial_writeoff() -> None:
@@ -126,30 +126,30 @@ def test_validate_debt_partial_writeoff() -> None:
     # --- borrower 0 owes two banks ---------------------------------------
     bor = mock_borrower(
         n=1,
-        gross_profit=np.array([2.0]),  # cannot cover total debt (4.0)
-        net_worth=np.array([6.0]),
-        total_funds=np.array([30.0]),
+        gross_profit=np.array([-2.0]),
+        net_worth=np.array([10.0]),
+        total_funds=np.array([10.0]),  # cannot cover total debt (12.0)
     )
     lend = mock_lender(
         n=2,
-        equity_base=np.array([500.0, 800.0]),
+        equity_base=np.array([10.0, 5.0]),
     )
     lb = mock_loanbook(n=2, size=2)
     lb.borrower[:2] = 0
     lb.lender[:2] = [0, 1]
-    lb.principal[:2] = 2.0  # each
-    lb.rate[:2] = 0.0
-    lb.interest[:2] = 0.0
-    lb.debt[:2] = 2.0  # each  → total 4.0
+    lb.principal[:2] = 5.0  # each → total 10.0
+    lb.rate[:2] = 0.2
+    lb.interest[:2] = 1.0  # each → total 2.0
+    lb.debt[:2] = 6.0  # each → total 12.0
 
     firms_validate_debt_commitments(bor, lend, lb)
 
-    # equity drop: each bank eats ½ of net_worth (=3.0)
-    assert lend.equity_base.tolist() == pytest.approx([497.0, 797.0])
+    # equity drop: each bank eats ½ of net_worth (=5.0)
+    assert lend.equity_base.tolist() == pytest.approx([5.0, 0.0])
     # ledger rows *stay* (no repayment)
     assert lb.size == 2
-    # net_profit = gross_profit − total_debt
-    assert bor.net_profit[0] == pytest.approx(-2.0)
+    # net_profit = gross_profit − total_interest
+    assert bor.net_profit[0] == pytest.approx(-4.0)
 
 
 def test_validate_debt_no_loans_noop() -> None:

@@ -24,8 +24,7 @@ from bamengine.components import (
 )
 from bamengine.helpers import sample_beta_with_mean, trim_mean
 
-log = logging.getLogger(__name__)
-log.setLevel(logging.CRITICAL)
+log = logging.getLogger("bamengine")
 
 _EPS = 1.0e-9
 
@@ -34,18 +33,18 @@ _EPS = 1.0e-9
 def firms_update_net_worth(bor: Borrower) -> None:
     """Retained profit is added to net worth; syncs the cash column too."""
 
-    retained_profit_sum = bor.retained_profit.sum()
     log.info(
-        f"Total retained profits being added to net worth: {retained_profit_sum:,.2f}"
+        f"Total retained profits being added to net worth: "
+        f"{bor.retained_profit.sum():,.2f}"
     )
 
     np.add(bor.net_worth, bor.retained_profit, out=bor.net_worth)
     bor.total_funds[:] = bor.net_worth
+    np.maximum(bor.total_funds, 0)
 
-    log.debug(
-        f"  Detailed Net Worths after update:\n"
-        f"{np.array2string(bor.net_worth, precision=2)}"
-    )
+    # log.debug(
+    #     f"  Net Worths after update:\n" f"{np.array2string(bor.net_worth, precision=2)}"
+    # )
 
 
 def mark_bankrupt_firms(
@@ -156,36 +155,36 @@ def spawn_replacement_firms(
         return
 
     if exiting.size == bor.net_worth.size:
-        log.critical("ALL FIRMS BANKRUPT. Attempting to respawn from defaults.")
-        # Fallback to avoid division by zero if all firms fail
-        mean_net = 10.0
-        mean_prod = 1.0
-        mean_wage = ec.min_wage
+        log.critical("ALL FIRMS BANKRUPT")
+        # terminate simulation
+        ec.destroyed = True
+        return
     else:
-        # trimmed means of survivors
         survivors = np.setdiff1d(
             np.arange(bor.net_worth.size), exiting, assume_unique=True
         )
+        # trimmed means of survivors
         mean_net = trim_mean(bor.net_worth[survivors])
         mean_prod = trim_mean(prod.production[survivors])
         mean_wage = trim_mean(emp.wage_offer[survivors])
-        log.debug(
+        log.info(
             f"  New firms initialized based on survivor averages: "
             f"mean_net={mean_net:.2f}, mean_prod={mean_prod:.2f}, "
             f"mean_wage={mean_wage:.2f}"
         )
 
     for i in exiting:
-        s = sample_beta_with_mean(0.5, concentration=6, rng=rng)
-
+        # size smaller than trimmed mean
+        s = sample_beta_with_mean(0.6, low=0.1, high=1.0, concentration=12, rng=rng)
         bor.net_worth[i] = mean_net * s
+
         bor.total_funds[i] = bor.net_worth[i]
         bor.gross_profit[i] = bor.net_profit[i] = 0.0
         bor.retained_profit[i] = 0.0
         bor.credit_demand[i] = 0.0
         bor.projected_fragility[i] = 0.0
 
-        prod.production[i] = mean_prod
+        prod.production[i] = mean_prod * s
         prod.inventory[i] = 0.0
         prod.expected_demand[i] = 0.0
         prod.desired_production[i] = 0.0
@@ -199,7 +198,7 @@ def spawn_replacement_firms(
         emp.total_funds[i] = bor.total_funds[i]
         emp.wage_bill[i] = 0.0
 
-    ec.exiting_firms = np.empty(0, np.int64)  # clear list
+    ec.exiting_firms = np.empty(0, np.intp)  # clear list
 
 
 def spawn_replacement_banks(
@@ -220,17 +219,17 @@ def spawn_replacement_banks(
             src = int(rng.choice(alive))
             log.debug(f"  Cloning healthy bank {src} to replace bankrupt bank {k}.")
             lend.equity_base[k] = lend.equity_base[src]
-            lend.interest_rate[k] = lend.interest_rate[src]
-        else:  # fallback
-            log.warning(
-                "  No surviving banks to clone! Spawning new bank from default values."
+        else:  # terminate simulation
+            log.critical(
+                "ALL BANKS BANKRUPT"
             )
-            lend.equity_base[k] = rng.poisson(10_000.0) + 10.0
-            lend.interest_rate[k] = 0.0
+            ec.destroyed = True
+            return
 
         # Reset state for the new bank
         lend.credit_supply[k] = 0.0
+        lend.interest_rate[k] = 0.0
         lend.recv_apps_head[k] = -1
         lend.recv_apps[k, :] = -1
 
-    ec.exiting_banks = np.empty(0, np.int64)  # clear list
+    ec.exiting_banks = np.empty(0, np.intp)  # clear list

@@ -8,8 +8,7 @@ from numpy.random import Generator, default_rng
 
 from bamengine.components import Employer, Producer
 
-log = logging.getLogger(__name__)
-log.setLevel(logging.CRITICAL)
+log = logging.getLogger("bamengine")
 
 CAP_LAB_PROD = 1.0e-6  # labor productivity cap if below from or equal to zero
 
@@ -60,13 +59,13 @@ def firms_decide_desired_production(  # noqa: C901
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Avg market price (p_avg): {p_avg:.4f}")
-        log.debug(
-            f"  Inventories (S_i):\n{np.array2string(prod.inventory, precision=2)}"
-        )
-        log.debug(
-            f"  Previous Production (Y_{{t-1}}):\n"
-            f"{np.array2string(prod.production, precision=2)}"
-        )
+        # log.debug(
+        #     f"  Inventories (S_i):\n{np.array2string(prod.inventory, precision=2)}"
+        # )
+        # log.debug(
+        #     f"  Previous Production (Y_{{t-1}}):\n"
+        #     f"{np.array2string(prod.production, precision=2)}"
+        # )
 
     # ── 3. core rule ----------------------------------
     prod.expected_demand[:] = prod.production
@@ -74,10 +73,10 @@ def firms_decide_desired_production(  # noqa: C901
     prod.expected_demand[dn_mask] *= 1.0 - shock[dn_mask]
     prod.desired_production[:] = prod.expected_demand
 
-    log.debug(
-        f"  Desired Production (Yd_i):\n"
-        f"{np.array2string(prod.desired_production, precision=2)}"
-    )
+    # log.debug(
+    #     f"  Desired Production (Yd_i):\n"
+    #     f"{np.array2string(prod.desired_production, precision=2)}"
+    # )
 
 
 def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:

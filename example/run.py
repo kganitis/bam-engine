@@ -15,21 +15,17 @@ from diagnostics import log_firm_strategy_distribution
 from data_collector import DataCollector
 from plotting import plot_results
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%H:%M:%S",
-)
-log = logging.getLogger(__name__)
+log = logging.getLogger("example")
+log.setLevel(logging.INFO)
 
 
-def run_baseline_simulation(n=100, seed=42) -> dict[str, NDArray[np.float64]]:
+def run_baseline_simulation(n_firms=10000, seed=0) -> dict[str, NDArray[np.float64]]:
     # --- Simulation Parameters ---
     params = {
-        "n_households": n * 5,
-        "n_firms": n,
-        "n_banks": max(int(n / 10), 3),
-        "periods": 1000,
+        "n_households": n_firms * 5,
+        "n_firms": n_firms,
+        "n_banks": max(int(n_firms / 10), 3),
+        "periods": 500,
         "seed": np.random.default_rng(seed)
     }
 
@@ -55,7 +51,7 @@ def run_baseline_simulation(n=100, seed=42) -> dict[str, NDArray[np.float64]]:
                                                  params["n_banks"]).copy()
 
     sched = Scheduler.init(
-        Path("config-gpt.yml"),
+        config="config.yml",
         n_firms=params["n_firms"],
         n_households=params["n_households"],
         n_banks=params["n_banks"],
@@ -66,21 +62,20 @@ def run_baseline_simulation(n=100, seed=42) -> dict[str, NDArray[np.float64]]:
     )
     collector = DataCollector()
 
-    for t in range(params["periods"]):
-        log.info(
-            f"--> Simulating period {t + 1}/{params['periods']} "
-            f"---------------------------------------------------------------"
-            f"---------------------------------------------------------------"
-        )
-        log_firm_strategy_distribution(sched)
-        sched.step()
-        collector.capture(sched)
+    for _ in range(sched.n_periods):
+        if not sched.ec.destroyed:
+            log.info(
+                f"--> Simulating period {sched.t + 1}/{sched.n_periods} "
+                f"---------------------------------------------------------------"
+                f"---------------------------------------------------------------"
+            )
+            log_firm_strategy_distribution(sched)
+            sched.step()
+            collector.capture(sched)
 
     return collector.get_arrays()
 
 
 if __name__ == "__main__":
-    log.setLevel(logging.INFO)
-
     sim_data = run_baseline_simulation()
-    plot_results(data=sim_data, burn_in=500)
+    plot_results(data=sim_data, burn_in=100)

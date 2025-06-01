@@ -12,8 +12,7 @@ from numpy.random import Generator, default_rng
 from bamengine.components import Consumer, Economy, Employer, LoanBook, Producer, Worker
 from bamengine.helpers import trimmed_weighted_mean
 
-log = logging.getLogger(__name__)
-log.setLevel(logging.CRITICAL)
+log = logging.getLogger("bamengine")
 
 
 # ------------------------------------------------------------------ #
@@ -109,7 +108,7 @@ def firms_decide_price(
             f"min shock={shock.min():.12g} "
             f"max shock={shock.max():.12g} "
         )
-        log.debug(f"  Detailed Prices:\n" f"{np.array2string(prod.price, precision=2)}")
+        # log.debug(f"  Detailed Prices:\n" f"{np.array2string(prod.price, precision=2)}")
 
 
 # --------------------------------------------------------------------- #
