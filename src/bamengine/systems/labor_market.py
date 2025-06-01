@@ -11,8 +11,7 @@ from bamengine.components.worker import Worker
 from bamengine.helpers import select_top_k_indices
 from bamengine.typing import Idx1D, Int1D
 
-log = logging.getLogger(__name__)
-log.setLevel(logging.CRITICAL)
+log = logging.getLogger("bamengine")
 
 
 def adjust_minimum_wage(ec: Economy) -> None:
@@ -84,7 +83,7 @@ def firms_decide_wage_offer(
         f"Min wage: {w_min:.3f}. "
         f"Average offer from firms with vacancies: {emp.wage_offer.mean():.3f}"
     )
-    log.debug(f"Detailed wage offers:\n{np.array2string(emp.wage_offer, precision=2)}")
+    # log.debug(f"Detailed wage offers:\n{np.array2string(emp.wage_offer, precision=2)}")
 
 
 # ---------------------------------------------------------------------
@@ -311,7 +310,7 @@ def firms_calc_wage_bill(emp: Employer) -> None:
     """
     np.multiply(emp.current_labor, emp.wage_offer, out=emp.wage_bill)
     log.debug("Hiring complete")
-    log.debug(f"  Current Labor after hiring (L_i):\n{emp.current_labor}")
-    log.debug(
-        f"  Wage bills after hiring:\n{np.array2string(emp.wage_bill, precision=2)}"
-    )
+    # log.debug(f"  Current Labor after hiring (L_i):\n{emp.current_labor}")
+    # log.debug(
+    #     f"  Wage bills after hiring:\n{np.array2string(emp.wage_bill, precision=2)}"
+    # )

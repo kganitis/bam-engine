@@ -3,11 +3,11 @@
 
 from __future__ import annotations
 
-import inspect
 import logging
 from dataclasses import dataclass
+from importlib import resources
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, Dict
 
 import numpy as np
 import yaml
@@ -81,29 +81,39 @@ __all__ = [
     "Scheduler",
 ]
 
-log = logging.getLogger(__name__)
+
+log = logging.getLogger("bamengine")
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%H:%M:%S",
+)
 
 
 # --------------------------------------------------------------------------- #
 #  helpers                                                                    #
 # --------------------------------------------------------------------------- #
-def _load_config(
-    config: str | Path | Mapping[str, Any] | None,
-) -> dict[str, Any]:
-    """Return a **dict** regardless of the input flavour."""
-    if config is None:
+def _read_yaml(obj: str | Path | Mapping[str, Any] | None) -> Dict[str, Any]:
+    """Return a plain dict – {} if *obj* is None."""
+    if obj is None:
         return {}
-    if isinstance(config, Mapping):
-        return dict(config)  # shallow-copy
-    p = Path(config)
+    if isinstance(obj, Mapping):
+        return dict(obj)
+    p = Path(obj)
     with p.open("rt", encoding="utf-8") as fh:
         data = yaml.safe_load(fh) or {}
     if not isinstance(data, Mapping):
-        raise TypeError(f"YAML root must be a mapping, got {type(data)!r}")
+        raise TypeError(f"config root must be mapping, got {type(data)!r}")
     return dict(data)
 
 
-def _validate_float1d_vector(
+def _package_defaults() -> Dict[str, Any]:
+    """Load bamengine/defaults.yml shipped with the wheel/sdist."""
+    txt = resources.files("bamengine").joinpath("defaults.yml").read_text()
+    return yaml.safe_load(txt) or {}
+
+
+def _validate_float1d(
     name: str,
     arr: float | Float1D,
     expected_len: int,
@@ -169,163 +179,132 @@ class Scheduler:
     #   Constructor                                                         #
     # --------------------------------------------------------------------- #
     @classmethod
-    def init(  # noqa: C901
+    def init(
         cls,
         config: str | Path | Mapping[str, Any] | None = None,
-        *,
-        # ----- population sizes ------------------------------------------
-        n_firms: int = 500,
-        n_households: int = 100,
-        n_banks: int = 10,
-        # ----- run length ------------------------------------------------
-        n_periods: int = 1000,
-        # ----- simulation parameters -------------------------------------
-        h_rho: float = 0.10,
-        h_xi: float = 0.05,
-        h_phi: float = 0.10,
-        h_eta: float = 0.10,
-        max_M: int = 4,
-        max_H: int = 2,
-        max_Z: int = 2,
-        # ----- economy level parameters ----------------------------------
-        theta: int = 8,
-        beta: float = 0.87,
-        delta: float = 0.15,
-        v: float = 0.23,
-        r_bar: float = 0.07,
-        min_wage: float = 1.0,
-        min_wage_rev_period: int = 4,
-        # ----- initial agent balances ------------------------------------
-        net_worth_init: float | Float1D = 10.0,
-        production_init: float | Float1D = 1.0,
-        price_init: float | Float1D = 1.5,
-        savings_init: float | Float1D = 1.0,
-        wage_offer_init: float | Float1D = 1.0,
-        equity_base_init: float | Float1D = 10_000.0,
-        # ----- random seed -----------------------------------------------
-        seed: int | Generator | None = None,
+        **overrides: Any,  # anything here wins last
     ) -> "Scheduler":
         """
-        Build a fully-wired `Scheduler`.
+        Build a Scheduler.
 
-        Parameters defined in *config* (YAML or mapping) are loaded first, then
-        anything passed as an explicit keyword parameter **over-writes** the YAML value.
+        Order of precedence (later overrides earlier):
+
+            1. package defaults  (bamengine/defaults.yml)
+            2. *config*  (Path / str / Mapping / None)
+            3. explicit keyword arguments (**overrides)
         """
+        # 1 + 2 + 3 → one merged dict
+        cfg: Dict[str, Any] = _package_defaults()
+        cfg.update(_read_yaml(config))
+        cfg.update(overrides)
 
-        # ------------------------------------------------------------------ #
-        #   Merge: YAML  –→  kwargs (explicit)                               #
-        # ------------------------------------------------------------------ #
-        cfg = _load_config(config)
-        # The call's explicit kwargs live in *locals()* right now; we need to
-        # find which parameters the caller over-rode.  The cleanest way is
-        # to inspect our own signature and look for those that differ from
-        # the default *and* weren’t provided by the YAML.
-        sig = inspect.signature(cls.init)
-        explicit: dict[str, Any] = {}
-        for name, param in sig.parameters.items():
-            if name in ("cls", "config"):
-                continue
-            # skip positional *args – we don't have any
-            value_in_call = locals()[name]
-            # param.default – sentinel for "not passed explicitly"
-            if value_in_call is not param.default:
-                explicit[name] = value_in_call
+        # ----------------- pull required scalars --------------------------------
+        n_firms = int(cfg.pop("n_firms"))
+        n_households = int(cfg.pop("n_households"))
+        n_banks = int(cfg.pop("n_banks"))
 
-        # YAML first, explicit overrides second
-        merged: dict[str, Any] = {**cfg, **explicit}
-
-        # Now unpack the merged dict back into local variables
-        # (we rely on Python's NameError to surface misspelled keys)
-        for k, v_ in merged.items():
-            locals()[k] = v_
-
-        # ------------------------------------------------------------------ #
-        #   Validation of per-agent vectors                                  #
-        # ------------------------------------------------------------------ #
-        net_worth_init = _validate_float1d_vector(
-            "net_worth_init", net_worth_init, n_firms
-        )
-        production_init = _validate_float1d_vector(
-            "production_init", production_init, n_firms
-        )
-        price_init = _validate_float1d_vector("price_init", price_init, n_firms)
-        wage_offer_init = _validate_float1d_vector(
-            "wage_offer_init", wage_offer_init, n_firms
-        )
-        savings_init = _validate_float1d_vector(
-            "savings_init", savings_init, n_households
-        )
-        equity_base_init = _validate_float1d_vector(
-            "equity_base_init", equity_base_init, n_banks
+        # Random-seed handling
+        seed_val = cfg.pop("seed", None)
+        rng: Generator = (
+            seed_val if isinstance(seed_val, Generator) else default_rng(seed_val)
         )
 
-        # ------------------------------------------------------------------ #
-        #   RNG                                                              #
-        # ------------------------------------------------------------------ #
-        rng: Generator = seed if isinstance(seed, Generator) else default_rng(seed)
+        # ----- vector params (validate size) ---------------------------------
+        cfg["net_worth_init"] = _validate_float1d(
+            "net_worth_init", cfg.get("net_worth_init", 10.0), n_firms
+        )
+        cfg["production_init"] = _validate_float1d(
+            "production_init", cfg.get("production_init", 1.0), n_firms
+        )
+        cfg["price_init"] = _validate_float1d(
+            "price_init", cfg.get("price_init", 1.5), n_firms
+        )
+        cfg["wage_offer_init"] = _validate_float1d(
+            "wage_offer_init", cfg.get("wage_offer_init", 1.0), n_firms
+        )
+        cfg["savings_init"] = _validate_float1d(
+            "savings_init", cfg.get("savings_init", 1.0), n_households
+        )
+        cfg["equity_base_init"] = _validate_float1d(
+            "equity_base_init", cfg.get("equity_base_init", 10_000.0), n_banks
+        )
+
+        # ----------------- delegate to *private* constructor ------------------
+        return cls._from_params(
+            rng=rng,
+            n_firms=n_firms,
+            n_households=n_households,
+            n_banks=n_banks,
+            **cfg,  # all remaining, size-checked parameters
+        )
+
+    @classmethod
+    def _from_params(cls, *, rng: Generator, **p: Any) -> "Scheduler":  # noqa: C901
 
         # ----------------------------------------------------------------- #
         #   Vector initilization                                            #
         # ----------------------------------------------------------------- #
         # finance
-        net_worth = np.full(n_firms, fill_value=net_worth_init)
+        net_worth = np.full(p["n_firms"], fill_value=p["net_worth_init"])
         total_funds = net_worth.copy()
-        rnd_intensity = np.ones(n_firms)
+        rnd_intensity = np.ones(p["n_firms"])
         gross_profit = np.zeros_like(net_worth)
         net_profit = np.zeros_like(net_worth)
         retained_profit = np.zeros_like(net_worth)
 
         # producer
-        price = np.full(n_firms, fill_value=price_init)
-        production = np.full(n_firms, fill_value=production_init)
+        price = np.full(p["n_firms"], fill_value=p["price_init"])
+        production = np.full(p["n_firms"], fill_value=p["production_init"])
         inventory = np.zeros_like(production)
         expected_demand = np.ones_like(production)
         desired_production = np.zeros_like(production)
-        labor_productivity = np.ones(n_firms)
+        labor_productivity = np.ones(p["n_firms"])
 
         # employer
-        current_labor = np.zeros(n_firms, dtype=np.int64)
+        current_labor = np.zeros(p["n_firms"], dtype=np.int64)
         desired_labor = np.zeros_like(current_labor)
-        wage_offer = np.full(n_firms, fill_value=wage_offer_init)
+        wage_offer = np.full(p["n_firms"], fill_value=p["wage_offer_init"])
         wage_bill = np.zeros_like(wage_offer)
         n_vacancies = np.zeros_like(desired_labor)
-        recv_job_apps_head = np.full(n_firms, -1, dtype=np.int64)
-        recv_job_apps = np.full((n_firms, max_M), -1, dtype=np.int64)
+        recv_job_apps_head = np.full(p["n_firms"], -1, dtype=np.int64)
+        recv_job_apps = np.full((p["n_firms"], p["max_M"]), -1, dtype=np.int64)
 
         # worker
-        employed = np.zeros(n_households, dtype=np.bool_)
-        employer = np.full(n_households, -1, dtype=np.int64)
+        employed = np.zeros(p["n_households"], dtype=np.bool_)
+        employer = np.full(p["n_households"], -1, dtype=np.int64)
         employer_prev = np.full_like(employer, -1)
-        periods_left = np.zeros(n_households, dtype=np.int64)
+        periods_left = np.zeros(p["n_households"], dtype=np.int64)
         contract_expired = np.zeros_like(employed)
         # noinspection DuplicatedCode
         fired = np.zeros_like(employed)
-        wage = np.zeros(n_households)
-        job_apps_head = np.full(n_households, -1, dtype=np.int64)
-        job_apps_targets = np.full((n_households, max_M), -1, dtype=np.int64)
+        wage = np.zeros(p["n_households"])
+        job_apps_head = np.full(p["n_households"], -1, dtype=np.int64)
+        job_apps_targets = np.full((p["n_households"], p["max_M"]), -1, dtype=np.int64)
 
         # borrower
         credit_demand = np.zeros_like(net_worth)
-        projected_fragility = np.zeros(n_firms)
-        loan_apps_head = np.full(n_firms, -1, dtype=np.int64)
-        loan_apps_targets = np.full((n_firms, max_H), -1, dtype=np.int64)
+        projected_fragility = np.zeros(p["n_firms"])
+        loan_apps_head = np.full(p["n_firms"], -1, dtype=np.int64)
+        loan_apps_targets = np.full((p["n_firms"], p["max_H"]), -1, dtype=np.int64)
 
         # lender
-        equity_base = np.full(n_banks, fill_value=equity_base_init)
+        equity_base = np.full(p["n_banks"], fill_value=p["equity_base_init"])
         # noinspection DuplicatedCode
         credit_supply = np.zeros_like(equity_base)
-        interest_rate = np.zeros(n_banks)
-        recv_loan_apps_head = np.full(n_banks, -1, dtype=np.int64)
-        recv_loan_apps = np.full((n_banks, max_H), -1, dtype=np.int64)
+        interest_rate = np.zeros(p["n_banks"])
+        recv_loan_apps_head = np.full(p["n_banks"], -1, dtype=np.int64)
+        recv_loan_apps = np.full((p["n_banks"], p["max_H"]), -1, dtype=np.int64)
 
         # consumer
         income = np.zeros_like(wage)
-        savings = np.full_like(income, fill_value=savings_init)
+        savings = np.full_like(income, fill_value=p["savings_init"])
         income_to_spend = np.zeros_like(income)
-        propensity = np.zeros(n_households)
-        largest_prod_prev = np.full(n_households, -1, dtype=np.int64)
-        shop_visits_head = np.full(n_households, -1, dtype=np.int64)
-        shop_visits_targets = np.full((n_households, max_Z), -1, dtype=np.int64)
+        propensity = np.zeros(p["n_households"])
+        largest_prod_prev = np.full(p["n_households"], -1, dtype=np.int64)
+        shop_visits_head = np.full(p["n_households"], -1, dtype=np.int64)
+        shop_visits_targets = np.full(
+            (p["n_households"], p["max_Z"]), -1, dtype=np.int64
+        )
 
         # economy level scalars & time-series
         avg_mkt_price = price.mean()
@@ -339,10 +318,10 @@ class Scheduler:
         ec = Economy(
             # TODO move theta, beta and delta in here
             avg_mkt_price=avg_mkt_price,
-            min_wage=min_wage,
-            min_wage_rev_period=min_wage_rev_period,
-            r_bar=r_bar,
-            v=v,
+            min_wage=p["min_wage"],
+            min_wage_rev_period=p["min_wage_rev_period"],
+            r_bar=p["r_bar"],
+            v=p["v"],
             avg_mkt_price_history=avg_mkt_price_history,
             unemp_rate_history=unemp_rate_history,
             inflation_history=inflation_history,
@@ -415,21 +394,21 @@ class Scheduler:
             lend=lend,
             lb=LoanBook(),
             con=con,
-            n_firms=n_firms,
-            n_households=n_households,
-            n_banks=n_banks,
-            n_periods=n_periods,
+            n_firms=p["n_firms"],
+            n_households=p["n_households"],
+            n_banks=p["n_banks"],
+            n_periods=p["n_periods"],
             t=0,
-            h_rho=h_rho,
-            h_xi=h_xi,
-            h_phi=h_phi,
-            h_eta=h_eta,
-            max_M=max_M,
-            max_H=max_H,
-            max_Z=max_Z,
-            theta=theta,
-            beta=beta,
-            delta=delta,
+            h_rho=p["h_rho"],
+            h_xi=p["h_xi"],
+            h_phi=p["h_phi"],
+            h_eta=p["h_eta"],
+            max_M=p["max_M"],
+            max_H=p["max_H"],
+            max_Z=p["max_Z"],
+            theta=p["theta"],
+            beta=p["beta"],
+            delta=p["delta"],
             rng=rng,
         )
 
@@ -453,8 +432,11 @@ class Scheduler:
         """Advance the economy by exactly **one** period."""
 
         # TODO
-        #  - Wrap for-loops into systems
+        #  - Wrap for-loops into their own systems
         #  - Break systems into simpler systems
+
+        if self.ec.destroyed:
+            return
 
         self.t += 1
 
@@ -544,3 +526,6 @@ class Scheduler:
 
         spawn_replacement_firms(self.ec, self.prod, self.emp, self.bor, rng=self.rng)
         spawn_replacement_banks(self.ec, self.lend, rng=self.rng)
+
+        if self.ec.destroyed:
+            log.info("SIMULATION TERMINATED")

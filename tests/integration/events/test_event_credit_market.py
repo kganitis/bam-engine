@@ -102,15 +102,15 @@ def test_event_credit_market_basic(tiny_sched: Scheduler) -> None:
         lb.lender[: lb.size], weights=p, minlength=sch.lend.credit_supply.size
     )
 
-    # pots were reset inside the event: C_k0 = equity_base * v
-    pot_at_start = sch.lend.equity_base * sch.ec.v  # what each bank could lend
+    # pots were reset inside the event: C_k0 = equity_base / v
+    pot_at_start = sch.lend.equity_base / sch.ec.v  # what each bank could lend
     supply_drop = pot_at_start - sch.lend.credit_supply
     np.testing.assert_allclose(dec_by_lender, supply_drop, atol=1e-9)
 
     # remaining demand is non-negative
     assert (sch.bor.credit_demand >= -1e-9).all()
     # regulatory lending-cap holds at the *end* of the event
-    cap = sch.lend.equity_base * sch.ec.v
+    cap = sch.lend.equity_base / sch.ec.v
     assert (sch.lend.credit_supply <= cap + 1e-9).all()
     # exhausted banks cannot have negative supply
     assert (sch.lend.credit_supply >= -1e-9).all()

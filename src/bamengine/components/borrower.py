@@ -8,12 +8,18 @@ from bamengine.typing import Float1D, Idx1D, Idx2D
 class Borrower:
     """Dense state for all borrowing firms."""
 
+    rnd_intensity: Float1D  # μ_i
+
+    # Finance
     net_worth: Float1D  # A_i
     total_funds: Float1D  # cash account
     wage_bill: Float1D  # W_i  (should be L_i * wage_i)
+
+    # Credit
     credit_demand: Float1D  # B_i
-    rnd_intensity: Float1D  # μ_i
     projected_fragility: Float1D  # φ̂_i
+
+    # Revenues
     gross_profit: Float1D
     net_profit: Float1D
     retained_profit: Float1D

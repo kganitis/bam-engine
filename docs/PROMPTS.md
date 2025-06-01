@@ -22,8 +22,8 @@ Given the following parameters (which we MUST use these values)
 theta:                8          # job contract length (periods)
 
 # ── population sizes ───────────────────────────────────────────────────
-n_firms:              500        # number of producer / employer agents
-n_households:         100        # number of worker / consumer agents
+n_firms:              100        # number of producer / employer agents
+n_households:         500        # number of worker / consumer agents
 n_banks:              10         # commercial banks
 
 # ── run length ─────────────────────────────────────────────────────────

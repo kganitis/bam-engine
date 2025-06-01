@@ -82,10 +82,10 @@ def test_decide_credit_supply_basic() -> None:
     lend = mock_lender(
         n=3,
         queue_h=2,
-        equity_base=np.array([10_000.0, 20_000.0, 5_000.0]),
+        equity_base=np.array([10.0, 20.0, 5.0]),
     )
-    banks_decide_credit_supply(lend, v=0.2)
-    np.testing.assert_allclose(lend.credit_supply, lend.equity_base * 0.2)
+    banks_decide_credit_supply(lend, v=0.1)
+    np.testing.assert_allclose(lend.credit_supply, lend.equity_base / 0.1)
 
 
 # --------------------------------------------------------------------------- #
