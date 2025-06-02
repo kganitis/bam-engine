@@ -13,7 +13,7 @@ from numpy.random import Generator, default_rng
 from numpy.typing import NDArray
 
 from bamengine.components import Borrower, Lender, LoanBook
-from bamengine.helpers import select_top_k_indices
+from bamengine.helpers import select_top_k_indices_sorted
 
 # noinspection PyProtectedMember
 from bamengine.systems.credit_market import (  # systems under test
@@ -197,7 +197,7 @@ def test_calc_credit_metrics_allocates_buffer() -> None:
 def test_topk_lowest_rate_partial_sort() -> None:
     vals = np.array([0.09, 0.07, 0.12, 0.08])
     k = 2
-    idx = select_top_k_indices(vals, k=k, descending=False)
+    idx = select_top_k_indices_sorted(vals, k=k, descending=False)
     chosen = set(vals[idx])
     assert chosen == {0.07, 0.08} and idx.shape == (k,)
 
