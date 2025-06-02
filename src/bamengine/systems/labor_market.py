@@ -83,7 +83,8 @@ def firms_decide_wage_offer(
         f"Min wage: {w_min:.3f}. "
         f"Average offer from firms with vacancies: {emp.wage_offer.mean():.3f}"
     )
-    # log.debug(f"Detailed wage offers:\n{np.array2string(emp.wage_offer, precision=2)}")
+    # log.debug(f"Detailed wage offers:\n"
+    #           f"{np.array2string(emp.wage_offer, precision=2)}")
 
 
 # ---------------------------------------------------------------------
@@ -94,57 +95,69 @@ def workers_decide_firms_to_apply(
     max_M: int,
     rng: Generator = default_rng(),
 ) -> None:
-    """Unemployed workers choose up to `max_M` firms to apply to, sorted by wage."""
+    """
+    Unemployed workers choose up to `max_M` firms to apply to, sorted by wage.
+    Workers remain loyal to their last employer if their contract has just expired.
+    """
 
-    n_firms = emp.wage_offer.size
-    unem = np.where(wrk.employed == 0)[0]  # unemployed ids
+    hiring = np.where(emp.n_vacancies > 0)[0]  # hiring ids
+    unemp = np.where(wrk.employed == 0)[0]  # unemployed ids
 
-    if unem.size == 0:  # early-exit → nothing to do
+    # ── fast exits ──────────────────────────────────────────────────────
+    if unemp.size == 0:
         log.info("No unemployed workers; skipping application phase.")
         wrk.job_apps_head.fill(-1)
         return
 
-    # -------- sample M random emp per worker -----------------------
-    sample = rng.integers(0, n_firms, size=(unem.size, max_M), dtype=np.int64)
+    if hiring.size == 0:
+        log.info("No firm is hiring this period – all application queues cleared.")
+        wrk.job_apps_head[unemp] = -1
+        wrk.job_apps_targets[unemp, :].fill(-1)
+        return
 
-    loyal = (
-        (wrk.contract_expired[unem] == 1)
-        & (wrk.fired[unem] == 0)
-        & (wrk.employer_prev[unem] >= 0)
+    # ── sample M random hiring firms per worker (with replacement) ─────
+    M_eff = min(max_M, hiring.size)
+    sample = rng.choice(
+        hiring, size=(unemp.size, M_eff), replace=True
+    )  # shape = (U, M)
+
+    # ── loyalty rule ----------------------------------------------------
+    loyal_mask = (
+        (wrk.contract_expired[unemp] == 1)
+        & (wrk.fired[unemp] == 0)
+        & np.isin(wrk.employer_prev[unemp], hiring)  # only if prev firm is hiring
     )
-    if loyal.any():
-        sample[loyal, 0] = wrk.employer_prev[unem[loyal]]
+    if loyal_mask.any():
+        sample[loyal_mask, 0] = wrk.employer_prev[unemp[loyal_mask]]
 
-    # -------- wage‑descending *partial* sort ----------------------------
+    # ── wage-descending partial sort ------------------------------------
     topk = select_top_k_indices(emp.wage_offer[sample], k=max_M, descending=True)
     sorted_sample = np.take_along_axis(sample, topk, axis=1)
 
-    #
-    # -------- loyalty: ensure previous employer is always in column 0 ---
-    if loyal.any():
-        # indices of loyal workers in the `unem` array
-        loyal_rows = np.where(loyal)[0]
-
-        # swap previous‑employer into col 0 when it got shuffled away
+    # loyalty: ensure prev-employer sits in column-0 after sort
+    if loyal_mask.any():
+        loyal_rows = np.where(loyal_mask)[0]
         for r in loyal_rows:
-            prev = wrk.employer_prev[unem[r]]
+            prev = wrk.employer_prev[unemp[r]]
             row = sorted_sample[r]
-
             if row[0] != prev:
-                # find where prev employer ended up (guaranteed to exist)
-                j = np.where(row == prev)[0][0]
+                j = np.where(row == prev)[0][0]  # guaranteed to exist
                 row[0], row[j] = row[j], row[0]
 
+    # ── write buffers ----------------------------------------------------
     stride = max_M
-    for k, w in enumerate(unem):
-        wrk.job_apps_targets[w, :stride] = sorted_sample[k]
-        wrk.job_apps_head[w] = w * stride  # first slot of that row
+    for k, w in enumerate(unemp):
+        wrk.job_apps_targets[w, :M_eff] = sorted_sample[k]
+        # pad any remaining columns with -1
+        if M_eff < max_M:
+            wrk.job_apps_targets[w, M_eff:max_M] = -1
+        wrk.job_apps_head[w] = w * stride
 
     # reset flags
-    wrk.contract_expired[unem] = 0
-    wrk.fired[unem] = 0
+    wrk.contract_expired[unemp] = 0
+    wrk.fired[unemp] = 0
 
-    log.info(f"{unem.size} unemployed workers send up to {max_M} applications each.")
+    log.info(f"{unemp.size} unemployed workers send {M_eff} applications each.")
 
 
 # ---------------------------------------------------------------------
@@ -153,9 +166,9 @@ def workers_send_one_round(
 ) -> None:
     """A single round of job applications being sent and received."""
     stride = wrk.job_apps_targets.shape[1]
-    unemp_indices = np.where(wrk.employed == 0)[0]
-    rng.shuffle(unemp_indices)
-    for w in unemp_indices:
+    unemp_ids = np.where(wrk.employed == 0)[0]
+    rng.shuffle(unemp_ids)
+    for w in unemp_ids:
         h = wrk.job_apps_head[w]
         if h < 0:
             continue
@@ -245,10 +258,10 @@ def firms_hire_workers(
     rng: Generator = default_rng(),
 ) -> None:
     """Match firms with queued applicants and update all related state."""
-    vacancy_indices = np.where(emp.n_vacancies > 0)[0]
-    rng.shuffle(vacancy_indices)
+    hiring_ids = np.where(emp.n_vacancies > 0)[0]
+    rng.shuffle(hiring_ids)
 
-    for i in vacancy_indices:
+    for i in hiring_ids:
         # ── PRE–hire sanity check ───────────────────────────────────────
         _check_labor_consistency("PRE-hire", i, wrk, emp)
 

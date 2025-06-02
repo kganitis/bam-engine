@@ -107,7 +107,6 @@ def test_event_revenue_basic(tiny_sched: Scheduler) -> None:
 
     sold = sch.prod.production - sch.prod.inventory
     revenue = sch.prod.price * sold
-    gross = revenue - sch.bor.wage_bill
 
     debt_before = snap["debt_tot_before"]
     repay_mask = snap["funds_after_revenue"] >= debt_before - _EPS
