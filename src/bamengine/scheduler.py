@@ -7,7 +7,7 @@ import logging
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
-from typing import Any, Mapping, Dict
+from typing import Any, Dict, Mapping
 
 import numpy as np
 import yaml

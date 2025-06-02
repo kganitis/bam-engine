@@ -43,7 +43,8 @@ def firms_update_net_worth(bor: Borrower) -> None:
     np.maximum(bor.total_funds, 0)
 
     # log.debug(
-    #     f"  Net Worths after update:\n" f"{np.array2string(bor.net_worth, precision=2)}"
+    #     f"  Net Worths after update:\n"
+    #     f"{np.array2string(bor.net_worth, precision=2)}"
     # )
 
 
@@ -175,7 +176,8 @@ def spawn_replacement_firms(
 
     for i in exiting:
         # size smaller than trimmed mean
-        s = sample_beta_with_mean(0.6, low=0.1, high=1.0, concentration=12, rng=rng)
+        s = sample_beta_with_mean(0.5, low=0.1, high=1.0, concentration=12, rng=rng)
+        s = 0.5
         bor.net_worth[i] = mean_net * s
 
         bor.total_funds[i] = bor.net_worth[i]
@@ -220,9 +222,7 @@ def spawn_replacement_banks(
             log.debug(f"  Cloning healthy bank {src} to replace bankrupt bank {k}.")
             lend.equity_base[k] = lend.equity_base[src]
         else:  # terminate simulation
-            log.critical(
-                "ALL BANKS BANKRUPT"
-            )
+            log.critical("ALL BANKS BANKRUPT")
             ec.destroyed = True
             return
 

@@ -4,7 +4,6 @@ Runs a baseline simulation of the BAM Engine and plots key macroeconomic time se
 """
 
 import logging
-from pathlib import Path
 
 import numpy as np
 from numpy.typing import NDArray
@@ -19,7 +18,7 @@ log = logging.getLogger("example")
 log.setLevel(logging.INFO)
 
 
-def run_baseline_simulation(n_firms=10000, seed=0) -> dict[str, NDArray[np.float64]]:
+def run_baseline_simulation(n_firms=50, seed=0) -> dict[str, NDArray[np.float64]]:
     # --- Simulation Parameters ---
     params = {
         "n_households": n_firms * 5,
@@ -30,17 +29,17 @@ def run_baseline_simulation(n_firms=10000, seed=0) -> dict[str, NDArray[np.float
     }
 
     savings_seed = sample_beta_with_mean(
-        mean=20.0,
+        mean=3.0,
         n=params["n_households"],
-        low=10.0, high=40.0,
-        concentration=20,
+        low=0.5, high=10.0,
+        concentration=12,
         rng=params["seed"])
 
     equity_base_seed = sample_beta_with_mean(
-        mean=1000.0,
+        mean=5.0,
         n=params["n_banks"],
-        low=500.0,
-        high=1500.0,
+        low=1.0,
+        high=10.0,
         concentration=20,
         rng=params["seed"])
 

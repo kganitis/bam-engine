@@ -23,7 +23,7 @@ max_Z:                2          # shops a household can visit (per period)
 
 # ── economy-wide structural params ─────────────────────────────────────
 theta:                8          # job contract length (periods)
-beta:                 2.00       # consumption propensity exponent where => (```π_j  = 1 / (1 + tanh(SA_j / SA_avg) ** beta)```, SA_j: savings of consumer j, SA_avg: avg consumer savings)
+beta:                 2.50        # consumption propensity exponent where => (```π_j  = 1 / (1 + tanh(SA_j / SA_avg) ** beta)```, SA_j: savings of consumer j, SA_avg: avg consumer savings)
 delta:                0.40       # dividend pay-out ratio
 v:                    0.06       # bank capital-requirement coefficient => 1/v: banks maximum allowable leverage
 r_bar:                0.02       # baseline (policy) interest rate (quarterly)

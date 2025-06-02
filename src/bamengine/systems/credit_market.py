@@ -73,8 +73,9 @@ def firms_decide_credit_demand(bor: Borrower) -> None:
     """
     np.subtract(bor.wage_bill, bor.net_worth, out=bor.credit_demand)
     np.maximum(bor.credit_demand, 0.0, out=bor.credit_demand)
-    # if log.isEnabledFor(logging.DEBUG):
-    #     log.debug(f"firms_decide_credit_demand:\n" f"credit_demand={bor.credit_demand}")
+    # # if log.isEnabledFor(logging.DEBUG):
+    #     log.debug(f"firms_decide_credit_demand:\n"
+    #               f"credit_demand={bor.credit_demand}")
 
 
 def firms_calc_credit_metrics(bor: Borrower) -> None:

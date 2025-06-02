@@ -5,7 +5,7 @@ Labor-market systems unit tests.
 
 from __future__ import annotations
 
-from typing import Any, List, Tuple, cast
+from typing import List, Tuple, cast
 
 import numpy as np
 import pytest
@@ -30,6 +30,7 @@ from tests.helpers.factories import (
     mock_employer,
     mock_worker,
 )
+from tests.helpers.fixed_rng import FixedRNG
 
 
 # --------------------------------------------------------------------------- #
@@ -251,28 +252,14 @@ def test_prepare_applications_loyalty_swap_branch() -> None:
         employer_prev=np.array([0]),  # loyalty to firm-0
     )
 
-    # ---- deterministic “RNG” that returns the matrix [[1, 1]] -------------
-    class FixedRNG:
-        """Mimic `numpy.random.Generator` just for `.integers()`."""
+    # Fixed buffer will force the sample [[1, 1]]
+    stub_rng = FixedRNG(np.array([[1, 1]], dtype=np.int64))
 
-        def __init__(self, arr: NDArray[np.int64]) -> None:
-            self._arr = arr
-
-        def integers(  # noqa: D401  (signature intentionally minimal)
-            self,
-            low: int | np.int64,
-            high: int | None = None,
-            size: tuple[int, int] | None = None,
-            dtype: type[np.int64] | np.dtype[np.int64] = np.int64,
-        ) -> NDArray[np.int64]:
-            return self._arr.copy()
-
-    stub_rng: Any = FixedRNG(np.array([[1, 1]], dtype=np.int64))
-    # `cast` silences mypy – at runtime only `.integers()` is used
+    # Cast keeps the production code’s type hints intact
     workers_decide_firms_to_apply(wrk, emp, max_M=2, rng=cast(Generator, stub_rng))
 
-    # loyalty guarantee after swap
-    assert wrk.job_apps_targets[0, 0] == 0  # prev employer in col-0
+    # ---- assertions ----------------------------------------------------
+    assert wrk.job_apps_targets[0, 0] == 0  # previous employer in col-0
     assert wrk.job_apps_targets[0, 1] == 1  # other firm in col-1
 
 
