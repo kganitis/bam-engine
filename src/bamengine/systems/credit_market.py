@@ -11,7 +11,7 @@ import numpy as np
 from numpy.random import Generator, default_rng
 
 from bamengine.components import Borrower, Employer, Lender, LoanBook, Worker
-from bamengine.helpers import select_top_k_indices
+from bamengine.helpers import select_top_k_indices_sorted
 
 log = logging.getLogger("bamengine")
 
@@ -127,7 +127,7 @@ def firms_prepare_loan_applications(
         return
 
     sample = rng.integers(0, n_banks, size=(borrowers.size, max_H), dtype=np.int64)
-    topk = select_top_k_indices(lend.interest_rate[sample], k=max_H)
+    topk = select_top_k_indices_sorted(lend.interest_rate[sample], k=max_H)
     sorted_sample = np.take_along_axis(sample, topk, axis=1)
 
     # flush vectors

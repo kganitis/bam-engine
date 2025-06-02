@@ -1,8 +1,9 @@
 # src/bamengine/helpers.py
 import numpy as np
 from numpy.random import Generator, default_rng
+from numpy.typing import NDArray
 
-from bamengine.typing import Float1D, Idx1D
+from bamengine.typing import Float1D
 
 
 def trim_mean(values: Float1D, trim_pct: float = 0.05) -> float:
@@ -160,30 +161,93 @@ def sample_beta_with_mean(
     return scaled.item() if n == 1 else scaled
 
 
-def select_top_k_indices(values: Float1D, k: int, descending: bool = True) -> Idx1D:
+def select_top_k_indices_sorted(
+    values: NDArray[np.float64], k: int, descending: bool = True
+) -> NDArray[np.intp]:
     """
-    Return indices of the *k* elements based on the 'descending' flag.
-    If descending is True, returns indices of the k largest elements.
-    If descending is False, returns indices of the k smallest elements.
-    The returned k indices are themselves not sorted.
+    Returns indices of k smallest/largest elements, sorted along the last axis.
 
-    Args:
-        values: 1-D NumPy array of float values.
-        k: The number of top/bottom indices to return.
-        descending: If True, find k largest. If False, find k smallest.
+    Identifies the k elements (smallest or largest based on the `descending`
+    flag) along the last axis of the input N-dimensional array `values`.
+    It then returns the original indices of these k elements, sorted such
+    that `np.take_along_axis(values, returned_indices, axis=-1)` yields
+    values in the specified order (ascending or descending).
 
-    Returns:
-        1-D NumPy array of indices.
+    Parameters
+    ----------
+    values : numpy.ndarray
+        N-dimensional array of numerical values. Selection occurs along the last axis.
+    k : int
+        The number of indices to select.
+    descending : bool, optional
+        If True (default), selects k largest elements (sorted largest to smallest).
+        If False, selects k smallest elements (sorted smallest to largest).
+
+    Returns
+    -------
+    numpy.ndarray
+        N-dimensional array of integer indices, shaped `values.shape[:-1] +
+        (selected_k,)`. `selected_k` is `k` (or 0 if `k<=0`, or `values.shape[-1]`
+        if `k` exceeds the last axis dimension). Indices refer to positions along the
+        last axis of `values`.
+
+    Notes
+    -----
+    - Operates on the last axis of N-dimensional arrays.
+    - Uses `np.argpartition` for efficient selection when `k` is less than the
+      size of the last dimension.
+    - Scalar inputs are treated as 1-element arrays.
+    - Handles empty input arrays and `k <= 0` by returning appropriately
+      shaped empty index arrays.
     """
+    # Ensure input is a NumPy array.
+    if not isinstance(values, np.ndarray):
+        values = np.array(values, dtype=float)
+
+    # Ensure values is at least 1D for consistent axis=-1 operations.
+    if values.ndim == 0:
+        values = np.atleast_1d(values)
+
+    # If k is non-positive, return an empty array with appropriate shape.
     if k <= 0:
-        return np.array([], dtype=np.intp)
+        return np.empty(values.shape[:-1] + (0,), dtype=np.intp)
 
-    # Degenerate case: k is too large, return all indices
-    if k >= values.shape[-1]:
-        vals_for_partition = -values if descending else values
-        return np.argpartition(vals_for_partition, kth=0, axis=-1)
+    # If array is empty (and k > 0), also return an empty array.
+    if values.size == 0:
+        return np.empty(values.shape[:-1] + (0,), dtype=np.intp)
 
+    n = values.shape[-1]  # Size of the last dimension.
+
+    # If k >= n, all elements are selected; sort all indices along the last axis.
+    if k >= n:
+        # Sort all elements if k is large enough.
+        # Negate values for descending sort with np.argsort.
+        return np.argsort(-values if descending else values, axis=-1)
+
+    # For k < n:
+    # Determine values to partition (negate for descending to find largest).
     values_to_partition = -values if descending else values
-    part = np.argpartition(values_to_partition, kth=k - 1, axis=-1)
 
-    return part[..., :k]
+    # Efficiently find indices of the k smallest/largest elements
+    # (unsorted among themselves).
+    # `kth=k-1` because argpartition is 0-indexed and we want the first k elements.
+    partitioned_indices = np.argpartition(values_to_partition, kth=k - 1, axis=-1)
+
+    # Take the indices of the first k elements from the partitioned result.
+    k_indices_unsorted = partitioned_indices[..., :k]
+
+    # Get the actual values corresponding to these k selected indices.
+    k_values = np.take_along_axis(values, k_indices_unsorted, axis=-1)
+
+    # Determine values to sort within the k-selection.
+    k_values_to_sort = -k_values if descending else k_values
+
+    # Get the order to sort these k values.
+    order_within_k_selection = np.argsort(k_values_to_sort, axis=-1)
+
+    # Apply this order to `k_indices_unsorted` to get the final sorted indices.
+    k_indices_sorted_final = np.take_along_axis(
+        k_indices_unsorted, order_within_k_selection, axis=-1
+    )
+
+    return k_indices_sorted_final

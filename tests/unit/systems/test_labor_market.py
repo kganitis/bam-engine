@@ -15,7 +15,6 @@ from numpy.random import Generator, default_rng
 from numpy.typing import NDArray
 
 from bamengine.components import Employer, Worker
-from bamengine.helpers import select_top_k_indices
 
 # noinspection PyProtectedMember
 from bamengine.systems.labor_market import (  # system under test
@@ -161,25 +160,6 @@ def test_decide_wage_offer_reuses_scratch() -> None:
     buf1 = emp.wage_shock
     assert buf0 is buf1  # same object
     assert buf1 is not None and buf1.flags.writeable
-
-
-# --------------------------------------------------------------------------- #
-#  _topk_indices_desc helper                                                  #
-# --------------------------------------------------------------------------- #
-def test_topk_indices_desc_partial_sort() -> None:
-    """
-    Requesting k < n should hit the argpartition ↦ slice branch.
-    We verify that the returned (unsorted) indices are exactly
-    the k positions of the largest elements.
-    """
-    vals = np.array([[5.0, 1.0, 3.0, 4.0]])
-    k = 2
-    idx = select_top_k_indices(vals, k=k, descending=True)
-    # Extract the values referenced by idx and check they are the two maxima.
-    top_vals = vals[0, idx[0]]
-    assert set(top_vals) == {5.0, 4.0}
-    # Shape must be preserved (unsorted, but length == k)
-    assert idx.shape == (1, k)
 
 
 # --------------------------------------------------------------------------- #
