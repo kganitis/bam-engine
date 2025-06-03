@@ -293,7 +293,7 @@ class Scheduler:
         credit_supply = np.zeros_like(equity_base)
         interest_rate = np.zeros(p["n_banks"])
         recv_loan_apps_head = np.full(p["n_banks"], -1, dtype=np.int64)
-        recv_loan_apps = np.full((p["n_banks"], p["max_H"]), -1, dtype=np.int64)
+        recv_loan_apps = np.full((p["n_banks"], p["n_firms"]), -1, dtype=np.int64)
 
         # consumer
         income = np.zeros_like(wage)
@@ -372,8 +372,8 @@ class Scheduler:
             equity_base=equity_base,
             credit_supply=credit_supply,
             interest_rate=interest_rate,
-            recv_apps_head=recv_loan_apps_head,
-            recv_apps=recv_loan_apps,
+            recv_loan_apps_head=recv_loan_apps_head,
+            recv_loan_apps=recv_loan_apps,
         )
         con = Consumer(
             income=income,

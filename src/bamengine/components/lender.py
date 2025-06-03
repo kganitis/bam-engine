@@ -13,7 +13,7 @@ class Lender:
     interest_rate: Float1D  # r_k
 
     # bounded FIFO queue of borrower indices that apply each round
-    recv_apps_head: Idx1D  # ptr (−1 ⇒ empty)
-    recv_apps: Idx2D  # shape (N_banks, H)
+    recv_loan_apps_head: Idx1D  # ptr (−1 ⇒ empty)
+    recv_loan_apps: Idx2D  # shape (N_banks, H)
 
     opex_shock: Float1D | None = field(default=None, repr=False)  # scratch

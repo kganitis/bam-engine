@@ -229,7 +229,7 @@ def spawn_replacement_banks(
         # Reset state for the new bank
         lend.credit_supply[k] = 0.0
         lend.interest_rate[k] = 0.0
-        lend.recv_apps_head[k] = -1
-        lend.recv_apps[k, :] = -1
+        lend.recv_loan_apps_head[k] = -1
+        lend.recv_loan_apps[k, :] = -1
 
     ec.exiting_banks = np.empty(0, np.intp)  # clear list

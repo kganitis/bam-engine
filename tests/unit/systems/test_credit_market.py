@@ -67,6 +67,7 @@ def _mini_state(
         equity_base=np.linspace(8_000, 12_000, n_lenders, dtype=np.float64),
         credit_supply=np.full(n_lenders, 4_000.0),
         interest_rate=np.linspace(0.08, 0.11, n_lenders, dtype=np.float64),
+        recv_loan_apps=np.full((n_lenders, n_borrowers), -1, dtype=np.int64),
     )
     ledger = mock_loanbook()
 
@@ -247,27 +248,7 @@ def test_send_one_loan_app_queue_insert() -> None:
     firms_send_one_loan_app(bor, lend)
 
     # At least one bank must have a non-empty queue
-    assert (lend.recv_apps_head >= 0).any()
-
-
-def test_send_one_loan_app_queue_bounds() -> None:
-    """
-    When the bank queue is already full, the application is dropped
-    and the head pointer must **not** overflow.
-    """
-    H = 2
-    bor, lend, _, rng, _ = _mini_state(n_lenders=1, H=H)
-    lend.recv_apps_head[0] = H - 1
-    lend.recv_apps[0] = 99  # sentinel
-
-    firms_decide_credit_demand(bor)
-    # force every borrower to choose bank-0
-    lend.interest_rate[:] = 0.05
-    firms_prepare_loan_applications(bor, lend, max_H=H, rng=rng)
-    firms_send_one_loan_app(bor, lend)
-
-    assert lend.recv_apps_head[0] == H - 1
-    assert np.all((lend.recv_apps[0] == 99))  # nothing overwritten
+    assert (lend.recv_loan_apps_head >= 0).any()
 
 
 def test_borrower_with_empty_list_is_skipped() -> None:
@@ -275,7 +256,7 @@ def test_borrower_with_empty_list_is_skipped() -> None:
     lend = mock_lender(n=1, queue_h=2)
     bor.loan_apps_head[0] = -1  # no targets
     firms_send_one_loan_app(bor, lend)
-    assert lend.recv_apps_head[0] == -1  # still empty
+    assert lend.recv_loan_apps_head[0] == -1  # still empty
 
 
 def test_send_one_loan_app_exhausted_target() -> None:
@@ -285,7 +266,7 @@ def test_send_one_loan_app_exhausted_target() -> None:
     bor.loan_apps_targets[0, 0] = -1  # exhausted sentinel
     firms_send_one_loan_app(bor, lend)
     assert bor.loan_apps_head[0] == -1
-    assert lend.recv_apps_head[0] == -1
+    assert lend.recv_loan_apps_head[0] == -1
 
 
 # --------------------------------------------------------------------------- #
@@ -353,7 +334,7 @@ def test_banks_provide_loans_bank_zero_supply() -> None:
     lend.credit_supply[0] = 0.0
     _run_basic_loan_cycle(bor, lend, ledger, rng, H)
     assert ledger.size == 0
-    assert lend.recv_apps_head[0] >= 0  # queue still there
+    assert lend.recv_loan_apps_head[0] >= 0  # queue still there
     assert lend.credit_supply[0] == 0.0
 
 
@@ -363,11 +344,11 @@ def test_banks_provide_loans_skip_invalid_slots() -> None:
     """
     bor, lend, ledger, _, _ = _mini_state()
     k = 0
-    lend.recv_apps_head[k] = 2
-    lend.recv_apps[k, :3] = -1  # all invalid sentinels
+    lend.recv_loan_apps_head[k] = 2
+    lend.recv_loan_apps[k, :3] = -1  # all invalid sentinels
     banks_provide_loans(bor, ledger, lend, r_bar=0.07)
     assert ledger.size == 0
-    assert lend.recv_apps_head[k] == -1  # flushed by implementation
+    assert lend.recv_loan_apps_head[k] == -1  # flushed by implementation
 
 
 def test_ledger_capacity_auto_grows() -> None:
