@@ -109,8 +109,8 @@ def _lender_defaults(n: int, *, queue_h: int) -> dict[str, Any]:
         equity_base=np.full(n, 10_000.0, dtype=np.float64),
         credit_supply=np.zeros(n, dtype=np.float64),
         interest_rate=np.zeros(n, dtype=np.float64),
-        recv_apps_head=np.full(n, -1, dtype=np.int64),
-        recv_apps=np.full((n, queue_h), -1, dtype=np.int64),
+        recv_loan_apps_head=np.full(n, -1, dtype=np.int64),
+        recv_loan_apps=np.full((n, n * 10), -1, dtype=np.int64),
         opex_shock=None,  # scratch
     )
 
@@ -271,7 +271,7 @@ def mock_lender(
     n
         Number of lenders.
     queue_h
-        Width of the inbound loan queue (`recv_apps.shape[1]`).
+        Width of the inbound loan queue (`recv_loan_apps.shape[1]`).
     **overrides
         Field-value pairs that overwrite defaults.
     """

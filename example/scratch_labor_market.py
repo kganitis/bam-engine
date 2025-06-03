@@ -221,33 +221,33 @@ def workers_send_one_round(wrk: Worker, emp: Employer, rng: Generator = default_
 
     for w_idx in unemp_ids_applying:  # w_idx is actual worker ID
         log.debug(f"  --- Processing worker {w_idx} ---")
-        h_raw = wrk.job_apps_head[w_idx]
-        log.debug(f"  h_raw={h_raw}")
-        # If h_raw is still -1 after filtering, something is off, but proceed by spec
-        if h_raw < 0:
+        head = wrk.job_apps_head[w_idx]
+        log.debug(f"  head={head}")
+        # If head is still -1 after filtering, something is off, but proceed by spec
+        if head < 0:
             log.warning(
-                f"  Worker {w_idx} was in unemp_ids_applying but head is {h_raw}. "
+                f"  Worker {w_idx} was in unemp_ids_applying but head is {head}. "
                 f"Skipping."
             )
             continue
 
-        # Decode row and col from the 'h_raw'
+        # Decode row and col from the 'head'
         # which is worker_id * stride + current_app_idx
         # This implies row should be w_idx,
         # and col is the actual application index for that worker
-        row_from_head, col = divmod(h_raw, stride)
-        log.debug(f"  (row_from_head, col)=({row_from_head}, {col})")
+        row, col = divmod(head, stride)
+        log.debug(f"  (row, col)=({row}, {col})")
 
-        if row_from_head != w_idx:
+        if row != w_idx:
             log.error(
                 f"  CRITICAL MISMATCH for worker {w_idx}: "
-                f"head_raw={h_raw} decoded to row {row_from_head} (stride={stride}). "
+                f"head={head} decoded to row {row} (stride={stride}). "
                 f"This indicates a bug in head setting or decoding."
                 )
 
         log.debug(
             f"  Processing worker {w_idx}: "
-            f"head_raw={h_raw} -> decoded_row={row_from_head}, app_col_idx={col}"
+            f"head={head} -> decoded_row={row}, app_col_idx={col}"
         )
 
         if col >= stride:  # Worker has sent all their M_eff applications
@@ -258,7 +258,7 @@ def workers_send_one_round(wrk: Worker, emp: Employer, rng: Generator = default_
             wrk.job_apps_head[w_idx] = -1
             continue
 
-        firm_idx = wrk.job_apps_targets[row_from_head, col]  # Use decoded row
+        firm_idx = wrk.job_apps_targets[row, col]  # Use decoded row
         log.debug(f"  Worker {w_idx} job_apps_head: {wrk.job_apps_head[w_idx]}")
         log.debug(f"  Worker {w_idx} job_apps_targets: {wrk.job_apps_targets[w_idx]}")
         log.debug(f"  Worker {w_idx} applying to firm {firm_idx} (app #{col + 1})")
@@ -277,9 +277,9 @@ def workers_send_one_round(wrk: Worker, emp: Employer, rng: Generator = default_
                 f"Worker {w_idx} application dropped."
             )
             # Worker still tried, advance their pointer
-            wrk.job_apps_head[w_idx] = h_raw + 1
+            wrk.job_apps_head[w_idx] = head + 1
             # Clear the target so they don't re-apply if logic changes
-            wrk.job_apps_targets[row_from_head, col] = -1
+            wrk.job_apps_targets[row, col] = -1
             continue
 
         # bounded queue for firms
@@ -296,9 +296,9 @@ def workers_send_one_round(wrk: Worker, emp: Employer, rng: Generator = default_
                 f"({emp.recv_job_apps.shape[1]}). Worker {w_idx} application dropped."
             )
             # Worker still tried, advance their pointer
-            wrk.job_apps_head[w_idx] = h_raw + 1
+            wrk.job_apps_head[w_idx] = head + 1
             # Clear the target so they don't re-apply if logic changes
-            wrk.job_apps_targets[row_from_head, col] = -1
+            wrk.job_apps_targets[row, col] = -1
             continue
 
         emp.recv_job_apps_head[firm_idx] = ptr
@@ -309,13 +309,11 @@ def workers_send_one_round(wrk: Worker, emp: Employer, rng: Generator = default_
         )
 
         # advance pointer & clear slot
-        # (clearing only affects future rounds if this worker gets hired, etc.)
-        wrk.job_apps_head[w_idx] = h_raw + 1
-        # According to user spec, job_apps_targets[row, col] is set to -1
-        wrk.job_apps_targets[row_from_head, col] = -1
+        wrk.job_apps_head[w_idx] = head + 1
+        wrk.job_apps_targets[row, col] = -1
         log.debug(
-            f"  Worker {w_idx} head advanced to raw {wrk.job_apps_head[w_idx]}. "
-            f"Cleared target slot [{row_from_head},{col}]."
+            f"  Worker {w_idx} head advanced to {wrk.job_apps_head[w_idx]}. "
+            f"Cleared target slot [{row},{col}]."
         )
         log.debug(f"  Worker {w_idx} job_apps_targets: {wrk.job_apps_targets[w_idx]}")
 
@@ -401,7 +399,7 @@ def firms_hire_workers(
             log.debug(f"    Firm {i} has no applications. Skipping.")
             continue
 
-        queue = emp.recv_job_apps[i, :n_recv].copy()  # Copy for logging before cleaning
+        queue = emp.recv_job_apps[i, :n_recv].copy()  # copy for logging before cleaning
         log.debug(f"    Firm {i} raw application queue: {queue}")
 
         # Clean the queue: remove sentinels, duplicates, and already employed workers
@@ -470,6 +468,7 @@ def firms_hire_workers(
         log.debug(f"    Firm {i} application queue flushed.")
 
     log.info(f"  Total hires made this step across all firms: {total_hires_this_step}")
+
     # -------- global cross-check -----------------------------------------
     if log.isEnabledFor(logging.DEBUG):  # This existing check is good
         true_labor_counts = _safe_bincount_employed(wrk, emp.current_labor.size)

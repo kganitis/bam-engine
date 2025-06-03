@@ -74,8 +74,7 @@ def firms_decide_credit_demand(bor: Borrower) -> None:
     np.subtract(bor.wage_bill, bor.net_worth, out=bor.credit_demand)
     np.maximum(bor.credit_demand, 0.0, out=bor.credit_demand)
     if log.isEnabledFor(logging.DEBUG):
-        log.debug(f"firms_decide_credit_demand:\n"
-                  f"credit_demand={bor.credit_demand}")
+        log.debug(f"firms_decide_credit_demand:\n" f"credit_demand={bor.credit_demand}")
 
 
 def firms_calc_credit_metrics(bor: Borrower) -> None:
@@ -120,24 +119,37 @@ def firms_prepare_loan_applications(
     * keeps the H *cheapest* (lowest r_k) via partial sort
     * writes indices into ``loan_apps_targets`` and resets ``loan_apps_head``
     """
-    n_banks = lend.interest_rate.size
+    lenders = np.where(lend.credit_supply > 0)[0]  # bank ids
     borrowers = np.where(bor.credit_demand > 0.0)[0]
+
     if borrowers.size == 0:
         bor.loan_apps_head.fill(-1)
         return
 
-    sample = rng.integers(0, n_banks, size=(borrowers.size, max_H), dtype=np.int64)
-    topk = select_top_k_indices_sorted(lend.interest_rate[sample], k=max_H)
+    # ── sample H random lending banks per borrower (with replacement) ─────
+    H_eff = min(max_H, lenders.size)
+    sample = np.empty((borrowers.size, H_eff), dtype=np.int64)
+    for row, w in enumerate(borrowers):
+        sample[row] = rng.choice(lenders, size=H_eff, replace=False)
+
+    # ── interest-ascending partial sort ------------------------------------
+    topk = select_top_k_indices_sorted(
+        lend.interest_rate[sample], k=max_H, descending=False
+    )
     sorted_sample = np.take_along_axis(sample, topk, axis=1)
 
-    # flush vectors
-    bor.loan_apps_targets.fill(-1)
-    bor.loan_apps_head.fill(-1)
+    # flush queue before filling
+    # bor.loan_apps_targets.fill(-1)
+    # bor.loan_apps_head.fill(-1)
 
     stride = max_H
-    for k, f in enumerate(borrowers):
-        bor.loan_apps_targets[f, :stride] = sorted_sample[k]
-        bor.loan_apps_head[f] = f * stride  # start of that row
+    for k, f_idx in enumerate(borrowers):
+        bor.loan_apps_targets[f_idx, :H_eff] = sorted_sample[k]
+        # pad any remaining columns with -1
+        if H_eff < max_H:
+            bor.loan_apps_targets[f_idx, H_eff:max_H] = -1
+        # use actual firm ID for the row in conceptual 2D array
+        bor.loan_apps_head[f_idx] = f_idx * stride
 
 
 def firms_send_one_loan_app(
@@ -159,11 +171,11 @@ def firms_send_one_loan_app(
             continue
 
         # bounded queue
-        ptr = lend.recv_apps_head[bank_idx] + 1
-        if ptr >= lend.recv_apps.shape[1]:
+        ptr = lend.recv_loan_apps_head[bank_idx] + 1
+        if ptr >= lend.recv_loan_apps.shape[1]:
             continue
-        lend.recv_apps_head[bank_idx] = ptr
-        lend.recv_apps[bank_idx, ptr] = f
+        lend.recv_loan_apps_head[bank_idx] = ptr
+        lend.recv_loan_apps[bank_idx, ptr] = f
 
         bor.loan_apps_head[f] = h + 1
         bor.loan_apps_targets[row, col] = -1
@@ -188,17 +200,17 @@ def banks_provide_loans(
     rng.shuffle(lenders_indices)
 
     for k in lenders_indices:
-        n_recv = lend.recv_apps_head[k] + 1
+        n_recv = lend.recv_loan_apps_head[k] + 1
         if n_recv <= 0:
             continue
 
-        queue = lend.recv_apps[k, :n_recv]
+        queue = lend.recv_loan_apps[k, :n_recv]
         queue = queue[queue >= 0]  # compact valid requests
 
         if queue.size == 0:
             # flush empty / invalid queues immediately
-            lend.recv_apps_head[k] = -1
-            lend.recv_apps[k, :n_recv] = -1
+            lend.recv_loan_apps_head[k] = -1
+            lend.recv_loan_apps[k, :n_recv] = -1
 
         # --- gather data ------------------------------------------------
         cd = bor.credit_demand[queue]
@@ -238,8 +250,8 @@ def banks_provide_loans(
         assert (bor.credit_demand >= -1e-12).all(), "negative credit_demand"
 
         # reset queue
-        lend.recv_apps_head[k] = -1
-        lend.recv_apps[k, :n_recv] = -1
+        lend.recv_loan_apps_head[k] = -1
+        lend.recv_loan_apps[k, :n_recv] = -1
 
 
 def firms_fire_workers(
