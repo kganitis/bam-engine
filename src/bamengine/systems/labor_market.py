@@ -149,16 +149,36 @@ def workers_decide_firms_to_apply(
         & np.isin(wrk.employer_prev[unemp], hiring)  # only if prev empl is hiring
     )
     if loyal_mask.any():
+        # Log the state of sorted_sample BEFORE this specific loyalty adjustment
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug(
+                f"  Sorted sample BEFORE post-sort loyalty adjustment "
+                f"(showing all rows if loyal_mask.any()):\n{sorted_sample}"
+            )
+
+        # Get the row indices in `unemp` (and thus in `sorted_sample`)
+        # that correspond to loyal workers
         loyal_row_indices = np.where(loyal_mask)[0]
 
         for row_idx in loyal_row_indices:
-            actual_worker_id = unemp[row_idx]
+            actual_worker_id = unemp[row_idx]  # Get the actual ID of the loyal worker
             prev_employer_id = wrk.employer_prev[actual_worker_id]
 
-            # Get a view of the current worker's app list (a row in sorted_sample)
+            # Get a view of the current worker's application list
+            # (a row in sorted_sample)
             # Modifications to 'application_row' will modify 'sorted_sample' in-place.
             application_row = sorted_sample[row_idx]
-            num_applications = application_row.shape[0]  # should be M_eff
+            num_applications = application_row.shape[0]  # Should be M_eff
+
+            if log.isEnabledFor(logging.DEBUG):
+                log.debug(
+                    f"    Adjusting for loyalty: Worker ID {actual_worker_id} "
+                    f"(row_idx {row_idx} in unemp/sorted_sample), "
+                    f"Previous Employer: {prev_employer_id}"
+                )
+                log.debug(
+                    f"    Application row BEFORE adjustment: {application_row.copy()}"
+                )
 
             try:
                 # Check if the previous employer is already in the application list
@@ -166,8 +186,12 @@ def workers_decide_firms_to_apply(
                     0
                 ][0]
 
-                # If it is not already at the first position
+                # If it is present and not already at the first position
                 if current_pos_of_prev_emp != 0:
+                    log.debug(
+                        f"    Previous employer {prev_employer_id} "
+                        f"found at position {current_pos_of_prev_emp}. Moving to front."
+                    )
                     # Element is present but not at the start.
                     # Store the element, then shift elements
                     # from [0...current_pos-1] to [1...current_pos]
@@ -176,32 +200,55 @@ def workers_decide_firms_to_apply(
                     # Pull out the previous employer ID
                     employer_to_move = application_row[current_pos_of_prev_emp]
 
-                    # Shift elements from the start
-                    # up to its original position one step to the right
+                    # Shift elements from the start up
+                    # to its original position one step to the right
+                    # application_row[1 : current_pos_of_prev_emp + 1]
+                    # = application_row[0 : current_pos_of_prev_emp]
+                    # A more robust way to do this
+                    # (handles M_eff=1 correctly if current_pos_of_prev_emp is 0):
                     for j in range(current_pos_of_prev_emp, 0, -1):
                         application_row[j] = application_row[j - 1]
                     application_row[0] = employer_to_move  # Place it at the front
+                else:
+                    log.debug(
+                        f"    Previous employer {prev_employer_id} "
+                        f"is already at the first position. No change needed."
+                    )
 
-            except IndexError:  # if prev_employer_id is not found
+            except (
+                IndexError
+            ):  # np.where(...)[0][0] will fail if prev_employer_id is not found
                 # Previous employer was NOT in the list.
                 # Place it at the front and shift other elements to the right,
                 # dropping the last one.
+                log.debug(
+                    f"    Previous employer {prev_employer_id} "
+                    f"not found in application list. Inserting at front."
+                )
                 if num_applications > 0:  # Ensure there's space to do anything
                     # Shift all existing elements one position to the right
-                    # The last element will be overwritten
+                    # The last element application_row[num_applications-1]
+                    # will be overwritten
                     if num_applications > 1:
                         application_row[1:num_applications] = application_row[
                             0 : num_applications - 1
                         ]
                     # Place the previous employer at the first position
                     application_row[0] = prev_employer_id
+                # If num_applications is 0 (empty row, though M_eff should prevent this)
+                # this block does nothing.
+                # If num_applications is 1,
+                # application_row[0] is just set to prev_employer_id.
+
+            if log.isEnabledFor(logging.DEBUG):
+                log.debug(f"    Application row AFTER adjustment:  {application_row}")
 
         # Log the state of sorted_sample AFTER all loyal workers have been processed
         if (
             log.isEnabledFor(logging.DEBUG) and loyal_mask.any()
         ):  # Check loyal_mask.any() again as it was the entry condition
             log.debug(
-                f"  Sorted sample AFTER post-sort loyalty adjustment "
+                f"    Sorted sample AFTER post-sort loyalty adjustment "
                 f"(all rows if loyal_mask.any()):\n{sorted_sample}\n"
             )
 
@@ -272,10 +319,6 @@ def workers_send_one_round(
                 f"head_raw={h_raw} decoded to row {row_from_head} (stride={stride}). "
                 f"This indicates a bug in head setting or decoding."
             )
-            # To prevent crashing, we can try to force row = w_idx,
-            # but this hides the bug
-            # For now, proceed with decoded row and see if it fails
-            # row = w_idx # Potentially dangerous override
 
         log.debug(
             f"  Processing worker {w_idx}: "
@@ -301,6 +344,19 @@ def workers_send_one_round(
             wrk.job_apps_head[w_idx] = -1  # Mark as done
             continue
 
+        if (
+            emp.n_vacancies[firm_idx] == 0
+        ):  # firm has no more vacancies, drop application
+            log.debug(
+                f"  Firm {firm_idx} has no more open vacancies. "
+                f"Worker {w_idx} application dropped."
+            )
+            # Worker still tried, advance their pointer
+            wrk.job_apps_head[w_idx] = h_raw + 1
+            # Clear the target so they don't re-apply if logic changes
+            wrk.job_apps_targets[row_from_head, col] = -1
+            continue
+
         # bounded queue for firms
         current_firm_queue_head = emp.recv_job_apps_head[firm_idx]
         ptr = current_firm_queue_head + 1
@@ -317,8 +373,7 @@ def workers_send_one_round(
             # Worker still tried, advance their pointer
             wrk.job_apps_head[w_idx] = h_raw + 1
             # Clear the target so they don't re-apply if logic changes
-            # wrk.job_apps_targets[row_from_head, col] = -1
-            # Not clearing here by original spec
+            wrk.job_apps_targets[row_from_head, col] = -1
             continue
 
         emp.recv_job_apps_head[firm_idx] = ptr
@@ -393,33 +448,40 @@ def _safe_bincount_employed(wrk: Worker, n_firms: int) -> Int1D:
 def _clean_queue(slice_: Idx1D, wrk: Worker, firm_idx_for_log: int) -> Idx1D:
     """
     Return a *unique* array of still-unemployed worker ids
-    from the raw queue slice (may contain -1 sentinels and duplicates).
+    from the raw queue slice (may contain -1 sentinels and duplicates),
+    preserving the original order of first appearance.
     """
     log.debug(
         f"    Firm {firm_idx_for_log}: Cleaning queue. Initial raw slice: {slice_}"
     )
-    # drop -1 sentinels
+
+    # 1. Drop -1 sentinels
     cleaned_slice = slice_[slice_ >= 0]
     if cleaned_slice.size == 0:
         log.debug(f"    Firm {firm_idx_for_log}: Queue empty after dropping sentinels.")
-        return cleaned_slice.astype(np.int64)  # Ensure Idx1D type
+        return cleaned_slice.astype(np.intp)  # Ensure Idx1D type
 
     log.debug(
         f"    Firm {firm_idx_for_log}: Queue after dropping sentinels: {cleaned_slice}"
     )
 
-    # uniqueness first (cheaper than masking twice)
-    unique_slice = np.unique(cleaned_slice)
-    log.debug(f"    Firm {firm_idx_for_log}: Queue after unique: {unique_slice}")
+    # 2. Unique *without* sorting
+    first_idx = np.unique(cleaned_slice, return_index=True)[
+        1
+    ]  # indices of first occurrences
+    unique_slice = cleaned_slice[np.sort(first_idx)]  # keep original order
+    log.debug(
+        f"    Firm {firm_idx_for_log}: Queue after unique (order kept): {unique_slice}"
+    )
 
-    # keep only unemployed
+    # 3. Keep only unemployed workers
     unemployed_mask = wrk.employed[unique_slice] == 0
     final_queue = unique_slice[unemployed_mask]
     log.debug(
         f"    Firm {firm_idx_for_log}: "
         f"Final cleaned queue (unique, unemployed): {final_queue}"
     )
-    return cast(Idx1D, final_queue)  # cast is Idx1D from your typing
+    return cast(Idx1D, final_queue)
 
 
 def firms_hire_workers(

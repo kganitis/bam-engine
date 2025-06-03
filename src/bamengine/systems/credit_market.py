@@ -25,14 +25,14 @@ def banks_decide_credit_supply(lend: Lender, *, v: float) -> None:
     v : capital requirement coefficient
     """
     np.divide(lend.equity_base, v, out=lend.credit_supply)
-    # if log.isEnabledFor(logging.DEBUG):
-    #     log.debug(
-    #         f"banks_decide_credit_supply:\n"
-    #         f"equity_base={lend.equity_base}\n"
-    #         f"max_leverage (1/v)={1/v}\n"
-    #         f"credit_supply={lend.credit_supply}\n"
-    #         f"Total credit supply update = {lend.credit_supply.sum():.2f} "
-    #     )
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug(
+            f"banks_decide_credit_supply:\n"
+            f"equity_base={lend.equity_base}\n"
+            f"max_leverage (1/v)={1/v}\n"
+            f"credit_supply={lend.credit_supply}\n"
+            f"Total credit supply update = {lend.credit_supply.sum():.2f} "
+        )
 
 
 def banks_decide_interest_rate(
@@ -59,12 +59,12 @@ def banks_decide_interest_rate(
     shock[:] = rng.uniform(0.0, h_phi, size=shape)
     lend.interest_rate[:] = r_bar * (1.0 + shock)
 
-    # if log.isEnabledFor(logging.DEBUG):
-    #     log.debug(
-    #         f"banks_decide_interest_rate: r_bar={r_bar:.4f}, h_phi={h_phi:.4f}\n"
-    #         f"shocks={shock}\n"
-    #         f"interest rates={lend.interest_rate}"
-    #     )
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug(
+            f"banks_decide_interest_rate: r_bar={r_bar:.4f}, h_phi={h_phi:.4f}\n"
+            f"shocks={shock}\n"
+            f"interest rates={lend.interest_rate}"
+        )
 
 
 def firms_decide_credit_demand(bor: Borrower) -> None:
@@ -73,9 +73,9 @@ def firms_decide_credit_demand(bor: Borrower) -> None:
     """
     np.subtract(bor.wage_bill, bor.net_worth, out=bor.credit_demand)
     np.maximum(bor.credit_demand, 0.0, out=bor.credit_demand)
-    # # if log.isEnabledFor(logging.DEBUG):
-    #     log.debug(f"firms_decide_credit_demand:\n"
-    #               f"credit_demand={bor.credit_demand}")
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug(f"firms_decide_credit_demand:\n"
+                  f"credit_demand={bor.credit_demand}")
 
 
 def firms_calc_credit_metrics(bor: Borrower) -> None:
@@ -100,12 +100,12 @@ def firms_calc_credit_metrics(bor: Borrower) -> None:
 
     # frag *= μ_i
     np.multiply(frag, bor.rnd_intensity, out=frag)
-    # if log.isEnabledFor(logging.DEBUG):
-    #     log.debug(
-    #         f"firms_calc_credit_metrics:\n"
-    #         f"net_worth={bor.net_worth}\n"
-    #         f"projected_fragility={frag}"
-    #     )
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug(
+            f"firms_calc_credit_metrics:\n"
+            f"net_worth={bor.net_worth}\n"
+            f"projected_fragility={frag}"
+        )
 
 
 def firms_prepare_loan_applications(
@@ -221,12 +221,12 @@ def banks_provide_loans(
         borrowers = queue[mask]
         rate = lend.interest_rate[k] * (1.0 + frag[mask])
 
-        # if log.isEnabledFor(logging.DEBUG):
-        #     log.debug(
-        #         f"Bank {k}: granting loans to borrowers {borrowers}\n"
-        #         f"amounts={amount}\n"
-        #         f"rates={rate}"
-        #     )
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug(
+                f"Bank {k}: granting loans to borrowers {borrowers}\n"
+                f"amounts={amount}\n"
+                f"rates={rate}"
+            )
 
         # --- update ledger (vectorised append) ---------------------------------
         lb.append_loans(borrowers, k, amount, rate)
@@ -287,6 +287,6 @@ def firms_fire_workers(
 
     log.debug("Firing complete")
     log.debug(f"  Current Labor after firing (L_i):\n{emp.current_labor}")
-    # log.debug(
-    #     f"  Wage bills after firing:\n{np.array2string(emp.wage_bill, precision=2)}"
-    # )
+    log.debug(
+        f"  Wage bills after firing:\n{np.array2string(emp.wage_bill, precision=2)}"
+    )
