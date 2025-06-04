@@ -24,9 +24,9 @@ from bamengine.components import (
 )
 from bamengine.helpers import sample_beta_with_mean, trim_mean
 
-# log = logging.getLogger("bamengine")
-log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
+log = logging.getLogger("bamengine")
+# log = logging.getLogger(__name__)
+# log.setLevel(logging.INFO)
 
 _EPS = 1.0e-9
 

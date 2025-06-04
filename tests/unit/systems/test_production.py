@@ -43,21 +43,21 @@ def test_firms_decide_price_obeys_break_even_and_shocks() -> None:
     prod = mock_producer(
         n=2,
         production=np.array([5.0, 8.0]),
-        inventory=np.array([0.0, 3.0]),  # firm-0 sold out, firm-1 leftover
-        price=np.array([1.0, 3.0]),
-        alloc_scratch=False,  # exercise lazy buffer path
+        inventory=np.array([0.0, 0.0, 3.0, 3.0]),
+        price=np.array([1.0, 1.0, 3.0, 3.0]),
+        alloc_scratch=False,
     )
     emp = mock_employer(
         n=2,
-        current_labor=np.array([2, 2]),
-        wage_offer=np.array([1.0, 1.0]),
-        wage_bill=np.array([2.0, 2.0]),
+        current_labor=np.full(4, 2, dtype=np.int64),
+        wage_offer=np.full(4, 1.0),
+        wage_bill=np.full(4, 2.0),
     )
     # --- dummy LoanBook that always returns a constant vector 0.5 ----
     lb = mock_loanbook()
 
     def _const_interest(_self: "LoanBook", n: int = 128) -> NDArray[np.float64]:
-        return np.full(n, 0.5)
+        return np.array([0.1, 0.5, 0.1, 0.5])
 
     p_avg = 2.0
     h_eta = 0.10
@@ -65,16 +65,24 @@ def test_firms_decide_price_obeys_break_even_and_shocks() -> None:
     with patch.object(type(lb), "interest_per_borrower", _const_interest):
         firms_decide_price(prod, emp, lb, p_avg=p_avg, h_eta=h_eta, rng=rng)
 
+    interest = np.array([0.1, 0.5, 0.1, 0.5])
+    projected_output = prod.labor_productivity * emp.current_labor
+    breakeven = (emp.wage_bill + interest) / np.maximum(projected_output, 1.0e-12)
+
     # firm-0 price ↑ at most 10 %
     assert prod.price[0] >= 1.0
-    assert prod.price[0] <= 1.0 * (1 + h_eta) + 1e-12
+    assert prod.price[0] <= 1.0 * (1 + h_eta) + 1.0e-12
+
+    # firm-1 price -> breakeven
+    assert prod.price[1] >= 1.0
+    assert prod.price[1] >= breakeven - 1.0e-12
+
     # firm-1 price ↓ at most 10 %
     assert prod.price[1] <= 3.0
-    assert prod.price[1] >= 3.0 * (1 - h_eta) - 1e-12
+    assert prod.price[1] >= 3.0 * (1 - h_eta) - 1.0e-12
 
     # floor: price never below break-even
-    breakeven = (emp.wage_bill + 0.5) / prod.production
-    assert np.all(prod.price >= breakeven - 1e-12)
+    assert np.all(prod.price >= breakeven - 1.0e-12)
 
 
 # ------------------------------------------------------------------ #
