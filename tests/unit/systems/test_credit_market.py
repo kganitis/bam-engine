@@ -280,7 +280,6 @@ def _run_basic_loan_cycle(
     ledger: LoanBook,
     rng: Generator,
     H: int,
-    r_bar: float = 0.07,
 ) -> NDArray[np.float64]:
     """helper used by many tests"""
     firms_decide_credit_demand(bor)
@@ -289,7 +288,7 @@ def _run_basic_loan_cycle(
     firms_prepare_loan_applications(bor, lend, max_H=H, rng=rng)
     for _ in range(H):
         firms_send_one_loan_app(bor, lend)
-        banks_provide_loans(bor, ledger, lend, r_bar=r_bar)
+        banks_provide_loans(bor, ledger, lend)
     return orig_demand
 
 
@@ -334,7 +333,7 @@ def test_banks_provide_loans_bank_zero_supply() -> None:
     lend.credit_supply[0] = 0.0
     _run_basic_loan_cycle(bor, lend, ledger, rng, H)
     assert ledger.size == 0
-    assert lend.recv_loan_apps_head[0] >= 0  # queue still there
+    assert lend.recv_loan_apps_head[0] == -1
     assert lend.credit_supply[0] == 0.0
 
 
@@ -346,7 +345,7 @@ def test_banks_provide_loans_skip_invalid_slots() -> None:
     k = 0
     lend.recv_loan_apps_head[k] = 2
     lend.recv_loan_apps[k, :3] = -1  # all invalid sentinels
-    banks_provide_loans(bor, ledger, lend, r_bar=0.07)
+    banks_provide_loans(bor, ledger, lend)
     assert ledger.size == 0
     assert lend.recv_loan_apps_head[k] == -1  # flushed by implementation
 

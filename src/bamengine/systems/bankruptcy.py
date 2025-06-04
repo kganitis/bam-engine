@@ -24,7 +24,9 @@ from bamengine.components import (
 )
 from bamengine.helpers import sample_beta_with_mean, trim_mean
 
-log = logging.getLogger("bamengine")
+# log = logging.getLogger("bamengine")
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
 
 _EPS = 1.0e-9
 
@@ -176,8 +178,8 @@ def spawn_replacement_firms(
 
     for i in exiting:
         # size smaller than trimmed mean
-        s = sample_beta_with_mean(0.5, low=0.1, high=1.0, concentration=12, rng=rng)
-        s = 0.5
+        s = sample_beta_with_mean(0.5, low=0.1, high=1.0, concentration=6, rng=rng)
+        # s = 0.9
         bor.net_worth[i] = mean_net * s
 
         bor.total_funds[i] = bor.net_worth[i]

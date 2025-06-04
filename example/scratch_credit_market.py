@@ -9,7 +9,8 @@ from numpy.random import Generator, default_rng
 from bamengine.components import Borrower, Employer, Lender, LoanBook, Worker
 from bamengine.helpers import select_top_k_indices_sorted
 from bamengine.typing import Idx1D
-from helpers.factories import mock_borrower, mock_lender, mock_loanbook, mock_employer
+from helpers.factories import mock_borrower, mock_lender, mock_loanbook, mock_employer, \
+    mock_worker
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -32,6 +33,11 @@ def _mini_state(
     """
     rng = default_rng(seed)
 
+    wrk = mock_worker(
+        n=131,
+        employed=np.ones(131, dtype=np.int64),
+        employer=np.array([0]*80 + [1]*20 + [2]*15 + [3]*10+ [4]*5 + [5]*1),
+    )
     emp = mock_employer(
         n=n_borrowers,
         current_labor=np.array([80, 20, 15, 10, 5, 1], dtype=np.int64),
@@ -53,10 +59,10 @@ def _mini_state(
     )
     ledger = mock_loanbook()
 
-    return emp, bor, lend, ledger, rng, H
+    return wrk, emp, bor, lend, ledger, rng, H
 
 
-emp, bor, lend, lb, rng, H = _mini_state()
+wrk, emp, bor, lend, lb, rng, H = _mini_state()
 
 
 def banks_decide_credit_supply(lend: Lender, *, v: float) -> None:
@@ -200,8 +206,8 @@ def firms_prepare_loan_applications(
         )
 
     # flush queue before filling
-    # bor.loan_apps_targets.fill(-1)
-    # bor.loan_apps_head.fill(-1)
+    bor.loan_apps_targets.fill(-1)
+    bor.loan_apps_head.fill(-1)
 
     log.debug("  Writing application targets and heads for borrowers...")
     stride = max_H
@@ -482,6 +488,71 @@ def banks_provide_loans(
     log.debug(f"    recv_loan_apps=\n{lend.recv_loan_apps}")
 
 
+def firms_fire_workers(
+    emp: Employer,
+    wrk: Worker,
+    *,
+    rng: Generator = default_rng(),
+) -> None:
+    """
+    If a firm’s wage-bill exceeds its cash, lay off just enough workers
+    to close the funding gap – never sampling more workers than actually
+    exist on the roster.
+
+        n_fire = ceil(gap / w_i)   capped by true roster size
+    """
+    log.info("")
+    log.info("  Firms Firing Workers -----------------------------------------------")
+
+    for i in range(emp.current_labor.size):
+        log.debug(f"    --- Processing firm {i} "
+                  f"(wage bill: {emp.wage_bill[i]}, "
+                  f"total funds: {emp.total_funds[i]}) ---")
+
+        gap = emp.wage_bill[i] - emp.total_funds[i]
+        log.debug(f"    Firm {i} financing gap: {gap}")
+        if gap <= 0.0:
+            log.debug(f"    Firm {i}: No need for firing")
+            continue
+
+        # real roster: might differ from bookkeeping
+        workforce = np.where((wrk.employed == 1) & (wrk.employer == i))[0]
+        log.debug(f"    Firm {i} real workforce: {workforce.size}")
+        log.debug(f"    Firm {i} bookkeeping labor: {emp.current_labor[i]}")
+        if workforce.size != emp.current_labor[i]:
+            log.critical(f"    Real workforce INCONSISTENT with bookkeeping.")
+        if workforce.size == 0:  # no one to fire
+            continue
+
+        needed = int(np.ceil(gap / float(emp.wage_offer[i])))
+        log.debug(f"    Firm {i}: workers needed to fire: {needed}")
+        n_fire = min(needed, workforce.size)
+        if n_fire == 0:  # numerical quirk
+            continue
+
+        victims = rng.choice(workforce, size=n_fire, replace=False)
+        log.debug(f"    Firm {i}: calculated {n_fire} workers to fire "
+                  f"(capped by available workforce).")
+
+        # -------- worker-side updates --------------------------------
+        wrk.employed[victims] = 0
+        wrk.employer[victims] = -1
+        wrk.employer_prev[victims] = i
+        wrk.wage[victims] = 0.0
+        wrk.periods_left[victims] = 0
+        wrk.contract_expired[victims] = 0
+        wrk.fired[victims] = 1
+
+        emp.current_labor[i] -= n_fire
+        np.multiply(emp.current_labor, emp.wage_offer, out=emp.wage_bill)
+
+    log.debug("  Firing complete")
+    log.debug(f"  Current Labor after firing (L_i):\n{emp.current_labor}")
+    log.debug(
+        f"  Wage bills after firing:\n{np.array2string(emp.wage_bill, precision=2)}"
+    )
+
+
 banks_decide_credit_supply(lend, v=0.1)
 banks_decide_interest_rate(lend, r_bar=0.02, h_phi=0.10, rng=rng)
 firms_decide_credit_demand(bor)
@@ -491,3 +562,4 @@ firms_send_one_loan_app(bor, lend, rng)
 banks_provide_loans(bor, lb, lend, rng=rng)
 firms_send_one_loan_app(bor, lend, rng)
 banks_provide_loans(bor, lb, lend, rng=rng)
+firms_fire_workers(emp, wrk, rng=rng)
