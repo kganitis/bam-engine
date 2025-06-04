@@ -146,7 +146,7 @@ from .config import SimConfig
 from .state import SimState, create_state_from_config
 from .events import get_default_event_sequence, Event
 
-log = logging.getLogger("bamengine")
+log = logging.getLogger(__name__)
 
 class Simulation:
     """

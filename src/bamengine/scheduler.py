@@ -81,10 +81,20 @@ __all__ = [
     "Scheduler",
 ]
 
+log = logging.getLogger(__name__)
+DEEP_DEBUG = 5
+logging.addLevelName(DEEP_DEBUG, "DEEP")
 
-log = logging.getLogger("bamengine")
+
+def deep(self, message, *args, **kwargs):
+    if self.isEnabledFor(DEEP_DEBUG):
+        self._log(5, message, args, kwargs)
+
+
+logging.Logger.deep = deep
+
 logging.basicConfig(
-    level=logging.WARNING,
+    level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(message)s",
     datefmt="%H:%M:%S",
 )
@@ -114,9 +124,9 @@ def _package_defaults() -> Dict[str, Any]:
 
 
 def _validate_float1d(
-    name: str,
-    arr: float | Float1D,
-    expected_len: int,
+        name: str,
+        arr: float | Float1D,
+        expected_len: int,
 ) -> Float1D | float:
     """Ensure Float1D has the right length; scalars are accepted verbatim."""
     if np.isscalar(arr):
@@ -180,9 +190,9 @@ class Scheduler:
     # --------------------------------------------------------------------- #
     @classmethod
     def init(
-        cls,
-        config: str | Path | Mapping[str, Any] | None = None,
-        **overrides: Any,  # anything here wins last
+            cls,
+            config: str | Path | Mapping[str, Any] | None = None,
+            **overrides: Any,  # anything here wins last
     ) -> "Scheduler":
         """
         Build a Scheduler.

@@ -24,7 +24,7 @@ from bamengine.components import (
 )
 from bamengine.helpers import sample_beta_with_mean, trim_mean
 
-log = logging.getLogger("bamengine")
+log = logging.getLogger(__name__)
 # log = logging.getLogger(__name__)
 # log.setLevel(logging.INFO)
 
@@ -36,7 +36,7 @@ def firms_update_net_worth(bor: Borrower) -> None:
     """Retained profit is added to net worth; syncs the cash column too."""
 
     log.info(
-        f"Total retained profits being added to net worth: "
+        f"  Total retained profits being added to net worth: "
         f"{bor.retained_profit.sum():,.2f}"
     )
 
@@ -44,10 +44,9 @@ def firms_update_net_worth(bor: Borrower) -> None:
     bor.total_funds[:] = bor.net_worth
     np.maximum(bor.total_funds, 0)
 
-    # log.debug(
-    #     f"  Net Worths after update:\n"
-    #     f"{np.array2string(bor.net_worth, precision=2)}"
-    # )
+    log.debug(
+        f"  Net Worths after update:\n" f"{np.array2string(bor.net_worth, precision=2)}"
+    )
 
 
 def mark_bankrupt_firms(
@@ -76,7 +75,7 @@ def mark_bankrupt_firms(
     ec.exiting_firms = bankrupt.astype(np.int64)
 
     if bankrupt.size == 0:
-        log.info("No new firm bankruptcies this period.")
+        log.info("  No new firm bankruptcies this period.")
         return
 
     log.info(f"--> {bankrupt.size} FIRM(S) HAVE GONE BANKRUPT: {bankrupt.tolist()}")
@@ -125,7 +124,7 @@ def mark_bankrupt_banks(
     ec.exiting_banks = bankrupt.astype(np.int64)
 
     if bankrupt.size == 0:
-        log.info("No new bank bankruptcies this period.")
+        log.info("  No new bank bankruptcies this period.")
         return
 
     log.info(f"!!! {bankrupt.size} BANK(S) HAVE GONE BANKRUPT: {bankrupt} !!!")
@@ -158,7 +157,7 @@ def spawn_replacement_firms(
         return
 
     if exiting.size == bor.net_worth.size:
-        log.critical("ALL FIRMS BANKRUPT")
+        log.critical("!!! ALL FIRMS BANKRUPT !!!")
         # terminate simulation
         ec.destroyed = True
         return
@@ -224,7 +223,7 @@ def spawn_replacement_banks(
             log.debug(f"  Cloning healthy bank {src} to replace bankrupt bank {k}.")
             lend.equity_base[k] = lend.equity_base[src]
         else:  # terminate simulation
-            log.critical("ALL BANKS BANKRUPT")
+            log.critical("!!! ALL BANKS BANKRUPT !!!")
             ec.destroyed = True
             return
 
