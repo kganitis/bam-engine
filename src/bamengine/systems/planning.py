@@ -59,13 +59,13 @@ def firms_decide_desired_production(  # noqa: C901
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Avg market price (p_avg): {p_avg:.4f}")
-        # log.debug(
-        #     f"  Inventories (S_i):\n{np.array2string(prod.inventory, precision=2)}"
-        # )
-        # log.debug(
-        #     f"  Previous Production (Y_{{t-1}}):\n"
-        #     f"{np.array2string(prod.production, precision=2)}"
-        # )
+        log.debug(
+            f"  Inventories (S_i):\n{np.array2string(prod.inventory, precision=2)}"
+        )
+        log.debug(
+            f"  Previous Production (Y_{{t-1}}):\n"
+            f"{np.array2string(prod.production, precision=2)}"
+        )
 
     # ── 3. core rule ----------------------------------
     prod.expected_demand[:] = prod.production
@@ -73,10 +73,10 @@ def firms_decide_desired_production(  # noqa: C901
     prod.expected_demand[dn_mask] *= 1.0 - shock[dn_mask]
     prod.desired_production[:] = prod.expected_demand
 
-    # log.debug(
-    #     f"  Desired Production (Yd_i):\n"
-    #     f"{np.array2string(prod.desired_production, precision=2)}"
-    # )
+    log.debug(
+        f"  Desired Production (Yd_i):\n"
+        f"{np.array2string(prod.desired_production, precision=2)}"
+    )
 
 
 def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
@@ -85,6 +85,7 @@ def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
 
         Ld_i = ceil(Yd_i / a_i)
     """
+    # --- validation -----------------------------------------------------------
     invalid = (~np.isfinite(prod.labor_productivity)) | (
         prod.labor_productivity <= CAP_LAB_PROD
     )
@@ -95,15 +96,12 @@ def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
         )
         prod.labor_productivity[invalid] = CAP_LAB_PROD
 
-    # core rule -----------------------------------------------------------
-    ratio = prod.desired_production / prod.labor_productivity
-    np.ceil(ratio, out=ratio)  # in-place ceiling
+    # --- core rule -----------------------------------------------------------
+    desired_labor = prod.desired_production / prod.labor_productivity
+    np.ceil(desired_labor, out=desired_labor)
+    emp.desired_labor[:] = desired_labor.astype(np.int64)
 
-    # clip to int64 range to avoid overflow warnings
-    int64_max = np.iinfo(np.int64).max
-    np.clip(ratio, 0, int64_max, out=ratio)
-
-    emp.desired_labor[:] = ratio.astype(np.int64)  # safe int cast
+    # --- logging -----------------------------------------------------------
     log.info(f"Total desired labor across all firms: {emp.desired_labor.sum()}")
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Desired Labor (Ld_i):\n{emp.desired_labor}")
@@ -113,6 +111,7 @@ def firms_decide_vacancies(emp: Employer) -> None:
     """
     Vector rule: V_i = max( Ld_i – L_i , 0 )
     """
+    # --- core rule -----------------------------------------------------------
     np.subtract(
         emp.desired_labor,
         emp.current_labor,
@@ -121,6 +120,8 @@ def firms_decide_vacancies(emp: Employer) -> None:
         casting="unsafe",  # makes MyPy/NumPy on Windows happy
     )
     np.maximum(emp.n_vacancies, 0, out=emp.n_vacancies)
+
+    # --- logging -----------------------------------------------------------
     total_vacancies = emp.n_vacancies.sum()
     log.info(f"Total open vacancies in the economy: {total_vacancies}")
     if log.isEnabledFor(logging.DEBUG):

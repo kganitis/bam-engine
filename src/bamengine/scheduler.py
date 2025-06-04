@@ -483,6 +483,7 @@ class Scheduler:
         calc_unemployment_rate(self.ec, self.wrk)
         firms_pay_wages(self.emp)
         workers_receive_wage(self.con, self.wrk)
+
         firms_decide_price(
             self.prod,
             self.emp,
@@ -493,6 +494,7 @@ class Scheduler:
         )
         update_avg_mkt_price(self.ec, self.prod)
         calc_annual_inflation_rate(self.ec)
+
         firms_run_production(self.prod, self.emp)
         workers_update_contracts(self.wrk, self.emp)
 
