@@ -12,7 +12,7 @@ from numpy.random import Generator, default_rng
 
 from bamengine.components import Consumer, Producer
 
-log = logging.getLogger("bamengine")
+log = logging.getLogger(__name__)
 
 
 # ------------------------------------------------------------------ #

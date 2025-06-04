@@ -1,24 +1,68 @@
-# src/bamengine/systems/production.py
-"""
-Event-4 – Production systems
-"""
+
 from __future__ import annotations
 
 import logging
+from unittest.mock import patch
 
 import numpy as np
+from numpy.typing import NDArray
 from numpy.random import Generator, default_rng
 
 from bamengine.components import Consumer, Economy, Employer, LoanBook, Producer, Worker
 from bamengine.helpers import trimmed_weighted_mean
+from helpers.factories import mock_producer, mock_employer, mock_loanbook, mock_worker, \
+    mock_economy, mock_consumer
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
+
+
+def _mini_state() -> tuple[Economy, Producer, Employer, Worker, LoanBook, Generator]:
+    rng = default_rng(42)
+
+    ec = mock_economy(
+        avg_mkt_price=2.0,
+        avg_mkt_price_history=np.array([1.0, 1.25, 1.50, 2.00])
+    )
+
+    prod = mock_producer(
+        n=4,
+        inventory=np.array([0.0, 0.0, 3.0, 3.0]),
+        price=np.array([1.0, 1.0, 3.0, 3.0]),
+        alloc_scratch=False,
+    )
+    emp = mock_employer(
+        n=4,
+        current_labor=np.full(4, 2, dtype=np.int64),
+        wage_offer=np.full(4, 1.0),
+        wage_bill=np.full(4, 2.0),
+    )
+
+    lb = mock_loanbook()
+
+    def _const_interest(_self: "LoanBook", n: int = 128) -> NDArray[np.float64]:
+        return np.array([0.1, 10.0, 0.1, 10.0])
+
+    patch.object(type(lb), "interest_per_borrower", _const_interest)
+
+    wrk = mock_worker(
+        n=10,
+        employed=np.array([1]*8 + [0]*2, dtype=np.bool_),
+        employer=np.array([0]*2 + [1]*2 + [2]*2 + [3]*2 + [-1]*2, dtype=np.intp),
+        periods_left=np.array([2, 1] * 4 + [0, 0]),
+        wage=np.array([1.0] * 8 + [0.0] * 2),
+    )
+    return ec, prod, emp, wrk, lb, rng
+
+
+ec, prod, emp, wrk, lb, rng = _mini_state()
 
 
 def calc_unemployment_rate(
     ec: Economy,
     wrk: Worker,
 ) -> None:
+    # Number of unemployed agents / total household population
     n_workers = wrk.employed.size
     unemployed_count = wrk.employed.size - wrk.employed.sum()
     rate = unemployed_count / n_workers
@@ -28,6 +72,7 @@ def calc_unemployment_rate(
     log.debug(f"  n_workers={n_workers}")
     log.debug(f"  unemployed_count={unemployed_count}")
     log.debug(f"  unemployment rate: {rate * 100}%")
+
 
 
 def firms_decide_price(
@@ -49,9 +94,7 @@ def firms_decide_price(
     """
     log.info("  ----- Firms Deciding Prices -----")
     log.info(
-        f"  Inputs: Avg Market Price (p_avg)={p_avg:.4f}, "
-        f"Max Price Shock (h_eta)={h_eta:.3f}"
-    )
+        f"  Inputs: Avg Market Price (p_avg)={p_avg:.4f}, Max Price Shock (h_eta)={h_eta:.3f}")
 
     shape = prod.price.shape
     old_prices_for_log = prod.price.copy()  # For logging changes accurately
@@ -65,7 +108,8 @@ def firms_decide_price(
 
     shock[:] = rng.uniform(0.0, h_eta, size=shape)
     if log.isEnabledFor(logging.DEBUG):
-        log.debug(f"  Generated price shocks: {shock})")
+        log.debug(
+            f"  Generated price shocks: {shock})")
 
     # ── masks ─────────────────────────────────────────────────────────────
     mask_up = (prod.inventory == 0.0) & (prod.price < p_avg)
@@ -74,25 +118,20 @@ def firms_decide_price(
     num_dn = np.sum(mask_dn)
     num_no_change_rule = shape[0] - num_up - num_dn
     log.info(
-        f"  Price adjustment candidates: "
-        f"Raise Price={num_up}, Cut Price={num_dn}, No Rule={num_no_change_rule}"
-    )
+        f"  Price adjustment candidates: Raise Price={num_up}, Cut Price={num_dn}, No Rule={num_no_change_rule}")
 
     if log.isEnabledFor(logging.DEBUG):
         if num_up > 0:
             log.debug(
-                f"    Firms with S=0 & P<p_avg (mask_up): "
-                f"{np.where(mask_up)[0].tolist()}"
-            )
+                f"    Firms with S=0 & P<p_avg (mask_up): {np.where(mask_up)[0].tolist()}")
         if num_dn > 0:
             log.debug(
-                f"    Firms with S>0 & P>=p_avg (mask_dn): "
-                f"{np.where(mask_dn)[0].tolist()}"
-            )
+                f"    Firms with S>0 & P>=p_avg (mask_dn): {np.where(mask_dn)[0].tolist()}")
 
     # ── breakeven price: (wage bill + interest) / output ─────────────────
     interest = lb.interest_per_borrower(prod.price.size)
-    projected_output = prod.labor_productivity * emp.current_labor
+    interest = np.array([0.1, 10.0, 0.1, 10.0])
+    projected_output = prod.labor_productivity * emp.current_labor  # Output based on current labor
 
     # Raw breakeven calculation
     raw_breakeven = (emp.wage_bill + interest) / np.maximum(projected_output, 1.0e-12)
@@ -105,68 +144,91 @@ def firms_decide_price(
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Interest: {interest}")
-        log.debug(f"  Projected outputs: {projected_output}")
+        log.debug(
+            f"  Projected outputs: {projected_output}")
         valid_raw_breakeven = raw_breakeven[np.isfinite(raw_breakeven)]
         log.debug(f"  Initial prices: {prod.price}")
         log.debug(f"  Raw breakeven prices (finite values): {valid_raw_breakeven}")
         log.debug(
             f"  Breakeven prices capped for firms "
             f"{np.where(raw_breakeven > breakeven_capped_at_value)[0]}"
-            f"(max increase limited to {breakeven_cap_factor:.1f}x old price)."
-        )
-        log.debug(f"  Capped breakeven prices (finite values): {breakeven_capped}")
+            f"(max increase limited to {breakeven_cap_factor:.1f}x old price).")
+        log.debug(
+            f"  Capped breakeven prices (finite values): {breakeven_capped}")
 
     # ── DEBUG pre-update snapshot ────────────────────────────────────────
     if log.isEnabledFor(logging.DEBUG):
-        log.debug("----- PRICE UPDATE (EXECUTION) -----")
+        log.debug("----- PRICE UPDATE (EXECUTION) -----")  # Renamed for clarity
         log.debug(f"  p̄ (avg market price) : {p_avg}")
-        log.debug(
-            f"  mask_up: {num_up} firms → raise  |" f"  mask_dn: {num_dn} firms → cut"
-        )
+        log.debug(f"  mask_up: {num_up} firms → raise  |"
+                  f"  mask_dn: {num_dn} firms → cut")
 
     # ── raise prices ─────────────────────────────────────────────────────
     if mask_up.any():
+        # --- Original logic ---
         np.multiply(prod.price, 1.0 + shock, out=prod.price, where=mask_up)
         np.maximum(prod.price, breakeven_capped, out=prod.price, where=mask_up)
+        # --- Logging for this block ---
         price_changes_raise = prod.price[mask_up] - old_prices_for_log[mask_up]
         avg_change_raise = np.mean(price_changes_raise) if num_up > 0 else 0
         # Check how many prices were actually set to the breakeven_capped value
         num_floored_by_breakeven_raise = np.sum(
-            np.isclose(
-                prod.price[mask_up], breakeven_capped[mask_up]
-            )  # Price is now breakeven
-            & (
-                (old_prices_for_log[mask_up] * (1.0 + shock[mask_up]))
-                < breakeven_capped[mask_up]
-            )  # And it was lower before max()
+            np.isclose(prod.price[mask_up],
+                       breakeven_capped[mask_up]) &  # Price is now breakeven
+            ((old_prices_for_log[mask_up] * (1.0 + shock[mask_up])) < breakeven_capped[
+                mask_up])  # And it was lower before max()
         )
         log.info(
-            f"  Raising prices for {num_up} firms. "
-            f"Avg price change: {avg_change_raise:+.3f}. "
-            f"{num_floored_by_breakeven_raise} prices set by (capped) breakeven."
-        )
+            f"  Raising prices for {num_up} firms. Avg price change: {avg_change_raise:+.3f}. {num_floored_by_breakeven_raise} prices set by (capped) breakeven.")
+        if log.isEnabledFor(logging.DEBUG):
+            up_indices = np.where(mask_up)[0]
+            for i_loop_idx, firm_actual_idx in enumerate(
+                    up_indices[:min(3, num_up)]):  # Log first 3 (or fewer)
+                price_after_shock_mult = old_prices_for_log[firm_actual_idx] * (
+                            1.0 + shock[firm_actual_idx])
+                log.debug(
+                    f"    Raise Firm {firm_actual_idx}: OldP={old_prices_for_log[firm_actual_idx]:.2f}, "
+                    f"Shock={shock[firm_actual_idx]:.3f} (max_eta={h_eta:.3f}), "
+                    f"P_after_shock_mult={price_after_shock_mult:.2f}, "
+                    f"BreakevenCap={breakeven_capped[firm_actual_idx]:.2f}, FinalNewP={prod.price[firm_actual_idx]:.2f}")
 
     # ── cut prices ────────────────────────────────────────────────────────
     if mask_dn.any():
+        # --- Original logic ---
         np.multiply(prod.price, 1.0 - shock, out=prod.price, where=mask_dn)
         np.maximum(prod.price, breakeven_capped, out=prod.price, where=mask_dn)
-        price_changes_cut = prod.price[mask_dn] - old_prices_for_log[mask_dn]
+        # --- Logging for this block ---
+        price_changes_cut = prod.price[mask_dn] - old_prices_for_log[
+            mask_dn]  # Should be negative
         avg_change_cut = np.mean(price_changes_cut) if num_dn > 0 else 0
         num_floored_by_breakeven_cut = np.sum(
-            np.isclose(prod.price[mask_dn], breakeven_capped[mask_dn])
-            & (
-                (old_prices_for_log[mask_dn] * (1.0 - shock[mask_dn]))
-                < breakeven_capped[mask_dn]
-            )
+            np.isclose(prod.price[mask_dn], breakeven_capped[mask_dn]) &
+            ((old_prices_for_log[mask_dn] * (1.0 - shock[mask_dn])) < breakeven_capped[
+                mask_dn])
         )
         log.info(
-            f"  Cutting prices for {num_dn} firms. "
-            f"Avg price change: {avg_change_cut:+.3f}. "
-            f"{num_floored_by_breakeven_cut} prices set by (capped) breakeven."
-        )
+            f"  Cutting prices for {num_dn} firms. Avg price change: {avg_change_cut:+.3f}. {num_floored_by_breakeven_cut} prices set by (capped) breakeven.")
+        if log.isEnabledFor(logging.DEBUG):
+            dn_indices = np.where(mask_dn)[0]
+            for i_loop_idx, firm_actual_idx in enumerate(
+                    dn_indices[:min(3, num_dn)]):  # Log first 3 (or fewer)
+                price_after_shock_mult = old_prices_for_log[firm_actual_idx] * (
+                            1.0 - shock[firm_actual_idx])
+                log.debug(
+                    f"    Cut Firm {firm_actual_idx}: OldP={old_prices_for_log[firm_actual_idx]:.2f}, "
+                    f"Shock={shock[firm_actual_idx]:.3f} (max_eta={h_eta:.3f}), "
+                    f"P_after_shock_mult={price_after_shock_mult:.2f}, "
+                    f"BreakevenCap={breakeven_capped[firm_actual_idx]:.2f}, FinalNewP={prod.price[firm_actual_idx]:.2f}")
 
+    # User's existing final log block is good.
     if log.isEnabledFor(logging.DEBUG):
-        log.debug(f"  Updated prices:\n" f"{np.array2string(prod.price, precision=2)}")
+        log.debug(
+            f"[PRICE SANITY] max price={prod.price.max() if prod.price.size > 0 else 'N/A':.3g}, "
+            f"min shock={shock.min() if shock.size > 0 else 'N/A':.3f} "  # Corrected format for shock
+            f"max shock={shock.max() if shock.size > 0 else 'N/A':.3f} "
+        )
+        log.debug(
+            f"  Detailed New Prices (all firms):\n" f"{np.array2string(prod.price, precision=2)}")
     log.info("--- Price Decision complete ---")
 
 
@@ -260,7 +322,9 @@ def firms_run_production(prod: Producer, emp: Employer) -> None:
     np.multiply(prod.labor_productivity, emp.current_labor, out=prod.production)
     prod.inventory[:] = prod.production  # overwrite, do **not** add
 
-    log.debug(f"  Production:\n{np.array2string(prod.production, precision=2)}")
+    log.debug(
+        f"  Production:\n{np.array2string(prod.production, precision=2)}"
+    )
 
 
 def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
@@ -302,12 +366,25 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
     log.info(
         f"  Decrementing 'periods_left' for {num_employed_ticking} employed worker(s)."
     )
+    if log.isEnabledFor(logging.DEBUG):
+        # Log a sample before decrementing for comparison, if needed (can be verbose)
+        # For example, log periods_left for the first few employed workers
+        # sample_indices = np.where(mask_emp)[0][:5]
+        # log.debug(f"    Sample 'periods_left' before decrement for workers
+        # {sample_indices.tolist()}: {wrk.periods_left[sample_indices].tolist()}")
+        pass  # Keeping it less verbose for now
 
     wrk.periods_left[mask_emp] -= 1
+    if log.isEnabledFor(logging.DEBUG):
+        # log.debug(f"    Sample 'periods_left' after decrement for workers
+        # {sample_indices.tolist()}: {wrk.periods_left[sample_indices].tolist()}")
+        pass
 
     # ---- step 2: detect expirations --------------------------------------
     # `mask_emp` is from before decrement, `wrk.periods_left` is after.
     # So, we need to re-evaluate based on current `periods_left`.
+    # The original `expired` mask correctly uses `mask_emp`
+    # which refers to `wrk.employed == 1`.
     expired_mask = mask_emp & (wrk.periods_left == 0)
 
     if not np.any(expired_mask):
@@ -343,6 +420,7 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
     wrk.fired[expired_mask] = 0  # They were not fired, contract ended
 
     # -------- firm-side labour bookkeeping --------------------------------
+    log.info("    Updating firm-side labor counts and wage bills due to expirations.")
     # `firms_losing_workers` contains the employer ID for each expired contract
     delta_labor = np.bincount(firms_losing_workers, minlength=emp.current_labor.size)
 
@@ -371,9 +449,17 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
     log.debug(f"    Firm labor counts updated: {emp.current_labor}")
 
     np.multiply(emp.current_labor, emp.wage_offer, out=emp.wage_bill)
-    log.debug(
-        f"    Firm wage bills recalculated based on new labor counts: "
-        f"{emp.wage_bill}"
-    )
+    log.debug(f"    Firm wage bills recalculated based on new labor counts: "
+              f"{emp.wage_bill}")
 
     log.info("--- Worker Contract Update complete ---")
+
+
+calc_unemployment_rate(ec, wrk)
+firms_pay_wages(emp)
+workers_receive_wage(mock_consumer(10), wrk)
+firms_decide_price(prod, emp, lb, p_avg=ec.avg_mkt_price, h_eta=0.10, rng=rng)
+update_avg_mkt_price(ec, prod)
+calc_annual_inflation_rate(ec)
+firms_run_production(prod, emp)
+workers_update_contracts(wrk, emp)

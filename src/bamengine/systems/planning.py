@@ -8,7 +8,7 @@ from numpy.random import Generator, default_rng
 
 from bamengine.components import Employer, Producer
 
-log = logging.getLogger("bamengine")
+log = logging.getLogger(__name__)
 
 CAP_LAB_PROD = 1.0e-6  # labor productivity cap if below from or equal to zero
 
@@ -55,7 +55,7 @@ def firms_decide_desired_production(  # noqa: C901
     n_up = np.sum(up_mask)
     n_dn = np.sum(dn_mask)
     n_keep = len(prod.price) - n_up - n_dn
-    log.info(f"Production changes: {n_up} firms ↑, {n_dn} firms ↓, {n_keep} firms ↔.")
+    log.info(f"  Production changes: {n_up} firms ↑, {n_dn} firms ↓, {n_keep} firms ↔.")
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Avg market price (p_avg): {p_avg:.4f}")
@@ -92,7 +92,7 @@ def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
     if invalid.any():
         n_invalid = np.sum(invalid)
         log.warning(
-            f"{n_invalid} firms have too low/non-finite labor productivity; clamping."
+            f"  {n_invalid} firms have too low/non-finite labor productivity; clamping."
         )
         prod.labor_productivity[invalid] = CAP_LAB_PROD
 
@@ -102,7 +102,7 @@ def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
     emp.desired_labor[:] = desired_labor.astype(np.int64)
 
     # --- logging -----------------------------------------------------------
-    log.info(f"Total desired labor across all firms: {emp.desired_labor.sum()}")
+    log.info(f"  Total desired labor across all firms: {emp.desired_labor.sum()}")
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Desired Labor (Ld_i):\n{emp.desired_labor}")
 
@@ -123,7 +123,7 @@ def firms_decide_vacancies(emp: Employer) -> None:
 
     # --- logging -----------------------------------------------------------
     total_vacancies = emp.n_vacancies.sum()
-    log.info(f"Total open vacancies in the economy: {total_vacancies}")
+    log.info(f"  Total open vacancies in the economy: {total_vacancies}")
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Current Labor (L_i):\n{emp.current_labor}")
         log.debug(f"  Vacancies (V_i):\n{emp.n_vacancies}")
