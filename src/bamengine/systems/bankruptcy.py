@@ -91,18 +91,7 @@ def mark_bankrupt_firms(
     emp.wage_bill[bankrupt] = 0.0
 
     # ── purge their loans from the ledger ───────────────────────────────
-    if lb.size:
-        bad_rows = np.isin(lb.borrower[: lb.size], bankrupt)
-        if bad_rows.any():
-            keep_rows = ~bad_rows
-            new_size: int = int(keep_rows.sum())
-
-            for col in ("borrower", "lender", "principal", "rate", "interest", "debt"):
-                arr = getattr(lb, col)
-                if arr.size:  # column may be lazily initialised
-                    arr[:new_size] = arr[: lb.size][keep_rows]
-
-            lb.size = new_size
+    lb.purge_borrowers(bankrupt)
 
 
 def mark_bankrupt_banks(
@@ -125,17 +114,7 @@ def mark_bankrupt_banks(
     log.info(f"!!! {bankrupt.size} BANK(S) HAVE GONE BANKRUPT: {bankrupt} !!!")
 
     # Purge every loan row that references the bankrupt banks
-    if lb.size:
-        bad = np.isin(lb.lender[: lb.size], bankrupt)
-        if bad.any():
-            keep = ~bad
-            keep_size = int(keep.sum())
-            for name in ("borrower", "lender", "principal", "rate", "interest", "debt"):
-                arr = getattr(lb, name)
-                if arr.size == 0:
-                    continue
-                arr[:keep_size] = arr[: lb.size][keep]
-            lb.size = keep_size
+    lb.purge_lenders(bankrupt)
 
 
 # ───────────────────────── Event-8  ─  Entry  ─────────────────
@@ -173,8 +152,8 @@ def spawn_replacement_firms(
 
     for i in exiting:
         # size smaller than trimmed mean
-        s = sample_beta_with_mean(0.5, low=0.1, high=1.0, concentration=6, rng=rng)
-        # s = 0.9
+        # s = sample_beta_with_mean(0.8, low=0.1, high=1.0, concentration=6, rng=rng)
+        s = 0.8
         bor.net_worth[i] = mean_net * s
 
         bor.total_funds[i] = bor.net_worth[i]
@@ -183,16 +162,16 @@ def spawn_replacement_firms(
         bor.credit_demand[i] = 0.0
         bor.projected_fragility[i] = 0.0
 
-        prod.production[i] = mean_prod * s
+        prod.production[i] = mean_prod
         prod.inventory[i] = 0.0
         prod.expected_demand[i] = 0.0
         prod.desired_production[i] = 0.0
         prod.labor_productivity[i] = 1.0
-        prod.price[i] = ec.avg_mkt_price
+        prod.price[i] = ec.avg_mkt_price * 1.25
 
         emp.current_labor[i] = 0
         emp.desired_labor[i] = 0
-        emp.wage_offer[i] = mean_wage
+        emp.wage_offer[i] = mean_wage * s
         emp.n_vacancies[i] = 0
         emp.total_funds[i] = bor.total_funds[i]
         emp.wage_bill[i] = 0.0

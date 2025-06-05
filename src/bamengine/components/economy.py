@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from bamengine.typing import Float1D, Idx1D, Int1D
+from bamengine.typing import Float1D, Idx1D, Int1D, Bool1D
 
 
 @dataclass(slots=True)
@@ -107,22 +107,6 @@ class LoanBook:
     capacity: int = 128  # current physical length
     size: int = 0  # number of *filled* rows
 
-    # ------------------------------------------------------------------ #
-    # fast aggregations                                                  #
-    # ------------------------------------------------------------------ #
-    def debt_per_borrower(self, n_borrowers: int) -> Float1D:
-        out = np.zeros(n_borrowers, dtype=np.float64)
-        np.add.at(out, self.borrower[: self.size], self.debt[: self.size])
-        return out
-
-    def interest_per_borrower(self, n_borrowers: int) -> Float1D:
-        out = np.zeros(n_borrowers, dtype=np.float64)
-        np.add.at(out, self.borrower[: self.size], self.interest[: self.size])
-        return out
-
-    # ------------------------------------------------------------------ #
-    # helpers                                                            #
-    # ------------------------------------------------------------------ #
     def _ensure_capacity(self, extra: int) -> None:
         needed = self.size + extra
         if needed <= self.capacity:
@@ -143,20 +127,92 @@ class LoanBook:
             for n in ("borrower", "lender", "principal", "rate", "interest", "debt")
         )
 
+    # ------------------------------------------------------------------ #
+    #   API                                                              #
+    # ------------------------------------------------------------------ #
+    def debt_per_borrower(self, n_borrowers: int) -> Float1D:
+        out = np.zeros(n_borrowers, dtype=np.float64)
+        np.add.at(out, self.borrower[: self.size], self.debt[: self.size])
+        return out
+
+    def interest_per_borrower(self, n_borrowers: int) -> Float1D:
+        out = np.zeros(n_borrowers, dtype=np.float64)
+        np.add.at(out, self.borrower[: self.size], self.interest[: self.size])
+        return out
+
     def append_loans_for_lender(
         self,
         lender_idx: np.intp,
-        borrowers_indices: Idx1D,
+        borrower_indices: Idx1D,
         amount: Float1D,
         rate: Float1D,
     ) -> None:
         self._ensure_capacity(amount.size)
         start, stop = self.size, self.size + amount.size
 
-        self.borrower[start:stop] = borrowers_indices
+        self.borrower[start:stop] = borrower_indices
         self.lender[start:stop] = lender_idx  # ← scalar broadcast
         self.principal[start:stop] = amount
         self.rate[start:stop] = rate
         self.interest[start:stop] = amount * rate
         self.debt[start:stop] = amount * (1.0 + rate)
         self.size = stop
+
+    def drop_rows(self, rows_mask: Bool1D) -> int:
+        """
+        Hard-delete the rows where *rows_mask* is True and compact the edge list
+        **in-place**.
+
+        Parameters
+        ----------
+        rows_mask : 1-D bool[>= self.size]
+            Mask over the *current* part of every column.
+            `True` → row will be removed.
+
+        Returns
+        -------
+        removed: int
+            How many rows were deleted.
+        """
+        if self.size == 0 or not rows_mask.any():
+            return 0  # nothing to do
+
+        self._ensure_capacity(0)  # no growth, only normalisation
+
+        keep = ~rows_mask[: self.size]  # rows to keep
+        new_size = int(keep.sum())
+
+        if new_size < self.size:  # only touch memory when shrinking
+            for name in ("borrower", "lender", "principal", "rate", "interest", "debt"):
+                col = getattr(self, name)
+                col[:new_size] = col[: self.size][keep]
+
+            removed = self.size - new_size
+            self.size = new_size
+            return removed
+
+        return 0
+
+    def purge_borrowers(self, borrower_ids: Idx1D) -> int:
+        """
+        Remove every loan whose *borrower* is in *borrower_ids*.
+
+        Returns
+        -------
+        int
+            Number of rows removed.
+        """
+        mask = np.isin(self.borrower[: self.size], borrower_ids)
+        return self.drop_rows(mask)
+
+    def purge_lenders(self, lender_ids: Idx1D) -> int:
+        """
+        Delete every loan whose *lender* is in *lender_ids*.
+
+        Returns
+        -------
+        int
+            Number of rows removed.
+        """
+        mask = np.isin(self.lender[: self.size], lender_ids)
+        return self.drop_rows(mask)

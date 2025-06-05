@@ -38,13 +38,13 @@ lend = mock_lender(
 lb = mock_loanbook()
 lb.append_loans_for_lender(
     lender_idx=0,
-    borrowers_indices=np.array([0, 1], dtype=np.intp),
+    borrower_indices=np.array([0, 1], dtype=np.intp),
     amount=np.array([10.0, 10.0]),
     rate=np.array([0.11, 0.11]),
 )
 lb.append_loans_for_lender(
     lender_idx=1,
-    borrowers_indices=np.array([2], dtype=np.intp),
+    borrower_indices=np.array([2], dtype=np.intp),
     amount=np.array([10.0]),
     rate=np.array([0.11]),
 )
@@ -186,19 +186,10 @@ def firms_validate_debt_commitments(
                     f"equity from {old_lender_equity_repayment[i_lender]:.2f} "
                     f"to {lend.equity_base[lender_idx]:.2f}")
 
-        # remove fully repaid rows from ledger (cheap in-place compaction)
-        keep = ~row_sel
-        old_lb_size = lb.size
-        keep_size = int(keep.sum())
-        log.debug(
-            f"  Compacting loan book: removing {row_sel.sum()} repaid loans. "
-            f"Old size: {old_lb_size}, New size: {keep_size}."
-        )
-        #  TODO Make a LoanBook method for this
-        for name in ("borrower", "lender", "principal", "rate", "interest", "debt"):
-            arr = getattr(lb, name)
-            arr[:keep_size] = arr[: lb.size][keep]
-        lb.size = keep_size
+        # Remove fully repaid rows from ledge
+        removed = lb.drop_rows(row_sel)
+        log.debug(f"  Compacting loan-book: removed {removed} repaid loans. "
+                  f"New size={lb.size}")
 
     # ================================================================ #
     #    Bad-debt write-offs                                           #

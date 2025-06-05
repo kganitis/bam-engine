@@ -24,30 +24,26 @@ def run_baseline_simulation(n_firms=100, seed=0) -> dict[str, NDArray[np.float64
         "n_households": n_firms * 5,
         "n_firms": n_firms,
         "n_banks": max(int(n_firms / 10), 3),
-        "periods": 2000,
+        "periods": 1000,
         "seed": np.random.default_rng(seed)
     }
 
-    savings_seed = sample_beta_with_mean(
+    params["savings_init"] = sample_beta_with_mean(
         mean=3.0,
         n=params["n_households"],
         low=0.5, high=10.0,
         concentration=12,
-        rng=params["seed"])
+        rng=params["seed"]
+    )
 
-    equity_base_seed = sample_beta_with_mean(
+    params["equity_base_init"] = sample_beta_with_mean(
         mean=5.0,
         n=params["n_banks"],
         low=1.0,
         high=10.0,
         concentration=20,
-        rng=params["seed"])
-
-    # Broadcast scalar/array to the correct length.
-    params["savings_init"] = np.broadcast_to(savings_seed,
-                                             params["n_households"]).copy()
-    params["equity_base_init"] = np.broadcast_to(equity_base_seed,
-                                                 params["n_banks"]).copy()
+        rng=params["seed"]
+    )
 
     sched = Scheduler.init(
         config="config.yml",
@@ -77,4 +73,4 @@ def run_baseline_simulation(n_firms=100, seed=0) -> dict[str, NDArray[np.float64
 
 if __name__ == "__main__":
     sim_data = run_baseline_simulation()
-    plot_results(data=sim_data, burn_in=1000)
+    plot_results(data=sim_data, burn_in=500)

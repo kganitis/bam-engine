@@ -53,7 +53,7 @@ lend = mock_lender(
 lb = mock_loanbook()
 lb.append_loans_for_lender(
     lender_idx=1,
-    borrowers_indices=np.array([2], dtype=np.intp),
+    borrower_indices=np.array([2], dtype=np.intp),
     amount=np.array([10.0]),
     rate=np.array([0.11]),
 )
@@ -140,18 +140,7 @@ def mark_bankrupt_firms(
     emp.wage_bill[bankrupt] = 0.0
 
     # ── purge their loans from the ledger ───────────────────────────────
-    if lb.size:
-        bad_rows = np.isin(lb.borrower[: lb.size], bankrupt)
-        if bad_rows.any():
-            keep_rows = ~bad_rows
-            new_size: int = int(keep_rows.sum())
-
-            for col in ("borrower", "lender", "principal", "rate", "interest", "debt"):
-                arr = getattr(lb, col)
-                if arr.size:  # column may be lazily initialised
-                    arr[:new_size] = arr[: lb.size][keep_rows]
-
-            lb.size = new_size
+    lb.purge_borrowers(bankrupt)
 
 
 def mark_bankrupt_banks(
@@ -174,17 +163,7 @@ def mark_bankrupt_banks(
     log.info(f"!!! {bankrupt.size} BANK(S) HAVE GONE BANKRUPT: {bankrupt} !!!")
 
     # Purge every loan row that references the bankrupt banks
-    if lb.size:
-        bad = np.isin(lb.lender[: lb.size], bankrupt)
-        if bad.any():
-            keep = ~bad
-            keep_size = int(keep.sum())
-            for name in ("borrower", "lender", "principal", "rate", "interest", "debt"):
-                arr = getattr(lb, name)
-                if arr.size == 0:
-                    continue
-                arr[:keep_size] = arr[: lb.size][keep]
-            lb.size = keep_size
+    lb.purge_lenders(bankrupt)
 
 
 # ───────────────────────── Event-8  ─  Entry  ─────────────────

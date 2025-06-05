@@ -20,7 +20,7 @@ def calc_unemployment_rate(
     wrk: Worker,
 ) -> None:
     n_workers = wrk.employed.size
-    unemployed_count = wrk.employed.size - wrk.employed.sum()
+    unemployed_count = n_workers - wrk.employed.sum()
     rate = unemployed_count / n_workers
     ec.unemp_rate_history = np.append(ec.unemp_rate_history, rate)
 
