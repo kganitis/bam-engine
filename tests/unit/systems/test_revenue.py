@@ -88,12 +88,13 @@ def _single_loan_setup(
         n=1,
         equity_base=np.array([lender_equity]),
     )
+    # principal = interest => debt = 2×principal
     lb = mock_loanbook(n=1, size=1)
     lb.borrower[0] = 0
     lb.lender[0] = 0
-    lb.principal[0] = debt / 2.0  # any split works
-    lb.rate[0] = 1.0  # makes debt = 2×principal
-    lb.interest[0] = lb.principal[0]  # same value
+    lb.principal[0] = debt / 2.0
+    lb.rate[0] = 1.0
+    lb.interest[0] = lb.principal[0]
     lb.debt[0] = debt
 
     return bor, lend, lb
@@ -106,13 +107,14 @@ def test_validate_debt_full_repayment() -> None:
     """
     debt = 12.0
     bor, lend, lb = _single_loan_setup(gross_profit=15.0, debt=debt)
+    interest = lb.interest.sum()
 
     firms_validate_debt_commitments(bor, lend, lb)
 
     # ledger emptied
     assert lb.size == 0
     # symmetric money-flow
-    assert lend.equity_base[0] == pytest.approx(1_000.0 + debt)
+    assert lend.equity_base[0] == pytest.approx(1_000.0 + interest)
     assert bor.total_funds[0] == pytest.approx(100.0 - debt)
     # net_profit = gross_profit − interest
     assert bor.net_profit[0] == pytest.approx(9.0)

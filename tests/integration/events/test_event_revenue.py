@@ -36,6 +36,7 @@ def _run_revenue_event(
         "equity_before": sch.lend.equity_base.copy(),
         "net_w_before": sch.bor.net_worth.copy(),
         "debt_tot_before": sch.lb.debt_per_borrower(n_firms),
+        "interest_tot": sch.lb.interest_per_borrower(n_firms),
     }
 
     # ---- 1. revenue & gross-profit -------------------------------------
@@ -111,6 +112,7 @@ def test_event_revenue_basic(tiny_sched: Scheduler) -> None:
     debt_before = snap["debt_tot_before"]
     repay_mask = snap["funds_after_revenue"] >= debt_before - _EPS
     debt_paid = np.where(repay_mask, debt_before, 0.0)
+    interest_paid = np.where(repay_mask, snap["interest_tot"], 0.0)
     bad_debt = np.where(~repay_mask, snap["net_w_before"], 0.0)
 
     # ---- borrower cash --------------------------------------------------
@@ -124,7 +126,7 @@ def test_event_revenue_basic(tiny_sched: Scheduler) -> None:
 
     # ---- lender equity --------------------------------------------------
     equity_expected = snap["equity_before"].copy()
-    equity_expected[0] += debt_paid.sum() - bad_debt.sum()
+    equity_expected[0] += interest_paid.sum() - bad_debt.sum()
 
     np.testing.assert_allclose(sch.lend.equity_base, equity_expected, rtol=_EPS)
 

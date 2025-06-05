@@ -31,10 +31,3 @@ __all__ = [
     "Int2D",
     "Idx2D",
 ]
-
-# ------------------------------------------------------------------ #
-# Back‑compat shim – will disappear in v0.2                          #
-# ------------------------------------------------------------------ #
-from numpy.typing import NDArray as _NDArray  # noqa: E402
-
-NDArray = _NDArray  # type: ignore  # pragma: no cover

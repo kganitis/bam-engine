@@ -143,10 +143,10 @@ class LoanBook:
             for n in ("borrower", "lender", "principal", "rate", "interest", "debt")
         )
 
-    def append_loans(
+    def append_loans_for_lender(
         self,
+        lender_idx: np.intp,
         borrowers_indices: Idx1D,
-        lender_idx: int,
         amount: Float1D,
         rate: Float1D,
     ) -> None:
