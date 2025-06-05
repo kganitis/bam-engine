@@ -23,20 +23,20 @@ max_Z:                2          # shops a household can visit (per period)
 
 # ── economy-wide structural params ─────────────────────────────────────
 theta:                8          # job contract length (periods)
-beta:                 2.00       # consumption propensity exponent where => (```π_j  = 1 / (1 + tanh(SA_j / SA_avg) ** beta)```, SA_j: savings of consumer j, SA_avg: avg consumer savings)
-delta:                0.40       # dividend pay-out ratio
-v:                    0.06       # bank capital-requirement coefficient => 1/v: banks maximum allowable leverage
-r_bar:                0.02       # baseline (policy) interest rate (quarterly)
-min_wage:             0.5        # initial minimum wage
+beta:                 0.87       # consumption propensity exponent where => (```π_j  = 1 / (1 + tanh(SA_j / SA_avg) ** beta)```, SA_j: savings of consumer j, SA_avg: avg consumer savings)
+delta:                0.15       # dividend pay-out ratio
+v:                    0.23       # bank capital-requirement coefficient => 1/v: banks maximum allowable leverage
+r_bar:                0.07       # baseline (policy) interest rate (quarterly)
+min_wage:             1.0        # initial minimum wage
 min_wage_rev_period:  4          # periods between minimum wage revisions
 
 # ── initial balance-sheet scalars ──────────────────────────────────────
-net_worth_init:      12.0        # initial per firm net worth (units of money)
-production_init:      4.0        # initial per firm production (units of goods)
-price_init:           1.0        # initial (universal) goods price (units of money)
+net_worth_init:      10.0        # initial per firm net worth (units of money)
+production_init:      1.0        # initial per firm production (units of goods)
+price_init:           1.5        # initial (universal) goods price (units of money)
 savings_init:         3.0        # initial (per consumer) savings (units of money)
-wage_offer_init:      0.66       # initial (universal) wage offer by firms (units of money)
-equity_base_init:     5.0        # initial (per bank) equity base (units of money)
+wage_offer_init:      1.0       # initial (universal) wage offer by firms (units of money)
+equity_base_init:    10000.0        # initial (per bank) equity base (units of money)
 
 # ── RNG seed ───────────────────────────────────────────────────────────
 seed:               12345        # int; Generator in code to override

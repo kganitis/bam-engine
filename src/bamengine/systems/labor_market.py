@@ -49,6 +49,41 @@ def adjust_minimum_wage(ec: Economy) -> None:
     ec.min_wage = new_min_wage
 
 
+def adjust_minimum_wage_new(ec: Economy) -> None:
+    """
+    Every `min_wage_rev_period` periods update ŵ_t by realised inflation:
+
+        π = (P_{t-1} - P_{t-m}) / P_{t-m}
+        ŵ_t = ŵ_{t-1} * (1 + π)
+    """
+    m = ec.min_wage_rev_period
+    if ec.avg_mkt_price_history.size <= m:
+        return  # not enough data yet
+    if (ec.avg_mkt_price_history.size - 1) % m != 0:
+        return  # not a revision step
+
+    # if log.isEnabledFor(logging.DEBUG):
+    #     log.debug("Minimum-wage revision step reached – computing inflation …")
+
+    p_now = ec.avg_mkt_price_history[-1]  # price of period t-1
+    p_prev = ec.avg_mkt_price_history[-m - 1]  # price of period t-m
+    inflation = (p_now - p_prev) / p_prev
+    inflation = ec.inflation_history[-1]
+
+    # if log.isEnabledFor(logging.DEBUG):
+    #     log.debug(
+    #         f"Min-wage revision: p_now={p_now:.3f}, "
+    #         f"p_prev={p_prev:.3f}, π={inflation:+.3%}"
+    #     )
+
+    new_min_wage = ec.min_wage * (1.0 + inflation)
+    # log.info(
+    #     f"Revision period. Inflation over last {m} periods: {inflation:+.3%}. "
+    #     f"Min wage: {ec.min_wage:.3f} → {new_min_wage:.3f}"
+    # )
+    ec.min_wage = new_min_wage
+
+
 def firms_decide_wage_offer(
     emp: Employer,
     *,
@@ -558,7 +593,7 @@ def firms_hire_workers(
         wrk.employed[final_hires_for_firm] = 1
         wrk.employer[final_hires_for_firm] = i
         wrk.wage[final_hires_for_firm] = emp.wage_offer[i]
-        wrk.periods_left[final_hires_for_firm] = theta
+        wrk.periods_left[final_hires_for_firm] = theta + rng.poisson(10)
         wrk.contract_expired[final_hires_for_firm] = 0  # Reset flags
         wrk.fired[final_hires_for_firm] = 0
         # Workers who are hired should stop applying elsewhere

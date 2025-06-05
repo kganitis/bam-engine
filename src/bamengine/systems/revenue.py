@@ -168,19 +168,12 @@ def firms_validate_debt_commitments(
                     f"to {lend.equity_base[lender_idx]:.2f}"
                 )
 
-        # remove fully repaid rows from ledger (cheap in-place compaction)
-        keep = ~row_sel
-        old_lb_size = lb.size
-        keep_size = int(keep.sum())
+        # Remove fully repaid rows from ledge
+        removed = lb.drop_rows(row_sel)
         log.debug(
-            f"  Compacting loan book: removing {row_sel.sum()} repaid loans. "
-            f"Old size: {old_lb_size}, New size: {keep_size}."
+            f"  Compacting loan-book: removed {removed} repaid loans. "
+            f"New size={lb.size}"
         )
-        #  TODO Make a LoanBook method for this
-        for name in ("borrower", "lender", "principal", "rate", "interest", "debt"):
-            arr = getattr(lb, name)
-            arr[:keep_size] = arr[: lb.size][keep]
-        lb.size = keep_size
 
     # ================================================================ #
     #    Bad-debt write-offs                                           #
@@ -224,13 +217,13 @@ def firms_validate_debt_commitments(
             # This determines the proportion of the equity-based loss
             # this bank absorbs for this loan.
             d_tot_map = total_debt[borrowers_from_lb[bad_rows_in_lb_mask]]
-            frac = (lb.debt[: lb.size][bad_rows_in_lb_mask] /
-                    np.maximum(d_tot_map, _EPS))
+            frac = lb.debt[: lb.size][bad_rows_in_lb_mask] / np.maximum(d_tot_map, _EPS)
 
             # Calculate the bad debt amount for this loan.
             # This is the bank's `frac` multiplied by the firm's net worth.
-            bad_amt_per_loan = frac * bor.net_worth[
-                borrowers_from_lb[bad_rows_in_lb_mask]]
+            bad_amt_per_loan = (
+                frac * bor.net_worth[borrowers_from_lb[bad_rows_in_lb_mask]]
+            )
 
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(

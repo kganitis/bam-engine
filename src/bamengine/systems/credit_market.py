@@ -418,6 +418,7 @@ def banks_provide_loans(
         total_loans_this_round += amount.sum()
 
         # --- update ledger (vectorised append) ---------------------------------
+        lb.purge_borrowers(borrowers)
         lb.append_loans_for_lender(k, borrowers, amount, rate)
 
         # --- balances ---------------------------------------------------
