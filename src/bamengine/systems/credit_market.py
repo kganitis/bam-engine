@@ -11,11 +11,12 @@ from typing import cast
 import numpy as np
 from numpy.random import Generator, default_rng
 
+from bamengine._logging_ext import getLogger
 from bamengine.components import Borrower, Employer, Lender, LoanBook, Worker
 from bamengine.helpers import select_top_k_indices_sorted
 from bamengine.typing import Idx1D
 
-log = logging.getLogger(__name__)
+log = getLogger(__name__)
 
 CAP_FRAG = 1.0e6  # fragility cap when net worth is zero
 
@@ -417,7 +418,7 @@ def banks_provide_loans(
         total_loans_this_round += amount.sum()
 
         # --- update ledger (vectorised append) ---------------------------------
-        lb.append_loans(borrowers, k, amount, rate)
+        lb.append_loans_for_lender(k, borrowers, amount, rate)
 
         # --- balances ---------------------------------------------------
         bor.total_funds[borrowers] += amount

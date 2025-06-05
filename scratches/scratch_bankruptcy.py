@@ -20,10 +20,59 @@ from bamengine.components import (
     Worker,
 )
 from bamengine.helpers import sample_beta_with_mean, trim_mean
+from helpers.factories import mock_economy, mock_borrower, mock_lender, mock_loanbook, \
+    mock_producer, mock_employer, mock_worker
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 
 _EPS = 1.0e-9
+
+ec = mock_economy()
+prod = mock_producer(
+    n=3,
+    production=np.array([20.0, 20.0, 20.0]),
+    inventory=np.array([0, 10, 20], dtype=np.int64),
+    price=np.array([2.0, 2.0, 2.0]),
+)
+bor = mock_borrower(
+    n=3,
+    net_worth=np.array([10.0, 10.0, 10.0]),
+    total_funds=np.array([21.34, 8.90, 0.0]),
+    wage_bill=np.array([20.0, 20.0, 20.0]),
+    gross_profit=np.array([20.0, 0.0, -20.0]),
+    net_profit=np.array([18.90, -1.10, -21.10]),
+    retained_profit=np.array([11.34, -1.10, -21.10]),
+)
+lend = mock_lender(
+    n=2,
+    equity_base=np.array([4.20, -9.00]),
+    credit_supply=np.array([0.0, 0.0]),
+    interest_rate=np.array([0.055, 0.055]),
+)
+lb = mock_loanbook()
+lb.append_loans_for_lender(
+    lender_idx=1,
+    borrowers_indices=np.array([2], dtype=np.intp),
+    amount=np.array([10.0]),
+    rate=np.array([0.11]),
+)
+emp = mock_employer(
+    n=3,
+    current_labor=np.array([20, 20, 20], dtype=np.int64),
+    wage_bill=bor.wage_bill,
+)
+wrk = mock_worker(
+    n=60,
+    employed=np.ones(60, dtype=np.bool_),
+    employer=np.array([0]*20 + [1]*20 + [2]*20, dtype=np.intp),
+    employer_prev=np.array([0]*20 + [1]*20 + [2]*20, dtype=np.intp),
+    wage=np.ones(60),
+    periods_left=np.full(60, 2, dtype=np.int64),
+    contract_expired=np.full(60, 0, dtype=np.bool_),
+    fired=np.full(60, 0, dtype=np.bool_),
+)
+rng = default_rng(0)
 
 
 # ───────────────────────── Event-7  ─  Bankruptcy ───────────
@@ -145,7 +194,7 @@ def spawn_replacement_firms(
     emp: Employer,
     bor: Borrower,
     *,
-    rng: Generator = default_rng(),
+    rng: Generator,
 ) -> None:
     """Create one brand-new firm *per* index stored in `ec.exiting_firms`."""
     exiting = ec.exiting_firms
@@ -204,7 +253,7 @@ def spawn_replacement_banks(
     ec: Economy,
     lend: Lender,
     *,
-    rng: Generator = default_rng(),
+    rng: Generator,
 ) -> None:
     """Clone parameters from a random healthy peer for each exiting bank."""
     exiting = ec.exiting_banks
@@ -230,3 +279,10 @@ def spawn_replacement_banks(
         lend.recv_loan_apps[k, :] = -1
 
     ec.exiting_banks = np.empty(0, np.intp)  # clear list
+
+
+firms_update_net_worth(bor)
+mark_bankrupt_firms(ec, prod, emp, bor, wrk, lb)
+mark_bankrupt_banks(ec, lend, lb)
+spawn_replacement_firms(ec, prod, emp, bor, rng=rng)
+spawn_replacement_banks(ec, lend, rng=rng)
