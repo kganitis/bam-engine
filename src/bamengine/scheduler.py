@@ -448,13 +448,12 @@ class Scheduler:
             rng=self.rng,
         )
         update_avg_mkt_price(self.ec, self.prod)
+        calc_annual_inflation_rate(self.ec)
+        adjust_minimum_wage_new(self.ec)
         firms_decide_desired_labor(self.prod, self.emp)
         firms_decide_vacancies(self.emp)
 
         # ===== event 2 – labor-market =================================================
-
-        calc_annual_inflation_rate(self.ec)
-        adjust_minimum_wage_new(self.ec)
         firms_decide_wage_offer(
             self.emp, w_min=self.ec.min_wage, h_xi=self.h_xi, rng=self.rng
         )

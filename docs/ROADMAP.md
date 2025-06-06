@@ -2,11 +2,12 @@
 
 ### TODO Next
 
-* continue cross-checking
-* test coverage
-* logging
-* visualization
-* presentation
+* refactor & add detailed logging
+* cross-check with BAM book
+* refactor tests & improve test coverage
+* add plotting module & make example usage
+* un-AI comments & docstrings / copy style from scipy & other libraries
+* prepare presentation & future work
 
 ---
 

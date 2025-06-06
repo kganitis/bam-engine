@@ -12,7 +12,7 @@ from hypothesis import strategies as st
 from numpy.random import default_rng
 
 from bamengine.systems.planning import (
-    CAP_LAB_PROD,
+    _EPS,
     firms_decide_desired_labor,
     firms_decide_desired_production,
     firms_decide_vacancies,
@@ -147,7 +147,7 @@ def test_zero_productivity_guard() -> None:
     prod = mock_producer(labor_productivity=np.array([0.0]))
     emp = mock_employer()
     firms_decide_desired_labor(prod, emp)
-    np.testing.assert_array_equal(prod.labor_productivity, [CAP_LAB_PROD])
+    np.testing.assert_array_equal(prod.labor_productivity, [_EPS])
 
 
 # --------------------------------------------------------------------------- #
@@ -211,7 +211,7 @@ def test_labor_and_vacancy_properties(data) -> None:  # type: ignore[no-untyped-
     firms_decide_vacancies(emp)
 
     # reproduce the algorithm in pure NumPy
-    a_eff = np.where(a_raw > CAP_LAB_PROD, a_raw, CAP_LAB_PROD)
+    a_eff = np.where(a_raw > _EPS, a_raw, _EPS)
     desired_labor_expected = np.ceil(yd_raw / a_eff)
     desired_labor_expected = np.clip(
         desired_labor_expected, 0, np.iinfo(np.int64).max

@@ -28,22 +28,24 @@ def run_baseline_simulation(n_firms=100, seed=0) -> dict[str, NDArray[np.float64
         "seed": np.random.default_rng(seed)
     }
 
-    params["savings_init"] = sample_beta_with_mean(
-        mean=3.0,
-        n=params["n_households"],
-        low=0.5, high=10.0,
-        concentration=12,
-        rng=params["seed"]
-    )
+    # params["savings_init"] = sample_beta_with_mean(
+    #     mean=3.0,
+    #     n=params["n_households"],
+    #     low=0.5, high=10.0,
+    #     concentration=12,
+    #     rng=params["seed"]
+    # )
+    params["savings_init"] = 1 + params["seed"].poisson(2)
 
-    params["equity_base_init"] = sample_beta_with_mean(
-        mean=5.0,
-        n=params["n_banks"],
-        low=1.0,
-        high=10.0,
-        concentration=20,
-        rng=params["seed"]
-    )
+    # params["equity_base_init"] = sample_beta_with_mean(
+    #     mean=5.0,
+    #     n=params["n_banks"],
+    #     low=1.0,
+    #     high=10.0,
+    #     concentration=20,
+    #     rng=params["seed"]
+    # )
+    params["equity_base_init"] = 10 + params["seed"].poisson(10_000)
 
     sched = Scheduler.init(
         config="config.yml",
@@ -51,8 +53,8 @@ def run_baseline_simulation(n_firms=100, seed=0) -> dict[str, NDArray[np.float64
         n_households=params["n_households"],
         n_banks=params["n_banks"],
         n_periods=params["periods"],
-        # savings_init=params["savings_init"],
-        # equity_base_init=params["equity_base_init"],
+        savings_init=params["savings_init"],
+        equity_base_init=params["equity_base_init"],
         seed=params["seed"],
     )
     collector = DataCollector()

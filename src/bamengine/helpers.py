@@ -3,7 +3,7 @@ import numpy as np
 from numpy.random import Generator, default_rng
 from numpy.typing import NDArray
 
-from bamengine.typing import Float1D
+from bamengine.typing import Float1D, Idx1D
 
 
 def trim_mean(values: Float1D, trim_pct: float = 0.05) -> float:
@@ -162,8 +162,8 @@ def sample_beta_with_mean(
 
 
 def select_top_k_indices_sorted(
-    values: NDArray[np.float64], k: int, descending: bool = True
-) -> NDArray[np.intp]:
+    values: Float1D, k: int, descending: bool = True
+) -> Idx1D:
     """
     Returns indices of k smallest/largest elements, sorted along the last axis.
 
