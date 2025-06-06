@@ -291,42 +291,70 @@ def firms_send_one_loan_app(
 
 def _clean_queue(slice_: Idx1D, bor: Borrower, bank_idx_for_log: int) -> Idx1D:
     """
-    Return a *unique* array of firm ids that still demand credit
-    from the raw queue slice (which may contain -1 sentinels and duplicates),
-    preserving the original order of first appearance.
+    Return a queue (Idx1D) of *unique* firm ids that still demand credit,
+    ordered by the borrower's `net_worth` (highest first).
+
+    Steps
+    -----
+    1.  Drop `-1` sentinels.
+    2.  Deduplicate while preserving the first appearance.
+    3.  Keep only firms with `credit_demand > 0`.
+    4.  Sort the remaining ids by `net_worth` descending.
     """
     log.debug(
-        f"    Bank {bank_idx_for_log}: " f"Cleaning queue. Initial raw slice: {slice_}"
+        f"    Bank {bank_idx_for_log}: Cleaning queue. "
+        f"Initial raw slice: {slice_}"
     )
 
-    # 1. Drop -1 sentinels
+    # ------------------------------------------------------------------ #
+    # 1. drop -1 sentinels                                               #
+    # ------------------------------------------------------------------ #
     cleaned_slice = slice_[slice_ >= 0]
     if cleaned_slice.size == 0:
-        log.debug(f"    Bank {bank_idx_for_log}: Queue empty after dropping sentinels.")
-        return cleaned_slice.astype(np.intp)  # Ensure Idx1D type
+        log.debug(
+            f"    Bank {bank_idx_for_log}: "
+            f"Queue empty after dropping sentinels."
+        )
+        return cleaned_slice.astype(np.intp)
 
     log.debug(
         f"    Bank {bank_idx_for_log}: "
         f"Queue after dropping sentinels: {cleaned_slice}"
     )
 
-    # 2. Unique *without* sorting
-    # indices of first occurrences
+    # ------------------------------------------------------------------ #
+    # 2. deduplicate (keep first appearance)                             #
+    # ------------------------------------------------------------------ #
     first_idx = np.unique(cleaned_slice, return_index=True)[1]
     unique_slice = cleaned_slice[np.sort(first_idx)]  # keep original order
     log.debug(
-        f"    Bank {bank_idx_for_log}:"
-        f" Queue after unique (order kept): {unique_slice}"
+        f"    Bank {bank_idx_for_log}: "
+        f"Queue after unique (order kept): {unique_slice}"
     )
 
-    # 3. Keep only firms with positive credit demand
-    cd_mask = bor.credit_demand[unique_slice] > 0
-    final_queue = unique_slice[cd_mask]
+    # ------------------------------------------------------------------ #
+    # 3. keep only positive-demand firms                                 #
+    # ------------------------------------------------------------------ #
+    cd_mask      = bor.credit_demand[unique_slice] > 0
+    filtered     = unique_slice[cd_mask]
+    if filtered.size == 0:
+        log.debug(
+            f"    Bank {bank_idx_for_log}: "
+            f"No firms left after credit-demand filter."
+        )
+        return cast(Idx1D, filtered)
+
+    # ------------------------------------------------------------------ #
+    # 4. sort by net worth (descending)                                  #
+    # ------------------------------------------------------------------ #
+    sort_idx     = np.argsort(-bor.net_worth[filtered])   # negative sign ⇒ desc
+    ordered_ids  = filtered[sort_idx]
+
     log.debug(
         f"    Bank {bank_idx_for_log}: "
-        f"Final cleaned queue (unique, pos_credit_demand): {final_queue}"
+        f"Final cleaned queue (net_worth-desc): {ordered_ids}"
     )
-    return cast(Idx1D, final_queue)
+    return cast(Idx1D, ordered_ids)
 
 
 def banks_provide_loans(

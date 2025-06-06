@@ -13,7 +13,7 @@ class Producer:
     expected_demand: Float1D  # D̂_i
     desired_production: Float1D  # Yd_i
     labor_productivity: Float1D  # a_i   (can change with R&D later)
-
+    breakeven_price: Float1D  # Pl_i
     price: Float1D  # p_i  (carried from t-1)
 
     # ---- permanent scratch buffers ----
