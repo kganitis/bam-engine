@@ -48,20 +48,20 @@ from bamengine.systems.goods_market import (
     consumers_visit_one_round,
 )
 from bamengine.systems.labor_market import (
-    adjust_minimum_wage,
+    calc_inflation_and_adjust_minimum_wage,
     firms_calc_wage_bill,
     firms_decide_wage_offer,
     firms_hire_workers,
     workers_decide_firms_to_apply,
-    workers_send_one_round, adjust_minimum_wage_new,
+    workers_send_one_round, adjust_minimum_wage,
 )
 from bamengine.systems.planning import (
     firms_decide_desired_labor,
     firms_decide_desired_production,
-    firms_decide_vacancies, firms_decide_price_new,
+    firms_decide_vacancies, firms_adjust_price, firms_calc_breakeven_price,
 )
 from bamengine.systems.production import (
-    calc_annual_inflation_rate,
+    update_annual_inflation_rate,
     calc_unemployment_rate,
     firms_decide_price,
     firms_pay_wages,
@@ -253,6 +253,7 @@ class Scheduler:
         expected_demand = np.ones_like(production)
         desired_production = np.zeros_like(production)
         labor_productivity = np.ones(p["n_firms"])
+        breakeven_price = price.copy()
 
         # employer
         current_labor = np.zeros(p["n_firms"], dtype=np.int64)
@@ -261,7 +262,7 @@ class Scheduler:
         wage_bill = np.zeros_like(wage_offer)
         n_vacancies = np.zeros_like(desired_labor)
         recv_job_apps_head = np.full(p["n_firms"], -1, dtype=np.int64)
-        recv_job_apps = np.full((p["n_firms"], p["max_M"]), -1, dtype=np.int64)
+        recv_job_apps = np.full((p["n_firms"], p["n_workers"]), -1, dtype=np.int64)
 
         # worker
         employed = np.zeros(p["n_households"], dtype=np.bool_)
@@ -327,6 +328,7 @@ class Scheduler:
             expected_demand=expected_demand,
             desired_production=desired_production,
             labor_productivity=labor_productivity,
+            breakeven_price=breakeven_price,
         )
         wrk = Worker(
             employed=employed,
@@ -439,21 +441,22 @@ class Scheduler:
         firms_decide_desired_production(
             self.prod, p_avg=self.ec.avg_mkt_price, h_rho=self.h_rho, rng=self.rng
         )
-        firms_decide_price_new(
+        firms_calc_breakeven_price(self.prod, self.emp, self.lb)
+        firms_adjust_price(
             self.prod,
-            self.emp,
-            self.lb,
             p_avg=self.ec.avg_mkt_price,
             h_eta=self.h_eta,
             rng=self.rng,
         )
-        update_avg_mkt_price(self.ec, self.prod)
-        calc_annual_inflation_rate(self.ec)
-        adjust_minimum_wage_new(self.ec)
         firms_decide_desired_labor(self.prod, self.emp)
         firms_decide_vacancies(self.emp)
 
+        update_avg_mkt_price(self.ec, self.prod)
+        update_annual_inflation_rate(self.ec)
+        adjust_minimum_wage(self.ec)
+
         # ===== event 2 – labor-market =================================================
+
         firms_decide_wage_offer(
             self.emp, w_min=self.ec.min_wage, h_xi=self.h_xi, rng=self.rng
         )

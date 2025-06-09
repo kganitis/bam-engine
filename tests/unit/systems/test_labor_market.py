@@ -18,7 +18,7 @@ from bamengine.components import Employer, Worker
 
 # noinspection PyProtectedMember
 from bamengine.systems.labor_market import (  # system under test
-    adjust_minimum_wage,
+    calc_inflation_and_adjust_minimum_wage,
     firms_decide_wage_offer,
     firms_hire_workers,
     workers_decide_firms_to_apply,
@@ -92,7 +92,7 @@ def test_adjust_minimum_wage_edges(prices: NDArray[np.float64], direction: str) 
         min_wage_rev_period=4,
     )
     old = ec.min_wage
-    adjust_minimum_wage(ec)
+    calc_inflation_and_adjust_minimum_wage(ec)
     if direction == "up":
         assert ec.min_wage > old
     elif direction == "down":
@@ -110,7 +110,7 @@ def test_adjust_minimum_wage_revision() -> None:
         ),  # t = 4 (len = 5)
         min_wage_rev_period=4,
     )
-    adjust_minimum_wage(ec)
+    calc_inflation_and_adjust_minimum_wage(ec)
     assert ec.min_wage == pytest.approx(1.20)  # +20 % inflation
 
 

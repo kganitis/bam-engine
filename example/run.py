@@ -14,17 +14,17 @@ from diagnostics import log_firm_strategy_distribution
 from data_collector import DataCollector
 from plotting import plot_results
 
-log = logging.getLogger("bamengine")
-log.setLevel(logging.WARNING)
+log = logging.getLogger(__name__)
+logging.getLogger("bamengine").setLevel(logging.WARNING)
 
 
-def run_baseline_simulation(n_firms=100, seed=0) -> dict[str, NDArray[np.float64]]:
+def run_baseline_simulation(n_firms=50, seed=0):
     # --- Simulation Parameters ---
     params = {
         "n_households": n_firms * 5,
         "n_firms": n_firms,
         "n_banks": max(int(n_firms / 10), 3),
-        "periods": 1000,
+        "periods": 500,
         "seed": np.random.default_rng(seed)
     }
 
@@ -75,4 +75,4 @@ def run_baseline_simulation(n_firms=100, seed=0) -> dict[str, NDArray[np.float64
 
 if __name__ == "__main__":
     sim_data = run_baseline_simulation()
-    plot_results(data=sim_data, burn_in=500)
+    plot_results(data=sim_data, burn_in=100)

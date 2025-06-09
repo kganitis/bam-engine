@@ -4,10 +4,13 @@
 
 * refactor & add detailed logging
 * cross-check with BAM book
-* refactor tests & improve test coverage
-* add plotting module & make example usage
 * un-AI comments & docstrings / copy style from scipy & other libraries
+* add plotting module & make example usage
+* 
 * prepare presentation & future work
+* 
+* refactor tests & improve test coverage
+* isolate rng based operations for easier testing
 
 ---
 
@@ -17,6 +20,7 @@
   * Add lightweight debug logging
   * Add minimal plotting helper
   * Guard with `log.isEnabledFor`
+  * [DEBUG] First N --> N (DEBUG depth) set by user
 
 ---
 

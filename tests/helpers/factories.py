@@ -53,7 +53,7 @@ def _producer_defaults(n: int, *, queue_: int) -> dict[str, Any]:
         desired_production=np.full(n, 10.0, dtype=np.float64),
         labor_productivity=np.ones(n, dtype=np.float64),
         price=np.full(n, 1.5, dtype=np.float64),
-        # scratch (allocated lazily by production rule unless eager=True)
+        breakeven_price=np.zeros(n, dtype=np.float64),
         prod_shock=None,
         prod_mask_up=None,
         prod_mask_dn=None,
@@ -69,7 +69,7 @@ def _employer_defaults(n: int, *, queue_m: int) -> dict[str, Any]:
         n_vacancies=np.zeros(n, dtype=np.int64),
         total_funds=np.ones(n, dtype=np.float64),
         recv_job_apps_head=np.full(n, -1, dtype=np.int64),
-        recv_job_apps=np.full((n, queue_m), -1, dtype=np.int64),
+        recv_job_apps=np.full((n, n * 5), -1, dtype=np.int64),
         wage_shock=None,  # scratch
     )
 

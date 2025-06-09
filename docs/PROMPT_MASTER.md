@@ -49,12 +49,3 @@ and the current code in the next prompt.
 
 
 Do not make any comments on them yet, just hold them for reference.
-
----
-
-It's time to implement the next event: goods market.
-I will provide you with the respective code from my older OOP implementation.
-I want you to write an implementation based on my current structure and logic.
-Your output should be the necessary new/updated components and new systems.
-We should use and update the existing `...` components. We won't need new ones.
-For the systems write a new `goods_market.py` file.
