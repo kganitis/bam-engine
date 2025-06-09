@@ -13,7 +13,7 @@ import pytest
 
 from bamengine.scheduler import Scheduler
 from bamengine.systems.labor_market import (
-    adjust_minimum_wage,
+    calc_inflation_and_adjust_minimum_wage,
     firms_decide_wage_offer,
     firms_hire_workers,
     workers_decide_firms_to_apply,
@@ -50,7 +50,7 @@ def test_event_labor_market(tiny_sched: Scheduler) -> None:
 
     # --------------- Event-2 ---------------------------------------------
     prev_floor = sch.ec.min_wage
-    adjust_minimum_wage(sch.ec)
+    calc_inflation_and_adjust_minimum_wage(sch.ec)
 
     firms_decide_wage_offer(
         sch.emp,
@@ -96,7 +96,7 @@ def test_labor_market_post_state_consistency(tiny_sched: Scheduler) -> None:
     sch = tiny_sched
     _run_planning(sch)
 
-    adjust_minimum_wage(sch.ec)
+    calc_inflation_and_adjust_minimum_wage(sch.ec)
     firms_decide_wage_offer(sch.emp, w_min=sch.ec.min_wage, h_xi=sch.h_xi, rng=sch.rng)
     workers_decide_firms_to_apply(sch.wrk, sch.emp, max_M=sch.max_M, rng=sch.rng)
     for _ in range(sch.max_M):

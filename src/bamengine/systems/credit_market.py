@@ -1,6 +1,6 @@
 # src/bamengine/systems/credit_market.py
 """
-Event‑3  –  Credit‑market systems  (vectorised, no new allocations at runtime)
+Event‑3  –  Credit‑market systems
 """
 
 from __future__ import annotations
@@ -11,31 +11,44 @@ from typing import cast
 import numpy as np
 from numpy.random import Generator, default_rng
 
-from bamengine._logging_ext import getLogger
+from bamengine import _logging_ext
 from bamengine.components import Borrower, Employer, Lender, LoanBook, Worker
 from bamengine.helpers import select_top_k_indices_sorted
 from bamengine.typing import Idx1D
 
-log = getLogger(__name__)
+log = _logging_ext.getLogger(__name__)
 
-CAP_FRAG = 1.0e6  # fragility cap when net worth is zero
+CAP_FRAG = 1.0e6  # Fragility cap when net worth is zero or negative
 
 
 def banks_decide_credit_supply(lend: Lender, *, v: float) -> None:
     """
-    C_k = E_k / v
+    Banks determine their total credit supply based on their equity.
 
-    v : capital requirement coefficient
+    Rule
+    ----
+        C = E / v
+
+    `C: Credit Supply, E: Equity Base, v: Capital Requirement Coefficient`
     """
+    log.info("--- Banks Deciding Credit Supply ---")
+    log.info(f"  Inputs: Capital Requirement (v)={v:.3f} (Max Leverage={1 / v:.2f}x)")
+
+    # --- Core Rule ---
     np.divide(lend.equity_base, v, out=lend.credit_supply)
+    np.maximum(lend.credit_supply, 0.0, out=lend.credit_supply)
+
+    # --- Logging ---
+    total_supply = lend.credit_supply.sum()
+    log.info(f"  Total credit supply in the economy: {total_supply:,.2f}")
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
-            f"  banks_decide_credit_supply:\n"
-            f"equity_base={lend.equity_base}\n"
-            f"max_leverage (1/v)={1/v}\n"
-            f"credit_supply={lend.credit_supply}\n"
-            f"Total credit supply update = {lend.credit_supply.sum():.2f} "
-        )
+            f"  Equity Base (E) (first 10 firms): "
+            f"{np.array2string(lend.equity_base[:10], precision=2)}")
+        log.debug(
+            f"  Credit Supply (C = E / v) (first 10 firms): "
+            f"{np.array2string(lend.credit_supply[:10], precision=2)}")
+    log.info("--- Credit Supply Decision complete ---")
 
 
 def banks_decide_interest_rate(
@@ -46,72 +59,133 @@ def banks_decide_interest_rate(
     rng: Generator = default_rng(),
 ) -> None:
     """
-    Nominal interest rate rule:
+    Banks set their nominal interest rate as a markup over a base rate.
 
-    r_k = r̄ · (1 + U(0, h_φ))
+    Rule
+    ----
+        r = r̄ · (1 + shock)
+        shock ~ U(0, h_φ)
+
+    `r : Nominal Rate, r̄ : Baseline (Policy) Rate, h_φ : Banks Max Opex Growth`
     """
+    log.info("--- Banks Deciding Interest Rate ---")
+    log.info(
+        f"  Inputs: Base Rate (r_bar)={r_bar:.4f}  |"
+        f"  Max Markup Shock (h_phi)={h_phi:.4f}")
     shape = lend.interest_rate.shape
 
-    # permanent scratch
+    # --- Permanent scratch buffer ---
     shock = lend.opex_shock
     if shock is None or shock.shape != shape:
         shock = np.empty(shape, dtype=np.float64)
         lend.opex_shock = shock
 
-    # fill buffer in-place
+    # --- Core Rule ---
     shock[:] = rng.uniform(0.0, h_phi, size=shape)
     lend.interest_rate[:] = r_bar * (1.0 + shock)
 
+    # --- Logging ---
+    avg_rate = lend.interest_rate.mean() * 100
+    log.info(f"  Interest rates set. Average rate: {avg_rate:.3f}%")
     if log.isEnabledFor(logging.DEBUG):
+        log.debug(f"  Generated shocks (first 10 firms): "
+                  f"{np.array2string(shock[:10], precision=4)}")
         log.debug(
-            f"  banks_decide_interest_rate (r_bar={r_bar:.4f}, h_phi={h_phi:.4f})\n"
-            f"shocks={shock}\n"
-            f"interest rates (%) = "
-            f"{np.array2string(lend.interest_rate * 100, precision=4)}"
-        )
+            f"  Interest Rates (%) (first 10 firms): "
+            f"{np.array2string(lend.interest_rate[:10] * 100, precision=4)}")
+    log.info("--- Interest Rate Decision complete ---")
 
 
 def firms_decide_credit_demand(bor: Borrower) -> None:
     """
-    B_i = max( W_i − A_i , 0 )
+    Firms determine their credit demand
+    as the gap between their wage bill and net worth.
+
+    Rule
+    ----
+        B = max(W − A, 0)
+
+    `B: Credit Demand, W: Wage Bill, A: Net Worth`
     """
+    log.info("--- Firms Deciding Credit Demand ---")
+    log.info(
+        f"  Inputs: Total Wage Bill={bor.wage_bill.sum():,.2f}  |"
+        f"  Total Net Worth={bor.net_worth.sum():,.2f}")
+
+    # --- Core Rule ---
     np.subtract(bor.wage_bill, bor.net_worth, out=bor.credit_demand)
     np.maximum(bor.credit_demand, 0.0, out=bor.credit_demand)
+
+    # --- Logging ---
+    total_demand = bor.credit_demand.sum()
+    num_borrowers = np.sum(bor.credit_demand > 0)
+    log.info(
+        f"  {num_borrowers} firms demand credit, for a total of {total_demand:,.2f}")
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
-            f"  firms_decide_credit_demand:\n" f"credit_demand={bor.credit_demand}"
-        )
-        log.info(f"  Total credit demand = {bor.credit_demand.sum()}")
+            f"  Credit Demand per firm (B = max(0, W-A)) (first 10 firms): "
+            f"{np.array2string(bor.credit_demand[:10], precision=2)}")
+    log.info("--- Credit Demand Decision complete ---")
 
 
 def firms_calc_credit_metrics(bor: Borrower) -> None:
     """
-    projected_fragility[i] = μ_i · B_i / A_i
+    Firms calculate their projected fragility based on credit demand and net worth.
+
+    Rule
+    ----
+        l = B / A
+        f = μ · l
+
+    f: Fragility, μ: R&D Intensity, l: Leverage, B: Credit Demand, A: Net Worth
     """
+    log.info("--- Firms Calculating Credit Metrics ---")
     shape = bor.net_worth.shape
 
+    # --- Permanent scratch buffer ---
     frag = bor.projected_fragility
     if frag is None or frag.shape != shape:
         frag = np.empty(shape, dtype=np.float64)
         bor.projected_fragility = frag
 
-    # frag ←  B_i / A_i  (safe divide)
-    np.divide(
-        bor.credit_demand,
-        bor.net_worth,
-        out=frag,
-        where=bor.net_worth > 0.0,
-    )
-    frag[bor.net_worth == 0.0] = CAP_FRAG
+    # --- Core Rule ---
+    # Calculate raw fragility as B / A for firms with positive net worth.
+    np.divide(bor.credit_demand, bor.net_worth, out=frag, where=bor.net_worth > 0.0)
 
-    # frag *= μ_i
+    # Cap fragility for firms with zero or negative net worth at CAP_FRAG.
+    zero_nw_mask = bor.net_worth <= 0.0
+    if np.any(zero_nw_mask):
+        num_zero_nw = np.sum(zero_nw_mask)
+        log.warning(
+            f"  {num_zero_nw} firm(s) have zero/negative net worth. "
+            f"Setting their initial fragility to the cap of {CAP_FRAG:,.0f}."
+        )
+        frag[zero_nw_mask] = CAP_FRAG
+
+    # Apply a global fragility cap for all firms.
+    # This handles firms whose fragility may have exploded due to very small
+    # (but positive) net worth, capping them at CAP_FRAG.
+    general_cap_mask = frag > CAP_FRAG
+    if np.any(general_cap_mask):
+        num_generally_capped = np.sum(general_cap_mask)
+        log.warning(
+            f"  Capping fragility for {num_generally_capped} firm(s) "
+            f"whose calculated fragility exceeded the {CAP_FRAG:,.0f} limit."
+        )
+    np.minimum(frag, CAP_FRAG, out=frag)
+
+    # Final adjustment by R&D intensity (μ).
     np.multiply(frag, bor.rnd_intensity, out=frag)
+
+    # --- Logging ---
+    valid_frag = frag[np.isfinite(frag)]
+    avg_fragility = valid_frag.mean() if valid_frag.size > 0 else 0.0
+    log.info(f"  Average projected fragility across all firms: {avg_fragility:.4f}")
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
-            f"  firms_calc_credit_metrics:\n"
-            f"net_worth={bor.net_worth}\n"
-            f"projected_fragility={frag}"
-        )
+            f"  Projected Fragility per firm (first 10 firms): "
+            f"{np.array2string(frag[:10], precision=3)}")
+    log.info("--- Credit Metrics Calculation complete ---")
 
 
 def firms_prepare_loan_applications(
@@ -122,62 +196,63 @@ def firms_prepare_loan_applications(
     rng: Generator = default_rng(),
 ) -> None:
     """
-    * draws H random banks per firm
-    * keeps the H *cheapest* (lowest r_k) via partial sort
-    * writes indices into ``loan_apps_targets`` and resets ``loan_apps_head``
+    Firms with credit demand choose up to `max_H` banks to apply to, 
+    sorted by interest rate.
     """
-    log.info("  --- Firms Deciding Banks to Apply ---")
-    lenders = np.where(lend.credit_supply > 0)[0]  # bank ids
-    borrowers = np.where(bor.credit_demand > 0.0)[0]  # firm ids
+    log.info("--- Firms Preparing Loan Applications ---")
+    lenders = np.where(lend.credit_supply > 0)[0]
+    borrowers = np.where(bor.credit_demand > 0.0)[0]
 
-    log.debug(f"  Borrowers: {borrowers}")
-    log.debug(f"  Lenders: {lenders}")
-    log.debug(f"  Max H: {max_H}")
+    log.info(
+        f"  {borrowers.size} firms are seeking loans "
+        f"from {lenders.size} available lenders (max apps per firm, H={max_H}).")
 
-    if borrowers.size == 0:
-        log.debug("  No borrowers available. Reseting firm queues heads.")
+    if borrowers.size == 0 or lenders.size == 0:
+        log.info(
+            "  No borrowers or no available lenders. "
+            "Skipping loan application preparation.")
         bor.loan_apps_head.fill(-1)
+        log.info("--- Loan Application Preparation complete ---")
         return
 
-    # ── sample H random lending banks per firm (with replacement) ─────
+    # --- Sample H random lending banks per firm ---
     H_eff = min(max_H, lenders.size)
-    log.debug(f"  Effective applications per firm (H_eff): {H_eff}")
-    sample = np.empty((borrowers.size, H_eff), dtype=np.int64)
-    for row, w in enumerate(borrowers):
-        sample[row] = rng.choice(lenders, size=H_eff, replace=False)
-    if log.isEnabledFor(logging.DEBUG) and borrowers.size > 0:
-        log.debug(f"\n\nSample=\n" f"{sample}\n")
+    log.info(f"  Effective applications per firm (H_eff): {H_eff}")
+    # TODO Optimize loop
+    sample = np.array(
+        [rng.choice(lenders, size=H_eff, replace=False) for _ in range(borrowers.size)])
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug(
+            f"  Initial random bank sample (first 10 firms):\n{sample[:10]}")
 
-    # ── interest-ascending partial sort ------------------------------------
-    topk = select_top_k_indices_sorted(
-        lend.interest_rate[sample], k=H_eff, descending=False
-    )
+    # --- Sort applications by ascending interest rate ---
+    topk = select_top_k_indices_sorted(lend.interest_rate[sample], k=H_eff,
+                                       descending=False)
     sorted_sample = np.take_along_axis(sample, topk, axis=1)
-    if log.isEnabledFor(logging.DEBUG) and borrowers.size > 0:
-        log.debug(f"\n\nSorted sample by interest rate:\n" f"{sorted_sample}\n")
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug(
+            f"  Sorted bank sample by interest rate (first 5 firms):\n"
+            f"{sorted_sample[:5]}")
 
-    # flush queue before filling
+    # --- Write buffers ---
+    log.debug(
+        "  Writing application targets and head pointers for all borrowing firms...")
     bor.loan_apps_targets.fill(-1)
     bor.loan_apps_head.fill(-1)
-
-    log.debug("  Writing application targets and heads for borrowers...")
     stride = max_H
+
     for k, f_idx in enumerate(borrowers):
         bor.loan_apps_targets[f_idx, :H_eff] = sorted_sample[k]
-        # pad any remaining columns with -1
         if H_eff < max_H:
             bor.loan_apps_targets[f_idx, H_eff:max_H] = -1
-        bor.loan_apps_head[f_idx] = (
-            f_idx * stride
-        )  # Using actual firm ID for the row in conceptual 2D array
-        log.deep(
-            f"  Firm {f_idx}: targets={bor.loan_apps_targets[f_idx]}, "
-            f"head_raw_val={bor.loan_apps_head[f_idx]}"
-        )
-    log.debug(f"  loan_apps_head: {bor.loan_apps_head}")
-    log.debug(f"  loan_apps_targets:\n{bor.loan_apps_targets}")
+        bor.loan_apps_head[f_idx] = f_idx * stride
 
-    log.info(f"  {borrowers.size} borrowing firms prepared {H_eff} applications each.")
+        if log.isEnabledFor(_logging_ext.DEEP_DEBUG) and k < 10:
+            log.deep(
+                f"    Firm {f_idx}: targets={bor.loan_apps_targets[f_idx]}, "
+                f"head_ptr={bor.loan_apps_head[f_idx]}")
+
+    log.info("--- Loan Application Preparation complete ---")
 
 
 def firms_send_one_loan_app(

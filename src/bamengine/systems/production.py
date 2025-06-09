@@ -207,7 +207,7 @@ def update_avg_mkt_price(
     log.debug(f"  Average market price: {ec.avg_mkt_price:.4f}")
 
 
-def calc_annual_inflation_rate(ec: Economy) -> None:
+def update_annual_inflation_rate(ec: Economy) -> None:
     """
     Calculate and store the annual inflation rate for the current period.
 
