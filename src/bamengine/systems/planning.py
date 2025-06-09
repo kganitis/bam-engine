@@ -25,13 +25,13 @@ def firms_decide_desired_production(
 
     Rule
     ----
-      if S_i == 0 and P_i ≥ p̄   → raise   by (1 + shock)
-      if S_i  > 0 and P_i < p̄   → cut     by (1 − shock)
-      otherwise                 → keep previous level
+      if S == 0 and P ≥ P̄   → raise by (1 + shock)
+      if S  > 0 and P < P̄   → cut   by (1 − shock)
+      otherwise             → keep previous level
     """
     log.info("  --- Firms Deciding Desired Production ---")
     log.info(
-        f"  Inputs: Avg Market Price (p_avg)={p_avg:.2f}, "
+        f"  Inputs: Avg Market Price (p_avg)={p_avg:.2f}  |  "
         f"Max Production Shock (h_ρ)={h_rho:.2f}")
     shape = prod.price.shape
 
@@ -62,12 +62,12 @@ def firms_decide_desired_production(
     log.info(f"  Production changes: {n_up} firms ↑, {n_dn} firms ↓, {n_keep} firms ↔.")
 
     if log.isEnabledFor(logging.DEBUG):
-        log.debug(f"  Avg market price (p̄): {p_avg:.2f}")
+        log.debug(f"  Avg market price (P̄): {p_avg:.2f}")
         log.debug(
             f"  Generated production shocks (h_rho={h_rho:.2f}):\n"
             f"{np.array2string(shock, precision=4)}")
         log.debug(
-            f"  Inventories (S_i):\n{np.array2string(prod.inventory, precision=2)}"
+            f"  Inventories (S):\n{np.array2string(prod.inventory, precision=2)}"
         )
         log.debug(
             f"  Previous Production (Y_{{t-1}}):\n"
@@ -85,10 +85,11 @@ def firms_decide_desired_production(
     log.debug(
         f"  Expected Demand set based on production changes:\n"
         f"{np.array2string(prod.expected_demand, precision=2)}")
-    prod.desired_production[:] = prod.expected_demand
 
+    # TODO Separate desired production system
+    prod.desired_production[:] = prod.expected_demand
     log.debug(
-        f"  Desired Production (Yd_i):\n"
+        f"  Desired Production (Yd):\n"
         f"{np.array2string(prod.desired_production, precision=2)}"
     )
     log.info(f"  Total Desired Production: {prod.desired_production.sum():,.2f}")
@@ -102,12 +103,16 @@ def firms_calc_breakeven_price(
         *,
         cap_factor: int | None = None,
 ):
+    # TODO Decide when to calc breakeven price
+    #    - Case 1: After credit market, when labor and interest are finalized
+    #    - Case 2: Start of period, based on previous period
     log.info("  --- Firms Calculating Breakeven Price ---")
     log.info(f"  Inputs: Breakeven Cap Factor={cap_factor}")
 
     # --- Breakeven calculation -----------------------------------------------
     interest = lb.interest_per_borrower(prod.production.size)
-    # TODO Ensure wage bill is updated
+    # TODO Make sure wage bill has been updated
+    #  If Case 1: use projected production based on updated labor
     breakeven = ((emp.wage_bill + interest) /
                  np.maximum(prod.production, _EPS))
     log.info(
@@ -127,6 +132,7 @@ def firms_calc_breakeven_price(
         breakeven_max_value = prod.price * cap_factor
     else:
         # If no cap_factor, the max value is effectively infinite
+        # TODO warn for extreme jumps
         breakeven_max_value = breakeven
 
     np.minimum(breakeven, breakeven_max_value, out=prod.breakeven_price)
@@ -134,14 +140,15 @@ def firms_calc_breakeven_price(
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Wage bill array:\n{emp.wage_bill}")
         log.debug(f"  Interest array:\n{interest}")
-        log.debug(f"  Production array:\n{prod.production,}")
+        log.debug(f"  Production array:\n{prod.production}")
         log.debug(f"  Initial prices array:\n{prod.price}")
         num_capped = np.sum(breakeven > breakeven_max_value)
-        log.debug(
-            f"  Breakeven prices capped for {num_capped} firms "
-            f"(indices: {np.where(breakeven > breakeven_max_value)[0].tolist()}) "
-            f"with max increase limited to {cap_factor}x old price."
-        )
+        if num_capped > 0:
+            log.debug(
+                f"  Breakeven prices capped for {num_capped} firms "
+                f"(indices: {np.where(breakeven > breakeven_max_value)[0].tolist()}) "
+                f"with max increase limited to {cap_factor}x old price."
+            )
         log.debug(f"  Final (Capped) Breakeven Prices:\n{prod.breakeven_price}")
     log.info("  --- Breakeven Price Calculation complete ---")
 
@@ -158,13 +165,19 @@ def firms_adjust_price(
 
         shock ~ U(0, h_eta)
 
-        if S == 0 and p < p̄:     p ← max(Pl , p·(1+shock))
-        if S  > 0 and p ≥ p̄:     p ← max(Pl , p·(1-shock))
+        if S == 0 and P < P̄:     P ← max(Pl , P·(1+shock))
+        if S  > 0 and P ≥ P̄:     P ← max(Pl , P·(1-shock))
     """
+    # TODO Decide on whether to cap P to Pl or not:
+    #    - Case P ↑ and P < Pl => price increase larger than shock
+    #    - Case P ↓ and P < Pl and Pl > P[t-1] => P ↑ as a final result
+    #    In both cases price increase can be uncontrollable
+    #    if wage bill + interest >> production
+
     log.info("  --- Firms Adjusting Prices ---")
     log.info(
-        f"  Inputs: Avg Market Price (p_avg)={p_avg:.2f}, "
-        f"Max Price Shock (h_eta)={h_eta:.4f}"
+        f"  Inputs: Avg Market Price (p_avg)={p_avg:.2f}  |  "
+        f"Max Price Shock (h_eta)={h_eta:.2f}"
     )
 
     shape = prod.price.shape
@@ -185,32 +198,29 @@ def firms_adjust_price(
     # --- masks ----------------------------------------------------------------
     mask_up = (prod.inventory == 0.0) & (prod.price < p_avg)
     mask_dn = (prod.inventory > 0.0) & (prod.price >= p_avg)
-    num_up = np.sum(mask_up)
-    num_dn = np.sum(mask_dn)
-    num_no_change_rule = shape[0] - num_up - num_dn
-    log.info(
-        f"  Price adjustment candidates: "
-        f"Raise Price={num_up}, Cut Price={num_dn}, No Rule={num_no_change_rule}"
-    )
+    n_up = np.sum(mask_up)
+    n_dn = np.sum(mask_dn)
+    n_keep = shape[0] - n_up - n_dn
+    log.info(f"  Price adjustments: {n_up} firms ↑, {n_dn} firms ↓, {n_keep} firms ↔.")
 
     if log.isEnabledFor(logging.DEBUG):
-        if num_up > 0:
+        if n_up > 0:
             log.debug(
-                f"    Firms with S=0 & P<p̄ (mask_up): "
+                f"    Firms increasing price: "
                 f"{np.where(mask_up)[0].tolist()}"
             )
-        if num_dn > 0:
+        if n_dn > 0:
             log.debug(
-                f"    Firms with S>0 & P>=p̄ (mask_dn): "
+                f"    Firms decreasing price: "
                 f"{np.where(mask_dn)[0].tolist()}"
             )
 
     # --- DEBUG pre-update snapshot -------------------------------------------
     if log.isEnabledFor(logging.DEBUG):
-        log.debug("----- PRICE UPDATE (EXECUTION) -----")
-        log.debug(f"  p̄ (avg market price) : {p_avg:.4f}")
+        log.debug("  --- PRICE ADJUSTMENT (EXECUTION) ---")
+        log.debug(f"  P̄ (avg market price) : {p_avg:.4f}")
         log.debug(
-            f"  mask_up: {num_up} firms → raise  |  mask_dn: {num_dn} firms → cut"
+            f"  mask_up: {n_up} firms → raise  |  mask_dn: {n_dn} firms → cut"
         )
         log.debug(
             f"  Breakeven prices being used:\n"
@@ -218,20 +228,11 @@ def firms_adjust_price(
 
     # --- raise prices --------------------------------------------------------
     if mask_up.any():
-        if log.isEnabledFor(logging.DEBUG):
-            up_indices = np.where(mask_up)[0]
-            for firm_idx in up_indices[:min(3, num_up)]:
-                log.debug(
-                    f"    Raise Firm {firm_idx} PRE-UPDATE: "
-                    f"OldP={old_prices_for_log[firm_idx]:.2f}, "
-                    f"Shock={shock[firm_idx]:.4f}, "
-                    f"Breakeven={prod.breakeven_price[firm_idx]:.2f}")
-
         np.multiply(prod.price, 1.0 + shock, out=prod.price, where=mask_up)
         np.maximum(prod.price, prod.breakeven_price, out=prod.price, where=mask_up)
 
         price_changes_raise = prod.price[mask_up] - old_prices_for_log[mask_up]
-        avg_change_raise = np.mean(price_changes_raise) if num_up > 0 else 0
+        avg_change_raise = np.mean(price_changes_raise) if n_up > 0 else 0
         num_floored_by_breakeven_raise = np.sum(
             np.isclose(
                 prod.price[mask_up], prod.breakeven_price[mask_up]
@@ -242,39 +243,55 @@ def firms_adjust_price(
             )  # And it was lower before max()
         )
         log.info(
-            f"  Raising prices for {num_up} firms. "
+            f"  Raising prices for {n_up} firms. "
             f"Avg price change: {avg_change_raise:+.2f}. "
             f"{num_floored_by_breakeven_raise} prices set by breakeven."
         )
+        if log.isEnabledFor(logging.DEBUG):
+            up_indices = np.where(mask_up)[0]
+            for firm_idx in up_indices[:min(5, n_up)]:
+                log.debug(
+                    f"    Raise Firm {firm_idx} ADJUSTMENT: "
+                    f"OldP={old_prices_for_log[firm_idx]:.2f}, "
+                    f"Shock={shock[firm_idx]:.4f}, "
+                    f"Breakeven={prod.breakeven_price[firm_idx]:.2f}, "
+                    f"NewP={prod.price[firm_idx]:.2f}"
+                )
 
     # --- cut prices ----------------------------------------------------------
     if mask_dn.any():
-        if log.isEnabledFor(logging.DEBUG):
-            dn_indices = np.where(mask_dn)[0]
-            for firm_idx in dn_indices[:min(3, num_dn)]:
-                log.debug(
-                    f"    Cut Firm {firm_idx} PRE-UPDATE: "
-                    f"OldP={old_prices_for_log[firm_idx]:.2f}, "
-                    f"Shock={shock[firm_idx]:.4f}, "
-                    f"Breakeven={prod.breakeven_price[firm_idx]:.2f}")
-
         np.multiply(prod.price, 1.0 - shock, out=prod.price, where=mask_dn)
         np.maximum(prod.price, prod.breakeven_price, out=prod.price, where=mask_dn)
 
         price_changes_cut = prod.price[mask_dn] - old_prices_for_log[mask_dn]
-        avg_change_cut = np.mean(price_changes_cut) if num_dn > 0 else 0
+        avg_change_cut = np.mean(price_changes_cut) if n_dn > 0 else 0
         num_floored_by_breakeven_cut = np.sum(
             np.isclose(prod.price[mask_dn], prod.breakeven_price[mask_dn])
             & (
                     (old_prices_for_log[mask_dn] * (1.0 - shock[mask_dn]))
-                    < prod.breakeven_price[mask_dn]
-            )
+                    < prod.breakeven_price[mask_dn])
+        )
+        num_increased_by_breakeven = np.sum(
+            np.isclose(prod.price[mask_dn], prod.breakeven_price[mask_dn])
+            & (old_prices_for_log[mask_dn] < prod.breakeven_price[mask_dn])
         )
         log.info(
-            f"  Cutting prices for {num_dn} firms. "
+            f"  Cutting prices for {n_dn} firms. "
             f"Avg price change: {avg_change_cut:+.2f}. "
             f"{num_floored_by_breakeven_cut} prices set by breakeven."
         )
+        if log.isEnabledFor(logging.DEBUG):
+            dn_indices = np.where(mask_dn)[0]
+            for firm_idx in dn_indices[:min(5, n_dn)]:
+                log.debug(
+                    f"    Cut Firm {firm_idx} ADJUSTMENT: "
+                    f"OldP={old_prices_for_log[firm_idx]:.2f}, "
+                    f"Shock={shock[firm_idx]:.4f}, "
+                    f"Breakeven={prod.breakeven_price[firm_idx]:.2f}, "
+                    f"NewP={prod.price[firm_idx]:.2f}"
+                )
+        log.warning(f"!!! {num_increased_by_breakeven} prices increased due to "
+                    f"breakeven being higher than the initial price !!!")
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
@@ -288,13 +305,12 @@ def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
 
         Ld = ceil(Yd / a)
     """
-    log.info("--- Firms Deciding Desired Labor ---")
+    log.info("  --- Firms Deciding Desired Labor ---")
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"  Inputs: "
-            f"Desired Production:\n{prod.desired_production.sum():,.2f}, "
-            f"Labor Productivity:\n{np.array2string(
-                prod.labor_productivity, precision=3)}")
+            f"Total Desired Production: {prod.desired_production.sum():,.2f}  |  "
+            f"Avg Labor Productivity: {prod.labor_productivity.mean()}")
 
     # --- validation -----------------------------------------------------------
     invalid = (~np.isfinite(prod.labor_productivity)) | (
