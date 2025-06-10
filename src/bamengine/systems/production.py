@@ -7,12 +7,12 @@ from __future__ import annotations
 import logging
 
 import numpy as np
-from numpy.random import Generator, default_rng
 
+from bamengine import _logging_ext
 from bamengine.components import Consumer, Economy, Employer, Producer, Worker
 from bamengine.helpers import trimmed_weighted_mean
 
-log = logging.getLogger(__name__)
+log = _logging_ext.getLogger(__name__)
 
 
 def calc_unemployment_rate(
@@ -47,24 +47,6 @@ def update_avg_mkt_price(
 ) -> None:
     """
     Update exponentially smoothed average market price and update economy state.
-
-    Parameters
-    ----------
-    ec : Economy
-        The economy state, which will be updated in-place.
-    prod : Producer
-        Producer state, containing price and production arrays.
-    alpha : float, optional
-        Exponential smoothing factor, in [0, 1]. alpha=1 means no smoothing
-        (just use the current computed average). alpha < 1 blends the new
-        average with the previous average.
-    trim_pct : float, optional
-        Fraction (0 to 0.5) to trim from both ends of the price distribution
-        (by price value) before averaging, for robustness to outliers.
-
-    Returns
-    -------
-    None. Updates ec.avg_mkt_price and ec.avg_mkt_price_history in-place.
     """
     log.info("--- Updating Average Market Price ---")
 
