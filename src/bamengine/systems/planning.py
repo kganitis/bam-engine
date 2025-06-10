@@ -6,9 +6,10 @@ import logging
 import numpy as np
 from numpy.random import Generator, default_rng
 
+from bamengine import _logging_ext
 from bamengine.components import Employer, Producer, LoanBook
 
-log = logging.getLogger(__name__)
+log = _logging_ext.getLogger(__name__)
 
 _EPS = 1.0e-9
 

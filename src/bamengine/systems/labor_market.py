@@ -14,7 +14,7 @@ from bamengine.components import Economy, Employer, Worker
 from bamengine.helpers import select_top_k_indices_sorted
 from bamengine.typing import Idx1D, Int1D
 
-log = logging.getLogger(__name__)
+log = _logging_ext.getLogger(__name__)
 
 
 def calc_annual_inflation_rate(ec: Economy) -> None:

@@ -4,7 +4,6 @@ from __future__ import annotations
 import logging
 
 import numpy as np
-from numpy.typing import NDArray
 from numpy.random import default_rng
 
 from bamengine.systems.production import calc_unemployment_rate, firms_pay_wages, \
