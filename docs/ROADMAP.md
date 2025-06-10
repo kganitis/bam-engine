@@ -31,6 +31,7 @@
 * Introduce pytest-benchmark and fail the suite on measurable performance regressions
 * Remove dead lint-ignore comments and finalise design diagrams once the API is frozen
 * Review project.optional-dependencies and write the minimum required
+* Use consistent naming: e.g. when to use `firm` vs `borrower`/`employer`
 
 ---
 

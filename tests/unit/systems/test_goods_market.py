@@ -16,7 +16,7 @@ from bamengine.systems.goods_market import (
     consumers_decide_firms_to_visit,
     consumers_decide_income_to_spend,
     consumers_finalize_purchases,
-    consumers_visit_one_round,
+    consumers_shop_one_round,
 )
 from tests.helpers.factories import mock_consumer, mock_producer
 
@@ -163,7 +163,7 @@ def test_one_round_basic_purchase() -> None:
     wealth_before = con.income_to_spend[h] + con.savings[h]
     inv_before = prod.inventory.copy()
 
-    consumers_visit_one_round(con, prod)
+    consumers_shop_one_round(con, prod)
 
     # exactly one slot consumed
     assert con.shop_visits_head[h] == head_before + 1
@@ -187,7 +187,7 @@ def test_one_round_skip_sold_out() -> None:
     consumers_decide_income_to_spend(con)
     consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=rng)
     head_before = int(con.shop_visits_head[0])
-    consumers_visit_one_round(con, prod)
+    consumers_shop_one_round(con, prod)
     assert con.shop_visits_head[0] == head_before + 1  # pointer advanced
 
 
@@ -203,7 +203,7 @@ def test_one_round_queue_exhaustion_clears_head() -> None:
         shop_visits_targets=np.array([[-1]], dtype=np.intp),
     )
     prod = mock_producer(n=1, inventory=np.array([10.0]), price=np.array([1.0]))
-    consumers_visit_one_round(con, prod)
+    consumers_shop_one_round(con, prod)
     assert con.shop_visits_head[0] == -1
 
 
@@ -228,7 +228,7 @@ def test_visit_one_round_skips_household_with_no_head() -> None:
     )
 
     inv_before = prod.inventory.copy()
-    consumers_visit_one_round(con, prod)
+    consumers_shop_one_round(con, prod)
 
     # nothing purchased, inventory unchanged, income untouched
     np.testing.assert_allclose(prod.inventory, inv_before)
@@ -273,7 +273,7 @@ def test_visit_invariants(n_hh: int, n_firms: int, Z: int) -> None:
     consumers_calc_propensity(con, avg_sav=con.savings.mean() + 1e-9, beta=0.9)
     consumers_decide_income_to_spend(con)
     consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=rng)
-    consumers_visit_one_round(con, prod)
+    consumers_shop_one_round(con, prod)
 
     # invariants --------------------------------------------------------
     # 1.  visit head stays within [-1 … n_hh*Z]

@@ -22,7 +22,7 @@ from bamengine.systems.goods_market import (  # systems under test
     consumers_decide_firms_to_visit,
     consumers_decide_income_to_spend,
     consumers_finalize_purchases,
-    consumers_visit_one_round,
+    consumers_shop_one_round,
 )
 
 
@@ -60,7 +60,7 @@ def _run_goods_event(sch: Scheduler) -> dict[str, NDArray[np.float64]]:
     # ----- 1. shopping ---------------------------------------------------
     consumers_decide_firms_to_visit(sch.con, sch.prod, max_Z=sch.max_Z, rng=sch.rng)
     for _ in range(sch.max_Z):
-        consumers_visit_one_round(sch.con, sch.prod)
+        consumers_shop_one_round(sch.con, sch.prod)
 
     # ----- 2. final bookkeeping -----------------------------------------
     snap["inv_after"] = sch.prod.inventory.copy()

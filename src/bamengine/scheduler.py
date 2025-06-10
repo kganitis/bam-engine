@@ -45,7 +45,7 @@ from bamengine.systems.goods_market import (
     consumers_decide_firms_to_visit,
     consumers_decide_income_to_spend,
     consumers_finalize_purchases,
-    consumers_visit_one_round,
+    consumers_shop_one_round,
 )
 from bamengine.systems.labor_market import (
     calc_inflation_and_adjust_minimum_wage,
@@ -53,7 +53,7 @@ from bamengine.systems.labor_market import (
     firms_decide_wage_offer,
     firms_hire_workers,
     workers_decide_firms_to_apply,
-    workers_send_one_round, adjust_minimum_wage,
+    workers_send_one_round, adjust_minimum_wage, calc_annual_inflation_rate,
 )
 from bamengine.systems.planning import (
     firms_decide_desired_labor,
@@ -61,9 +61,7 @@ from bamengine.systems.planning import (
     firms_decide_vacancies, firms_adjust_price, firms_calc_breakeven_price,
 )
 from bamengine.systems.production import (
-    update_annual_inflation_rate,
     calc_unemployment_rate,
-    firms_decide_price,
     firms_pay_wages,
     firms_run_production,
     update_avg_mkt_price,
@@ -262,7 +260,7 @@ class Scheduler:
         wage_bill = np.zeros_like(wage_offer)
         n_vacancies = np.zeros_like(desired_labor)
         recv_job_apps_head = np.full(p["n_firms"], -1, dtype=np.int64)
-        recv_job_apps = np.full((p["n_firms"], p["n_workers"]), -1, dtype=np.int64)
+        recv_job_apps = np.full((p["n_firms"], p["n_households"]), -1, dtype=np.int64)
 
         # worker
         employed = np.zeros(p["n_households"], dtype=np.bool_)
@@ -452,7 +450,7 @@ class Scheduler:
         firms_decide_vacancies(self.emp)
 
         update_avg_mkt_price(self.ec, self.prod)
-        update_annual_inflation_rate(self.ec)
+        calc_annual_inflation_rate(self.ec)
         adjust_minimum_wage(self.ec)
 
         # ===== event 2 – labor-market =================================================
@@ -512,7 +510,7 @@ class Scheduler:
             self.con, self.prod, max_Z=self.max_Z, rng=self.rng
         )
         for _ in range(self.max_Z):
-            consumers_visit_one_round(self.con, self.prod, rng=self.rng)
+            consumers_shop_one_round(self.con, self.prod, rng=self.rng)
         consumers_finalize_purchases(self.con)
 
         # ===== event 6 – revenue ======================================================

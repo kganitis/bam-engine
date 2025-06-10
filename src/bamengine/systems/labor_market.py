@@ -210,13 +210,13 @@ def workers_decide_firms_to_apply(
     M_eff = min(max_M, hiring.size)
     log.info(f"  Effective applications per worker (M_eff): {M_eff}")
     sample = np.empty((unemp.size, M_eff), dtype=np.int64)
-    for row, w_id in enumerate(unemp):
+    for row, j in enumerate(unemp):
         sample[row] = rng.choice(hiring, size=M_eff, replace=False)
         if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
-            log.deep(f"  Worker {w_id}: initial sample={sample[row]}, "
-                     f"previous: {wrk.employer_prev[w_id]}, "
-                     f"contract_expired: {wrk.contract_expired[w_id]}, "
-                     f"fired: {wrk.fired[w_id]}")
+            log.deep(f"  Worker {j}: initial sample={sample[row]}, "
+                     f"previous: {wrk.employer_prev[j]}, "
+                     f"contract_expired: {wrk.contract_expired[j]}, "
+                     f"fired: {wrk.fired[j]}")
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"  Initial random firm sample (first 10 workers, if any):\n"
@@ -287,16 +287,16 @@ def workers_decide_firms_to_apply(
 
     # --- write buffers ----------------------------------------------------
     stride = max_M
-    for k, w_id in enumerate(unemp):
-        wrk.job_apps_targets[w_id, :M_eff] = sorted_sample[k]
+    for k, j in enumerate(unemp):
+        wrk.job_apps_targets[j, :M_eff] = sorted_sample[k]
         if M_eff < max_M:
-            wrk.job_apps_targets[w_id, M_eff:max_M] = -1
-        wrk.job_apps_head[w_id] = w_id * stride
+            wrk.job_apps_targets[j, M_eff:max_M] = -1
+        wrk.job_apps_head[j] = j * stride
 
         if k < 10 and log.isEnabledFor(logging.DEBUG):  # first 10 workers
             log.debug(
-                f"    Worker {w_id}: targets={wrk.job_apps_targets[w_id]}, "
-                f"head_ptr={wrk.job_apps_head[w_id]}"
+                f"    Worker {j}: targets={wrk.job_apps_targets[j]}, "
+                f"head_ptr={wrk.job_apps_head[j]}"
             )
 
     # reset flags
@@ -327,55 +327,55 @@ def workers_send_one_round(
         f"(Stride={stride})."
     )
 
-    rng.shuffle(unemp_ids_applying)
+    rng.shuffle(unemp_ids_applying)  # order randomly chosen at each time step
 
     # Counters for logging
     apps_sent_successfully = 0
     apps_dropped_queue_full = 0
     apps_dropped_no_vacancy = 0
 
-    for w_id in unemp_ids_applying:
-        head = wrk.job_apps_head[w_id]
+    for j in unemp_ids_applying:
+        head = wrk.job_apps_head[j]
         if head < 0:
             log.warning(
-                f"  Worker {w_id} in applying list but head is {head}. Skipping.")
+                f"  Worker {j} in applying list but head is {head}. Skipping.")
             continue
 
         row_from_head, col = divmod(head, stride)
-        if row_from_head != w_id:
+        if row_from_head != j:
             log.error(
-                f"  CRITICAL MISMATCH for worker {w_id}: "
+                f"  CRITICAL MISMATCH for worker {j}: "
                 f"head={head} decoded to row {row_from_head}.")
 
         if col >= stride:
             # Normal exit condition for a worker who finished their list.
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(
-                    f"    Worker {w_id} exhausted all {stride} application slots. "
+                    f"    Worker {j} exhausted all {stride} application slots. "
                     f"Setting head to -1.")
-            wrk.job_apps_head[w_id] = -1
+            wrk.job_apps_head[j] = -1
             continue
 
         firm_id = wrk.job_apps_targets[row_from_head, col]
         if firm_id < 0:
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(
-                    f"    Worker {w_id} encountered sentinel (-1) at col {col}. "
+                    f"    Worker {j} encountered sentinel (-1) at col {col}. "
                     f"End of list. Setting head to -1.")
-            wrk.job_apps_head[w_id] = -1
+            wrk.job_apps_head[j] = -1
             continue
 
         if log.isEnabledFor(logging.DEBUG):
-            log.debug(f"    Worker {w_id} applying to firm {firm_id} (app #{col + 1}).")
+            log.debug(f"    Worker {j} applying to firm {firm_id} (app #{col + 1}).")
 
-        # Check for vacancy before checking queue space.
+        # Check for vacancy before checking queue space
         if emp.n_vacancies[firm_id] <= 0:
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(
                     f"  Firm {firm_id} has no more open vacancies. "
-                    f"Worker {w_id} application dropped.")
+                    f"Worker {j} application dropped.")
             apps_dropped_no_vacancy += 1
-            wrk.job_apps_head[w_id] = head + 1
+            wrk.job_apps_head[j] = head + 1
             wrk.job_apps_targets[row_from_head, col] = -1
             continue
 
@@ -385,21 +385,21 @@ def workers_send_one_round(
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(
                     f"    Firm {firm_id} application queue full. "
-                    f"Worker {w_id} application dropped.")
+                    f"Worker {j} application dropped.")
             apps_dropped_queue_full += 1
-            wrk.job_apps_head[w_id] = head + 1
+            wrk.job_apps_head[j] = head + 1
             wrk.job_apps_targets[row_from_head, col] = -1
             continue
 
         # Application is successful
         emp.recv_job_apps_head[firm_id] = ptr
-        emp.recv_job_apps[firm_id, ptr] = w_id
+        emp.recv_job_apps[firm_id, ptr] = j
         apps_sent_successfully += 1
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
-                f"    Worker {w_id} application queued at firm {firm_id} slot {ptr}.")
+                f"    Worker {j} application queued at firm {firm_id} slot {ptr}.")
 
-        wrk.job_apps_head[w_id] = head + 1
+        wrk.job_apps_head[j] = head + 1
         wrk.job_apps_targets[row_from_head, col] = -1
 
     # Summary log
@@ -485,7 +485,7 @@ def _clean_queue(slice_: Idx1D, wrk: Worker, firm_idx_for_log: int) -> Idx1D:
             f"Queue after dropping sentinels: {cleaned_slice}")
 
     # Unique *without* sorting
-    _, first_idx = np.unique(cleaned_slice, return_index=True)
+    first_idx = np.unique(cleaned_slice, return_index=True)[1]
     unique_slice = cleaned_slice[np.sort(first_idx)]
     if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
         log.deep(
@@ -518,69 +518,65 @@ def firms_hire_workers(
         f"  {hiring_ids.size} firms have {total_vacancies:,} "
         f"total vacancies and are attempting to hire.")
 
-    total_hires_this_step = 0
+    total_hires_this_round = 0
 
-    for f_id in hiring_ids:
+    for i in hiring_ids:
         if log.isEnabledFor(logging.DEBUG):
-            log.debug(f"  Processing firm {f_id} (vacancies: {emp.n_vacancies[f_id]})")
+            log.debug(f"  Processing firm {i} (vacancies: {emp.n_vacancies[i]})")
 
-        _check_labor_consistency("PRE-hire", f_id, wrk, emp)
+        _check_labor_consistency("PRE-hire", i, wrk, emp)
 
-        n_recv = emp.recv_job_apps_head[f_id] + 1
+        n_recv = emp.recv_job_apps_head[i] + 1
         if n_recv <= 0:
             if log.isEnabledFor(logging.DEBUG):
-                log.debug(f"    Firm {f_id} has no applications. Skipping.")
+                log.debug(f"    Firm {i} has no applications. Skipping.")
             continue
 
-        # Note to Gemini: try to only use queue, **not** a new variable (`hires_potential`)
-        # and try to avoid copying if not necessary
-        # Gemini Action: Acknowledged. For logging purposes, the copy is helpful to show the
-        # 'before' state. The logic proceeds with a cleaned queue as intended.
-        raw_queue = emp.recv_job_apps[f_id, :n_recv].copy()
+        raw_queue = emp.recv_job_apps[i, :n_recv].copy()
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
-                f"    Firm {f_id} raw application queue "
+                f"    Firm {i} raw application queue "
                 f"({n_recv} applications): {raw_queue}")
 
-        queue = _clean_queue(raw_queue, wrk, firm_idx_for_log=f_id)
+        queue = _clean_queue(raw_queue, wrk, firm_idx_for_log=i)
 
         if queue.size == 0:
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(
-                    f"    Firm {f_id}: no valid (unique, unemployed) "
+                    f"    Firm {i}: no valid (unique, unemployed) "
                     f"applicants in queue. Flushing.")
-            emp.recv_job_apps_head[f_id] = -1
-            emp.recv_job_apps[f_id, :n_recv] = -1
+            emp.recv_job_apps_head[i] = -1
+            emp.recv_job_apps[i, :n_recv] = -1
             continue
 
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
-                f"    Firm {f_id} has {queue.size} valid potential hires: {queue}")
+                f"    Firm {i} has {queue.size} valid potential hires: {queue}")
 
-        num_to_hire = min(queue.size, emp.n_vacancies[f_id])
+        num_to_hire = min(queue.size, emp.n_vacancies[i])
         if num_to_hire < queue.size:
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(
-                    f"    Firm {f_id} capping hires from {queue.size} "
+                    f"    Firm {i} capping hires from {queue.size} "
                     f"to {num_to_hire} due to vacancy limit.")
 
         final_hires = queue[:num_to_hire]
 
         if final_hires.size == 0:
-            emp.recv_job_apps_head[f_id] = -1
-            emp.recv_job_apps[f_id, :n_recv] = -1
+            emp.recv_job_apps_head[i] = -1
+            emp.recv_job_apps[i, :n_recv] = -1
             continue
 
         log.info(
-            f"    Firm {f_id} is hiring {final_hires.size} worker(s): "
+            f"    Firm {i} is hiring {final_hires.size} worker(s): "
             f"{final_hires.tolist()}")
-        total_hires_this_step += final_hires.size
+        total_hires_this_round += final_hires.size
 
         # ---- worker‑side updates ----------------------------------------
         log.debug(f"      Updating state for {final_hires.size} newly hired workers.")
         wrk.employed[final_hires] = 1
-        wrk.employer[final_hires] = f_id
-        wrk.wage[final_hires] = emp.wage_offer[f_id]
+        wrk.employer[final_hires] = i
+        wrk.wage[final_hires] = emp.wage_offer[i]
         wrk.periods_left[final_hires] = theta + rng.poisson(10)
         wrk.contract_expired[final_hires] = 0
         wrk.fired[final_hires] = 0
@@ -588,22 +584,22 @@ def firms_hire_workers(
         wrk.job_apps_targets[final_hires, :] = -1
 
         # ---- firm‑side updates ------------------------------------------
-        emp.current_labor[f_id] += final_hires.size
-        emp.n_vacancies[f_id] -= final_hires.size
+        emp.current_labor[i] += final_hires.size
+        emp.n_vacancies[i] -= final_hires.size
         log.debug(
-            f"      Firm {f_id} state updated: "
-            f"current_labor={emp.current_labor[f_id]}, "
-            f"n_vacancies={emp.n_vacancies[f_id]}")
+            f"      Firm {i} state updated: "
+            f"current_labor={emp.current_labor[i]}, "
+            f"n_vacancies={emp.n_vacancies[i]}")
 
         # flush inbound queue for this firm
-        emp.recv_job_apps_head[f_id] = -1
-        emp.recv_job_apps[f_id, :n_recv] = -1
+        emp.recv_job_apps_head[i] = -1
+        emp.recv_job_apps[i, :n_recv] = -1
         if log.isEnabledFor(logging.DEBUG):
-            log.debug(f"    Firm {f_id} application queue flushed.")
+            log.debug(f"    Firm {i} application queue flushed.")
 
-        _check_labor_consistency("POST-hire", f_id, wrk, emp)
+        _check_labor_consistency("POST-hire", i, wrk, emp)
 
-    log.info(f"  Total hires made this step across all firms: {total_hires_this_step}")
+    log.info(f"  Total hires made this step across all firms: {total_hires_this_round}")
     if log.isEnabledFor(logging.DEBUG):
         true_labor_counts = _safe_bincount_employed(wrk, emp.current_labor.size)
         mismatched_firms = np.flatnonzero(emp.current_labor != true_labor_counts)
