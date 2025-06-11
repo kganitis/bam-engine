@@ -2,36 +2,33 @@
 
 ### TODO Next
 
-* refactor & add detailed logging
-* cross-check with BAM book
-* un-AI comments & docstrings / copy style from scipy & other libraries
-* add plotting module & make example usage
-* 
-* prepare presentation & future work
-* 
-* refactor tests & improve test coverage
-* isolate rng based operations for easier testing
+* Prepare presentation
+  * Introduction
+  * Implementation
+  * Example
+  * Future Work
+* Refactor tests & improve test coverage
 
 ---
 
 ### Visualization
 
 * Logging and plotting
-  * Add lightweight debug logging
   * Add minimal plotting helper
-  * Guard with `log.isEnabledFor`
-  * [DEBUG] First N --> N (DEBUG depth) set by user
+  * Add example usage
 
 ---
 
 ### Low-priority housekeeping
 
-* Guard all heavy logging with level checks
+* Use consistent naming: e.g. when to use `firm` vs `borrower`/`employer`
+* How to deal with _EPS values: where to use them, how often they actually occur
+* Isolate rng based operations for easier testing
+* [DEBUG] First N --> N (DEBUG depth) set by user
+* Review project.optional-dependencies and write the minimum required
 * Keep the Ruff rule set minimal (`E, F, W, I` plus docstrings later)
 * Introduce pytest-benchmark and fail the suite on measurable performance regressions
 * Remove dead lint-ignore comments and finalise design diagrams once the API is frozen
-* Review project.optional-dependencies and write the minimum required
-* Use consistent naming: e.g. when to use `firm` vs `borrower`/`employer`
 
 ---
 
@@ -69,7 +66,7 @@
 * Provide read-only pandas views for downstream analysis without touching core arrays
 * Replace the current hook set with a small plugin event bus (`Plugin.on_event(sched, tag)`)
 * Finish NumPy-style docstrings and enable Ruff’s docstring lint rule
-* Review all the comments and un-AI them
+* API to capture simulation data at any moment inside a step, without sacrificing performance
 
 ---
 

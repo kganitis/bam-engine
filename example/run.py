@@ -6,11 +6,9 @@ Runs a baseline simulation of the BAM Engine and plots key macroeconomic time se
 import logging
 
 import numpy as np
-from numpy.typing import NDArray
 
 from bamengine.helpers import sample_beta_with_mean
 from bamengine.scheduler import Scheduler
-from diagnostics import log_firm_strategy_distribution
 from data_collector import DataCollector
 from plotting import plot_results
 
@@ -18,7 +16,7 @@ log = logging.getLogger(__name__)
 logging.getLogger("bamengine").setLevel(logging.WARNING)
 
 
-def run_baseline_simulation(n_firms=50, seed=0):
+def run_baseline_simulation(n_firms=100, seed=0):
     # --- Simulation Parameters ---
     params = {
         "n_households": n_firms * 5,
@@ -66,7 +64,6 @@ def run_baseline_simulation(n_firms=50, seed=0):
                 f"---------------------------------------------------------------"
                 f"---------------------------------------------------------------"
             )
-            log_firm_strategy_distribution(sched)
             sched.step()
             collector.capture(sched)
 

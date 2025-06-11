@@ -22,11 +22,11 @@ def firms_collect_revenue(prod: Producer, bor: Borrower) -> None:
 
     Rule
     ----
-        revenue      = P · (Y − S)
-        gross_profit = revenue − W
-        funds         += revenue
+        R            = P · (Y − S)
+        gross_profit = R − W
+        funds        += R
 
-    P: Individual Price, Y: Actual Production, S: Inventory, W: Wage Bill
+    R: Revenue, P: Individual Price, Y: Actual Production, S: Inventory, W: Wage Bill
     """
     log.info("--- Firms Collecting Revenue & Calculating Gross Profit ---")
 
@@ -309,6 +309,7 @@ def firms_validate_debt_commitments(
             )
 
     # ---- calculate net profit -------------------------------------------
+    # TODO Separate net profit calculation
     log.info("  Calculating net profit (gross profit - total interest)")
     bor.net_profit[:] = bor.gross_profit - total_interest
     total_net_profit = bor.net_profit.sum()
@@ -327,8 +328,11 @@ def firms_pay_dividends(bor: Borrower, *, delta: float) -> None:
 
     Rule
     ----
-        retained = net_profit           ( ≤ 0 case)
-                 = net_profit · (1-δ)   ( > 0 case)
+        retained = π           ( ≤ 0 case)
+                 = π · (1-δ)   ( > 0 case)
+        Div      = π · δ       ( > 0 case)
+
+    π: Net Profit, Div: Dividends, δ: Dividend Payout Ratio
 
     Notes
     -----

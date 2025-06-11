@@ -48,7 +48,6 @@ from bamengine.systems.goods_market import (
     consumers_shop_one_round,
 )
 from bamengine.systems.labor_market import (
-    calc_inflation_and_adjust_minimum_wage,
     firms_calc_wage_bill,
     firms_decide_wage_offer,
     firms_hire_workers,
@@ -446,15 +445,14 @@ class Scheduler:
             h_eta=self.h_eta,
             rng=self.rng,
         )
+        update_avg_mkt_price(self.ec, self.prod)
+        calc_annual_inflation_rate(self.ec)
         firms_decide_desired_labor(self.prod, self.emp)
         firms_decide_vacancies(self.emp)
 
-        update_avg_mkt_price(self.ec, self.prod)
-        calc_annual_inflation_rate(self.ec)
-        adjust_minimum_wage(self.ec)
-
         # ===== event 2 – labor-market =================================================
 
+        adjust_minimum_wage(self.ec)
         firms_decide_wage_offer(
             self.emp, w_min=self.ec.min_wage, h_xi=self.h_xi, rng=self.rng
         )
@@ -464,7 +462,7 @@ class Scheduler:
         for _ in range(self.max_M):
             workers_send_one_round(self.wrk, self.emp, rng=self.rng)
             firms_hire_workers(self.wrk, self.emp, theta=self.theta, rng=self.rng)
-        firms_calc_wage_bill(self.emp)
+        firms_calc_wage_bill(self.emp, self.wrk)
 
         # ===== event 3 – credit-market ================================================
 
@@ -486,18 +484,6 @@ class Scheduler:
 
         firms_pay_wages(self.emp)
         workers_receive_wage(self.con, self.wrk)
-
-        # firms_decide_price(
-        #     self.prod,
-        #     self.emp,
-        #     self.lb,
-        #     p_avg=self.ec.avg_mkt_price,
-        #     h_eta=self.h_eta,
-        #     rng=self.rng,
-        # )
-        # update_avg_mkt_price(self.ec, self.prod)
-        # calc_annual_inflation_rate(self.ec)
-
         firms_run_production(self.prod, self.emp)
         workers_update_contracts(self.wrk, self.emp)
 
@@ -522,13 +508,15 @@ class Scheduler:
         # ===== event 7 – bankruptcy ===================================================
 
         firms_update_net_worth(self.bor)
-        mark_bankrupt_firms(self.ec, self.prod, self.emp, self.bor, self.wrk, self.lb)
+        mark_bankrupt_firms(self.ec, self.emp, self.bor, self.prod, self.wrk, self.lb)
         mark_bankrupt_banks(self.ec, self.lend, self.lb)
 
         # ===== event 8 – entry ========================================================
 
         spawn_replacement_firms(self.ec, self.prod, self.emp, self.bor, rng=self.rng)
         spawn_replacement_banks(self.ec, self.lend, rng=self.rng)
+
+        # ===== end of period = ========================================================
 
         calc_unemployment_rate(self.ec, self.wrk)
 

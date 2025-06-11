@@ -35,8 +35,8 @@ net_worth_init:      10.0        # initial per firm net worth (units of money)
 production_init:      1.0        # initial per firm production (units of goods)
 price_init:           1.5        # initial (universal) goods price (units of money)
 savings_init:         3.0        # initial (per consumer) savings (units of money)
-wage_offer_init:      1.0       # initial (universal) wage offer by firms (units of money)
-equity_base_init:    10000.0        # initial (per bank) equity base (units of money)
+wage_offer_init:      1.0        # initial (universal) wage offer by firms (units of money)
+equity_base_init: 10000.0        # initial (per bank) equity base (units of money)
 
 # ── RNG seed ───────────────────────────────────────────────────────────
 seed:               12345        # int; Generator in code to override

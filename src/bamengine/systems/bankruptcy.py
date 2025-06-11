@@ -50,20 +50,14 @@ def firms_update_net_worth(bor: Borrower) -> None:
 
     # ---- sync cash and clamp at zero ------------------------------------
     bor.total_funds[:] = bor.net_worth
-    clamped_mask = bor.total_funds < _EPS
-    if np.any(clamped_mask):
-        num_clamped = np.sum(clamped_mask)
-        log.warning(
-            f"  {num_clamped} firms have negative cash after net worth update. "
-            f"Clamping funds to 0.")
-        np.maximum(bor.total_funds, 0.0, out=bor.total_funds)
+    np.maximum(bor.total_funds, 0.0, out=bor.total_funds)
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"  Net worths after update (first 10 firms): "
             f"{np.array2string(bor.net_worth, precision=2)}")
         log.debug(
-            f"  Total funds (cash) after sync and clamp (first 10 firms): "
+            f"  Total funds (cash) after sync (first 10 firms): "
             f"{np.array2string(bor.total_funds, precision=2)}")
 
     log.info("--- Firms Updating Net Worth complete ---")
@@ -101,7 +95,7 @@ def mark_bankrupt_firms(
         log.info("--- Firm Bankruptcy Marking complete ---")
         return
 
-    log.info(
+    log.warning(
         f"  {bankrupt_indices.size} firm(s) have gone bankrupt: {bankrupt_indices.tolist()}")
     if log.isEnabledFor(logging.DEBUG):
         nw_bankrupt = np.where(bor.net_worth < _EPS)[0]
@@ -159,7 +153,7 @@ def mark_bankrupt_banks(ec: Economy, lend: Lender, lb: LoanBook) -> None:
         log.info("--- Bank Bankruptcy Marking complete ---")
         return
 
-    log.info(
+    log.warning(
         f"  !!! {bankrupt_indices.size} BANK(S) HAVE GONE BANKRUPT: "
         f"{bankrupt_indices.tolist()} !!!")
 
@@ -227,7 +221,7 @@ def spawn_replacement_firms(
         bor.projected_fragility[i] = 0.0
 
         # Reset Producer component
-        prod.production[i] = mean_prod * s
+        prod.production[i] = mean_prod
         prod.inventory[i] = 0.0
         prod.expected_demand[i] = 0.0
         prod.desired_production[i] = 0.0

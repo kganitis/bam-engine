@@ -68,7 +68,7 @@ def firms_decide_desired_production(
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Avg market price (P̄): {p_avg:.2f}")
         log.debug(
-            f"  Generated production shocks (h_rho={h_rho:.2f}):\n"
+            f"  Generated production shocks (h_ρ)={h_rho:.2f}):\n"
             f"{np.array2string(shock, precision=4)}")
         log.debug(
             f"  Inventories (S):\n{np.array2string(prod.inventory, precision=2)}"
@@ -108,8 +108,11 @@ def firms_calc_breakeven_price(
         cap_factor: int | None = None,
 ):
     # TODO Decide when to calc breakeven price
-    #    - This calculation depends on wage_bill, interest, and production.
-    #      The timing of its call in the main scheduler is critical.
+    #    - Case 1: During planning (use values from last period)
+    #              - Use wage bill after firing or after contracts expiring?
+    #              - Use interest before or after debt repayment?
+    #    - Case 2: After credit market (where labor and interest are finalized)
+    #              - Use projected production based on updated labor
     log.info("--- Firms Calculating Breakeven Price ---")
     log.info(f"  Inputs: Breakeven Cap Factor={cap_factor if cap_factor else 'None'}")
     log.info("  Calculation uses `prod.production` (from t-1) as the denominator. "
@@ -117,8 +120,6 @@ def firms_calc_breakeven_price(
 
     # --- Breakeven calculation -----------------------------------------------
     interest = lb.interest_per_borrower(prod.production.size)
-    # TODO Make sure wage bill has been updated
-    #  If Case 1: use projected production based on updated labor
     breakeven = ((emp.wage_bill + interest) /
                  np.maximum(prod.production, _EPS))
     log.info(
@@ -171,10 +172,11 @@ def firms_adjust_price(
     #      As implemented, the new price is `max(shocked_price, breakeven_price)`.
     #      This can lead to prices jumping to the breakeven floor, which may be
     #      higher than the old price, even in a price-cutting scenario.
+    #      Warn for extreme jumps.
     log.info("--- Firms Adjusting Prices ---")
     log.info(
         f"  Inputs: Avg Market Price (p_avg)={p_avg:.3f}  |  "
-        f"Max Price Shock (h_eta)={h_eta:.3f}"
+        f"Max Price Shock (h_η)={h_eta:.3f}"
     )
 
     shape = prod.price.shape
@@ -241,7 +243,7 @@ def firms_adjust_price(
         num_floored = np.sum(np.isclose(prod.price[mask_dn],
                                         prod.breakeven_price[mask_dn]))
         num_increased_due_to_floor = np.sum(
-            (prod.price[mask_dn] > old_prices_for_log[mask_dn]) & mask_dn)
+            prod.price[mask_dn] > old_prices_for_log[mask_dn])
         log.info(f"  Cut prices for {n_dn} firms. "
                  f"Avg change: {np.mean(price_changes):+.3f}. "
                  f"{num_floored} prices set by breakeven floor.")
@@ -274,8 +276,8 @@ def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
             f"  |  Avg Labor Productivity={prod.labor_productivity.mean():.3f}")
 
     # --- validation -----------------------------------------------------------
-    invalid_mask = (~np.isfinite(prod.labor_productivity) |
-                    prod.labor_productivity <= _EPS)
+    invalid_mask = np.logical_or(~np.isfinite(prod.labor_productivity),
+                                 prod.labor_productivity <= _EPS)
     if invalid_mask.any():
         n_invalid = np.sum(invalid_mask)
         log.warning(f"  Found and clamped {n_invalid} firms "

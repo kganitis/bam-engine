@@ -18,7 +18,6 @@ from bamengine.typing import Idx1D
 
 log = _logging_ext.getLogger(__name__)
 
-CAP_FRAG = 1.0e6  # Fragility cap when net worth is zero or negative
 _EPS = 1e-6
 
 
@@ -154,27 +153,27 @@ def firms_calc_credit_metrics(bor: Borrower) -> None:
     # Calculate raw fragility as B / A for borrowers with positive net worth.
     np.divide(bor.credit_demand, bor.net_worth, out=frag, where=bor.net_worth > 0.0)
 
-    # Cap fragility for borrowers with zero or negative net worth at CAP_FRAG.
-    zero_nw_mask = bor.net_worth <= 0.0
+    # Cap fragility for borrowers with zero or negative net worth at amount B.
+    zero_nw_mask = bor.net_worth <= _EPS
     if np.any(zero_nw_mask):
         num_zero_nw = np.sum(zero_nw_mask)
         log.warning(
             f"  {num_zero_nw} borrower(s) have zero/negative net worth. "
-            f"Setting their initial fragility to the cap of {CAP_FRAG:,.0f}."
+            f"Capping their financial fragility to their credit demand amount."
         )
-        frag[zero_nw_mask] = CAP_FRAG
+        frag[zero_nw_mask] = bor.credit_demand[zero_nw_mask]
 
     # Apply a global fragility cap for all borrowers.
-    # This handles borrowers whose fragility may have exploded due to very small
-    # (but positive) net worth, capping them at CAP_FRAG.
-    general_cap_mask = frag > CAP_FRAG
+    # This handles borrowers whose fragility may have exploded due to
+    # very small (but positive) net worth, capping them at amount B.
+    general_cap_mask = frag > bor.credit_demand
     if np.any(general_cap_mask):
         num_generally_capped = np.sum(general_cap_mask)
         log.warning(
             f"  Capping fragility for {num_generally_capped} borrower(s) "
-            f"whose calculated fragility exceeded the {CAP_FRAG:,.0f} limit."
+            f"whose calculated fragility exceeded the allowed limit."
         )
-    np.minimum(frag, CAP_FRAG, out=frag)
+    np.minimum(frag, bor.credit_demand, out=frag)
 
     # Final adjustment by R&D intensity (μ).
     np.multiply(frag, bor.rnd_intensity, out=frag)
@@ -371,10 +370,11 @@ def firms_send_one_loan_app(
 
 def _clean_queue(slice_: Idx1D, bor: Borrower, bank_idx_for_log: int) -> Idx1D:
     # TODO Unify with `labor_market._clean_queue`
+    #  Make sorting optional
     """
     Return a queue (Idx1D) of *unique* borrower ids that still demand credit
     from the raw queue slice (may contain -1 sentinels and duplicates),
-    preserving the original order of first appearance.
+    sorted by their net worth.
     """
     if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
         log.deep(
@@ -524,7 +524,7 @@ def banks_provide_loans(
         # ---- borrower‑side updates --------------------------------------
         bor.total_funds[final_borrowers] += final_amounts
         bor.credit_demand[final_borrowers] -= final_amounts
-        assert (bor.credit_demand >= -1e-12).all(), "negative credit_demand"
+        assert (bor.credit_demand >= -_EPS).all(), "negative credit_demand"
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
                 f"      Borrower state updated: "
