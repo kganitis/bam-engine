@@ -177,8 +177,8 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
 
     Rule
     ----
-        L_i := Σ {worker employed & employer == i}
-        W := L · w
+        L_i = Σ {worker employed & employer == i}
+        W   = L · w
 
     L: Actual Labour, W: Wage Bill, w: Individual Wage
     """

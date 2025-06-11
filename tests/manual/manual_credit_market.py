@@ -12,7 +12,7 @@ from bamengine.systems import banks_decide_credit_supply, banks_decide_interest_
 from helpers.factories import mock_borrower, mock_lender, mock_loanbook, mock_employer, \
     mock_worker
 
-logging.getLogger("bamengine").setLevel(logging.INFO)
+logging.getLogger("bamengine").setLevel(logging.DEBUG)
 
 n_borrowers = 6
 n_lenders = 3
