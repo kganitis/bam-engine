@@ -429,6 +429,8 @@ def banks_provide_loans(
     lb: LoanBook,
     lend: Lender,
     *,
+    r_bar: float,
+    h_phi: float,
     rng: Generator = default_rng(),
 ) -> None:
     """Process queued applications and update all related state in‑place."""
@@ -503,7 +505,7 @@ def banks_provide_loans(
 
         final_borrowers = queue[mask]
         final_amounts = max_grant[mask]
-        final_rates = lend.interest_rate[k] * (1.0 + frag[mask])
+        final_rates = r_bar * (1.0 + h_phi * frag[mask])
 
         if final_borrowers.size == 0:
             lend.recv_loan_apps_head[k] = -1
