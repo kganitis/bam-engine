@@ -477,7 +477,7 @@ class Scheduler:
         )
         for _ in range(self.max_H):
             firms_send_one_loan_app(self.bor, self.lend, rng=self.rng)
-            banks_provide_loans(self.bor, self.lb, self.lend, rng=self.rng)
+            banks_provide_loans(self.bor, self.lb, self.lend, r_bar=0.02, h_phi=0.10)
         firms_fire_workers(self.emp, self.wrk, rng=self.rng)
 
         # ===== event 4 – production ===================================================

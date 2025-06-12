@@ -76,5 +76,5 @@ firms_calc_credit_metrics(bor)
 firms_prepare_loan_applications(bor, lend, max_H=H, rng=rng)
 for _ in range(H):
     firms_send_one_loan_app(bor, lend, rng)
-    banks_provide_loans(bor, lb, lend, rng=rng)
+    banks_provide_loans(bor, lb, lend, r_bar=0.02, h_phi=0.10, rng=rng)
 firms_fire_workers(emp, wrk, method='expensive', rng=rng)

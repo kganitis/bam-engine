@@ -13,9 +13,7 @@
 
 ### Visualization
 
-* Logging and plotting
-  * Add minimal plotting helper
-  * Add example usage
+* Add minimal plotting helper
 
 ---
 

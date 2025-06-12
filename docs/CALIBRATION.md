@@ -44,10 +44,8 @@
 - Firing workers method
   - Fire random workers
   - `Fire most expensive`
-
-- Decide Inventory unit of measurement
-  - `Goods units (production)`
-  - Monetary units (production * price)
+  - Fire recent
+  - Fire older
 
 - Handle loanbook rows after repayment
   - `Clear after repayment (this will affect breakeven calc)`
