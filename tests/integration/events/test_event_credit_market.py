@@ -31,9 +31,6 @@ from bamengine.systems.credit_market import (
 )
 
 
-# --------------------------------------------------------------------------- #
-# helper – run ONE credit event                                               #
-# --------------------------------------------------------------------------- #
 def _run_credit_event(sch: Scheduler) -> NDArray[np.float64]:
     """
     Execute the complete Event-3 logic once and return the snapshot of
@@ -49,25 +46,23 @@ def _run_credit_event(sch: Scheduler) -> NDArray[np.float64]:
         sch.lend, r_bar=sch.ec.r_bar, h_phi=sch.h_phi, rng=sch.rng
     )
 
-    # --- demand + fragility ------------------------------------------------
+    # demand + fragility
     firms_decide_credit_demand(sch.bor)
     demand_before = sch.bor.credit_demand.copy()
     firms_calc_credit_metrics(sch.bor)
 
-    # --- application cycle -------------------------------------------------
+    # application cycle
     firms_prepare_loan_applications(sch.bor, sch.lend, max_H=sch.max_H, rng=sch.rng)
     for _ in range(sch.max_H):
         firms_send_one_loan_app(sch.bor, sch.lend)
         banks_provide_loans(sch.bor, sch.lb, sch.lend)
 
-    # --- layoffs triggered by unmet wage bill ------------------------------
+    # layoffs triggered by unmet wage bill
     firms_fire_workers(sch.emp, sch.wrk, rng=sch.rng)
     return demand_before
 
 
-# --------------------------------------------------------------------------- #
-# 1. Regression-style basic test                                              #
-# --------------------------------------------------------------------------- #
+# Regression-style basic test
 def test_event_credit_market_basic(tiny_sched: Scheduler) -> None:
     sch = tiny_sched
 
@@ -116,9 +111,7 @@ def test_event_credit_market_basic(tiny_sched: Scheduler) -> None:
     assert (sch.lend.credit_supply >= -1e-9).all()
 
 
-# --------------------------------------------------------------------------- #
-# 2. Post-event state consistency                                             #
-# --------------------------------------------------------------------------- #
+# Post-event state consistency
 def test_credit_market_post_state_consistency(tiny_sched: Scheduler) -> None:
     sch = tiny_sched
 
@@ -130,12 +123,12 @@ def test_credit_market_post_state_consistency(tiny_sched: Scheduler) -> None:
 
     _run_credit_event(sch)
 
-    # 1. wage bill now covered (after possible layoffs)
+    # wage bill now covered (after possible layoffs)
     assert (sch.emp.wage_bill <= sch.emp.total_funds + 1e-9).all()
 
-    # 2. exhausted banks have flushed queues
+    # exhausted banks have flushed queues
     mask_exhausted = sch.lend.credit_supply < 1e-9
     assert np.all((sch.lend.recv_loan_apps_head[mask_exhausted] == -1))
 
-    # 3. LoanBook capacity >= size
+    # LoanBook capacity >= size
     assert sch.lb.capacity >= sch.lb.size

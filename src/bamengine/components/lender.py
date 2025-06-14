@@ -6,14 +6,14 @@ from bamengine.typing import Float1D, Idx1D, Idx2D
 
 @dataclass(slots=True)
 class Lender:
-    """Dense state for lender agents."""
 
-    equity_base: Float1D  # E_k
-    credit_supply: Float1D  # C_k
-    interest_rate: Float1D  # r_k
+    equity_base: Float1D
+    credit_supply: Float1D
+    interest_rate: Float1D
 
-    # bounded FIFO queue of borrower indices that apply each round
-    recv_loan_apps_head: Idx1D  # ptr (−1 ⇒ empty)
-    recv_loan_apps: Idx2D  # shape (N_banks, H)
+    # Scratch queues
+    recv_loan_apps_head: Idx1D
+    recv_loan_apps: Idx2D  # shape (n_banks, n_firms)
 
-    opex_shock: Float1D | None = field(default=None, repr=False)  # scratch
+    # Scratch buffer
+    opex_shock: Float1D | None = field(default=None, repr=False)

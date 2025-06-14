@@ -132,7 +132,7 @@ class Scheduler:
     One call to :py:meth:`run` → *n* calls to :py:meth:`step`.
     """
 
-    # ------ core state ---------------------------------------------------
+    #  core state
     rng: Generator
     ec: Economy
     prod: Producer
@@ -143,16 +143,16 @@ class Scheduler:
     con: Consumer
     lb: LoanBook
 
-    # ----- population sizes ----------------------------------------------
+    # population sizes
     n_firms: int
     n_households: int
     n_banks: int
 
-    # ----- periods -------------------------------------------------------
+    # periods
     n_periods: int  # run length
     t: int  # current period
 
-    # ----- simulation parameters -----------------------------------------
+    # simulation parameters
     h_rho: float  # max production-growth shock
     h_xi: float  # max wage-growth shock
     h_phi: float  # max bank operational costs shock
@@ -161,7 +161,7 @@ class Scheduler:
     max_H: int  # max loan applications per firm
     max_Z: int  # max firm visits per consumer
 
-    # ----- economy level parameters --------------------------------------
+    # economy level parameters
     theta: int  # job contract length θ
     beta: float  # propensity to consume exponent β
     delta: float  # dividend payout ratio δ (DPR)
@@ -189,7 +189,7 @@ class Scheduler:
         cfg.update(_read_yaml(config))
         cfg.update(overrides)
 
-        # ----------------- pull required scalars --------------------------------
+        #  pull required scalars
         n_firms = int(cfg.pop("n_firms"))
         n_households = int(cfg.pop("n_households"))
         n_banks = int(cfg.pop("n_banks"))
@@ -200,7 +200,7 @@ class Scheduler:
             seed_val if isinstance(seed_val, Generator) else default_rng(seed_val)
         )
 
-        # ----- vector params (validate size) ---------------------------------
+        # vector params (validate size)
         cfg["net_worth_init"] = _validate_float1d(
             "net_worth_init", cfg.get("net_worth_init", 10.0), n_firms
         )
@@ -220,7 +220,7 @@ class Scheduler:
             "equity_base_init", cfg.get("equity_base_init", 10_000.0), n_banks
         )
 
-        # ----------------- delegate to *private* constructor ------------------
+        #  delegate to *private* constructor
         return cls._from_params(
             rng=rng,
             n_firms=n_firms,

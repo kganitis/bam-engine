@@ -152,7 +152,7 @@ def consumers_decide_firms_to_visit(
     Each consumer with spending budget selects up to max_Z firms to potentially visit.
 
     Selection Strategy
-    ------------------
+
     1. Loyalty Rule:
        Previous period's "largest producer visited" gets slot 0 iff still has inventory
     2. Random Sampling:
@@ -281,7 +281,7 @@ def consumers_shop_one_round(
     Execute one complete round of shopping across all consumers with spending budget.
 
     Shopping Process
-    ----------------
+
     1. Identify all consumers with remaining spending budget
     2. Randomize shopping order to ensure fairness
     3. Each consumer attempts to purchase from their next queued firm

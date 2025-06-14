@@ -39,7 +39,7 @@ def firms_decide_desired_production(
         f"Max Production Shock (h_ρ)={h_rho:.3f}")
     shape = prod.price.shape
 
-    # --- permanent scratches ---------------
+    # permanent scratches
     shock = prod.prod_shock
     if shock is None or shock.shape != shape:
         shock = np.empty(shape, dtype=np.float64)
@@ -55,7 +55,7 @@ def firms_decide_desired_production(
         dn_mask = np.empty(shape, dtype=np.bool_)
         prod.prod_mask_dn = dn_mask
 
-    # --- fill buffers in‑place ---------------
+    # fill buffers in‑place
     shock[:] = rng.uniform(0.0, h_rho, size=shape)
     np.logical_and(prod.inventory == 0.0, prod.price >= p_avg, out=up_mask)
     np.logical_and(prod.inventory > 0.0, prod.price < p_avg, out=dn_mask)
@@ -82,7 +82,7 @@ def firms_decide_desired_production(
         if n_dn > 0:
             log.debug(f"  Firms decreasing production: {np.where(dn_mask)[0].tolist()}")
 
-    # --- core rule ----------------------------------
+    # core rule 
     prod.expected_demand[:] = prod.production
     prod.expected_demand[up_mask] *= 1.0 + shock[up_mask]
     prod.expected_demand[dn_mask] *= 1.0 - shock[dn_mask]
@@ -118,7 +118,7 @@ def firms_calc_breakeven_price(
     log.info("  Calculation uses `prod.production` (from t-1) as the denominator. "
              "Ensure this is the intended production base.")
 
-    # --- Breakeven calculation -----------------------------------------------
+    # Breakeven calculation
     interest = lb.interest_per_borrower(prod.production.size)
     breakeven = ((emp.wage_bill + interest) /
                  np.maximum(prod.production, _EPS))
@@ -133,7 +133,7 @@ def firms_calc_breakeven_price(
             f"max={valid_breakeven.max() if valid_breakeven.size > 0 else 'N/A':.2f}, "
             f"avg={valid_breakeven.mean() if valid_breakeven.size > 0 else 'N/A':.2f}")
 
-    # --- Cap breakeven -------------------------------------------------------
+    # Cap breakeven
     if cap_factor and cap_factor > 1:
         # Cannot be more than current price x cap_factor. This prevents extreme jumps.
         breakeven_max_value = prod.price * cap_factor
@@ -182,7 +182,7 @@ def firms_adjust_price(
     shape = prod.price.shape
     old_prices_for_log = prod.price.copy()
 
-    # --- scratch buffer for shocks -------------------------------------------
+    # scratch buffer for shocks
     shock = prod.price_shock
     if shock is None or shock.shape != shape:
         shock = np.empty(shape, dtype=np.float64) # Corrected dtype
@@ -192,7 +192,7 @@ def firms_adjust_price(
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Generated price shocks:\n{np.array2string(shock, precision=4)}")
 
-    # --- masks ----------------------------------------------------------------
+    # masks
     mask_up = (prod.inventory == 0.0) & (prod.price < p_avg)
     mask_dn = (prod.inventory > 0.0) & (prod.price >= p_avg)
     n_up, n_dn = np.sum(mask_up), np.sum(mask_dn)
@@ -205,7 +205,7 @@ def firms_adjust_price(
         if n_dn > 0:
             log.debug(f"    Firms decreasing price: {np.where(mask_dn)[0].tolist()}")
 
-    # --- DEBUG pre-update snapshot -------------------------------------------
+    # DEBUG pre-update snapshot
     if log.isEnabledFor(logging.DEBUG):
         log.debug("  --- PRICE ADJUSTMENT (EXECUTION) ---")
         log.debug(f"  P̄ (avg market price) : {p_avg:.4f}")
@@ -216,7 +216,7 @@ def firms_adjust_price(
             f"  Breakeven prices being used:\n"
             f"{np.array2string(prod.breakeven_price, precision=2)}")
 
-    # --- raise prices --------------------------------------------------------
+    # raise prices
     if n_up > 0:
         np.multiply(prod.price, 1.0 + shock, out=prod.price, where=mask_up)
         np.maximum(prod.price, prod.breakeven_price, out=prod.price, where=mask_up)
@@ -234,7 +234,7 @@ def firms_adjust_price(
                           f"NewP={prod.price[firm_idx]:.2f} "
                           f"(Breakeven={prod.breakeven_price[firm_idx]:.2f})")
 
-    # --- cut prices ----------------------------------------------------------
+    # cut prices
     if n_dn > 0:
         np.multiply(prod.price, 1.0 - shock, out=prod.price, where=mask_dn)
         np.maximum(prod.price, prod.breakeven_price, out=prod.price, where=mask_dn)
@@ -275,7 +275,7 @@ def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
             f"  Inputs: Total Desired Production={prod.desired_production.sum():,.2f}"
             f"  |  Avg Labor Productivity={prod.labor_productivity.mean():.3f}")
 
-    # --- validation -----------------------------------------------------------
+    # validation
     invalid_mask = np.logical_or(~np.isfinite(prod.labor_productivity),
                                  prod.labor_productivity <= _EPS)
     if invalid_mask.any():
@@ -284,12 +284,12 @@ def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
                     f"with invalid labor productivity.")
         prod.labor_productivity[invalid_mask] = _EPS
 
-    # --- core rule -----------------------------------------------------------
+    # core rule
     desired_labor_frac = prod.desired_production / prod.labor_productivity
     np.ceil(desired_labor_frac, out=desired_labor_frac)
     emp.desired_labor[:] = desired_labor_frac.astype(np.int64)
 
-    # --- logging -----------------------------------------------------------
+    # logging
     log.info(f"  Total desired labor across all firms: {emp.desired_labor.sum():,}")
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Desired Labor (Ld):\n{emp.desired_labor}")
@@ -308,12 +308,12 @@ def firms_decide_vacancies(emp: Employer) -> None:
     log.info(f"  Inputs: Total Desired Labor={emp.desired_labor.sum():,}  |"
              f"  Total Current Labor={emp.current_labor.sum():,}")
 
-    # --- core rule -----------------------------------------------------------
+    # core rule
     np.subtract(emp.desired_labor, emp.current_labor,
                 out=emp.n_vacancies, dtype=np.int64)
     np.maximum(emp.n_vacancies, 0, out=emp.n_vacancies)
 
-    # --- logging -----------------------------------------------------------
+    # logging
     log.info(f"  Total open vacancies in the economy: {emp.n_vacancies.sum():,}")
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Final Vacancies (V):\n{emp.n_vacancies}")

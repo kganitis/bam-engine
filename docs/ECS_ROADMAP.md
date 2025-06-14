@@ -36,7 +36,7 @@ This keeps the test-suite green at every step.
 ### Pros
 
 | Benefit                            | Why it matters                                                                                                                               |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+|  | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Fewer Python loops**             | The current inner loop over every unemployed worker or every head pointer is pure-Python; on large populations that’s the next perf ceiling. |
 | **No sentinel / head bookkeeping** | Removes a whole class of off-by-one and overflow bugs we already wrote tests for.                                                            |
 | **Easier to debug**                | An application is just a row in a 2-column array → can inspect in a DataFrame.                                                               |

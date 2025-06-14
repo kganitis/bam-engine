@@ -22,9 +22,6 @@ from tests.helpers.factories import (
 )
 
 
-# --------------------------------------------------------------------------- #
-# 1. net-worth update                                                         #
-# --------------------------------------------------------------------------- #
 def test_firms_update_net_worth_syncs_cash() -> None:
     bor = mock_borrower(
         n=3,
@@ -38,11 +35,8 @@ def test_firms_update_net_worth_syncs_cash() -> None:
     np.testing.assert_allclose(bor.total_funds, bor.net_worth)
 
 
-# --------------------------------------------------------------------------- #
-# 2. firm bankruptcy                                                          #
-# --------------------------------------------------------------------------- #
 def test_mark_bankrupt_firms_fires_workers_and_purges_loans() -> None:
-    # --- minimal 3-firm economy ------------------------------------------
+    # minimal 3-firm economy
     prod = mock_producer(3)
     emp = mock_employer(3)
     bor = mock_borrower(3, net_worth=np.array([5.0, -2.0, 8.0]))
@@ -62,21 +56,21 @@ def test_mark_bankrupt_firms_fires_workers_and_purges_loans() -> None:
 
     ec = mock_economy()
 
-    mark_bankrupt_firms(ec, prod, emp, bor, wrk, lb)
+    mark_bankrupt_firms(ec, emp, bor, prod, wrk, lb)
 
-    # 1. exiting list
+    # exiting list
     assert np.array_equal(ec.exiting_firms, [1])
 
-    # 2. all workers of firm-1 flags set
+    # all workers of firm-1 flags set
     assert np.all((wrk.employed[[0, 1, 2]] == 0))
     assert np.all((wrk.fired[[0, 1, 2]] == 0))
     assert np.all((wrk.employer[[0, 1, 2]] == -1))
 
-    # 3. employer books wiped
+    # employer books wiped
     assert emp.current_labor[1] == 0
     assert emp.wage_bill[1] == 0.0
 
-    # 4. LoanBook compacted → rows with borrower==1 gone
+    # LoanBook compacted → rows with borrower==1 gone
     assert lb.size == 2
     assert not np.isin(lb.borrower[: lb.size], 1).any()
 
@@ -89,7 +83,7 @@ def test_mark_bankrupt_firms_exits_zero_production() -> None:
     wrk = mock_worker(0)
 
     ec = mock_economy()
-    mark_bankrupt_firms(ec, prod, emp, bor, wrk, mock_loanbook(size=0))
+    mark_bankrupt_firms(ec, emp, bor, prod, wrk, mock_loanbook(size=0))
 
     assert np.array_equal(ec.exiting_firms, np.array([0]))
 
@@ -103,9 +97,9 @@ def test_mark_bankrupt_firms_noop_when_all_viable() -> None:
 
     mark_bankrupt_firms(
         ec,
-        prod,
         mock_employer(2),
         bor,
+        prod,
         mock_worker(0),
         mock_loanbook(size=0),
     )
@@ -114,9 +108,6 @@ def test_mark_bankrupt_firms_noop_when_all_viable() -> None:
     np.testing.assert_array_equal(bor.net_worth, before)
 
 
-# --------------------------------------------------------------------------- #
-# 3. bank bankruptcy                                                          #
-# --------------------------------------------------------------------------- #
 def test_mark_bankrupt_banks_purges_loans() -> None:
     ec = mock_economy()
     lend = mock_lender(2, equity_base=np.array([10_000.0, -5.0]))
@@ -130,9 +121,6 @@ def test_mark_bankrupt_banks_purges_loans() -> None:
     assert lb.size == 1 and lb.lender[0] == 0
 
 
-# --------------------------------------------------------------------------- #
-# 4. firm entry                                                               #
-# --------------------------------------------------------------------------- #
 def test_spawn_replacement_firms_restores_positive_equity() -> None:
     rng = default_rng(42)
 
@@ -161,9 +149,6 @@ def test_spawn_replacement_firms_restores_positive_equity() -> None:
     assert np.array_equal(prod.inventory[[0, 2]], [0, 0])
 
 
-# --------------------------------------------------------------------------- #
-# 5. bank entry                                                               #
-# --------------------------------------------------------------------------- #
 def test_spawn_replacement_banks_clone_and_fallback() -> None:
     rng = default_rng(7)
 

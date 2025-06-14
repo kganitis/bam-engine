@@ -40,7 +40,7 @@ def firms_update_net_worth(bor: Borrower) -> None:
     """
     log.info("--- Firms Updating Net Worth ---")
 
-    # ---- update net worth with retained profits -------------------------
+    # update net worth with retained profits 
     total_retained_profits = bor.retained_profit.sum()
     log.info(
         f"  Total retained profits being added to net worth: "
@@ -48,7 +48,7 @@ def firms_update_net_worth(bor: Borrower) -> None:
 
     np.add(bor.net_worth, bor.retained_profit, out=bor.net_worth)
 
-    # ---- sync cash and clamp at zero ------------------------------------
+    # sync cash and clamp at zero 
     bor.total_funds[:] = bor.net_worth
     np.maximum(bor.total_funds, 0.0, out=bor.total_funds)
 
@@ -84,7 +84,7 @@ def mark_bankrupt_firms(
     """
     log.info("--- Marking Bankrupt Firms ---")
 
-    # ---- detect bankruptcies --------------------------------------------
+    # detect bankruptcies 
     bankrupt_mask = (bor.net_worth < _EPS) | (prod.production <= _EPS)
     bankrupt_indices = np.where(bankrupt_mask)[0]
 
@@ -105,7 +105,7 @@ def mark_bankrupt_firms(
         log.debug(
             f"    Bankrupt due to Production <= 0: {np.intersect1d(bankrupt_indices, prod_bankrupt).tolist()}")
 
-    # ---- fire all employees of bankrupt firms ---------------------------
+    # fire all employees of bankrupt firms
     workers_to_fire_mask = np.isin(wrk.employer, bankrupt_indices)
     num_fired = np.sum(workers_to_fire_mask)
     if num_fired > 0:
@@ -118,13 +118,13 @@ def mark_bankrupt_firms(
         wrk.contract_expired[workers_to_fire_mask] = 0
         wrk.fired[workers_to_fire_mask] = 0
 
-    # ---- wipe firm-side labor books -------------------------------------
+    # wipe firm-side labor books
     log.debug(
         f"  Wiping labor and wage bill data for {bankrupt_indices.size} bankrupt firms.")
     emp.current_labor[bankrupt_indices] = 0
     emp.wage_bill[bankrupt_indices] = 0.0
 
-    # ---- purge their loans from the ledger ------------------------------
+    # purge their loans from the ledger
     num_purged = lb.purge_borrowers(bankrupt_indices)
     log.info(
         f"  Purged {num_purged} loans from the ledger belonging to bankrupt firms.")
@@ -144,7 +144,7 @@ def mark_bankrupt_banks(ec: Economy, lend: Lender, lb: LoanBook) -> None:
     """
     log.info("--- Marking Bankrupt Banks ---")
 
-    # ---- detect bankruptcies --------------------------------------------
+    # detect bankruptcies
     bankrupt_indices = np.where(lend.equity_base < _EPS)[0]
     ec.exiting_banks = bankrupt_indices.astype(np.int64)
 
@@ -157,7 +157,7 @@ def mark_bankrupt_banks(ec: Economy, lend: Lender, lb: LoanBook) -> None:
         f"  !!! {bankrupt_indices.size} BANK(S) HAVE GONE BANKRUPT: "
         f"{bankrupt_indices.tolist()} !!!")
 
-    # ---- purge their loans from the ledger ------------------------------
+    # purge their loans from the ledger
     num_purged = lb.purge_lenders(bankrupt_indices)
     log.info(
         f"  Purged {num_purged} loans from the ledger issued by bankrupt banks.")
@@ -191,13 +191,13 @@ def spawn_replacement_firms(
 
     log.info(f"  Spawning {num_exiting} new firm(s) to replace bankrupt ones.")
 
-    # ---- handle full market collapse ------------------------------------
+    # handle full market collapse
     if num_exiting == bor.net_worth.size:
         log.critical("!!! ALL FIRMS ARE BANKRUPT !!! SIMULATION ENDING.")
         ec.destroyed = True
         return
 
-    # ---- calculate survivor metrics -------------------------------------
+    # calculate survivor metrics
     survivors = np.setdiff1d(np.arange(bor.net_worth.size), exiting_indices,
                              assume_unique=True)
     mean_net = trim_mean(bor.net_worth[survivors])
@@ -208,7 +208,7 @@ def spawn_replacement_firms(
         f"mean_net={mean_net:.2f}, mean_prod={mean_prod:.2f}, mean_wage={mean_wage:.2f}"
     )
 
-    # ---- initialize new firms -------------------------------------------
+    # initialize new firms
     s = 0.8  # New firms start smaller than the mean of survivors
     for i in exiting_indices:
         # Reset Borrower component
@@ -241,7 +241,7 @@ def spawn_replacement_firms(
                 f"    Initialized new firm at index {i} "
                 f"with net worth {bor.net_worth[i]:.2f}.")
 
-    # ---- clear exit list ------------------------------------------------
+    # clear exit list
     ec.exiting_firms = np.empty(0, np.intp)
     log.info("--- Firm Spawning complete ---")
 
@@ -270,7 +270,7 @@ def spawn_replacement_banks(
 
     log.info(f"  Spawning {num_exiting} new bank(s) to replace bankrupt ones.")
 
-    # ---- handle full market collapse ------------------------------------
+    # handle full market collapse
     alive = np.setdiff1d(np.arange(lend.equity_base.size), exiting_indices,
                          assume_unique=True)
     if not alive.size:
@@ -278,7 +278,7 @@ def spawn_replacement_banks(
         ec.destroyed = True
         return
 
-    # ---- initialize new banks -------------------------------------------
+    # initialize new banks
     for k in exiting_indices:
         src = int(rng.choice(alive))
         log.debug(f"  Cloning healthy bank {src} to replace bankrupt bank {k}.")
@@ -290,6 +290,6 @@ def spawn_replacement_banks(
         lend.recv_loan_apps_head[k] = -1
         lend.recv_loan_apps[k, :] = -1
 
-    # ---- clear exit list ------------------------------------------------
+    # clear exit list
     ec.exiting_banks = np.empty(0, np.intp)
     log.info("--- Bank Spawning complete ---")

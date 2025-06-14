@@ -29,41 +29,39 @@ from bamengine.systems.bankruptcy import (  # systems under test
 )
 
 
-# ───────────────────────── helper ──────────────────────────
 def _run_bankruptcy_entry_event(sch: Scheduler) -> dict[str, Any]:
     """
     Drive Event-7 (bankruptcy) + Event-8 (entry) once and return
     the pieces that the regression tests need.
     """
     snap: dict[str, Any] = {
-        # ------------- loan-book ----------------------------------------
+        #  loan-book
         "lb_borrower_before": sch.lb.borrower[: sch.lb.size].copy(),
         "lb_lender_before": sch.lb.lender[: sch.lb.size].copy(),
         "lb_borrower_after": None,  # filled later
         "lb_lender_after": None,
-        # ------------- workforce ----------------------------------------
+        #  workforce
         "employed_before": sch.wrk.employed.copy(),
         "employer_before": sch.wrk.employer.copy(),
         "employed_after": None,  # filled later
     }
 
-    # ── Event-7 ─────────────────────────────────────────────────────────
+    # Event-7
     firms_update_net_worth(sch.bor)
-    mark_bankrupt_firms(sch.ec, sch.prod, sch.emp, sch.bor, sch.wrk, sch.lb)
+    mark_bankrupt_firms(sch.ec, sch.emp, sch.bor, sch.prod, sch.wrk, sch.lb)
     mark_bankrupt_banks(sch.ec, sch.lend, sch.lb)
 
-    # ── Event-8 ─────────────────────────────────────────────────────────
+    # Event-8
     spawn_replacement_firms(sch.ec, sch.prod, sch.emp, sch.bor, rng=sch.rng)
     spawn_replacement_banks(sch.ec, sch.lend, rng=sch.rng)
 
-    # ---- fill the “after” snapshots -----------------------------------
+    # fill the “after” snapshots
     snap["lb_borrower_after"] = sch.lb.borrower[: sch.lb.size].copy()
     snap["lb_lender_after"] = sch.lb.lender[: sch.lb.size].copy()
     snap["employed_after"] = sch.wrk.employed.copy()
     return snap
 
 
-# ───────────────────────── 1. regression-style test ────────────────────
 def test_event_bankruptcy_entry_basic(tiny_sched: Scheduler) -> None:
     """
     Crafted micro-scenario:
@@ -79,8 +77,8 @@ def test_event_bankruptcy_entry_basic(tiny_sched: Scheduler) -> None:
     sch = tiny_sched
     rng = sch.rng
 
-    # ---------- tailor the tiny scheduler --------------------------------
-    # -- firms
+    # tailor the tiny scheduler
+    # firms
     sch.bor.net_worth[:] = rng.uniform(5.0, 15.0, sch.bor.net_worth.size)
     sch.bor.net_worth[[0, 2]] = [-4.0, -1.5]  # bankrupt ones
     sch.bor.total_funds[:] = sch.bor.net_worth
@@ -101,11 +99,11 @@ def test_event_bankruptcy_entry_basic(tiny_sched: Scheduler) -> None:
     sch.emp.current_labor[0] = 3
     sch.emp.current_labor[2] = 2
 
-    # -- banks
+    # banks
     sch.lend.equity_base[:] = 100.0
     sch.lend.equity_base[1] = -20.0  # bankrupt bank
 
-    # -- loan-book: three rows
+    # loan-book: three rows
     sch.lb.capacity = 8
     sch.lb.size = 3
     sch.lb.borrower = np.full(8, -1, np.int64)
@@ -115,10 +113,10 @@ def test_event_bankruptcy_entry_basic(tiny_sched: Scheduler) -> None:
     sch.lb.lender[:3] = [0, 1, 1]  # row 1 goes away (bad bank)
     sch.lb.debt[:3] = [5.0, 7.5, 4.0]
 
-    # ---------- run the double event -------------------------------------
+    # run the double event
     snap = _run_bankruptcy_entry_event(sch)
 
-    # -------- ledger: no row with old bankrupt ids -----------------------
+    #  ledger: no row with old bankrupt ids
     assert not np.isin([0, 2], snap["lb_borrower_after"]).any()
     assert not np.isin([1], snap["lb_lender_after"]).any()
 
@@ -130,7 +128,7 @@ def test_event_bankruptcy_entry_basic(tiny_sched: Scheduler) -> None:
     )
     assert sch.lb.size == snap["lb_borrower_before"].size - bad_rows.sum()
 
-    # -------- all workers who had employer 0 or 2 became unemployed ----------
+    #  all workers who had employer 0 or 2 became unemployed
     was_with_bad_firm = (
         np.isin(snap["employer_before"], [0, 2]) & snap["employed_before"]
     )
@@ -138,19 +136,18 @@ def test_event_bankruptcy_entry_basic(tiny_sched: Scheduler) -> None:
     # every worker who *was* with a bad firm must now be unemployed
     assert (~snap["employed_after"][was_with_bad_firm]).all()
 
-    # -------- replacements ------------------------------------------------
+    #  replacements
     for i in (0, 2):
         assert sch.bor.net_worth[i] > 0
         np.testing.assert_allclose(sch.bor.net_worth[i], sch.bor.total_funds[i])
         assert sch.emp.current_labor[i] == 0
         assert sch.prod.inventory[i] == 0
 
-    # -------- bank replacement ------------------------------------------
+    #  bank replacement
     assert sch.lend.equity_base[1] > 0
     assert sch.lend.credit_supply[1] == 0.0
 
 
-# ───────────────────────── 2. post-event invariants ───────────────────
 def test_bankruptcy_entry_post_state_consistency(tiny_sched: Scheduler) -> None:
     """
     Random mix of healthy/bankrupt agents  ➜  after the round:
@@ -162,7 +159,7 @@ def test_bankruptcy_entry_post_state_consistency(tiny_sched: Scheduler) -> None:
     sch = tiny_sched
     rng = sch.rng
 
-    # --- randomise equities (≈30 % negative) -----------------------------
+    # randomise equities (≈30 % negative)
     bor_n = sch.bor.net_worth.size
     bad_firms = rng.choice(bor_n, size=int(0.3 * bor_n), replace=False)
     sch.bor.net_worth[:] = rng.uniform(2.0, 20.0, bor_n)
@@ -183,14 +180,14 @@ def test_bankruptcy_entry_post_state_consistency(tiny_sched: Scheduler) -> None:
     sch.lb.lender = rng.integers(0, lend_n, sch.lb.capacity, dtype=np.int64)
     sch.lb.debt = rng.uniform(1.0, 5.0, sch.lb.capacity)
 
-    # --- run -------------------------------------------------------------
+    # run
     _run_bankruptcy_entry_event(sch)
 
-    # 1. all equities non-negative
+    # all equities non-negative
     assert (sch.bor.net_worth >= -1e-9).all()
     assert (sch.lend.equity_base >= -1e-9).all()
 
-    # 2. ledger indices within bounds & reference healthy entities
+    # ledger indices within bounds & reference healthy entities
     assert sch.lb.size <= sch.lb.capacity
     assert (sch.lb.borrower[: sch.lb.size] < bor_n).all()
     assert (sch.lb.lender[: sch.lb.size] < lend_n).all()
@@ -198,7 +195,7 @@ def test_bankruptcy_entry_post_state_consistency(tiny_sched: Scheduler) -> None:
     assert not np.isin(sch.lb.borrower[: sch.lb.size], sch.ec.exiting_firms).any()
     assert not np.isin(sch.lb.lender[: sch.lb.size], sch.ec.exiting_banks).any()
 
-    # 3. labour tables in-sync
+    # labour tables in-sync
     counts = np.bincount(
         sch.wrk.employer[sch.wrk.employed == 1],
         minlength=sch.emp.current_labor.size,

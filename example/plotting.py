@@ -10,7 +10,7 @@ logging.getLogger("matplotlib").setLevel(logging.INFO)
 
 
 def plot_results(data: dict[str, NDArray[np.float64]], burn_in: int) -> None:
-    # --- Prepare data for plotting ---
+    # Prepare data for plotting ---
     periods = np.arange(burn_in, len(data["gdp"]))
 
     # Slice data to remove the burn-in period
@@ -19,25 +19,25 @@ def plot_results(data: dict[str, NDArray[np.float64]], burn_in: int) -> None:
     annual_inflation = data["inflation_rate"][burn_in:] * 100  # as percentage
     prod_wage_ratio = data["productivity_wage_ratio"][burn_in:]
 
-    # --- Create Plots ---
+    # Create Plots ---
     fig, axes = plt.subplots(4, 1, figsize=(15, 20))
     fig.suptitle("BAM Model Baseline Scenario Results", fontsize=16)
 
-    # 1. (log) Real GDP
+    # (log) Real GDP
     axes[0].plot(periods, log_gdp)
     axes[0].set_title("Log Real GDP")
     axes[0].set_xlabel("Time (periods)")
     axes[0].set_ylabel("Log Output")
     axes[0].grid(True, linestyle="--", alpha=0.6)
 
-    # 2. Unemployment Rate
+    # Unemployment Rate
     axes[1].plot(periods, unemployment)
     axes[1].set_title("Unemployment Rate (%)")
     axes[1].set_xlabel("Time (periods)")
     axes[1].set_ylabel("Unemployment Rate (%)")
     axes[1].grid(True, linestyle="--", alpha=0.6)
 
-    # 3. Annual Inflation Rate
+    # Annual Inflation Rate
     axes[2].plot(periods, annual_inflation)
     axes[2].set_title("Annual Inflation Rate (%)")
     axes[2].set_xlabel("Time (periods)")
@@ -45,7 +45,7 @@ def plot_results(data: dict[str, NDArray[np.float64]], burn_in: int) -> None:
     axes[2].axhline(0, color="black", linewidth=0.8, linestyle="--")
     axes[2].grid(True, linestyle="--", alpha=0.6)
 
-    # 4. Productivity / Real Wage Ratio
+    # Productivity / Real Wage Ratio
     axes[3].plot(periods, prod_wage_ratio)
     axes[3].set_title("Productivity / Real Wage Ratio")
     axes[3].set_xlabel("Time (periods)")

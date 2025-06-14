@@ -1,1 +1,0 @@
-Ok let me make that clear. A firm's net worth (equity) can never be negative at this phase, they will have already defaulted before reaching here. So we assume that net worth (equity) is always positive. So write-down is always positive. So now you can rephrase

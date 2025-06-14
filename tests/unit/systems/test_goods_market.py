@@ -21,9 +21,6 @@ from bamengine.systems.goods_market import (
 from tests.helpers.factories import mock_consumer, mock_producer
 
 
-# --------------------------------------------------------------------------- #
-#  deterministic micro-scenario helper                                        #
-# --------------------------------------------------------------------------- #
 def _mini_state(
     *,
     n_hh: int = 4,
@@ -50,9 +47,6 @@ def _mini_state(
     return con, prod, rng, Z
 
 
-# --------------------------------------------------------------------------- #
-#  consumers_decide_income_to_spend                                           #
-# --------------------------------------------------------------------------- #
 def test_calc_propensity_basic() -> None:
     con = mock_consumer(
         n=3,
@@ -85,9 +79,6 @@ def test_budget_rule_zero_avg_savings_guard() -> None:
     )
 
 
-# --------------------------------------------------------------------------- #
-#  consumers_decide_firms_to_visit                                            #
-# --------------------------------------------------------------------------- #
 def test_pick_firms_basic() -> None:
     con, prod, rng, Z = _mini_state()
     consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=rng)
@@ -149,9 +140,6 @@ def test_loyalty_swap_keeps_prev_at_slot0() -> None:
     assert con.shop_visits_targets[0, 0] == 1
 
 
-# --------------------------------------------------------------------------- #
-#  consumers_visit_one_round                                                  #
-# --------------------------------------------------------------------------- #
 def test_one_round_basic_purchase() -> None:
     con, prod, rng, Z = _mini_state()
     consumers_calc_propensity(con, avg_sav=1.0, beta=0.9)
@@ -235,9 +223,6 @@ def test_visit_one_round_skips_household_with_no_head() -> None:
     assert con.income_to_spend[0] == pytest.approx(4.0)
 
 
-# --------------------------------------------------------------------------- #
-#  consumers_finalize_purchases                                               #
-# --------------------------------------------------------------------------- #
 def test_finalize_transfers_leftover_to_savings() -> None:
     con, _, _, _ = _mini_state()
     leftover = con.income_to_spend.copy()
@@ -246,9 +231,6 @@ def test_finalize_transfers_leftover_to_savings() -> None:
     np.testing.assert_allclose(con.savings, 2.0 + leftover)
 
 
-# --------------------------------------------------------------------------- #
-#  Property-based invariant: queue indices stay in bounds                     #
-# --------------------------------------------------------------------------- #
 @settings(max_examples=150, deadline=None)
 @given(
     n_hh=st.integers(min_value=1, max_value=15),
@@ -275,9 +257,9 @@ def test_visit_invariants(n_hh: int, n_firms: int, Z: int) -> None:
     consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=rng)
     consumers_shop_one_round(con, prod)
 
-    # invariants --------------------------------------------------------
-    # 1.  visit head stays within [-1 … n_hh*Z]
+    # invariants
+    # visit head stays within [-1 … n_hh*Z]
     assert ((con.shop_visits_head >= -1) & (con.shop_visits_head <= n_hh * Z)).all()
-    # 2.  every non-sentinel target index < n_firms
+    # every non-sentinel target index < n_firms
     mask = con.shop_visits_targets >= 0
     assert (con.shop_visits_targets[mask] < n_firms).all()

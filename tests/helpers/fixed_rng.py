@@ -8,9 +8,7 @@ from numpy.typing import NDArray
 _IntArray = NDArray[np.int64]
 
 
-# --------------------------------------------------------------------- #
-#  Deterministic stub RNG for unit-tests                                #
-# --------------------------------------------------------------------- #
+# Deterministic stub RNG for unit-tests
 class FixedRNG:
     """
     Tiny deterministic stand-in for `numpy.random.Generator`.
@@ -28,14 +26,13 @@ class FixedRNG:
     _buffer: NDArray[np.int64]
     _cursor: int
 
-    # ---------- ctor ----------------------------------------------------
     def __init__(self, data: NDArray[np.int64]) -> None:
         if data.ndim == 0:
             data = data.reshape(1)
         self._buffer = data.copy()
         self._cursor = 0
 
-    # ---------- helpers -------------------------------------------------
+    # helpers
     def _next_ints(self, n: int) -> NDArray[np.int64]:
         """Return *n* ints from the internal buffer (wrap-around safe)."""
         if n <= 0:
@@ -46,7 +43,7 @@ class FixedRNG:
         self._cursor += n
         return out
 
-    # ---------- public API subset --------------------------------------
+    # public API subset
     def integers(  # noqa: D401  (matching numpy.signature)
         self,
         low: int | np.int64,
@@ -108,7 +105,7 @@ class FixedRNG:
                     if len(uniq_idx) == n:
                         break
 
-            # ----------- fill-up if duplicates left us short ------------
+            #  fill-up if duplicates left us short
             if len(uniq_idx) < n:  # ← NEW
                 # append the smallest still-unused indices
                 for extra in range(pool.size):

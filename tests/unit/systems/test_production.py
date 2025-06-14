@@ -29,9 +29,6 @@ from tests.helpers.factories import (
 )
 
 
-# ------------------------------------------------------------------ #
-#  firms_decide_price                                                #
-# ------------------------------------------------------------------ #
 def test_firms_decide_price_obeys_break_even_and_shocks() -> None:
     rng = default_rng(0)
 
@@ -48,7 +45,7 @@ def test_firms_decide_price_obeys_break_even_and_shocks() -> None:
         wage_offer=np.full(4, 1.0),
         wage_bill=np.full(4, 2.0),
     )
-    # --- dummy LoanBook that always returns a constant vector 0.5 ----
+    # dummy LoanBook that always returns a constant vector 0.5
     lb = mock_loanbook()
 
     def _const_interest(_self: "LoanBook", n: int = 128) -> NDArray[np.float64]:
@@ -82,9 +79,6 @@ def test_firms_decide_price_obeys_break_even_and_shocks() -> None:
     assert prod.price[3] >= breakeven_capped[3] - 1.0e-12
 
 
-# ------------------------------------------------------------------ #
-#  update_avg_mkt_price                                              #
-# ------------------------------------------------------------------ #
 def test_update_avg_mkt_price_appends_series() -> None:
     ec = mock_economy()
     prod = mock_producer(n=3, price=np.array([1.0, 2.0, 3.0]))
@@ -98,9 +92,6 @@ def test_update_avg_mkt_price_appends_series() -> None:
     assert ec.avg_mkt_price_history[-1] == expected_avg
 
 
-# ------------------------------------------------------------------ #
-#  firms_pay_wages                                                   #
-# ------------------------------------------------------------------ #
 def test_firms_pay_wages_debits_cash() -> None:
     emp = mock_employer(
         n=2,
@@ -116,9 +107,6 @@ def test_firms_pay_wages_debits_cash() -> None:
     np.testing.assert_allclose(emp.total_funds, before - emp.wage_bill, rtol=1e-12)
 
 
-# ------------------------------------------------------------------ #
-#  consumers_receive_wage                                            #
-# ------------------------------------------------------------------ #
 def test_consumers_receive_wage_credits_income() -> None:
     wrk = mock_worker(
         n=2,
@@ -133,9 +121,6 @@ def test_consumers_receive_wage_credits_income() -> None:
     np.testing.assert_allclose(con.income, np.array([5.0, 5.0]))
 
 
-# ------------------------------------------------------------------ #
-#  firms_run_production                                              #
-# ------------------------------------------------------------------ #
 def test_firms_run_production_updates_output_and_stock() -> None:
     emp = mock_employer(
         n=2,
@@ -155,9 +140,6 @@ def test_firms_run_production_updates_output_and_stock() -> None:
     np.testing.assert_allclose(prod.inventory, expected)
 
 
-# --------------------------------------------------------------------------- #
-#  deterministic micro-scenario helper                                        #
-# --------------------------------------------------------------------------- #
 def _mini_state() -> tuple[Employer, Worker]:
     emp = mock_employer(
         n=2,
@@ -173,15 +155,12 @@ def _mini_state() -> tuple[Employer, Worker]:
     return emp, wrk
 
 
-# ------------------------------------------------------------------ #
-# 1. happy path – some contracts expire                              #
-# ------------------------------------------------------------------ #
 def test_contracts_expire_and_update_everything() -> None:
     emp, wrk = _mini_state()
 
     workers_update_contracts(wrk, emp)
 
-    # worker-side ----------------------------------------------------
+    # worker-side
     assert wrk.employed.tolist() == [1, 0, 0]  # workers 1 & 2 expired
     assert wrk.contract_expired.tolist() == [0, 1, 1]
     assert wrk.employer_prev.tolist() == [-1, 0, 1]
@@ -189,14 +168,10 @@ def test_contracts_expire_and_update_everything() -> None:
     assert wrk.wage.tolist() == [1.0, 0.0, 0.0]
     assert wrk.periods_left.tolist() == [1, 0, 0]
 
-    # firm-side ------------------------------------------------------
-    # one head left each firm
-    assert emp.current_labor.tolist() == [1, 0]
+    # firm-side
+    assert emp.current_labor.tolist() == [1, 0]  # one head left each firm
 
 
-# ------------------------------------------------------------------ #
-# 2. nothing expires – no-op branch                                  #
-# ------------------------------------------------------------------ #
 def test_contracts_no_expiration_no_change() -> None:
     emp, wrk = _mini_state()
     wrk.periods_left[:] = [5, 4, 3]  # far from expiry
@@ -221,9 +196,6 @@ def test_contracts_no_expiration_no_change() -> None:
             np.testing.assert_array_equal(getattr(wrk, name), arr)
 
 
-# ------------------------------------------------------------------ #
-# 3. edge-case: periods_left already 0 (should be treated as expired)#
-# ------------------------------------------------------------------ #
 def test_contracts_already_zero_are_handled() -> None:
     emp = mock_employer(
         n=1,
@@ -243,9 +215,6 @@ def test_contracts_already_zero_are_handled() -> None:
     assert emp.current_labor[0] == 0
 
 
-# ------------------------------------------------------------------ #
-# 4. edge-case: nobody employed → early-return branch                #
-# ------------------------------------------------------------------ #
 def test_contracts_no_employed_is_noop() -> None:
     """
     When every worker is unemployed the function should return immediately

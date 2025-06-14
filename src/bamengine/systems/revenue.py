@@ -30,7 +30,7 @@ def firms_collect_revenue(prod: Producer, bor: Borrower) -> None:
     """
     log.info("--- Firms Collecting Revenue & Calculating Gross Profit ---")
 
-    # ---- calculate quantities sold --------------------------------------
+    # calculate quantities sold
     quantity_sold = prod.production - prod.inventory
     total_quantity_sold = quantity_sold.sum()
 
@@ -43,7 +43,7 @@ def firms_collect_revenue(prod: Producer, bor: Borrower) -> None:
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Quantity sold per firm: {quantity_sold}")
 
-    # ---- calculate revenue ----------------------------------------------
+    # calculate revenue
     revenue = prod.price * quantity_sold
     total_revenue = revenue.sum()
     total_wage_bill = bor.wage_bill.sum()
@@ -57,13 +57,13 @@ def firms_collect_revenue(prod: Producer, bor: Borrower) -> None:
         log.debug(f"  Total funds (cash) before revenue collection: {bor.total_funds}")
         log.debug(f"  Revenue per firm: {revenue}")
 
-    # ---- update firm cash accounts --------------------------------------
+    # update firm cash accounts
     np.add(bor.total_funds, revenue, out=bor.total_funds)
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Total funds (cash) after revenue collection: {bor.total_funds}")
 
-    # ---- calculate gross profit -----------------------------------------
+    # calculate gross profit
     bor.gross_profit[:] = revenue - bor.wage_bill
     total_gross_profit = bor.gross_profit.sum()
 
@@ -90,7 +90,7 @@ def firms_validate_debt_commitments(
     """
     log.info("--- Firms Validating Debt Commitments ---")
 
-    # ---- calculate debt obligations -------------------------------------
+    # calculate debt obligations
     n_firms = bor.total_funds.size
     total_debt = lb.debt_per_borrower(n_firms)
     total_interest = lb.interest_per_borrower(n_firms)
@@ -110,7 +110,7 @@ def firms_validate_debt_commitments(
         log.debug(
             f"  Borrower total funds (cash) before debt validation: {bor.total_funds}")
 
-    # ---- classify firms by repayment ability ---------------------------
+    # classify firms by repayment ability
     repay_mask = bor.total_funds - total_debt >= -_EPS
     unable_mask = ~repay_mask & (total_debt > _EPS)
 
@@ -122,7 +122,7 @@ def firms_validate_debt_commitments(
         f"{num_unable_repay} firms are unable to repay (total_funds < total_debt)."
     )
 
-    # ---- process full repayments ----------------------------------------
+    # process full repayments
     repay_firms = np.where(repay_mask & (total_debt > _EPS))[0]
     if repay_firms.size > 0:
         log.info(
@@ -142,7 +142,7 @@ def firms_validate_debt_commitments(
                     f"paying debt: {total_debt[firm_idx]:.2f}"
                 )
 
-        # ---- debit firm cash accounts -----------------------------------
+        # debit firm cash accounts
         bor.total_funds[repay_firms] -= total_debt[repay_firms]
 
         if log.isEnabledFor(logging.DEBUG):
@@ -152,7 +152,7 @@ def firms_validate_debt_commitments(
                     f"total_funds after debt pay: {bor.total_funds[firm_idx]:.2f}"
                 )
 
-        # ---- aggregate per-lender payments ------------------------------
+        # aggregate per-lender payments
         # TODO: Break lender-side repayment into a separate system
         row_sel = np.isin(lb.borrower[:lb.size], repay_firms)
         num_loans_repaid = row_sel.sum()
@@ -186,20 +186,20 @@ def firms_validate_debt_commitments(
                     f"to {lend.equity_base[lender_idx]:.2f}"
                 )
 
-        # ---- remove repaid loans from loan book ------------------------
+        # remove repaid loans from loan book
         removed = lb.drop_rows(row_sel)
         log.debug(
             f"  Compacting loan book: removed {removed} repaid loans. "
             f"New size={lb.size}"
         )
 
-    # ---- process bad-debt write-offs ------------------------------------
+    # process bad-debt write-offs
     bad_firms = np.where(unable_mask & (total_debt > _EPS))[0]
     if bad_firms.size > 0:
         log.info(
             f"  Processing bad-debt write-offs for {bad_firms.size} defaulting firms.")
 
-        # ---- zero out cash for defaulting firms ------------------------
+        # zero out cash for defaulting firms
         log.info(
             f"  Zeroing out total_funds (cash) for {bad_firms.size} defaulting firms.")
 
@@ -213,7 +213,7 @@ def firms_validate_debt_commitments(
 
         bor.total_funds[bad_firms] = 0.0
 
-        # ---- process loan book write-offs -------------------------------
+        # process loan book write-offs
         # TODO: Break bad debt handling into a separate system
         borrowers_from_lb = lb.borrower[:lb.size]
         bad_rows_in_lb_mask = np.isin(borrowers_from_lb, bad_firms)
@@ -223,7 +223,7 @@ def firms_validate_debt_commitments(
             log.debug(
                 f"  {num_bad_loans} loans in loan book belong to these defaulting firms.")
 
-            # ---- calculate proportional write-offs ----------------------
+            # calculate proportional write-offs
             # per-row bad-debt = (debt_row / debt_tot_borrower) · net_worth_borrower
             #
             # When a firm defaults on its debt, the bank must write down its assets.
@@ -273,7 +273,7 @@ def firms_validate_debt_commitments(
                 f"impacting lender equity: {total_bad_debt_writeoff:,.2f}."
             )
 
-            # ---- update lender equity -----------------------------------
+            # update lender equity
             affected_lenders_default = np.unique(
                 lb.lender[:lb.size][bad_rows_in_lb_mask])
 
@@ -308,7 +308,7 @@ def firms_validate_debt_commitments(
                 "as 'at risk of default'; no specific loan write-offs needed."
             )
 
-    # ---- calculate net profit -------------------------------------------
+    # calculate net profit
     # TODO Separate net profit calculation
     log.info("  Calculating net profit (gross profit - total interest)")
     bor.net_profit[:] = bor.gross_profit - total_interest
@@ -343,14 +343,14 @@ def firms_pay_dividends(bor: Borrower, *, delta: float) -> None:
     log.info(
         f"--- Firms Paying Dividends (Payout Ratio δ for profits = {delta:.2f}) ---")
 
-    # ---- identify firms with positive profits ---------------------------
+    # identify firms with positive profits
     positive_profit_mask = bor.net_profit > 0.0
     num_paying_dividends = np.sum(positive_profit_mask)
 
     log.info(
         f"  {num_paying_dividends} firms have positive net profit and will pay dividends.")
 
-    # ---- calculate retained profits and dividends -----------------------
+    # calculate retained profits and dividends
     # Default case: all net profit is retained if not positive
     bor.retained_profit[:] = bor.net_profit
 
@@ -366,7 +366,7 @@ def firms_pay_dividends(bor: Borrower, *, delta: float) -> None:
         log.debug(f"  Retained profit per firm: {bor.retained_profit}")
         log.debug(f"  Total funds (cash) before paying dividends: {bor.total_funds}")
 
-    # ---- debit firm cash accounts by dividend amount -------------------
+    # debit firm cash accounts by dividend amount
     np.subtract(bor.total_funds, dividends, out=bor.total_funds)
 
     if log.isEnabledFor(logging.DEBUG):

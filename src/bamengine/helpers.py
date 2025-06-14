@@ -130,13 +130,13 @@ def sample_beta_with_mean(
     if relative_margin <= 0:
         raise ValueError("relative_margin must be > 0")
 
-    # Automatic bounds ---------------------------------------------------------
+    # Automatic bounds
     if low is None or high is None:
         half_span = abs(mean) * relative_margin
         low = mean - half_span if low is None else low
         high = mean + half_span if high is None else high
 
-    # Ensure ordering and strict inequality ------------------------------------
+    # Ensure ordering and strict inequality
     eps = max(abs(mean), 1.0) * 1e-12  # machine-safe gap
     if not (low < mean < high):
         # Shift the offending bound just enough to satisfy the inequality
@@ -150,7 +150,7 @@ def sample_beta_with_mean(
                 f"low={low}, high={high}"
             )
 
-    # Map mean to (0,1) for Beta parameterization ------------------------------
+    # Map mean to (0,1) for Beta parameterization
     m = (mean - low) / (high - low)
     a = m * concentration
     b = (1.0 - m) * concentration

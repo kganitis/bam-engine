@@ -6,24 +6,23 @@ from bamengine.typing import Float1D, Idx1D, Idx2D
 
 @dataclass(slots=True)
 class Borrower:
-    """Dense state for all borrowing firms."""
 
-    rnd_intensity: Float1D  # μ_i
+    rnd_intensity: Float1D  # μ
 
     # Finance
-    net_worth: Float1D  # A_i
-    total_funds: Float1D  # cash account
-    wage_bill: Float1D  # W_i  (should be L_i * wage_i)
+    net_worth: Float1D  # A
+    total_funds: Float1D  # shared view with Employer
+    wage_bill: Float1D  # W
 
     # Credit
-    credit_demand: Float1D  # B_i
-    projected_fragility: Float1D  # φ̂_i
+    credit_demand: Float1D  # B
+    projected_fragility: Float1D  # μ · B / A
 
     # Revenues
     gross_profit: Float1D
-    net_profit: Float1D
+    net_profit: Float1D  # π
     retained_profit: Float1D
 
-    # --------------- period-scratch queues ------------- #
-    loan_apps_head: Idx1D  # queue pointer  (-1 ⇒ empty)
-    loan_apps_targets: Idx2D  # shape (N_firms, H)  index buffer
+    # Scratch queues
+    loan_apps_head: Idx1D
+    loan_apps_targets: Idx2D  # shape (n_firms, H)

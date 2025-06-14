@@ -20,10 +20,6 @@ from tests.helpers.factories import (
     mock_producer,
 )
 
-# --------------------------------------------------------------------------- #
-# 1. firms_collect_revenue                                                    #
-# --------------------------------------------------------------------------- #
-
 
 def test_collect_revenue_basic() -> None:
     """
@@ -64,11 +60,6 @@ def test_collect_revenue_zero_sales() -> None:
     firms_collect_revenue(prod, bor)
     assert bor.gross_profit[0] == 0.0
     assert bor.total_funds[0] == 10.0  # unchanged
-
-
-# --------------------------------------------------------------------------- #
-# 2. firms_validate_debt_commitments                                          #
-# --------------------------------------------------------------------------- #
 
 
 def _single_loan_setup(
@@ -125,7 +116,7 @@ def test_validate_debt_partial_writeoff() -> None:
     gross_profit < debt  → proportional bad-debt write-off
     up to the borrower's net-worth.
     """
-    # --- borrower 0 owes two banks ---------------------------------------
+    # borrower 0 owes two banks
     bor = mock_borrower(
         n=1,
         gross_profit=np.array([-2.0]),
@@ -166,11 +157,6 @@ def test_validate_debt_no_loans_noop() -> None:
 
     np.testing.assert_array_equal(bor.net_profit, bor.gross_profit)
     np.testing.assert_array_equal(lend.equity_base, equity_before)
-
-
-# --------------------------------------------------------------------------- #
-# 3. firms_pay_dividends                                                      #
-# --------------------------------------------------------------------------- #
 
 
 @pytest.mark.parametrize("delta", [0.0, 0.25, 0.8])

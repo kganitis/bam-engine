@@ -6,17 +6,16 @@ from bamengine.typing import Bool1D, Float1D
 
 @dataclass(slots=True)
 class Producer:
-    """Dense state needed for production firms."""
 
-    production: Float1D  # Y_i  (carried from t-1)
-    inventory: Float1D  # S_i  (carried from t-1)
-    expected_demand: Float1D  # D̂_i
-    desired_production: Float1D  # Yd_i
-    labor_productivity: Float1D  # a_i   (can change with R&D later)
-    breakeven_price: Float1D  # Pl_i
-    price: Float1D  # p_i  (carried from t-1)
+    production: Float1D
+    inventory: Float1D
+    expected_demand: Float1D
+    desired_production: Float1D
+    labor_productivity: Float1D
+    breakeven_price: Float1D
+    price: Float1D
 
-    # ---- permanent scratch buffers ----
+    # Scratch buffers
     prod_shock: Float1D | None = field(default=None, repr=False)
     prod_mask_up: Bool1D | None = field(default=None, repr=False)
     prod_mask_dn: Bool1D | None = field(default=None, repr=False)

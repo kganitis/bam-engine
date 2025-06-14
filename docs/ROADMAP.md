@@ -2,18 +2,8 @@
 
 ### TODO Next
 
-* Prepare presentation
-  * Introduction
-  * Implementation
-  * Example
-  * Future Work
-* Refactor tests & improve test coverage
-
----
-
-### Visualization
-
-* Add minimal plotting helper
+* Scheduler refactor
+* Example usage
 
 ---
 
@@ -33,7 +23,7 @@
 ### ECS Architecture
 * Refactor to a true ECS architecture, with `World` object & components query mechanism
 * Prototype the systems so that each system by default accepts a before & after hook, or other common logic
-* Each system must update the minimum possible number of vectors
+* Each system must use and operate on the minimum possible number of vectors
 * Review the components structure
   * Need of fields reshuffling, combine components or break them into pieces
   * Based on the systems, so that we optimize speed and memory
@@ -48,7 +38,7 @@
 
 ### Performance milestone
 
-* Test removal of buffers and queues, use 2D arrays with standard NumPy operations
+* Test removal of pre-allocated buffers and queues, use 2D arrays with standard NumPy operations
 * Profile representative sizes to establish baselines
 * Remove remaining temporary allocations and other obvious hotspots
   * e.g. reuse permanent scratch buffers in `workers_decide_firms_to_apply` and `firms_prepare_loan_applications`

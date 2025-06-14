@@ -20,9 +20,8 @@ def assert_basic_invariants(sch: Scheduler) -> None:  # noqa: C901  (flat, long)
     where the bug lives.
     """
 
-    # ------------------------------------------------------------------ #
-    # 1. Planning & labour-market                                        #
-    # ------------------------------------------------------------------ #
+    # Planning & labour-market
+    # ------------------------
     # Desired production – finite & non-negative
     assert not np.isnan(sch.prod.desired_production).any()
     assert (sch.prod.desired_production >= 0).all()
@@ -42,9 +41,8 @@ def assert_basic_invariants(sch: Scheduler) -> None:  # noqa: C901  (flat, long)
         rtol=1e-8,
     )
 
-    # ------------------------------------------------------------------ #
-    # 2. Credit-market & finance                                         #
-    # ------------------------------------------------------------------ #
+    # Credit-market & finance
+    # -----------------------
     # Non-negative balances
     assert (sch.bor.credit_demand >= -1e-9).all()
     assert (sch.lend.credit_supply >= -1e-9).all()
@@ -62,9 +60,8 @@ def assert_basic_invariants(sch: Scheduler) -> None:  # noqa: C901  (flat, long)
         np.testing.assert_allclose(sch.lb.interest[: sch.lb.size], p * r, rtol=1e-8)
         np.testing.assert_allclose(sch.lb.debt[: sch.lb.size], p * (1 + r), rtol=1e-8)
 
-    # ------------------------------------------------------------------ #
-    # 3. Production & Goods-market                                       #
-    # ------------------------------------------------------------------ #
+    # Production & Goods-market
+    # -------------------------
     # Inventories & prices
     assert (sch.prod.inventory >= -1e-9).all()
     assert (sch.prod.price > 0).all() and not np.isnan(sch.prod.price).any()
@@ -77,18 +74,16 @@ def assert_basic_invariants(sch: Scheduler) -> None:  # noqa: C901  (flat, long)
     if hasattr(sch.con, "propensity"):
         assert ((0 < sch.con.propensity) & (sch.con.propensity <= 1)).all()
 
-    # ------------------------------------------------------------------ #
-    # 4. Revenue event bookkeeping                                       #
-    # ------------------------------------------------------------------ #
+    # Revenue event bookkeeping
+    # -------------------------
     # gross_profit = revenue – wage_bill  (checked indirectly: retained/net set)
     # retained ≤ net_profit   and   dividends ≥ 0
     pos = sch.bor.net_profit > 0
     assert np.all((sch.bor.retained_profit[~pos] == sch.bor.net_profit[~pos]))
     assert np.all((sch.bor.retained_profit[pos] < sch.bor.net_profit[pos] + 1e-12))
 
-    # ------------------------------------------------------------------ #
-    # 5. Exit & entry                                                    #
-    # ------------------------------------------------------------------ #
+    # Exit & entry
+    # ------------
     # After replacement, ALL equities must be non-negative again
     assert (sch.bor.net_worth >= -1e-9).all()
     assert (sch.lend.equity_base >= -1e-9).all()
