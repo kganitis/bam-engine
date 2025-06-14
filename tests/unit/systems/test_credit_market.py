@@ -16,7 +16,7 @@ from bamengine.components import Borrower, Lender, LoanBook
 from bamengine.helpers import select_top_k_indices_sorted
 
 # noinspection PyProtectedMember
-from bamengine.systems.credit_market import (  # systems under test
+from bamengine.systems.credit_market import (
     CAP_FRAG,
     banks_decide_credit_supply,
     banks_decide_interest_rate,
@@ -34,10 +34,6 @@ from tests.helpers.factories import (
     mock_loanbook,
     mock_worker,
 )
-
-# --------------------------------------------------------------------------- #
-#  deterministic micro-scenario helper                                        #
-# --------------------------------------------------------------------------- #
 
 
 def _mini_state(
@@ -74,11 +70,6 @@ def _mini_state(
     return bor, lend, ledger, rng, H
 
 
-# --------------------------------------------------------------------------- #
-#  banks_decide_credit_supply                                                 #
-# --------------------------------------------------------------------------- #
-
-
 def test_decide_credit_supply_basic() -> None:
     lend = mock_lender(
         n=3,
@@ -87,11 +78,6 @@ def test_decide_credit_supply_basic() -> None:
     )
     banks_decide_credit_supply(lend, v=0.1)
     np.testing.assert_allclose(lend.credit_supply, lend.equity_base / 0.1)
-
-
-# --------------------------------------------------------------------------- #
-#  banks_decide_interest_rate                                                 #
-# --------------------------------------------------------------------------- #
 
 
 def test_interest_rate_basic() -> None:
@@ -117,11 +103,6 @@ def test_interest_rate_reuses_scratch() -> None:
     assert lend.opex_shock is not None and lend.opex_shock.flags.writeable
 
 
-# --------------------------------------------------------------------------- #
-#  firms_decide_credit_demand                    #
-# --------------------------------------------------------------------------- #
-
-
 @pytest.mark.parametrize(
     ("wage_bill", "net_worth", "expected_B"),
     [
@@ -143,11 +124,6 @@ def test_credit_demand_basic(
     )
     firms_decide_credit_demand(bor)
     np.testing.assert_allclose(bor.credit_demand, expected_B)
-
-
-# --------------------------------------------------------------------------- #
-#  firms_calc_credit_metrics                                                  #
-# --------------------------------------------------------------------------- #
 
 
 def test_calc_credit_metrics_fragility() -> None:
@@ -189,11 +165,6 @@ def test_calc_credit_metrics_allocates_buffer() -> None:
     assert bor.projected_fragility.flags.writeable
 
 
-# --------------------------------------------------------------------------- #
-#  _topk_lowest_rate helper                                                   #
-# --------------------------------------------------------------------------- #
-
-
 # TODO move to loanbook tests
 def test_topk_lowest_rate_partial_sort() -> None:
     vals = np.array([0.09, 0.07, 0.12, 0.08])
@@ -201,11 +172,6 @@ def test_topk_lowest_rate_partial_sort() -> None:
     idx = select_top_k_indices_sorted(vals, k=k, descending=False)
     chosen = set(vals[idx])
     assert chosen == {0.07, 0.08} and idx.shape == (k,)
-
-
-# --------------------------------------------------------------------------- #
-#  firms_prepare_loan_applications                                            #
-# --------------------------------------------------------------------------- #
 
 
 def test_prepare_applications_basic() -> None:
@@ -236,11 +202,6 @@ def test_prepare_applications_no_demand() -> None:
     assert np.all(bor.loan_apps_targets == -1)
 
 
-# --------------------------------------------------------------------------- #
-#  firms_send_one_loan_app                                                    #
-# --------------------------------------------------------------------------- #
-
-
 def test_send_one_loan_app_queue_insert() -> None:
     bor, lend, _, rng, H = _mini_state()
     firms_decide_credit_demand(bor)
@@ -267,11 +228,6 @@ def test_send_one_loan_app_exhausted_target() -> None:
     firms_send_one_loan_app(bor, lend)
     assert bor.loan_apps_head[0] == -1
     assert lend.recv_loan_apps_head[0] == -1
-
-
-# --------------------------------------------------------------------------- #
-#  banks_provide_loans                                                        #
-# --------------------------------------------------------------------------- #
 
 
 def _run_basic_loan_cycle(
@@ -364,11 +320,6 @@ def test_ledger_capacity_auto_grows() -> None:
     assert ledger.capacity >= ledger.size  # internal consistency
 
 
-# --------------------------------------------------------------------------- #
-#  firms_fire_workers                               #
-# --------------------------------------------------------------------------- #
-
-
 def test_firms_fire_workers_gap_closed() -> None:
     # one firm with wage-bill > funds → must fire enough workers
     emp = mock_employer(
@@ -432,11 +383,6 @@ def test_firms_fire_workers_no_workforce() -> None:
     assert wrk.fired.sum() == 0
 
 
-# --------------------------------------------------------------------------- #
-#  Property-based invariant: banks_provide_loans                              #
-# --------------------------------------------------------------------------- #
-
-
 @settings(max_examples=200, deadline=None)
 @given(
     n_borrowers=st.integers(4, 12),
@@ -468,11 +414,6 @@ def test_banks_provide_loans_properties(
     # every ledger row indices within bounds
     assert (ledger.borrower[: ledger.size] < n_borrowers).all()
     assert (ledger.lender[: ledger.size] < n_lenders).all()
-
-
-# --------------------------------------------------------------------------- #
-#  End-to-end micro integration of one credit-market event                    #
-# --------------------------------------------------------------------------- #
 
 
 def test_full_credit_round() -> None:

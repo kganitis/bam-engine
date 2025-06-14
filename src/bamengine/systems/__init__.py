@@ -1,10 +1,3 @@
-"""
-Algorithmic subsystems (planner, labor market, …).
-
-Only *function* names that are genuinely useful for experimentation are
-forwarded.  Everything else should be imported from the concrete module.
-"""
-
 from .credit_market import (
     banks_decide_credit_supply,
     banks_decide_interest_rate,

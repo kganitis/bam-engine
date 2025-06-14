@@ -21,9 +21,6 @@ from bamengine.typing import FloatA
 from tests.helpers.factories import mock_employer, mock_producer
 
 
-# --------------------------------------------------------------------------- #
-# 1. desired production – explicit branch table                               #
-# --------------------------------------------------------------------------- #
 @pytest.mark.parametrize(
     "price, inventory, p_avg, branch",
     [
@@ -53,9 +50,6 @@ def test_production_branches(
         assert np.isclose(yd, 10.0)
 
 
-# --------------------------------------------------------------------------- #
-# 2. desired production – deterministic vector test                           #
-# --------------------------------------------------------------------------- #
 def test_decide_desired_production_vector() -> None:
     """
     Compare full-vector output against a hand-calculated expectation
@@ -103,7 +97,7 @@ def test_reuses_internal_buffers() -> None:
     rng = default_rng(0)
     prod = mock_producer(n=2, alloc_scratch=False)
 
-    # --- first call allocates the scratch arrays ----------------------
+    # first call allocates the scratch arrays
     firms_decide_desired_production(prod, p_avg=1.5, h_rho=0.05, rng=rng)
 
     # capture the objects *after* they’ve been created
@@ -111,7 +105,7 @@ def test_reuses_internal_buffers() -> None:
     mask_up0 = prod.prod_mask_up
     mask_dn0 = prod.prod_mask_dn
 
-    # --- second call must reuse the very same objects -----------------
+    # second call must reuse the very same objects
     firms_decide_desired_production(prod, p_avg=1.5, h_rho=0.05, rng=rng)
 
     # same *object*
@@ -124,9 +118,6 @@ def test_reuses_internal_buffers() -> None:
     assert buf0.flags.writeable
 
 
-# --------------------------------------------------------------------------- #
-# 3. desired labor – deterministic test & zero-productivity guard           #
-# --------------------------------------------------------------------------- #
 def test_decide_desired_labor_vector() -> None:
     """Labor demand must equal ceil(Yd / a) element-wise."""
     prod = mock_producer(
@@ -150,9 +141,6 @@ def test_zero_productivity_guard() -> None:
     np.testing.assert_array_equal(prod.labor_productivity, [_EPS])
 
 
-# --------------------------------------------------------------------------- #
-# 4. vacancies – simple deterministic check                                  #
-# --------------------------------------------------------------------------- #
 def test_decide_vacancies_vector() -> None:
     emp = mock_employer(
         n=4,
@@ -163,9 +151,6 @@ def test_decide_vacancies_vector() -> None:
     np.testing.assert_array_equal(emp.n_vacancies, [3, 0, 0, 1])
 
 
-# --------------------------------------------------------------------------- #
-# 5. Property-based check (random vectors)                                    #
-# --------------------------------------------------------------------------- #
 @settings(max_examples=300, deadline=None)
 @given(
     st.integers(min_value=1, max_value=40).flatmap(  # random N

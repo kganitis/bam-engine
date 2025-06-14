@@ -192,7 +192,7 @@ def workers_decide_firms_to_apply(
              f"to {hiring.size} firms "
              f"with a total of {emp.n_vacancies.sum():,} open vacancies.")
 
-    # --- fast exits ------------------------------------------------------
+    # fast exits
     if unemp.size == 0:
         log.info("  No unemployed workers; skipping application phase.")
         log.info("--- Workers Deciding Firms to Apply complete ---")
@@ -206,7 +206,7 @@ def workers_decide_firms_to_apply(
         wrk.job_apps_targets[unemp, :].fill(-1)
         return
 
-    # --- sample M random hiring firms per worker (with replacement) ------
+    # sample M random hiring firms per worker (with replacement)
     M_eff = min(max_M, hiring.size)
     log.info(f"  Effective applications per worker (M_eff): {M_eff}")
     sample = np.empty((unemp.size, M_eff), dtype=np.int64)
@@ -223,7 +223,7 @@ def workers_decide_firms_to_apply(
             f"{sample[:10]}"
         )
 
-    # --- wage-descending partial sort ------------------------------------
+    # wage-descending partial sort
     topk = select_top_k_indices_sorted(
         emp.wage_offer[sample], k=M_eff, descending=True
     )
@@ -234,7 +234,7 @@ def workers_decide_firms_to_apply(
             f"{sorted_sample[:10]}"
         )
 
-    # --- loyalty rule ----------------------------------------------------
+    # loyalty rule
     # TODO Move loyalty logic to a separate system
     loyal_mask = (
             (wrk.contract_expired[unemp] == 1)
@@ -285,7 +285,7 @@ def workers_decide_firms_to_apply(
                 f"(first 10 rows if any loyal):\n{sorted_sample[:10]}"
             )
 
-    # --- write buffers ----------------------------------------------------
+    # write buffers
     stride = max_M
     for k, j in enumerate(unemp):
         wrk.job_apps_targets[j, :M_eff] = sorted_sample[k]
@@ -572,7 +572,7 @@ def firms_hire_workers(
             f"{final_hires.tolist()}")
         total_hires_this_round += final_hires.size
 
-        # ---- worker‑side updates ----------------------------------------
+        # worker‑side updates
         log.debug(f"      Updating state for {final_hires.size} newly hired workers.")
         wrk.employed[final_hires] = 1
         wrk.employer[final_hires] = i
@@ -583,7 +583,7 @@ def firms_hire_workers(
         wrk.job_apps_head[final_hires] = -1
         wrk.job_apps_targets[final_hires, :] = -1
 
-        # ---- firm‑side updates ------------------------------------------
+        # firm‑side updates
         emp.current_labor[i] += final_hires.size
         emp.n_vacancies[i] -= final_hires.size
         log.debug(

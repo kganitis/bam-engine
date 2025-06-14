@@ -23,19 +23,19 @@ class DataCollector:
     def capture(self, sched: Scheduler) -> None:
         """Calculates and stores metrics for the current period."""
 
-        # --- Real GDP ---
+        # Real GDP ---
         current_real_gdp = float(sched.prod.production.sum())
         self.gdp.append(current_real_gdp)
 
-        # --- Unemployment Rate ---
+        # Unemployment Rate ---
         current_unemployment = float(sched.ec.unemp_rate_history[-1])
         self.unemployment_rate.append(current_unemployment)
 
-        # --- Annual Inflation Rate ---
+        # Annual Inflation Rate ---
         current_annual_inflation = float(sched.ec.inflation_history[-1])
         self.inflation_rate.append(current_annual_inflation)
 
-        # --- Productivity to Real Wage Ratio ---
+        # Productivity to Real Wage Ratio ---
         avg_productivity = float(sched.prod.labor_productivity.mean())
         if sched.ec.avg_mkt_price > 0:
             # Use only wages of employed workers for a more stable average

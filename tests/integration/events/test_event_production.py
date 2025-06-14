@@ -28,9 +28,6 @@ from bamengine.systems.production import (
 )
 
 
-# --------------------------------------------------------------------------- #
-# helper – run ONE production event                                           #
-# --------------------------------------------------------------------------- #
 def _run_production_event(
     sch: Scheduler, *, with_expiration: bool = False
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
@@ -51,7 +48,7 @@ def _run_production_event(
     # make sure the wage-bill is up-to-date with current_labor
     firms_calc_wage_bill(sch.emp)
 
-    # ---- price rule & market price ------------------------------------
+    # price rule & market price
     firms_decide_price(
         sch.prod,
         sch.emp,
@@ -65,23 +62,20 @@ def _run_production_event(
     funds_before = sch.emp.total_funds.copy()
     income_before = sch.con.income.copy()
 
-    # ---- wage payment & receipt -----------------------------------------
+    # wage payment & receipt
     firms_pay_wages(sch.emp)
     workers_receive_wage(sch.con, sch.wrk)
 
-    # ---- physical production --------------------------------------------
+    # physical production
     firms_run_production(sch.prod, sch.emp)
 
-    # ---- contract expiration (optional) ---------------------------------
+    # contract expiration (optional)
     if with_expiration:
         workers_update_contracts(sch.wrk, sch.emp)
 
     return funds_before, income_before
 
 
-# --------------------------------------------------------------------------- #
-# 1. Regression-style basic test                                              #
-# --------------------------------------------------------------------------- #
 def test_event_production_basic(tiny_sched: Scheduler) -> None:
     """
     Happy-path regression:
@@ -95,7 +89,7 @@ def test_event_production_basic(tiny_sched: Scheduler) -> None:
 
     funds_before, income_before = _run_production_event(sch)
 
-    # --- cash-flow identity ----------------------------------------------
+    # cash-flow identity
     np.testing.assert_allclose(
         sch.emp.total_funds, funds_before - sch.emp.wage_bill, rtol=1e-12
     )
@@ -105,22 +99,19 @@ def test_event_production_basic(tiny_sched: Scheduler) -> None:
     income_delta = sch.con.income - income_before
     np.testing.assert_allclose(income_delta, wages_paid)
 
-    # --- material balance -------------------------------------------------
+    # material balance
     expected_output = sch.prod.labor_productivity * sch.emp.current_labor
     np.testing.assert_allclose(sch.prod.production, expected_output)
     np.testing.assert_allclose(sch.prod.inventory, expected_output)
 
-    # --- avg market price appended & consistent -----------------------
+    # avg market price appended & consistent
     assert sch.ec.avg_mkt_price_history[-1] == sch.ec.avg_mkt_price
     np.testing.assert_allclose(sch.ec.avg_mkt_price, sch.prod.price.mean())
 
-    # --- non-negativity guard --------------------------------------------
+    # non-negativity guard
     assert (sch.emp.total_funds >= -1e-9).all()
 
 
-# --------------------------------------------------------------------------- #
-# 2. Post-event state consistency (contract expiration)                       #
-# --------------------------------------------------------------------------- #
 def test_production_post_state_consistency(tiny_sched: Scheduler) -> None:
     """
     Force many contracts to expire in the same step and verify that
@@ -131,16 +122,14 @@ def test_production_post_state_consistency(tiny_sched: Scheduler) -> None:
     """
     sch = tiny_sched
 
-    # ------------------------------------------------------------------
     # Craft a *self-consistent* starting roster
-    # ------------------------------------------------------------------
-    # 1. every worker is employed
+    # every worker is employed
     sch.wrk.employed[:] = 1
 
-    # 2. assign workers round-robin to firms
+    # assign workers round-robin to firms
     sch.wrk.employer[:] = np.arange(sch.wrk.employed.size) % sch.emp.current_labor.size
 
-    # 3. derive true labour counts from the worker table
+    # derive true labour counts from the worker table
     counts = np.bincount(sch.wrk.employer, minlength=sch.emp.current_labor.size)
     sch.emp.current_labor[:] = counts
 
@@ -149,26 +138,23 @@ def test_production_post_state_consistency(tiny_sched: Scheduler) -> None:
     sch.wrk.wage[:] = 1.25
     firms_calc_wage_bill(sch.emp)  # sync wage-bill with roster
 
-    # ------------------------------------------------------------------
     # Run Event-4 systems (with expirations enabled)
-    # ------------------------------------------------------------------
     _run_production_event(sch, with_expiration=True)
 
-    # ------------------------------------------------------------------
     # Post-event invariants
-    # ------------------------------------------------------------------
-    # 1. firm labour vector equals counted employed workers
+    # ---------------------
+    # firm labour vector equals counted employed workers
     counts_after = np.bincount(
         sch.wrk.employer[sch.wrk.employed == 1],
         minlength=sch.emp.current_labor.size,
     )
     np.testing.assert_array_equal(counts_after, sch.emp.current_labor)
 
-    # 2. workers that left the roster are flagged as contract_expired
+    # workers that left the roster are flagged as contract_expired
     left_roster = sch.wrk.employed == 0
     assert np.all((sch.wrk.contract_expired[left_roster] == 1))
 
-    # 3. wage-bill rebuild: W_i == L_i · w_i
+    # wage-bill rebuild: W_i == L_i · w_i
     np.testing.assert_allclose(
         sch.emp.wage_bill,
         sch.emp.current_labor * sch.emp.wage_offer,

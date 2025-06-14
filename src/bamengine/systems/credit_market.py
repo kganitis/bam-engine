@@ -34,11 +34,11 @@ def banks_decide_credit_supply(lend: Lender, *, v: float) -> None:
     log.info("--- Banks Deciding Credit Supply ---")
     log.info(f"  Inputs: Capital Requirement (v)={v:.3f} (Max Leverage={1 / v:.2f}x)")
 
-    # --- Core Rule ---
+    # Core Rule 
     np.divide(lend.equity_base, v, out=lend.credit_supply)
     np.maximum(lend.credit_supply, 0.0, out=lend.credit_supply)
 
-    # --- Logging ---
+    # Logging 
     total_supply = lend.credit_supply.sum()
     log.info(f"  Total credit supply in the economy: {total_supply:,.2f}")
     if log.isEnabledFor(logging.DEBUG):
@@ -74,17 +74,17 @@ def banks_decide_interest_rate(
         f"  Max Markup Shock (h_phi)={h_phi:.4f}")
     shape = lend.interest_rate.shape
 
-    # --- Permanent scratch buffer ---
+    # Permanent scratch buffer 
     shock = lend.opex_shock
     if shock is None or shock.shape != shape:
         shock = np.empty(shape, dtype=np.float64)
         lend.opex_shock = shock
 
-    # --- Core Rule ---
+    # Core Rule 
     shock[:] = rng.uniform(0.0, h_phi, size=shape)
     lend.interest_rate[:] = r_bar * (1.0 + shock)
 
-    # --- Logging ---
+    # Logging 
     avg_rate = lend.interest_rate.mean() * 100
     log.info(f"  Interest rates set. Average rate: {avg_rate:.3f}%")
     if log.isEnabledFor(logging.DEBUG):
@@ -112,11 +112,11 @@ def firms_decide_credit_demand(bor: Borrower) -> None:
         f"  Inputs: Total Wage Bill={bor.wage_bill.sum():,.2f}  |"
         f"  Total Net Worth={bor.net_worth.sum():,.2f}")
 
-    # --- Core Rule ---
+    # Core Rule 
     np.subtract(bor.wage_bill, bor.net_worth, out=bor.credit_demand)
     np.maximum(bor.credit_demand, 0.0, out=bor.credit_demand)
 
-    # --- Logging ---
+    # Logging 
     total_demand = bor.credit_demand.sum()
     num_borrowers = np.sum(bor.credit_demand > 0)
     log.info(
@@ -143,17 +143,16 @@ def firms_calc_credit_metrics(bor: Borrower) -> None:
     log.info("--- Borrowers Calculating Credit Metrics ---")
     shape = bor.net_worth.shape
 
-    # --- Permanent scratch buffer ---
+    # Permanent scratch buffer 
     frag = bor.projected_fragility
     if frag is None or frag.shape != shape:
         frag = np.empty(shape, dtype=np.float64)
         bor.projected_fragility = frag
 
-    # --- Core Rule ---
-    # Calculate raw fragility as B / A for borrowers with positive net worth.
+    # Core Rule 
     np.divide(bor.credit_demand, bor.net_worth, out=frag, where=bor.net_worth > 0.0)
 
-    # Cap fragility for borrowers with zero or negative net worth at amount B.
+    # Cap fragility for borrowers with zero or negative net worth at amount B
     zero_nw_mask = bor.net_worth <= _EPS
     if np.any(zero_nw_mask):
         num_zero_nw = np.sum(zero_nw_mask)
@@ -175,10 +174,10 @@ def firms_calc_credit_metrics(bor: Borrower) -> None:
         )
     np.minimum(frag, bor.credit_demand, out=frag)
 
-    # Final adjustment by R&D intensity (μ).
+    # Final adjustment by R&D intensity (μ)
     np.multiply(frag, bor.rnd_intensity, out=frag)
 
-    # --- Logging ---
+    # Logging 
     valid_frag = frag[np.isfinite(frag)]
     avg_fragility = valid_frag.mean() if valid_frag.size > 0 else 0.0
     log.info(f"  Average projected fragility across all borrowers: {avg_fragility:.4f}")
@@ -216,7 +215,7 @@ def firms_prepare_loan_applications(
         log.info("--- Loan Application Preparation complete ---")
         return
 
-    # --- Sample H random lending banks per borrower ---
+    # Sample H random lending banks per borrower 
     H_eff = min(max_H, lenders.size)
     log.info(f"  Effective applications per borrower (H_eff): {H_eff}")
     # TODO Optimize loop
@@ -226,7 +225,7 @@ def firms_prepare_loan_applications(
         log.debug(
             f"  Initial random bank sample (first 10 borrowers):\n{sample[:10]}")
 
-    # --- Sort applications by ascending interest rate ---
+    # Sort applications by ascending interest rate 
     topk = select_top_k_indices_sorted(lend.interest_rate[sample], k=H_eff,
                                        descending=False)
     sorted_sample = np.take_along_axis(sample, topk, axis=1)
@@ -235,7 +234,7 @@ def firms_prepare_loan_applications(
             f"  Sorted bank sample by interest rate (first 5 borrowers):\n"
             f"{sorted_sample[:5]}")
 
-    # --- Write buffers ---
+    # Write buffers 
     log.debug(
         "  Writing application targets and head pointers for all borrowers...")
     bor.loan_apps_targets.fill(-1)
@@ -474,7 +473,7 @@ def banks_provide_loans(
             log.debug(
                 f"    Bank {k} has {queue.size} valid potential borrowers: {queue}")
 
-        # ---- gather loan data -------------------------------------------
+        # gather loan data 
         cd = bor.credit_demand[queue]
         frag = bor.projected_fragility[queue]
         max_grant = np.minimum(cd, lend.credit_supply[k])
@@ -483,7 +482,7 @@ def banks_provide_loans(
                 f"    Bank {k} loan data: credit_demand={cd}, "
                 f"fragility={frag}, max_grant={max_grant}")
 
-        # ---- determine actual loan amounts ------------------------------
+        # determine actual loan amounts 
         cumsum = np.cumsum(max_grant, dtype=np.float64)
         cut = cumsum > lend.credit_supply[k]
         if cut.any():
@@ -518,12 +517,12 @@ def banks_provide_loans(
                 f"{final_borrowers.size} borrower(s): {final_borrowers.tolist()}")
         total_loans_this_round += final_amounts.sum()
 
-        # ---- ledger updates ---------------------------------------------
+        # ledger updates 
         log.debug(f"      Updating ledger for {final_borrowers.size} new loans.")
         lb.purge_borrowers(final_borrowers)
         lb.append_loans_for_lender(k, final_borrowers, final_amounts, final_rates)
 
-        # ---- borrower‑side updates --------------------------------------
+        # borrower‑side updates 
         bor.total_funds[final_borrowers] += final_amounts
         bor.credit_demand[final_borrowers] -= final_amounts
         assert (bor.credit_demand >= -_EPS).all(), "negative credit_demand"
@@ -532,7 +531,7 @@ def banks_provide_loans(
                 f"      Borrower state updated: "
                 f"total_funds increased, credit_demand decreased")
 
-        # ---- lender‑side updates ----------------------------------------
+        # lender‑side updates 
         lend.credit_supply[k] -= final_amounts.sum()
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
@@ -578,7 +577,7 @@ def firms_fire_workers(
                 f"  Processing firm {i} (wage bill: {emp.wage_bill[i]:.2f}, "
                 f"total funds: {emp.total_funds[i]:.2f}, gap: {gap:.2f})")
 
-        # ---- validate workforce consistency -----------------------------
+        # validate workforce consistency 
         workforce = np.where((wrk.employed == 1) & (wrk.employer == i))[0]
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
@@ -595,7 +594,7 @@ def firms_fire_workers(
                 log.debug(f"    Firm {i}: No workers to fire. Skipping.")
             continue
 
-        # ---- determine workers to fire ----------------------------------
+        # determine workers to fire
         worker_wages = wrk.wage[workforce]
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
@@ -658,7 +657,7 @@ def firms_fire_workers(
                 f"wage_savings={total_fired_wage:.2f}, "
                 f"coverage={min(100.0, (total_fired_wage / gap) * 100):.1f}%")
 
-        # ---- worker‑side updates ----------------------------------------
+        # worker‑side updates
         log.debug(f"      Updating state for {final_victims.size} fired workers.")
         wrk.employed[final_victims] = 0
         wrk.employer[final_victims] = -1
@@ -668,7 +667,7 @@ def firms_fire_workers(
         wrk.contract_expired[final_victims] = 0
         wrk.fired[final_victims] = 1
 
-        # ---- firm‑side updates ------------------------------------------
+        # firm‑side updates
         emp.current_labor[i] -= final_victims.size
         # Recalculate wage bill based on remaining workers
         remaining_workforce = np.where((wrk.employed == 1) & (wrk.employer == i))[0]

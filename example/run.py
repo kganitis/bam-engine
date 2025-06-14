@@ -17,7 +17,7 @@ logging.getLogger("bamengine").setLevel(logging.WARNING)
 
 
 def run_baseline_simulation(n_firms=100, seed=0):
-    # --- Simulation Parameters ---
+    # Simulation Parameters ---
     params = {
         "n_households": n_firms * 5,
         "n_firms": n_firms,

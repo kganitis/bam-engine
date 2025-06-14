@@ -11,9 +11,7 @@ from bamengine.scheduler import Scheduler
 from tests.helpers.invariants import assert_basic_invariants
 
 
-# --------------------------------------------------------------------------- #
-#   single-step                                                               #
-# --------------------------------------------------------------------------- #
+#   single-step
 def test_scheduler_step(tiny_sched: Scheduler) -> None:
     """
     Smoke integration test: one `Scheduler.step()`.
@@ -22,9 +20,7 @@ def test_scheduler_step(tiny_sched: Scheduler) -> None:
     assert_basic_invariants(tiny_sched)
 
 
-# --------------------------------------------------------------------------- #
-#   multi-period                                                              #
-# --------------------------------------------------------------------------- #
+#   multi-period
 @pytest.mark.parametrize("n_periods", [100])
 def test_scheduler_state_stable_over_time(n_periods: int) -> None:
     """
@@ -46,9 +42,7 @@ def test_scheduler_state_stable_over_time(n_periods: int) -> None:
         assert_basic_invariants(sch)
 
 
-# --------------------------------------------------------------------------- #
-#   property-based size & seed fuzzing                                        #
-# --------------------------------------------------------------------------- #
+#   property-based size & seed fuzzing
 @given(
     n_firms=st.integers(20, 50),
     n_households=st.integers(100, 250),

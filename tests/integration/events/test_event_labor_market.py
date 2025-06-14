@@ -21,7 +21,6 @@ from bamengine.systems.labor_market import (
 )
 
 
-# helper: run Event-1 (planning) so that vacancies & wage offers exist
 def _run_planning(sch: Scheduler) -> None:
     from bamengine.systems.planning import (
         firms_decide_desired_labor,
@@ -35,20 +34,17 @@ def _run_planning(sch: Scheduler) -> None:
     firms_decide_vacancies(sch.emp)
 
 
-# --------------------------------------------------------------------------- #
-# 1. Regression test (unchanged)                                              #
-# --------------------------------------------------------------------------- #
 def test_event_labor_market(tiny_sched: Scheduler) -> None:
     sch = tiny_sched
 
-    # --------------- Event-1 ---------------------------------------------
+    # Event-1
     _run_planning(sch)
 
     original_vacancies = sch.emp.n_vacancies.copy()
     original_employed = sch.wrk.employed.copy()
     original_labor = sch.emp.current_labor.copy()
 
-    # --------------- Event-2 ---------------------------------------------
+    # Event-2
     prev_floor = sch.ec.min_wage
     calc_inflation_and_adjust_minimum_wage(sch.ec)
 
@@ -65,7 +61,7 @@ def test_event_labor_market(tiny_sched: Scheduler) -> None:
         workers_send_one_round(sch.wrk, sch.emp)
         firms_hire_workers(sch.wrk, sch.emp, theta=sch.theta)
 
-    # --------------- invariants -----------------------------------------
+    # invariants
     m = sch.ec.min_wage_rev_period
     hist = sch.ec.avg_mkt_price_history
     if hist.size > m and (hist.size - 1) % m == 0:
@@ -89,9 +85,6 @@ def test_event_labor_market(tiny_sched: Scheduler) -> None:
     assert np.all((sch.wrk.job_apps_head[sch.wrk.employed == 1] == -1))
 
 
-# --------------------------------------------------------------------------- #
-# 2. Post-event state consistency (new)                                       #
-# --------------------------------------------------------------------------- #
 def test_labor_market_post_state_consistency(tiny_sched: Scheduler) -> None:
     sch = tiny_sched
     _run_planning(sch)
@@ -103,24 +96,24 @@ def test_labor_market_post_state_consistency(tiny_sched: Scheduler) -> None:
         workers_send_one_round(sch.wrk, sch.emp)
         firms_hire_workers(sch.wrk, sch.emp, theta=sch.theta)
 
-    # ---- 1. worker ↔ firm labor counts are consistent ------------------
+    # worker ↔ firm labor counts are consistent
     counts = np.bincount(
         sch.wrk.employer[sch.wrk.employed == 1],
         minlength=sch.emp.current_labor.size,
     )
     np.testing.assert_array_equal(counts, sch.emp.current_labor)
 
-    # ---- 2. employed workers paid the posted (≥ floor) wage ------------
+    # employed workers paid the posted (≥ floor) wage
     employed_idx = np.where(sch.wrk.employed == 1)[0]
     worker_wages = sch.wrk.wage[employed_idx]
     firm_wages = sch.emp.wage_offer[sch.wrk.employer[employed_idx]]
     np.testing.assert_allclose(worker_wages, firm_wages)
     assert (worker_wages >= sch.ec.min_wage).all()
 
-    # ---- 3. contract duration set correctly ----------------------------
+    # contract duration set correctly
     assert np.all((sch.wrk.periods_left[employed_idx] == sch.theta))
 
-    # ---- 4. inbound queues: any firm that still has vacancies must have
+    # inbound queues: any firm that still has vacancies must have
     # an empty queue; firms with zero vacancies may retain stale pointers
     mask_vac = sch.emp.n_vacancies > 0
     assert np.all((sch.emp.recv_job_apps_head[mask_vac] == -1))
