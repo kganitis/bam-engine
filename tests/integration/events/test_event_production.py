@@ -2,7 +2,7 @@
 """
 Event-4 integration tests (production)
 
-The two tests below exercise the full production round on the *tiny* scheduler:
+The two tests below exercise the full production round on the *tiny* simulation:
 
 1. test_event_production_basic
    – regression-style money-flow and material-balance checks.
@@ -16,7 +16,7 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
-from bamengine.scheduler import Scheduler
+from bamengine.simulation import Simulation
 from bamengine.systems.labor_market import firms_calc_wage_bill
 from bamengine.systems.production import (
     firms_decide_price,
@@ -29,7 +29,7 @@ from bamengine.systems.production import (
 
 
 def _run_production_event(
-    sch: Scheduler, *, with_expiration: bool = False
+    sch: Simulation, *, with_expiration: bool = False
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """
     Execute the complete Event-4 logic once.
@@ -76,7 +76,7 @@ def _run_production_event(
     return funds_before, income_before
 
 
-def test_event_production_basic(tiny_sched: Scheduler) -> None:
+def test_event_production_basic(tiny_sched: Simulation) -> None:
     """
     Happy-path regression:
 
@@ -112,7 +112,7 @@ def test_event_production_basic(tiny_sched: Scheduler) -> None:
     assert (sch.emp.total_funds >= -1e-9).all()
 
 
-def test_production_post_state_consistency(tiny_sched: Scheduler) -> None:
+def test_production_post_state_consistency(tiny_sched: Simulation) -> None:
     """
     Force many contracts to expire in the same step and verify that
 

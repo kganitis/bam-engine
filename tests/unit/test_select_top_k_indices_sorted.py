@@ -3,7 +3,7 @@ from typing import Callable
 import numpy as np
 import pytest
 
-from bamengine.helpers import select_top_k_indices_sorted
+from bamengine.utils import select_top_k_indices_sorted
 
 
 def test_select_top_k_indices_sorted_descending_2d() -> None:

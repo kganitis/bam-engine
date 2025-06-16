@@ -1,7 +1,7 @@
 """
 Event-3 integration tests (credit market)
 
-Two tests exercise the full credit-market round on the tiny scheduler:
+Two tests exercise the full credit-market round on the tiny simulation:
 
 1. test_event_credit_market_basic
    – happy-path regression + cross-component money-flow checks.
@@ -10,7 +10,7 @@ Two tests exercise the full credit-market round on the tiny scheduler:
    – deeper invariants that require seeing *all* components together.
 
 They complement the unit tests by checking ledger arithmetic, borrower ↔ lender
-balance symmetry, queue flushing, and scheduler helpers.
+balance symmetry, queue flushing, and simulation helpers.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
-from bamengine.scheduler import Scheduler
+from bamengine.simulation import Simulation
 from bamengine.systems.credit_market import (
     banks_decide_credit_supply,
     banks_decide_interest_rate,
@@ -31,7 +31,7 @@ from bamengine.systems.credit_market import (
 )
 
 
-def _run_credit_event(sch: Scheduler) -> NDArray[np.float64]:
+def _run_credit_event(sch: Simulation) -> NDArray[np.float64]:
     """
     Execute the complete Event-3 logic once and return the snapshot of
     credit_demand *before* loans are granted (for later delta checks).
@@ -63,7 +63,7 @@ def _run_credit_event(sch: Scheduler) -> NDArray[np.float64]:
 
 
 # Regression-style basic test
-def test_event_credit_market_basic(tiny_sched: Scheduler) -> None:
+def test_event_credit_market_basic(tiny_sched: Simulation) -> None:
     sch = tiny_sched
 
     # ensure every firm wants credit and every bank can supply some
@@ -112,7 +112,7 @@ def test_event_credit_market_basic(tiny_sched: Scheduler) -> None:
 
 
 # Post-event state consistency
-def test_credit_market_post_state_consistency(tiny_sched: Scheduler) -> None:
+def test_credit_market_post_state_consistency(tiny_sched: Simulation) -> None:
     sch = tiny_sched
 
     # create a wage-bill gap so layoffs branch is surely taken

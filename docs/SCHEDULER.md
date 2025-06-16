@@ -43,7 +43,7 @@ class Event:
     name: str
     systems: list[Callable[..., None]]
 
-# In your Scheduler or a new factory
+# In your Simulation or a new factory
 def get_default_event_sequence(state: SimState, config: SimConfig) -> list[Event]:
     return [
         Event(name="Planning", systems=[
@@ -57,7 +57,7 @@ def get_default_event_sequence(state: SimState, config: SimConfig) -> list[Event
 ```
 Your `step()` method becomes beautifully simple:
 ```python
-# Inside the Scheduler class
+# Inside the Simulation class
 def step(self) -> None:
     for event in self.event_sequence:
         log.debug("--- Running Event: %s ---", event.name)
@@ -136,7 +136,7 @@ This requires passing the adapter down, but gives you highly structured and filt
 This pseudocode illustrates how these recommendations would come together.
 
 ```python
-# scheduler.py
+# simulation.py
 """
 Orchestrates the BAM simulation by executing a sequence of events on a state object.
 """

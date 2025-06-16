@@ -1,6 +1,4 @@
-# src/bamengine/scheduler.py
-"""BAM Engine – tiny driver that wires components ↔ systems."""
-
+# src/bamengine/simulation.py
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -74,16 +72,13 @@ from bamengine.systems.revenue import (
 )
 from bamengine.typing import Float1D
 
-__all__ = [
-    "Scheduler",
-]
+__all__ = ["Simulation"]
 
 log = getLogger(__name__)
 
 
-# --------------------------------------------------------------------------- #
-#  helpers                                                                    #
-# --------------------------------------------------------------------------- #
+# helpers
+# ---------------------------------------------------------------------------
 def _read_yaml(obj: str | Path | Mapping[str, Any] | None) -> Dict[str, Any]:
     """Return a plain dict – {} if *obj* is None."""
     if obj is None:
@@ -121,18 +116,17 @@ def _validate_float1d(
     return arr
 
 
-# --------------------------------------------------------------------- #
-#   Scheduler                                                           #
-# --------------------------------------------------------------------- #
+# Simulation
+# ---------------------------------------------------------------------
 @dataclass(slots=True)
-class Scheduler:
+class Simulation:
     """
     Facade that drives one Economy instance through *n* consecutive periods.
 
-    One call to :py:meth:`run` → *n* calls to :py:meth:`step`.
+    One call to `run` → *n* calls to `step`.
     """
 
-    #  core state
+    # core state
     rng: Generator
     ec: Economy
     prod: Producer
@@ -166,17 +160,16 @@ class Scheduler:
     beta: float  # propensity to consume exponent β
     delta: float  # dividend payout ratio δ (DPR)
 
-    # --------------------------------------------------------------------- #
-    #   Constructor                                                         #
-    # --------------------------------------------------------------------- #
+    # Constructor
+    # ---------------------------------------------------------------------
     @classmethod
     def init(
         cls,
         config: str | Path | Mapping[str, Any] | None = None,
         **overrides: Any,  # anything here wins last
-    ) -> "Scheduler":
+    ) -> "Simulation":
         """
-        Build a Scheduler.
+        Build a Simulation.
 
         Order of precedence (later overrides earlier):
 
@@ -189,7 +182,7 @@ class Scheduler:
         cfg.update(_read_yaml(config))
         cfg.update(overrides)
 
-        #  pull required scalars
+        # pull required scalars
         n_firms = int(cfg.pop("n_firms"))
         n_households = int(cfg.pop("n_households"))
         n_banks = int(cfg.pop("n_banks"))
@@ -220,7 +213,7 @@ class Scheduler:
             "equity_base_init", cfg.get("equity_base_init", 10_000.0), n_banks
         )
 
-        #  delegate to *private* constructor
+        # delegate to private constructor
         return cls._from_params(
             rng=rng,
             n_firms=n_firms,
@@ -230,11 +223,10 @@ class Scheduler:
         )
 
     @classmethod
-    def _from_params(cls, *, rng: Generator, **p: Any) -> "Scheduler":  # noqa: C901
+    def _from_params(cls, *, rng: Generator, **p: Any) -> "Simulation":  # noqa: C901
 
-        # ----------------------------------------------------------------- #
-        #   Vector initilization                                            #
-        # ----------------------------------------------------------------- #
+        # Vector initilization                                            
+        # ----------------------------------------------------------------- 
         # finance
         net_worth = np.full(p["n_firms"], fill_value=p["net_worth_init"])
         total_funds = net_worth.copy()
@@ -304,9 +296,8 @@ class Scheduler:
         unemp_rate_history = np.array([1.0])
         inflation_history = np.array([0.0])
 
-        # ----------------------------------------------------------------- #
-        #   Wrap into components                                            #
-        # ----------------------------------------------------------------- #
+        # Wrap into components                                            
+        # -----------------------------------------------------------------
         ec = Economy(
             # TODO move theta, beta and delta in here
             avg_mkt_price=avg_mkt_price,
@@ -405,9 +396,8 @@ class Scheduler:
             rng=rng,
         )
 
-    # --------------------------------------------------------------------- #
-    #   public API                                                          #
-    # --------------------------------------------------------------------- #
+    # public API                                                          
+    # --------------------------------------------------------------------- 
     def run(self, n_periods: int | None = None) -> None:
         """
         Advance the simulation *n_periods* steps
@@ -433,7 +423,7 @@ class Scheduler:
 
         self.t += 1
 
-        # ===== event 1 – planning =====================================================
+        # *************** event 1 – planning ***************
 
         firms_decide_desired_production(
             self.prod, p_avg=self.ec.avg_mkt_price, h_rho=self.h_rho, rng=self.rng
@@ -450,7 +440,7 @@ class Scheduler:
         firms_decide_desired_labor(self.prod, self.emp)
         firms_decide_vacancies(self.emp)
 
-        # ===== event 2 – labor-market =================================================
+        # *************** event 2 – labor-market ***************
 
         adjust_minimum_wage(self.ec)
         firms_decide_wage_offer(
@@ -464,7 +454,7 @@ class Scheduler:
             firms_hire_workers(self.wrk, self.emp, theta=self.theta, rng=self.rng)
         firms_calc_wage_bill(self.emp, self.wrk)
 
-        # ===== event 3 – credit-market ================================================
+        # *************** event 3 – credit-market ***************
 
         banks_decide_credit_supply(self.lend, v=self.ec.v)
         banks_decide_interest_rate(
@@ -480,14 +470,14 @@ class Scheduler:
             banks_provide_loans(self.bor, self.lb, self.lend, r_bar=0.02, h_phi=0.10)
         firms_fire_workers(self.emp, self.wrk, rng=self.rng)
 
-        # ===== event 4 – production ===================================================
+        # *************** event 4 – production ***************
 
         firms_pay_wages(self.emp)
         workers_receive_wage(self.con, self.wrk)
         firms_run_production(self.prod, self.emp)
         workers_update_contracts(self.wrk, self.emp)
 
-        # ===== event 5 – goods-market =================================================
+        # *************** event 5 – goods-market ***************
 
         _avg_sav = float(self.con.savings.mean())
         consumers_calc_propensity(self.con, avg_sav=_avg_sav, beta=self.beta)
@@ -499,24 +489,24 @@ class Scheduler:
             consumers_shop_one_round(self.con, self.prod, rng=self.rng)
         consumers_finalize_purchases(self.con)
 
-        # ===== event 6 – revenue ======================================================
+        # *************** event 6 – revenue ***************
 
         firms_collect_revenue(self.prod, self.bor)
         firms_validate_debt_commitments(self.bor, self.lend, self.lb)
         firms_pay_dividends(self.bor, delta=self.delta)
 
-        # ===== event 7 – bankruptcy ===================================================
+        # *************** event 7 – bankruptcy ***************
 
         firms_update_net_worth(self.bor)
         mark_bankrupt_firms(self.ec, self.emp, self.bor, self.prod, self.wrk, self.lb)
         mark_bankrupt_banks(self.ec, self.lend, self.lb)
 
-        # ===== event 8 – entry ========================================================
+        # *************** event 8 – entry ***************
 
         spawn_replacement_firms(self.ec, self.prod, self.emp, self.bor, rng=self.rng)
         spawn_replacement_banks(self.ec, self.lend, rng=self.rng)
 
-        # ===== end of period = ========================================================
+        # *************** end of period ***************
 
         calc_unemployment_rate(self.ec, self.wrk)
 

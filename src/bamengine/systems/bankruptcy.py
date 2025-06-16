@@ -20,7 +20,7 @@ from bamengine.components import (
     Producer,
     Worker,
 )
-from bamengine.helpers import trim_mean
+from bamengine.utils import trim_mean
 
 log = _logging_ext.getLogger(__name__)
 

@@ -1,13 +1,13 @@
 # tests/conftest.py
 import pytest
 
-from bamengine.scheduler import Scheduler
+from bamengine.simulation import Simulation
 
 
 @pytest.fixture
-def tiny_sched() -> Scheduler:
-    """A minimal deterministic scheduler for fast integration tests."""
-    return Scheduler.init(
+def tiny_sched() -> Simulation:
+    """A minimal deterministic simulation for fast integration tests."""
+    return Simulation.init(
         n_firms=6,
         n_households=15,
         n_banks=3,

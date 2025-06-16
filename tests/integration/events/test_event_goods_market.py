@@ -3,7 +3,7 @@
 Event-5 integration tests  ⸺  goods-market round
 =================================================
 
-Two test-cases run the *entire* goods-market sequence on a tiny `Scheduler`.
+Two test-cases run the *entire* goods-market sequence on a tiny `Simulation`.
 
 1. test_event_goods_market_basic
    Regression-style money-flow & stock-flow checks.
@@ -16,7 +16,7 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
-from bamengine.scheduler import Scheduler
+from bamengine.simulation import Simulation
 from bamengine.systems.goods_market import (  # systems under test
     consumers_calc_propensity,
     consumers_decide_firms_to_visit,
@@ -26,7 +26,7 @@ from bamengine.systems.goods_market import (  # systems under test
 )
 
 
-def _run_goods_event(sch: Scheduler) -> dict[str, NDArray[np.float64]]:
+def _run_goods_event(sch: Simulation) -> dict[str, NDArray[np.float64]]:
     """
     Drive the full Event-5 pipeline **once** and return *snapshots* of the
     vectors that callers need for delta checks.
@@ -68,7 +68,7 @@ def _run_goods_event(sch: Scheduler) -> dict[str, NDArray[np.float64]]:
     return snap
 
 
-def test_event_goods_market_basic(tiny_sched: Scheduler) -> None:
+def test_event_goods_market_basic(tiny_sched: Simulation) -> None:
     """
     Happy-path regression:
 
@@ -102,7 +102,7 @@ def test_event_goods_market_basic(tiny_sched: Scheduler) -> None:
     assert np.all(sch.con.income_to_spend == 0.0)
 
 
-def test_goods_market_post_state_consistency(tiny_sched: Scheduler) -> None:
+def test_goods_market_post_state_consistency(tiny_sched: Simulation) -> None:
     """
     Invariants checked after the round:
 
