@@ -8,7 +8,7 @@ n_households:         500        # number of worker / consumer agents
 n_banks:               10        # commercial banks
 
 # ── run length ─────────────────────────────────────────────────────────
-n_periods:            1000       # how many periods Scheduler.run() will iterate
+n_periods:            1000       # how many periods Simulation.run() will iterate
 
 # ── stochastic shock widths ────────────────────────────────────────────
 h_rho:                0.10       # production-growth shock cap

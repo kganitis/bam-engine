@@ -13,7 +13,7 @@ from numpy.random import Generator, default_rng
 
 from bamengine import _logging_ext
 from bamengine.components import Borrower, Employer, Lender, LoanBook, Worker
-from bamengine.helpers import select_top_k_indices_sorted
+from bamengine.utils import select_top_k_indices_sorted
 from bamengine.typing import Idx1D
 
 log = _logging_ext.getLogger(__name__)

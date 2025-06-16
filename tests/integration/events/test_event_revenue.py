@@ -7,7 +7,7 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
-from bamengine.scheduler import Scheduler
+from bamengine.simulation import Simulation
 from bamengine.systems.revenue import (
     firms_collect_revenue,
     firms_pay_dividends,
@@ -18,7 +18,7 @@ _EPS = 1e-9
 
 
 def _run_revenue_event(
-    sch: Scheduler,
+    sch: Simulation,
     *,
     delta: float = 0.15,
 ) -> dict[str, NDArray[np.float64]]:
@@ -53,7 +53,7 @@ def _run_revenue_event(
     return snap
 
 
-def test_event_revenue_basic(tiny_sched: Scheduler) -> None:
+def test_event_revenue_basic(tiny_sched: Simulation) -> None:
     """
     Crafted micro-scenario:
 
@@ -64,7 +64,7 @@ def test_event_revenue_basic(tiny_sched: Scheduler) -> None:
     sch = tiny_sched
     delta = 0.40
 
-    # tailor the tiny scheduler
+    # tailor the tiny simulation
     sch.prod.production[:] = 20.0
     sch.prod.inventory[:] = 20.0
     sch.prod.price[:] = 2.0
@@ -130,7 +130,7 @@ def test_event_revenue_basic(tiny_sched: Scheduler) -> None:
     assert sch.lb.size == 1
 
 
-def test_revenue_post_state_consistency(tiny_sched: Scheduler) -> None:
+def test_revenue_post_state_consistency(tiny_sched: Simulation) -> None:
     sch = tiny_sched
     rng, delta = sch.rng, 0.15
 

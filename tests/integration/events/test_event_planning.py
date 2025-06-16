@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from bamengine.scheduler import Scheduler
+from bamengine.simulation import Simulation
 from bamengine.systems.planning import (
     firms_decide_desired_labor,
     firms_decide_desired_production,
@@ -10,7 +10,7 @@ from bamengine.systems.planning import (
 )
 
 
-def test_event_planning(tiny_sched: Scheduler) -> None:
+def test_event_planning(tiny_sched: Simulation) -> None:
     sch = tiny_sched
 
     # GIVEN

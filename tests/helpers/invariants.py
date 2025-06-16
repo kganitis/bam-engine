@@ -1,6 +1,6 @@
 # tests/helpers/invariants.py
 """
-High-level invariants that must hold after *every* ``Scheduler.step``.
+High-level invariants that must hold after *every* ``Simulation.step``.
 They deliberately stay coarse-grained so they remain valid even when the
 micro-rules evolve.
 """
@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import numpy as np
 
-from bamengine.scheduler import Scheduler
+from bamengine.simulation import Simulation
 
 
-def assert_basic_invariants(sch: Scheduler) -> None:  # noqa: C901  (flat, long)
+def assert_basic_invariants(sch: Simulation) -> None:  # noqa: C901  (flat, long)
     """
     Raise ``AssertionError`` if *any* fundamental cross-component relationship
     is violated after a full period.

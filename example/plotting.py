@@ -10,16 +10,14 @@ logging.getLogger("matplotlib").setLevel(logging.INFO)
 
 
 def plot_results(data: dict[str, NDArray[np.float64]], burn_in: int) -> None:
-    # Prepare data for plotting ---
     periods = np.arange(burn_in, len(data["gdp"]))
 
-    # Slice data to remove the burn-in period
     log_gdp = np.log(data["gdp"][burn_in:])
     unemployment = data["unemployment_rate"][burn_in:] * 100  # as percentage
     annual_inflation = data["inflation_rate"][burn_in:] * 100  # as percentage
     prod_wage_ratio = data["productivity_wage_ratio"][burn_in:]
 
-    # Create Plots ---
+    # Create Plots
     fig, axes = plt.subplots(4, 1, figsize=(15, 20))
     fig.suptitle("BAM Model Baseline Scenario Results", fontsize=16)
 

@@ -10,7 +10,7 @@ import numpy as np
 
 from bamengine import _logging_ext
 from bamengine.components import Consumer, Economy, Employer, Producer, Worker
-from bamengine.helpers import trimmed_weighted_mean
+from bamengine.utils import trimmed_weighted_mean
 
 log = _logging_ext.getLogger(__name__)
 

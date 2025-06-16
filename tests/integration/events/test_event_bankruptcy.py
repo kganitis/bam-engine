@@ -19,7 +19,7 @@ from typing import Any
 
 import numpy as np
 
-from bamengine.scheduler import Scheduler
+from bamengine.simulation import Simulation
 from bamengine.systems.bankruptcy import (  # systems under test
     firms_update_net_worth,
     mark_bankrupt_banks,
@@ -29,7 +29,7 @@ from bamengine.systems.bankruptcy import (  # systems under test
 )
 
 
-def _run_bankruptcy_entry_event(sch: Scheduler) -> dict[str, Any]:
+def _run_bankruptcy_entry_event(sch: Simulation) -> dict[str, Any]:
     """
     Drive Event-7 (bankruptcy) + Event-8 (entry) once and return
     the pieces that the regression tests need.
@@ -62,7 +62,7 @@ def _run_bankruptcy_entry_event(sch: Scheduler) -> dict[str, Any]:
     return snap
 
 
-def test_event_bankruptcy_entry_basic(tiny_sched: Scheduler) -> None:
+def test_event_bankruptcy_entry_basic(tiny_sched: Simulation) -> None:
     """
     Crafted micro-scenario:
 
@@ -77,7 +77,7 @@ def test_event_bankruptcy_entry_basic(tiny_sched: Scheduler) -> None:
     sch = tiny_sched
     rng = sch.rng
 
-    # tailor the tiny scheduler
+    # tailor the tiny simulation
     # firms
     sch.bor.net_worth[:] = rng.uniform(5.0, 15.0, sch.bor.net_worth.size)
     sch.bor.net_worth[[0, 2]] = [-4.0, -1.5]  # bankrupt ones
@@ -148,7 +148,7 @@ def test_event_bankruptcy_entry_basic(tiny_sched: Scheduler) -> None:
     assert sch.lend.credit_supply[1] == 0.0
 
 
-def test_bankruptcy_entry_post_state_consistency(tiny_sched: Scheduler) -> None:
+def test_bankruptcy_entry_post_state_consistency(tiny_sched: Simulation) -> None:
     """
     Random mix of healthy/bankrupt agents  ➜  after the round:
 

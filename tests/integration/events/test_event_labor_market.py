@@ -11,7 +11,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from bamengine.scheduler import Scheduler
+from bamengine.simulation import Simulation
 from bamengine.systems.labor_market import (
     calc_inflation_and_adjust_minimum_wage,
     firms_decide_wage_offer,
@@ -21,7 +21,7 @@ from bamengine.systems.labor_market import (
 )
 
 
-def _run_planning(sch: Scheduler) -> None:
+def _run_planning(sch: Simulation) -> None:
     from bamengine.systems.planning import (
         firms_decide_desired_labor,
         firms_decide_desired_production,
@@ -34,7 +34,7 @@ def _run_planning(sch: Scheduler) -> None:
     firms_decide_vacancies(sch.emp)
 
 
-def test_event_labor_market(tiny_sched: Scheduler) -> None:
+def test_event_labor_market(tiny_sched: Simulation) -> None:
     sch = tiny_sched
 
     # Event-1
@@ -85,7 +85,7 @@ def test_event_labor_market(tiny_sched: Scheduler) -> None:
     assert np.all((sch.wrk.job_apps_head[sch.wrk.employed == 1] == -1))
 
 
-def test_labor_market_post_state_consistency(tiny_sched: Scheduler) -> None:
+def test_labor_market_post_state_consistency(tiny_sched: Simulation) -> None:
     sch = tiny_sched
     _run_planning(sch)
 

@@ -7,8 +7,8 @@ Public surface
 --------------
 
 >>> import bamengine as be
->>> sched = be.Scheduler.init(n_firms=10, n_households=50)
->>> sched.step()
+>>> sim = be.Simulation.init(n_firms=10, n_households=50)
+>>> sim.step()
 
 Everything else (`bamengine.components`, `bamengine.systems`, …) is **internal**
 and may change without notice.
@@ -24,9 +24,9 @@ __version__: str = "0.0.0"
 # --------------------------------------------------------------------- #
 # re‑export the one *true* facade
 # --------------------------------------------------------------------- #
-from .scheduler import Scheduler  # noqa: E402  (circular‑safe)
+from .simulation import Simulation  # noqa: E402  (circular‑safe)
 
 __all__: list[str] = [
-    "Scheduler",
+    "Simulation",
     "__version__",
 ]

@@ -2,8 +2,7 @@
 
 ### TODO Next
 
-* Scheduler refactor
-* Example usage
+* Readme
 
 ---
 
@@ -52,7 +51,7 @@
 * Package the library as a PyPI wheel once the public API stabilises
 * Add `Scheduler.to_dict` and `Scheduler.from_dict` for checkpoint and restart workflows
 * Provide read-only pandas views for downstream analysis without touching core arrays
-* Replace the current hook set with a small plugin event bus (`Plugin.on_event(sched, tag)`)
+* Replace the current hook set with a small plugin event bus (`Plugin.on_event(sim, tag)`)
 * Finish NumPy-style docstrings and enable Ruff’s docstring lint rule
 * API to capture simulation data at any moment inside a step, without sacrificing performance
 

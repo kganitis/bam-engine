@@ -13,7 +13,7 @@ from numpy.random import Generator, default_rng
 from numpy.typing import NDArray
 
 from bamengine.components import Borrower, Lender, LoanBook
-from bamengine.helpers import select_top_k_indices_sorted
+from bamengine.utils import select_top_k_indices_sorted
 
 # noinspection PyProtectedMember
 from bamengine.systems.credit_market import (

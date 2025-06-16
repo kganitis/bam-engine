@@ -1,4 +1,4 @@
-# src/bamengine/helpers.py
+# src/bamengine/utils.py
 import numpy as np
 from numpy.random import Generator, default_rng
 from numpy.typing import NDArray
