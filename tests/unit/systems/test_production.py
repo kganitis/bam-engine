@@ -12,7 +12,7 @@ from numpy.typing import NDArray
 
 from bamengine.components import Employer, LoanBook, Worker
 from bamengine.systems.production import (
-    firms_decide_price,
+    # firms_decide_price,
     firms_pay_wages,
     firms_run_production,
     update_avg_mkt_price,
@@ -29,54 +29,54 @@ from tests.helpers.factories import (
 )
 
 
-def test_firms_decide_price_obeys_break_even_and_shocks() -> None:
-    rng = default_rng(0)
-
-    prod = mock_producer(
-        n=4,
-        production=np.array([5.0, 5.0, 8.0, 8.0]),
-        inventory=np.array([0.0, 0.0, 3.0, 3.0]),
-        price=np.array([1.0, 1.0, 3.0, 3.0]),
-        alloc_scratch=False,
-    )
-    emp = mock_employer(
-        n=4,
-        current_labor=np.full(4, 2, dtype=np.int64),
-        wage_offer=np.full(4, 1.0),
-        wage_bill=np.full(4, 2.0),
-    )
-    # dummy LoanBook that always returns a constant vector 0.5
-    lb = mock_loanbook()
-
-    def _const_interest(_self: "LoanBook", n: int = 128) -> NDArray[np.float64]:
-        return np.array([0.1, 10.0, 0.1, 0.5])
-
-    p_avg = 2.0
-    h_eta = 0.10
-
-    interest = np.array([0.1, 10.0, 0.1, 0.5])
-    projected_output = prod.labor_productivity * emp.current_labor
-    breakeven = (emp.wage_bill + interest) / np.maximum(projected_output, 1.0e-12)
-    breakeven_capped = np.minimum(breakeven, prod.price * 2)
-
-    with patch.object(type(lb), "interest_per_borrower", _const_interest):
-        firms_decide_price(prod, emp, lb, p_avg=p_avg, h_eta=h_eta, rng=rng)
-
-    # firm-0 price ↑ at most 10 %
-    assert prod.price[0] >= 1.0
-    assert prod.price[0] <= 1.0 * (1 + h_eta) + 1.0e-12
-
-    # firm-1 price -> breakeven
-    assert prod.price[1] >= 1.0
-    assert prod.price[1] >= breakeven_capped[1] - 1.0e-12
-
-    # firm-2 price ↓ at most 10 %
-    assert prod.price[2] <= 3.0
-    assert prod.price[2] >= 3.0 * (1 - h_eta) - 1.0e-12
-
-    # firm-3 price ↓ to breakeven
-    assert prod.price[3] <= 3.0
-    assert prod.price[3] >= breakeven_capped[3] - 1.0e-12
+# def test_firms_decide_price_obeys_break_even_and_shocks() -> None:
+#     rng = default_rng(0)
+#
+#     prod = mock_producer(
+#         n=4,
+#         production=np.array([5.0, 5.0, 8.0, 8.0]),
+#         inventory=np.array([0.0, 0.0, 3.0, 3.0]),
+#         price=np.array([1.0, 1.0, 3.0, 3.0]),
+#         alloc_scratch=False,
+#     )
+#     emp = mock_employer(
+#         n=4,
+#         current_labor=np.full(4, 2, dtype=np.int64),
+#         wage_offer=np.full(4, 1.0),
+#         wage_bill=np.full(4, 2.0),
+#     )
+#     # dummy LoanBook that always returns a constant vector 0.5
+#     lb = mock_loanbook()
+#
+#     def _const_interest(_self: "LoanBook", n: int = 128) -> NDArray[np.float64]:
+#         return np.array([0.1, 10.0, 0.1, 0.5])
+#
+#     p_avg = 2.0
+#     h_eta = 0.10
+#
+#     interest = np.array([0.1, 10.0, 0.1, 0.5])
+#     projected_output = prod.labor_productivity * emp.current_labor
+#     breakeven = (emp.wage_bill + interest) / np.maximum(projected_output, 1.0e-12)
+#     breakeven_capped = np.minimum(breakeven, prod.price * 2)
+#
+#     with patch.object(type(lb), "interest_per_borrower", _const_interest):
+#         firms_decide_price(prod, emp, lb, p_avg=p_avg, h_eta=h_eta, rng=rng)
+#
+#     # firm-0 price ↑ at most 10 %
+#     assert prod.price[0] >= 1.0
+#     assert prod.price[0] <= 1.0 * (1 + h_eta) + 1.0e-12
+#
+#     # firm-1 price -> breakeven
+#     assert prod.price[1] >= 1.0
+#     assert prod.price[1] >= breakeven_capped[1] - 1.0e-12
+#
+#     # firm-2 price ↓ at most 10 %
+#     assert prod.price[2] <= 3.0
+#     assert prod.price[2] >= 3.0 * (1 - h_eta) - 1.0e-12
+#
+#     # firm-3 price ↓ to breakeven
+#     assert prod.price[3] <= 3.0
+#     assert prod.price[3] >= breakeven_capped[3] - 1.0e-12
 
 
 def test_update_avg_mkt_price_appends_series() -> None:

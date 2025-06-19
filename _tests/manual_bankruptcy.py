@@ -1,4 +1,4 @@
-# tests/manual/manual_bankruptcy.py
+# tests/_tests/manual_bankruptcy.py
 from __future__ import annotations
 
 import logging

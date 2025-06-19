@@ -68,7 +68,7 @@ def test_decide_desired_production_vector() -> None:
     assert prod.expected_demand.shape == (5,)
     assert prod.desired_production.shape == (5,)
 
-    # manual reference with same seed
+    # _tests reference with same seed
     shocks = default_rng(1).uniform(0.0, 0.1, 5)
     expected = np.array(
         [

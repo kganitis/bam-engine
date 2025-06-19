@@ -94,7 +94,7 @@ def _read_yaml(obj: str | Path | Mapping[str, Any] | None) -> Dict[str, Any]:
 
 
 def _package_defaults() -> Dict[str, Any]:
-    """Load bamengine/defaults.yml shipped with the wheel/sdist."""
+    """Load bamengine/defaults.yml"""
     txt = resources.files("bamengine").joinpath("defaults.yml").read_text()
     return yaml.safe_load(txt) or {}
 
@@ -226,7 +226,7 @@ class Simulation:
     def _from_params(cls, *, rng: Generator, **p: Any) -> "Simulation":  # noqa: C901
 
         # Vector initilization                                            
-        # ----------------------------------------------------------------- 
+
         # finance
         net_worth = np.full(p["n_firms"], fill_value=p["net_worth_init"])
         total_funds = net_worth.copy()

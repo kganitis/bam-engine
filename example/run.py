@@ -15,7 +15,7 @@ def run_example_simulation(n_firms=100, seed=0):
     params = {
         "n_households": n_firms * 5,
         "n_firms": n_firms,
-        "n_banks": max(int(n_firms / 10), 3),
+        "n_banks": max(n_firms // 10, 3),
         "periods": 1000,
         "seed": np.random.default_rng(seed)
     }
@@ -38,7 +38,6 @@ def run_example_simulation(n_firms=100, seed=0):
         if not sim.ec.destroyed:
             log.info(
                 f"--> Simulating period {sim.t + 1}/{sim.n_periods} "
-                f"---------------------------------------------------------------"
                 f"---------------------------------------------------------------"
             )
             sim.step()

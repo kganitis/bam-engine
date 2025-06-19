@@ -1,4 +1,4 @@
-# tests/manual/manual_goods_market.py
+# tests/_tests/manual_goods_market.py
 from __future__ import annotations
 
 import logging
