@@ -1,4 +1,4 @@
-# tests/manual/manual_revenue.py
+# tests/_tests/manual_revenue.py
 from __future__ import annotations
 
 import logging

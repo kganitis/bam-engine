@@ -50,7 +50,6 @@ def update_avg_mkt_price(
     """
     log.info("--- Updating Average Market Price ---")
 
-    # Sanitize alpha
     if not (0.0 <= alpha <= 1.0):
         raise ValueError(f"alpha must be in [0, 1], got {alpha}")
 
@@ -102,7 +101,8 @@ def firms_pay_wages(emp: Employer) -> None:
 
 def workers_receive_wage(con: Consumer, wrk: Worker) -> None:
     """
-    Credit household income with wages for employed workers and update consumer state.
+    Credit household income with wages for employed workers
+    and update consumer state.
 
     Rule
     ----
@@ -172,7 +172,7 @@ def firms_run_production(prod: Producer, emp: Employer) -> None:
 def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
     """
     Decrease `periods_left` for every employed worker and let contracts that
-    reach 0 expire. All worker-side flags are updated **and** the corresponding
+    reach 0 expire. All worker-side flags are updated and the corresponding
     firm’s labour and wage-bill are brought back in sync.
 
     Rule

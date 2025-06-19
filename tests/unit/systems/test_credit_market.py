@@ -17,7 +17,6 @@ from bamengine.utils import select_top_k_indices_sorted
 
 # noinspection PyProtectedMember
 from bamengine.systems.credit_market import (
-    CAP_FRAG,
     banks_decide_credit_supply,
     banks_decide_interest_rate,
     banks_provide_loans,
@@ -34,6 +33,9 @@ from tests.helpers.factories import (
     mock_loanbook,
     mock_worker,
 )
+
+
+CAP_FRAG = 1.0e-9
 
 
 def _mini_state(

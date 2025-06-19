@@ -22,7 +22,7 @@ def firms_decide_desired_production(
         rng: Generator = default_rng(),
 ) -> None:
     """
-    Update `prod.expected_demand` and `prod.desired_production` **in‑place**.
+    Calculate expected demand and update desired production.
 
     Rule
     ----
