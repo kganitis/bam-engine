@@ -137,7 +137,7 @@ def test_calc_credit_metrics_fragility() -> None:
         rnd_intensity=np.array([1.0, 0.5, 2.0]),
     )
     firms_calc_credit_metrics(bor)
-    expected = np.array([0.5, CAP_FRAG * 0.5, 0.0])
+    expected = np.array([0.5, 4.0, 0.0])
     np.testing.assert_allclose(bor.projected_fragility, expected, rtol=1e-12)
 
 
@@ -246,7 +246,7 @@ def _run_basic_loan_cycle(
     firms_prepare_loan_applications(bor, lend, max_H=H, rng=rng)
     for _ in range(H):
         firms_send_one_loan_app(bor, lend)
-        banks_provide_loans(bor, ledger, lend)
+        banks_provide_loans(bor, ledger, lend, r_bar=0.07, h_phi=0.10)
     return orig_demand
 
 
@@ -303,7 +303,7 @@ def test_banks_provide_loans_skip_invalid_slots() -> None:
     k = 0
     lend.recv_loan_apps_head[k] = 2
     lend.recv_loan_apps[k, :3] = -1  # all invalid sentinels
-    banks_provide_loans(bor, ledger, lend)
+    banks_provide_loans(bor, ledger, lend, r_bar=0.07, h_phi=0.10)
     assert ledger.size == 0
     assert lend.recv_loan_apps_head[k] == -1  # flushed by implementation
 
@@ -343,25 +343,33 @@ def test_firms_fire_workers_gap_closed() -> None:
 
 def test_firms_fire_workers_zero_needed() -> None:
     """
-    Branch: ``n_fire == 0``.
-    Make the wage gap > 0 but set ``wage_offer = inf`` so
-    gap / wage_offer → 0 → ceil(0) → 0.
+    Firm has no financing gap (gap <= 0) → no one should be fired.
     """
     emp = mock_employer(
         n=1,
         current_labor=np.array([3]),
-        wage_offer=np.array([np.inf]),
-        wage_bill=np.array([10.0]),  # gap = 10
-        total_funds=np.array([0.0]),
+        wage_bill=np.array([10.0]),
+        total_funds=np.array([10.0]),  # no gap → 0
     )
     wrk = mock_worker(n=3)
-    wrk.employed[:] = True
+    wrk.employed[:] = 1
     wrk.employer[:] = 0
+    wrk.wage[:] = np.array([4.0, 3.0, 3.0])
 
-    before = emp.current_labor.copy()
+    before_labor = emp.current_labor.copy()
+    before_wage_bill = emp.wage_bill.copy()
+    before_employed = wrk.employed.copy()
+    before_employer = wrk.employer.copy()
+    before_wage = wrk.wage.copy()
+
     firms_fire_workers(emp, wrk, rng=default_rng(42))
-    # nothing should change – the "float quirks" early-exit hit
-    np.testing.assert_array_equal(emp.current_labor, before)
+
+    # Nothing should change when there is no financing gap
+    np.testing.assert_array_equal(emp.current_labor, before_labor)
+    np.testing.assert_array_equal(emp.wage_bill, before_wage_bill)
+    np.testing.assert_array_equal(wrk.employed, before_employed)
+    np.testing.assert_array_equal(wrk.employer, before_employer)
+    np.testing.assert_array_equal(wrk.wage, before_wage)
     assert wrk.fired.sum() == 0
 
 

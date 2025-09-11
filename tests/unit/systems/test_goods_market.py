@@ -147,6 +147,7 @@ def test_one_round_basic_purchase() -> None:
     consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=rng)
 
     h = 0  # focus on household-0
+    con.income_to_spend[h] = 10.0  # give it enough budget to spend
     head_before = int(con.shop_visits_head[h])
     wealth_before = con.income_to_spend[h] + con.savings[h]
     inv_before = prod.inventory.copy()
@@ -164,19 +165,40 @@ def test_one_round_basic_purchase() -> None:
 
 def test_one_round_skip_sold_out() -> None:
     """
-    When the first target is sold-out the function must advance the pointer
-    without crashing.
+    When the first target is sold out, the function must advance the pointer
+    by one and not crash.
     """
     con, prod, rng, Z = _mini_state()
-    # make firm-0 sold out; force it into slot-0 for hh-0
-    prod.inventory[0] = 0.0
-    con.largest_prod_prev[0] = 0
+    stride = con.shop_visits_targets.shape[1]
+
+    # Ensure consumer 0 has budget
     consumers_calc_propensity(con, avg_sav=1.0, beta=0.9)
     consumers_decide_income_to_spend(con)
+
+    # Build queues (initialization), then force a sold-out firm at slot 0 for consumer 0
     consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=rng)
+    sold_out_firm = 0
+    prod.inventory[sold_out_firm] = 0.0
+
+    # Explicitly set consumer 0's next target to the sold-out firm (row=0, col=0)
+    con.shop_visits_targets[0, :] = -1
+    con.shop_visits_targets[0, 0] = sold_out_firm
+    con.shop_visits_head[0] = 0  # points to (row 0, col 0)
+
     head_before = int(con.shop_visits_head[0])
-    consumers_shop_one_round(con, prod)
-    assert con.shop_visits_head[0] == head_before + 1  # pointer advanced
+    budget_before = float(con.income_to_spend[0])
+
+    consumers_shop_one_round(con, prod, rng=default_rng(7))
+
+    # Pointer advanced exactly one and the slot was cleared
+    assert con.shop_visits_head[0] == head_before + 1
+    assert con.shop_visits_targets[0, 0] == -1
+
+    # No purchase happened for consumer 0 (budget unchanged)
+    assert np.isclose(con.income_to_spend[0], budget_before)
+
+    # Sanity: firm remains sold out
+    assert prod.inventory[sold_out_firm] == 0.0
 
 
 def test_one_round_queue_exhaustion_clears_head() -> None:

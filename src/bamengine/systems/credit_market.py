@@ -34,20 +34,22 @@ def banks_decide_credit_supply(lend: Lender, *, v: float) -> None:
     log.info("--- Banks Deciding Credit Supply ---")
     log.info(f"  Inputs: Capital Requirement (v)={v:.3f} (Max Leverage={1 / v:.2f}x)")
 
-    # Core Rule 
+    # Core Rule
     np.divide(lend.equity_base, v, out=lend.credit_supply)
     np.maximum(lend.credit_supply, 0.0, out=lend.credit_supply)
 
-    # Logging 
+    # Logging
     total_supply = lend.credit_supply.sum()
     log.info(f"  Total credit supply in the economy: {total_supply:,.2f}")
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"  Equity Base (E) (first 10 borrowers): "
-            f"{np.array2string(lend.equity_base[:10], precision=2)}")
+            f"{np.array2string(lend.equity_base[:10], precision=2)}"
+        )
         log.debug(
             f"  Credit Supply (C = E / v) (first 10 borrowers): "
-            f"{np.array2string(lend.credit_supply[:10], precision=2)}")
+            f"{np.array2string(lend.credit_supply[:10], precision=2)}"
+        )
     log.info("--- Credit Supply Decision complete ---")
 
 
@@ -71,28 +73,32 @@ def banks_decide_interest_rate(
     log.info("--- Banks Deciding Interest Rate ---")
     log.info(
         f"  Inputs: Base Rate (r_bar)={r_bar:.4f}  |"
-        f"  Max Markup Shock (h_phi)={h_phi:.4f}")
+        f"  Max Markup Shock (h_phi)={h_phi:.4f}"
+    )
     shape = lend.interest_rate.shape
 
-    # Permanent scratch buffer 
+    # Permanent scratch buffer
     shock = lend.opex_shock
     if shock is None or shock.shape != shape:
         shock = np.empty(shape, dtype=np.float64)
         lend.opex_shock = shock
 
-    # Core Rule 
+    # Core Rule
     shock[:] = rng.uniform(0.0, h_phi, size=shape)
     lend.interest_rate[:] = r_bar * (1.0 + shock)
 
-    # Logging 
+    # Logging
     avg_rate = lend.interest_rate.mean() * 100
     log.info(f"  Interest rates set. Average rate: {avg_rate:.3f}%")
     if log.isEnabledFor(logging.DEBUG):
-        log.debug(f"  Generated shocks (first 10 borrowers): "
-                  f"{np.array2string(shock[:10], precision=4)}")
+        log.debug(
+            f"  Generated shocks (first 10 borrowers): "
+            f"{np.array2string(shock[:10], precision=4)}"
+        )
         log.debug(
             f"  Interest Rates (%) (first 10 borrowers): "
-            f"{np.array2string(lend.interest_rate[:10] * 100, precision=4)}")
+            f"{np.array2string(lend.interest_rate[:10] * 100, precision=4)}"
+        )
     log.info("--- Interest Rate Decision complete ---")
 
 
@@ -110,22 +116,25 @@ def firms_decide_credit_demand(bor: Borrower) -> None:
     log.info("--- Borrowers Deciding Credit Demand ---")
     log.info(
         f"  Inputs: Total Wage Bill={bor.wage_bill.sum():,.2f}  |"
-        f"  Total Net Worth={bor.net_worth.sum():,.2f}")
+        f"  Total Net Worth={bor.net_worth.sum():,.2f}"
+    )
 
-    # Core Rule 
+    # Core Rule
     np.subtract(bor.wage_bill, bor.net_worth, out=bor.credit_demand)
     np.maximum(bor.credit_demand, 0.0, out=bor.credit_demand)
 
-    # Logging 
+    # Logging
     total_demand = bor.credit_demand.sum()
     num_borrowers = np.sum(bor.credit_demand > 0)
     log.info(
         f"  {num_borrowers} borrowers demand credit, "
-        f"for a total of {total_demand:,.2f}")
+        f"for a total of {total_demand:,.2f}"
+    )
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"  Credit Demand per borrower (B = max(0, W-A)) (first 10 borrowers): "
-            f"{np.array2string(bor.credit_demand[:10], precision=2)}")
+            f"{np.array2string(bor.credit_demand[:10], precision=2)}"
+        )
     log.info("--- Credit Demand Decision complete ---")
 
 
@@ -143,13 +152,13 @@ def firms_calc_credit_metrics(bor: Borrower) -> None:
     log.info("--- Borrowers Calculating Credit Metrics ---")
     shape = bor.net_worth.shape
 
-    # Permanent scratch buffer 
+    # Permanent scratch buffer
     frag = bor.projected_fragility
     if frag is None or frag.shape != shape:
         frag = np.empty(shape, dtype=np.float64)
         bor.projected_fragility = frag
 
-    # Core Rule 
+    # Core Rule
     np.divide(bor.credit_demand, bor.net_worth, out=frag, where=bor.net_worth > 0.0)
 
     # Cap fragility for borrowers with zero or negative net worth at amount B
@@ -177,14 +186,15 @@ def firms_calc_credit_metrics(bor: Borrower) -> None:
     # Final adjustment by R&D intensity (μ)
     np.multiply(frag, bor.rnd_intensity, out=frag)
 
-    # Logging 
+    # Logging
     valid_frag = frag[np.isfinite(frag)]
     avg_fragility = valid_frag.mean() if valid_frag.size > 0 else 0.0
     log.info(f"  Average projected fragility across all borrowers: {avg_fragility:.4f}")
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"  Projected Fragility per borrower (first 10 borrowers): "
-            f"{np.array2string(frag[:10], precision=3)}")
+            f"{np.array2string(frag[:10], precision=3)}"
+        )
     log.info("--- Credit Metrics Calculation complete ---")
 
 
@@ -196,7 +206,7 @@ def firms_prepare_loan_applications(
     rng: Generator = default_rng(),
 ) -> None:
     """
-    Borrowers with credit demand choose up to `max_H` banks to apply to, 
+    Borrowers with credit demand choose up to `max_H` banks to apply to,
     sorted by interest rate.
     """
     log.info("--- Borrowers Preparing Loan Applications ---")
@@ -205,38 +215,41 @@ def firms_prepare_loan_applications(
 
     log.info(
         f"  {borrowers.size} borrowers are seeking loans "
-        f"from {lenders.size} available lenders (max apps per borrower, H={max_H}).")
+        f"from {lenders.size} available lenders (max apps per borrower, H={max_H})."
+    )
 
     if borrowers.size == 0 or lenders.size == 0:
         log.info(
             "  No borrowers or no available lenders. "
-            "Skipping loan application preparation.")
+            "Skipping loan application preparation."
+        )
         bor.loan_apps_head.fill(-1)
         log.info("--- Loan Application Preparation complete ---")
         return
 
-    # Sample H random lending banks per borrower 
+    # Sample H random lending banks per borrower
     H_eff = min(max_H, lenders.size)
     log.info(f"  Effective applications per borrower (H_eff): {H_eff}")
     # TODO Optimize loop
     sample = np.array(
-        [rng.choice(lenders, size=H_eff, replace=False) for _ in range(borrowers.size)])
+        [rng.choice(lenders, size=H_eff, replace=False) for _ in range(borrowers.size)]
+    )
     if log.isEnabledFor(logging.DEBUG):
-        log.debug(
-            f"  Initial random bank sample (first 10 borrowers):\n{sample[:10]}")
+        log.debug(f"  Initial random bank sample (first 10 borrowers):\n{sample[:10]}")
 
-    # Sort applications by ascending interest rate 
-    topk = select_top_k_indices_sorted(lend.interest_rate[sample], k=H_eff,
-                                       descending=False)
+    # Sort applications by ascending interest rate
+    topk = select_top_k_indices_sorted(
+        lend.interest_rate[sample], k=H_eff, descending=False
+    )
     sorted_sample = np.take_along_axis(sample, topk, axis=1)
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"  Sorted bank sample by interest rate (first 5 borrowers):\n"
-            f"{sorted_sample[:5]}")
+            f"{sorted_sample[:5]}"
+        )
 
-    # Write buffers 
-    log.debug(
-        "  Writing application targets and head pointers for all borrowers...")
+    # Write buffers
+    log.debug("  Writing application targets and head pointers for all borrowers...")
     bor.loan_apps_targets.fill(-1)
     bor.loan_apps_head.fill(-1)
     stride = max_H
@@ -250,7 +263,8 @@ def firms_prepare_loan_applications(
         if log.isEnabledFor(_logging_ext.DEEP_DEBUG) and i < 10:
             log.deep(
                 f"    Borrower {f_id}: targets={bor.loan_apps_targets[f_id]}, "
-                f"head_ptr={bor.loan_apps_head[f_id]}")
+                f"head_ptr={bor.loan_apps_head[f_id]}"
+            )
 
     log.info("--- Loan Application Preparation complete ---")
 
@@ -287,14 +301,16 @@ def firms_send_one_loan_app(
         head = bor.loan_apps_head[i]
         if head < 0:
             log.warning(
-                f"  Borrower {i} was in applying list but head is {head}. Skipping.")
+                f"  Borrower {i} was in applying list but head is {head}. Skipping."
+            )
             continue
 
         row_from_head, col = divmod(head, stride)
         if row_from_head != i:
             log.error(
                 f"  CRITICAL MISMATCH for borrower {i}: "
-                f"head={head} decoded to row {row_from_head}.")
+                f"head={head} decoded to row {row_from_head}."
+            )
 
         if col >= stride:
             # Normal exit condition for an applicant who finished their list.
@@ -311,13 +327,13 @@ def firms_send_one_loan_app(
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(
                     f"    Borrower {i} encountered sentinel (-1) at col {col}. "
-                    f"End of list. Setting head to -1.")
+                    f"End of list. Setting head to -1."
+                )
             bor.loan_apps_head[i] = -1
             continue
 
         if log.isEnabledFor(logging.DEBUG):
-            log.debug(
-                f"    Borrower {i} applying to bank {lend_id} (app #{col + 1}).")
+            log.debug(f"    Borrower {i} applying to bank {lend_id} (app #{col + 1}).")
 
         # Check for remaining credit before checking queue space
         if lend.credit_supply[lend_id] <= 0:
@@ -337,7 +353,8 @@ def firms_send_one_loan_app(
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(
                     f"    Bank {lend_id} application queue full. "
-                    f"Borrower {i} application dropped.")
+                    f"Borrower {i} application dropped."
+                )
             apps_dropped_queue_full += 1
             bor.loan_apps_head[i] = head + 1
             bor.loan_apps_targets[row_from_head, col] = -1
@@ -349,7 +366,8 @@ def firms_send_one_loan_app(
         apps_sent_successfully += 1
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
-                f"  Borrower {i} application queued at bank {lend_id} slot {ptr}.")
+                f"  Borrower {i} application queued at bank {lend_id} slot {ptr}."
+            )
 
         bor.loan_apps_head[i] = head + 1
         bor.loan_apps_targets[row_from_head, col] = -1
@@ -359,11 +377,13 @@ def firms_send_one_loan_app(
     log.info(
         f"  Round Summary: "
         f"{apps_sent_successfully} applications successfully queued, "
-        f"{total_dropped} dropped.")
+        f"{total_dropped} dropped."
+    )
     if total_dropped > 0 and log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"    Dropped breakdown -> Queue Full: {apps_dropped_queue_full},"
-            f" No Credit: {apps_dropped_no_credit}")
+            f" No Credit: {apps_dropped_no_credit}"
+        )
     log.info("--- Application Sending Round complete ---")
 
 
@@ -378,7 +398,8 @@ def _clean_queue(slice_: Idx1D, bor: Borrower, bank_idx_for_log: int) -> Idx1D:
     if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
         log.deep(
             f"    Bank {bank_idx_for_log}: Cleaning queue. "
-            f"Initial raw slice: {slice_}")
+            f"Initial raw slice: {slice_}"
+        )
 
     # Drop -1 sentinels
     cleaned_slice = slice_[slice_ >= 0]
@@ -386,13 +407,15 @@ def _clean_queue(slice_: Idx1D, bor: Borrower, bank_idx_for_log: int) -> Idx1D:
         if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
             log.deep(
                 f"    Bank {bank_idx_for_log}: "
-                f"Queue empty after dropping sentinels.")
+                f"Queue empty after dropping sentinels."
+            )
         return cleaned_slice.astype(np.intp)
 
     if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
         log.deep(
             f"    Bank {bank_idx_for_log}: "
-            f"Queue after dropping sentinels: {cleaned_slice}")
+            f"Queue after dropping sentinels: {cleaned_slice}"
+        )
 
     # Unique *without* sorting
     first_idx = np.unique(cleaned_slice, return_index=True)[1]
@@ -400,7 +423,8 @@ def _clean_queue(slice_: Idx1D, bor: Borrower, bank_idx_for_log: int) -> Idx1D:
     if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
         log.deep(
             f"    Bank {bank_idx_for_log}: "
-            f"Queue after unique (order kept): {unique_slice}")
+            f"Queue after unique (order kept): {unique_slice}"
+        )
 
     # Keep only positive-demand firms
     cd_mask = bor.credit_demand[unique_slice] > 0
@@ -409,7 +433,8 @@ def _clean_queue(slice_: Idx1D, bor: Borrower, bank_idx_for_log: int) -> Idx1D:
         if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
             log.deep(
                 f"    Bank {bank_idx_for_log}: "
-                f"No borrowers left after credit-demand filter.")
+                f"No borrowers left after credit-demand filter."
+            )
         return cast(Idx1D, filtered_queue)
 
     # Sort by net worth (descending)
@@ -418,7 +443,8 @@ def _clean_queue(slice_: Idx1D, bor: Borrower, bank_idx_for_log: int) -> Idx1D:
     if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
         log.deep(
             f"    Bank {bank_idx_for_log}: "
-            f"Final cleaned queue (net_worth-desc): {ordered_queue}")
+            f"Final cleaned queue (net_worth-desc): {ordered_queue}"
+        )
 
     return cast(Idx1D, ordered_queue)
 
@@ -438,7 +464,8 @@ def banks_provide_loans(
     total_credit_supply = lend.credit_supply.sum()
     log.info(
         f"  {bank_ids.size} banks have {total_credit_supply:,} "
-        f"total credit supply and are attempting to provide loans.")
+        f"total credit supply and are attempting to provide loans."
+    )
 
     total_loans_this_round = 0
 
@@ -456,7 +483,8 @@ def banks_provide_loans(
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
                 f"    Bank {k} raw application queue "
-                f"({n_recv} applications): {raw_queue}")
+                f"({n_recv} applications): {raw_queue}"
+            )
 
         queue = _clean_queue(raw_queue, bor, bank_idx_for_log=k)
 
@@ -464,25 +492,28 @@ def banks_provide_loans(
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(
                     f"    Bank {k}: no valid (unique, positive credit demand) "
-                    f"applicants in queue. Flushing.")
+                    f"applicants in queue. Flushing."
+                )
             lend.recv_loan_apps_head[k] = -1
             lend.recv_loan_apps[k, :n_recv] = -1
             continue
 
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
-                f"    Bank {k} has {queue.size} valid potential borrowers: {queue}")
+                f"    Bank {k} has {queue.size} valid potential borrowers: {queue}"
+            )
 
-        # gather loan data 
+        # gather loan data
         cd = bor.credit_demand[queue]
         frag = bor.projected_fragility[queue]
         max_grant = np.minimum(cd, lend.credit_supply[k])
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
                 f"    Bank {k} loan data: credit_demand={cd}, "
-                f"fragility={frag}, max_grant={max_grant}")
+                f"fragility={frag}, max_grant={max_grant}"
+            )
 
-        # determine actual loan amounts 
+        # determine actual loan amounts
         cumsum = np.cumsum(max_grant, dtype=np.float64)
         cut = cumsum > lend.credit_supply[k]
         if cut.any():
@@ -490,9 +521,10 @@ def banks_provide_loans(
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(
                     f"    Bank {k} credit supply exceeded at position {first_exceed}. "
-                    f"Adjusting loan amounts.")
+                    f"Adjusting loan amounts."
+                )
             max_grant[first_exceed] -= cumsum[first_exceed] - lend.credit_supply[k]
-            max_grant[first_exceed + 1:] = 0.0
+            max_grant[first_exceed + 1 :] = 0.0
 
         mask = max_grant > 0.0
         if not mask.any():
@@ -514,29 +546,32 @@ def banks_provide_loans(
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
                 f"    Bank {k} is granting loans to "
-                f"{final_borrowers.size} borrower(s): {final_borrowers.tolist()}")
+                f"{final_borrowers.size} borrower(s): {final_borrowers.tolist()}"
+            )
         total_loans_this_round += final_amounts.sum()
 
-        # ledger updates 
+        # ledger updates
         log.debug(f"      Updating ledger for {final_borrowers.size} new loans.")
         lb.purge_borrowers(final_borrowers)
         lb.append_loans_for_lender(k, final_borrowers, final_amounts, final_rates)
 
-        # borrower‑side updates 
+        # borrower‑side updates
         bor.total_funds[final_borrowers] += final_amounts
         bor.credit_demand[final_borrowers] -= final_amounts
         assert (bor.credit_demand >= -_EPS).all(), "negative credit_demand"
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
                 f"      Borrower state updated: "
-                f"total_funds increased, credit_demand decreased")
+                f"total_funds increased, credit_demand decreased"
+            )
 
-        # lender‑side updates 
+        # lender‑side updates
         lend.credit_supply[k] -= final_amounts.sum()
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
                 f"      Bank {k} state updated: "
-                f"credit_supply={lend.credit_supply[k]}")
+                f"credit_supply={lend.credit_supply[k]}"
+            )
 
         # flush inbound queue for this bank
         lend.recv_loan_apps_head[k] = -1
@@ -544,8 +579,10 @@ def banks_provide_loans(
         if log.isEnabledFor(logging.DEBUG):
             log.debug(f"    Bank {k} application queue flushed.")
 
-    log.info(f"  Total loan amount provided this round across all banks: "
-             f"{total_loans_this_round}")
+    log.info(
+        f"  Total loan amount provided this round across all banks: "
+        f"{total_loans_this_round}"
+    )
     log.info("--- Banks Providing Loans complete ---")
 
 
@@ -566,7 +603,8 @@ def firms_fire_workers(
 
     log.info(
         f"  {firing_ids.size} firms have financing gaps totaling {total_gap:,.2f} "
-        f"and need to fire workers using '{method}' method.")
+        f"and need to fire workers using '{method}' method."
+    )
 
     total_workers_fired_this_step = 0
 
@@ -575,19 +613,22 @@ def firms_fire_workers(
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
                 f"  Processing firm {i} (wage bill: {emp.wage_bill[i]:.2f}, "
-                f"total funds: {emp.total_funds[i]:.2f}, gap: {gap:.2f})")
+                f"total funds: {emp.total_funds[i]:.2f}, gap: {gap:.2f})"
+            )
 
-        # validate workforce consistency 
+        # validate workforce consistency
         workforce = np.where((wrk.employed == 1) & (wrk.employer == i))[0]
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
                 f"    Firm {i} workforce validation: "
-                f"real={workforce.size}, recorded={emp.current_labor[i]}")
+                f"real={workforce.size}, recorded={emp.current_labor[i]}"
+            )
 
         if workforce.size != emp.current_labor[i]:
             log.critical(
                 f"    Firm {i}: Real workforce ({workforce.size}) INCONSISTENT "
-                f"with bookkeeping ({emp.current_labor[i]}).")
+                f"with bookkeeping ({emp.current_labor[i]})."
+            )
 
         if workforce.size == 0:
             if log.isEnabledFor(logging.DEBUG):
@@ -599,7 +640,8 @@ def firms_fire_workers(
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
                 f"    Firm {i} worker wages: {worker_wages} "
-                f"(total: {worker_wages.sum():.2f})")
+                f"(total: {worker_wages.sum():.2f})"
+            )
 
         if method == "random":
             # Sequential random firing until gap is covered
@@ -634,8 +676,9 @@ def firms_fire_workers(
             victims = workforce[victims_indices]
 
         else:
-            raise ValueError(f"Unknown firing_method: {method}. "
-                             f"Must be 'random' or 'expensive'.")
+            raise ValueError(
+                f"Unknown firing_method: {method}. " f"Must be 'random' or 'expensive'."
+            )
 
         final_victims = victims
         fired_wages = wrk.wage[final_victims]
@@ -655,7 +698,8 @@ def firms_fire_workers(
             log.debug(
                 f"    Firm {i} firing details: gap={gap:.2f}, "
                 f"wage_savings={total_fired_wage:.2f}, "
-                f"coverage={min(100.0, (total_fired_wage / gap) * 100):.1f}%")
+                f"coverage={min(100.0, (total_fired_wage / gap) * 100):.1f}%"
+            )
 
         # worker‑side updates
         log.debug(f"      Updating state for {final_victims.size} fired workers.")
@@ -671,30 +715,33 @@ def firms_fire_workers(
         emp.current_labor[i] -= final_victims.size
         # Recalculate wage bill based on remaining workers
         remaining_workforce = np.where((wrk.employed == 1) & (wrk.employer == i))[0]
-        emp.wage_bill[i] = wrk.wage[
-            remaining_workforce].sum() if remaining_workforce.size > 0 else 0.0
+        emp.wage_bill[i] = (
+            wrk.wage[remaining_workforce].sum() if remaining_workforce.size > 0 else 0.0
+        )
 
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
                 f"      Firm {i} state updated: "
                 f"current_labor={emp.current_labor[i]}, "
-                f"wage_bill={emp.wage_bill[i]:.2f}")
+                f"wage_bill={emp.wage_bill[i]:.2f}"
+            )
 
     log.info(
         f"  Total workers fired this step across all firms: "
-        f"{total_workers_fired_this_step}")
+        f"{total_workers_fired_this_step}"
+    )
     if log.isEnabledFor(logging.DEBUG):
         remaining_gaps = emp.wage_bill - emp.total_funds
-        firms_with_gaps = np.flatnonzero(
-            remaining_gaps > _EPS)
+        firms_with_gaps = np.flatnonzero(remaining_gaps > _EPS)
         if firms_with_gaps.size > 0:
             log.warning(
                 f"[REMAINING GAPS] {firms_with_gaps.size} firms still have "
-                f"financing gaps after firing.")
+                f"financing gaps after firing."
+            )
             for i_gap in firms_with_gaps:
                 log.warning(
-                    f"  Firm {i_gap}: remaining gap={remaining_gaps[i_gap]:.2f}")
+                    f"  Firm {i_gap}: remaining gap={remaining_gaps[i_gap]:.2f}"
+                )
         else:
-            log.debug(
-                "[GAPS RESOLVED] All financing gaps resolved after firing.")
+            log.debug("[GAPS RESOLVED] All financing gaps resolved after firing.")
     log.info("--- Firms Firing Workers complete ---")

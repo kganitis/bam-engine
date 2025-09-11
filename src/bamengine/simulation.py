@@ -1,6 +1,7 @@
 # src/bamengine/simulation.py
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
@@ -50,12 +51,16 @@ from bamengine.systems.labor_market import (
     firms_decide_wage_offer,
     firms_hire_workers,
     workers_decide_firms_to_apply,
-    workers_send_one_round, adjust_minimum_wage, calc_annual_inflation_rate,
+    workers_send_one_round,
+    adjust_minimum_wage,
+    calc_annual_inflation_rate,
 )
 from bamengine.systems.planning import (
     firms_decide_desired_labor,
     firms_decide_desired_production,
-    firms_decide_vacancies, firms_adjust_price, firms_calc_breakeven_price,
+    firms_decide_vacancies,
+    firms_adjust_price,
+    firms_calc_breakeven_price,
 )
 from bamengine.systems.production import (
     calc_unemployment_rate,
@@ -225,7 +230,7 @@ class Simulation:
     @classmethod
     def _from_params(cls, *, rng: Generator, **p: Any) -> "Simulation":  # noqa: C901
 
-        # Vector initilization                                            
+        # Vector initilization
 
         # finance
         net_worth = np.full(p["n_firms"], fill_value=p["net_worth_init"])
@@ -296,7 +301,7 @@ class Simulation:
         unemp_rate_history = np.array([1.0])
         inflation_history = np.array([0.0])
 
-        # Wrap into components                                            
+        # Wrap into components
         # -----------------------------------------------------------------
         ec = Economy(
             # TODO move theta, beta and delta in here
@@ -396,8 +401,8 @@ class Simulation:
             rng=rng,
         )
 
-    # public API                                                          
-    # --------------------------------------------------------------------- 
+    # public API
+    # ---------------------------------------------------------------------
     def run(self, n_periods: int | None = None) -> None:
         """
         Advance the simulation *n_periods* steps

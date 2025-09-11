@@ -1,4 +1,5 @@
 # tests/conftest.py
+import logging
 import pytest
 
 from bamengine.simulation import Simulation
@@ -24,3 +25,9 @@ def tiny_sched() -> Simulation:
         beta=0.87,
         delta=0.15,
     )
+
+
+@pytest.fixture(autouse=True)
+def mute_bamengine_logs(caplog):
+    # Show only ERROR+ from our library while tests run
+    caplog.set_level(logging.ERROR, logger="bamengine")

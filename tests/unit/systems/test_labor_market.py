@@ -144,7 +144,7 @@ def test_decide_wage_offer_floor_and_shock() -> None:
 
 
 def test_decide_wage_offer_reuses_scratch() -> None:
-    emp = mock_employer(n=3, n_vacancies=[1, 0, 2])
+    emp = mock_employer(n=3, n_vacancies=np.array([1, 0, 2]))
     firms_decide_wage_offer(emp, w_min=1.0, h_xi=0.1, rng=default_rng(0))
     buf0 = emp.wage_shock
     firms_decide_wage_offer(emp, w_min=1.1, h_xi=0.1, rng=default_rng(0))
@@ -291,20 +291,46 @@ def test_workers_send_one_round() -> None:
 
 def test_workers_send_one_round_queue_bounds() -> None:
     """
-    When a firm’s queue is almost full, the next application must be dropped
-    rather than overflow the buffer.
+    When a firm's queue is full, the next application must be dropped
+    rather than overflow the buffer. Also ensure heads remain within
+    [-1, capacity-1] across all firms.
     """
     emp, wrk, _, M = _mini_state()
-    # Preload firm-0 queue to capacity-1
-    emp.recv_job_apps_head[0] = M - 2
-    emp.recv_job_apps[0, : M - 1] = [0, 2][: M - 1]
+    cap = emp.recv_job_apps.shape[1]
 
-    workers_decide_firms_to_apply(wrk, emp, max_M=M, rng=default_rng(6))
-    workers_send_one_round(wrk, emp)
+    # Fill firm-0 queue to capacity (head points at the last valid slot)
+    emp.recv_job_apps_head[0] = cap - 1
+    prefill = np.arange(cap) % wrk.employed.size  # any valid worker ids
+    emp.recv_job_apps[0, :cap] = prefill
 
-    # still valid pointer
-    np.testing.assert_array_less(emp.recv_job_apps_head, M)
+    # Prepare exactly one unemployed worker to apply to firm 0 next
+    # (bypass the planner to avoid randomness)
+    target_worker = int(np.flatnonzero(wrk.employed == 0)[0])
+    wrk.job_apps_targets[target_worker, :] = -1
+    wrk.job_apps_targets[target_worker, 0] = 0  # firm 0
+    wrk.job_apps_head[target_worker] = 0
+
+    # Snapshot state to verify no writes past capacity
+    head_before = emp.recv_job_apps_head.copy()
+    queue_before = emp.recv_job_apps.copy()
+
+    workers_send_one_round(wrk, emp)  # rng irrelevant with one applicant
+
+    # Pointers stay valid w.r.t. actual queue capacity (not M)
+    np.testing.assert_array_less(emp.recv_job_apps_head, cap)
     assert (emp.recv_job_apps_head >= -1).all()
+
+    # Firm-0 remained full; the extra application was dropped
+    assert emp.recv_job_apps_head[0] == cap - 1
+    np.testing.assert_array_equal(emp.recv_job_apps[0], queue_before[0])
+
+    # Other firms unaffected
+    np.testing.assert_array_equal(emp.recv_job_apps_head[1:], head_before[1:])
+    np.testing.assert_array_equal(emp.recv_job_apps[1:], queue_before[1:])
+
+    # The worker advanced past the attempted application and it was cleared
+    assert wrk.job_apps_head[target_worker] == 1
+    assert wrk.job_apps_targets[target_worker, 0] == -1
 
 
 def test_worker_with_empty_list_is_skipped() -> None:
@@ -362,6 +388,7 @@ def test_firms_hire_workers_basic() -> None:
     and updates all related state consistently.
     """
     M = 3
+    theta = 8
     emp = mock_employer(
         n=1,
         queue_m=M,
@@ -370,6 +397,10 @@ def test_firms_hire_workers_basic() -> None:
     )
     wrk = mock_worker(n=3, queue_m=M)
 
+    rng = default_rng(0)
+    rng_check = default_rng(0)
+    expected_extra = rng_check.poisson(10)
+
     # preload queue with worker-ids 0 and 1
     emp.recv_job_apps_head[0] = 1  # queue length = 2
     emp.recv_job_apps[0, :2] = [0, 1]
@@ -377,7 +408,7 @@ def test_firms_hire_workers_basic() -> None:
     L_before = emp.current_labor[0]
     V_before = emp.n_vacancies[0]
 
-    firms_hire_workers(wrk, emp, theta=8)
+    firms_hire_workers(wrk, emp, theta=theta, rng=rng)
 
     # firm-side checks
     assert emp.current_labor[0] == L_before + 2
@@ -388,7 +419,12 @@ def test_firms_hire_workers_basic() -> None:
     # worker-side checks
     assert wrk.employed[[0, 1]].all()  # both hired
     assert np.all((wrk.employer[[0, 1]] == 0))  # employer set
-    assert np.all((wrk.periods_left[[0, 1]] == 8))  # contract length
+
+    # contract length: same scalar for both hires
+    expected_periods = theta + expected_extra
+    assert np.all(wrk.periods_left[[0, 1]] == expected_periods)
+
+    # queues cleared for those workers
     assert np.all((wrk.job_apps_head[[0, 1]] == -1))
 
 
