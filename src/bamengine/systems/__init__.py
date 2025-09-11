@@ -28,7 +28,7 @@ from .planning import (
     firms_decide_desired_production,
     firms_decide_vacancies,
     firms_adjust_price,
-    firms_calc_breakeven_price
+    firms_calc_breakeven_price,
 )
 from .production import (
     firms_pay_wages,

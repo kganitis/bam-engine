@@ -14,7 +14,6 @@ from helpers.factories import mock_producer, mock_employer, mock_worker, \
 logging.getLogger("bamengine").setLevel(logging.DEBUG)
 
 
-
 rng = default_rng(42)
 
 ec = mock_economy(
@@ -44,9 +43,7 @@ wrk = mock_worker(
     wage=np.array([0.5, 1.5] * 2 + [1.3, 0.7] * 2 + [0.0] * 2),
 )
 
-calc_unemployment_rate(ec, wrk)
 firms_pay_wages(emp)
 workers_receive_wage(mock_consumer(10), wrk)
 firms_run_production(prod, emp)
 workers_update_contracts(wrk, emp)
-calc_unemployment_rate(ec, wrk)

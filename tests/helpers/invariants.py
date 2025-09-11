@@ -35,9 +35,14 @@ def assert_basic_invariants(sch: Simulation) -> None:  # noqa: C901  (flat, long
     assert sch.wrk.employed.sum() == sch.emp.current_labor.sum()
 
     # Wage-bill consistency
+    employed_mask = sch.wrk.employed == 1
     np.testing.assert_allclose(
         sch.emp.wage_bill,
-        sch.emp.current_labor * sch.emp.wage_offer,
+        np.bincount(
+            sch.wrk.employer[employed_mask],
+            weights=sch.wrk.wage[employed_mask],
+            minlength=sch.n_firms,
+        ),
         rtol=1e-8,
     )
 

@@ -76,9 +76,9 @@ def firms_collect_revenue(prod: Producer, bor: Borrower) -> None:
 
 
 def firms_validate_debt_commitments(
-        bor: Borrower,
-        lend: Lender,
-        lb: LoanBook,
+    bor: Borrower,
+    lend: Lender,
+    lb: LoanBook,
 ) -> None:
     """
     Validate debt commitments and process repayments or write-offs.
@@ -108,7 +108,8 @@ def firms_validate_debt_commitments(
         log.debug(f"  Total debt per firm: {total_debt}")
         log.debug(f"  Interest total per firm: {total_interest}")
         log.debug(
-            f"  Borrower total funds (cash) before debt validation: {bor.total_funds}")
+            f"  Borrower total funds (cash) before debt validation: {bor.total_funds}"
+        )
 
     # classify firms by repayment ability
     repay_mask = bor.total_funds - total_debt >= -_EPS
@@ -131,9 +132,10 @@ def firms_validate_debt_commitments(
         )
 
         if log.isEnabledFor(logging.DEBUG):
-            sample_repay_firms = repay_firms[:min(5, repay_firms.size)]
+            sample_repay_firms = repay_firms[: min(5, repay_firms.size)]
             log.debug(
-                f"    Sample of repaying firms (IDs): {sample_repay_firms.tolist()}")
+                f"    Sample of repaying firms (IDs): {sample_repay_firms.tolist()}"
+            )
 
             for firm_idx in sample_repay_firms:
                 log.debug(
@@ -154,21 +156,22 @@ def firms_validate_debt_commitments(
 
         # aggregate per-lender payments
         # TODO: Break lender-side repayment into a separate system
-        row_sel = np.isin(lb.borrower[:lb.size], repay_firms)
+        row_sel = np.isin(lb.borrower[: lb.size], repay_firms)
         num_loans_repaid = row_sel.sum()
 
         log.debug(f"  Aggregating {num_loans_repaid} loan repayments to lender equity.")
 
         if num_loans_repaid > 0 and log.isEnabledFor(logging.DEBUG):
-            affected_lenders_repayment = np.unique(lb.lender[:lb.size][row_sel])
+            affected_lenders_repayment = np.unique(lb.lender[: lb.size][row_sel])
             old_lender_equity_repayment = lend.equity_base[
-                affected_lenders_repayment].copy()
+                affected_lenders_repayment
+            ].copy()
 
         # Credit lender equity with interest payments
         np.add.at(
             lend.equity_base,
-            lb.lender[:lb.size][row_sel],
-            lb.interest[:lb.size][row_sel],
+            lb.lender[: lb.size][row_sel],
+            lb.interest[: lb.size][row_sel],
         )
 
         if num_loans_repaid > 0 and log.isEnabledFor(logging.DEBUG):
@@ -178,7 +181,7 @@ def firms_validate_debt_commitments(
             )
 
             for i_lender, lender_idx in enumerate(
-                    affected_lenders_repayment[:min(5, affected_lenders_repayment.size)]
+                affected_lenders_repayment[: min(5, affected_lenders_repayment.size)]
             ):
                 log.debug(
                     f"      Lender {lender_idx}: "
@@ -197,14 +200,16 @@ def firms_validate_debt_commitments(
     bad_firms = np.where(unable_mask & (total_debt > _EPS))[0]
     if bad_firms.size > 0:
         log.info(
-            f"  Processing bad-debt write-offs for {bad_firms.size} defaulting firms.")
+            f"  Processing bad-debt write-offs for {bad_firms.size} defaulting firms."
+        )
 
         # zero out cash for defaulting firms
         log.info(
-            f"  Zeroing out total_funds (cash) for {bad_firms.size} defaulting firms.")
+            f"  Zeroing out total_funds (cash) for {bad_firms.size} defaulting firms."
+        )
 
         if log.isEnabledFor(logging.DEBUG):
-            sample_default_firms = bad_firms[:min(5, bad_firms.size)]
+            sample_default_firms = bad_firms[: min(5, bad_firms.size)]
             for firm_idx in sample_default_firms:
                 log.debug(
                     f"    Firm {firm_idx}: "
@@ -215,13 +220,14 @@ def firms_validate_debt_commitments(
 
         # process loan book write-offs
         # TODO: Break bad debt handling into a separate system
-        borrowers_from_lb = lb.borrower[:lb.size]
+        borrowers_from_lb = lb.borrower[: lb.size]
         bad_rows_in_lb_mask = np.isin(borrowers_from_lb, bad_firms)
 
         if np.any(bad_rows_in_lb_mask):
             num_bad_loans = bad_rows_in_lb_mask.sum()
             log.debug(
-                f"  {num_bad_loans} loans in loan book belong to these defaulting firms.")
+                f"  {num_bad_loans} loans in loanbook belong to these defaulting firms."
+            )
 
             # calculate proportional write-offs
             # per-row bad-debt = (debt_row / debt_tot_borrower) · net_worth_borrower
@@ -235,12 +241,12 @@ def firms_validate_debt_commitments(
             # This determines the proportion of the equity-based loss
             # this bank absorbs for this loan.
             d_tot_map = total_debt[borrowers_from_lb[bad_rows_in_lb_mask]]
-            frac = lb.debt[:lb.size][bad_rows_in_lb_mask] / np.maximum(d_tot_map, _EPS)
+            frac = lb.debt[: lb.size][bad_rows_in_lb_mask] / np.maximum(d_tot_map, _EPS)
 
             # Calculate the bad debt amount for this loan.
             # This is the bank's `frac` multiplied by the firm's net worth.
             bad_amt_per_loan = (
-                    frac * bor.net_worth[borrowers_from_lb[bad_rows_in_lb_mask]]
+                frac * bor.net_worth[borrowers_from_lb[bad_rows_in_lb_mask]]
             )
 
             if log.isEnabledFor(logging.DEBUG):
@@ -249,13 +255,14 @@ def firms_validate_debt_commitments(
                     "(frac * firm_net_worth):"
                 )
                 sample_bad_loan_indices = np.where(bad_rows_in_lb_mask)[0][
-                                          :min(5, int(np.sum(bad_rows_in_lb_mask)))
-                                          ]
+                    : min(5, int(np.sum(bad_rows_in_lb_mask)))
+                ]
 
                 for i_loan in sample_bad_loan_indices:
                     b_id = borrowers_from_lb[i_loan]
-                    matching_indices = \
-                    np.where(borrowers_from_lb[bad_rows_in_lb_mask] == b_id)[0]
+                    matching_indices = np.where(
+                        borrowers_from_lb[bad_rows_in_lb_mask] == b_id
+                    )[0]
                     if len(matching_indices) > 0:
                         idx = matching_indices[0]
                         log.debug(
@@ -275,16 +282,18 @@ def firms_validate_debt_commitments(
 
             # update lender equity
             affected_lenders_default = np.unique(
-                lb.lender[:lb.size][bad_rows_in_lb_mask])
+                lb.lender[: lb.size][bad_rows_in_lb_mask]
+            )
 
             if log.isEnabledFor(logging.DEBUG):
                 old_lender_equity_default = lend.equity_base[
-                    affected_lenders_default].copy()
+                    affected_lenders_default
+                ].copy()
 
             # Debit lender equity by bad debt amounts
             np.subtract.at(
                 lend.equity_base,
-                lb.lender[:lb.size][bad_rows_in_lb_mask],
+                lb.lender[: lb.size][bad_rows_in_lb_mask],
                 bad_amt_per_loan,
             )
 
@@ -295,7 +304,7 @@ def firms_validate_debt_commitments(
                 )
 
                 for i_lender, lender_idx in enumerate(
-                        affected_lenders_default[:min(5, affected_lenders_default.size)]
+                    affected_lenders_default[: min(5, affected_lenders_default.size)]
                 ):
                     log.debug(
                         f"      Lender {lender_idx}: "
@@ -341,14 +350,14 @@ def firms_pay_dividends(bor: Borrower, *, delta: float) -> None:
     """
     # TODO: Separate dividends from retained profit calculation
     log.info(
-        f"--- Firms Paying Dividends (Payout Ratio δ for profits = {delta:.2f}) ---")
+        f"--- Firms Paying Dividends (Payout Ratio δ for profits = {delta:.2f}) ---"
+    )
 
     # identify firms with positive profits
     positive_profit_mask = bor.net_profit > 0.0
     num_paying_dividends = np.sum(positive_profit_mask)
 
-    log.info(
-        f"  {num_paying_dividends} firms have positive net profit and will pay dividends.")
+    log.info(f"  {num_paying_dividends} firms have net profit and will pay dividends.")
 
     # calculate retained profits and dividends
     # Default case: all net profit is retained if not positive

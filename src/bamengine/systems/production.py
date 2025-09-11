@@ -29,7 +29,8 @@ def calc_unemployment_rate(
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"  Unemployment calculation: {unemployed_count} unemployed "
-            f"out of {n_workers} total workers")
+            f"out of {n_workers} total workers"
+        )
 
     log.info(f"  Current unemployment rate: {rate * 100:.2f}%")
 
@@ -55,8 +56,8 @@ def update_avg_mkt_price(
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
-            f"  Price update parameters: alpha={alpha:.3f}, "
-            f"trim_pct={trim_pct:.3f}")
+            f"  Price update parameters: alpha={alpha:.3f}, " f"trim_pct={trim_pct:.3f}"
+        )
 
     # calculate trimmed weighted mean
     p_avg_trimmed = trimmed_weighted_mean(prod.price, trim_pct=trim_pct)
@@ -65,7 +66,8 @@ def update_avg_mkt_price(
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"  Price calculation: trimmed_mean={p_avg_trimmed:.4f}, "
-            f"previous_avg={previous_price:.4f}")
+            f"previous_avg={previous_price:.4f}"
+        )
 
     # update economy state
     ec.avg_mkt_price = alpha * p_avg_trimmed + (1.0 - alpha) * ec.avg_mkt_price
@@ -80,11 +82,13 @@ def firms_pay_wages(emp: Employer) -> None:
     log.info("--- Firms Paying Wages ---")
 
     paying_firms = np.where(emp.wage_bill > 0.0)[0]
-    total_wages_paid = emp.wage_bill[
-        paying_firms].sum() if paying_firms.size > 0 else 0.0
+    total_wages_paid = (
+        emp.wage_bill[paying_firms].sum() if paying_firms.size > 0 else 0.0
+    )
 
     log.info(
-        f"  {paying_firms.size} firms paying total wages of {total_wages_paid:,.2f}")
+        f"  {paying_firms.size} firms paying total wages of {total_wages_paid:,.2f}"
+    )
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Pre-payment firm funds: {emp.total_funds}")
@@ -115,7 +119,8 @@ def workers_receive_wage(con: Consumer, wrk: Worker) -> None:
 
     log.info(
         f"  {employed_workers.size} employed workers receiving "
-        f"total wages of {total_wages_received:,.2f}")
+        f"total wages of {total_wages_received:,.2f}"
+    )
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Pre-wage consumer income: {con.income}")
@@ -146,8 +151,7 @@ def firms_run_production(prod: Producer, emp: Employer) -> None:
     producing_firms = np.where(emp.current_labor > 0)[0]
 
     if log.isEnabledFor(logging.DEBUG):
-        log.debug(
-            f"  {producing_firms.size} firms with labor are producing")
+        log.debug(f"  {producing_firms.size} firms with labor are producing")
         log.debug(f"  Labor productivity: {prod.labor_productivity}")
         log.debug(f"  Current labor: {emp.current_labor}")
 
@@ -189,7 +193,7 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
 
     log.info(f"  Processing contracts for {total_employed} employed workers")
 
-    # validate contract consistency 
+    # validate contract consistency
     already_expired_mask = (wrk.employed == 1) & (wrk.periods_left == 0)
     if np.any(already_expired_mask):
         num_already_expired = np.sum(already_expired_mask)
@@ -197,12 +201,14 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
         log.warning(
             f"  Found {num_already_expired} employed worker(s) "
             f"with periods_left already at 0. "
-            f"Temporarily setting periods_left to 1 for normal processing.")
+            f"Temporarily setting periods_left to 1 for normal processing."
+        )
 
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
                 f"    Worker IDs with already-0 contracts: "
-                f"{affected_worker_ids.tolist()}")
+                f"{affected_worker_ids.tolist()}"
+            )
 
         wrk.periods_left[already_expired_mask] = 1
 
@@ -219,7 +225,7 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
 
     wrk.periods_left[mask_emp] -= 1
 
-    # identify contract expirations 
+    # identify contract expirations
     expired_mask = mask_emp & (wrk.periods_left == 0)
 
     if not np.any(expired_mask):
@@ -240,12 +246,12 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
     unique_firms_affected = np.unique(firms_losing_workers)
 
     if log.isEnabledFor(logging.DEBUG):
-        log.debug(
-            f"    Firms losing workers: {unique_firms_affected.tolist()}")
+        log.debug(f"    Firms losing workers: {unique_firms_affected.tolist()}")
 
     # worker‑side updates
     log.debug(
-        f"      Updating state for {num_newly_expired} workers with expired contracts.")
+        f"      Updating state for {num_newly_expired} workers with expired contracts."
+    )
     wrk.employed[expired_mask] = 0
     wrk.employer[expired_mask] = -1
     wrk.employer_prev[expired_mask] = firms_losing_workers
@@ -261,13 +267,15 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
         log.debug(
             f"      Labor count changes for firms: "
             f"indices={affected_firms_indices.tolist()}, "
-            f"decreases={delta_labor[affected_firms_indices].tolist()}")
+            f"decreases={delta_labor[affected_firms_indices].tolist()}"
+        )
 
     if emp.current_labor.size < delta_labor.size:
         log.warning(
             f"  delta_labor size ({delta_labor.size}) exceeds "
             f"emp.current_labor size ({emp.current_labor.size}). "
-            f"Check firm ID range.")
+            f"Check firm ID range."
+        )
 
     # Update firm labor counts
     max_idx_to_update = min(delta_labor.size, emp.current_labor.size)
@@ -282,7 +290,7 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
     emp.wage_bill[:] = np.bincount(
         wrk.employer[wrk.employed == 1],
         weights=wrk.wage[wrk.employed == 1],
-        minlength=emp.wage_bill.size
+        minlength=emp.wage_bill.size,
     )
 
     if log.isEnabledFor(logging.DEBUG):

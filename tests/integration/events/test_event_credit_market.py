@@ -55,7 +55,9 @@ def _run_credit_event(sch: Simulation) -> NDArray[np.float64]:
     firms_prepare_loan_applications(sch.bor, sch.lend, max_H=sch.max_H, rng=sch.rng)
     for _ in range(sch.max_H):
         firms_send_one_loan_app(sch.bor, sch.lend)
-        banks_provide_loans(sch.bor, sch.lb, sch.lend)
+        banks_provide_loans(
+            sch.bor, sch.lb, sch.lend, r_bar=sch.ec.r_bar, h_phi=sch.h_phi
+        )
 
     # layoffs triggered by unmet wage bill
     firms_fire_workers(sch.emp, sch.wrk, rng=sch.rng)

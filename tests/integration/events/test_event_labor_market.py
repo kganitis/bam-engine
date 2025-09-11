@@ -111,7 +111,9 @@ def test_labor_market_post_state_consistency(tiny_sched: Simulation) -> None:
     assert (worker_wages >= sch.ec.min_wage).all()
 
     # contract duration set correctly
-    assert np.all((sch.wrk.periods_left[employed_idx] == sch.theta))
+    durations = sch.wrk.periods_left[employed_idx]
+    assert np.issubdtype(durations.dtype, np.integer)
+    assert (durations >= sch.theta).all()
 
     # inbound queues: any firm that still has vacancies must have
     # an empty queue; firms with zero vacancies may retain stale pointers

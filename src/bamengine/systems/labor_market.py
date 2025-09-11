@@ -32,7 +32,8 @@ def calc_annual_inflation_rate(ec: Economy) -> None:
     if hist.size <= 4:
         log.info(
             "  Not enough history to calculate annual inflation (<5 periods). "
-            "Setting to 0.0.")
+            "Setting to 0.0."
+        )
         ec.inflation_history = np.append(ec.inflation_history, 0.0)
         return
 
@@ -42,14 +43,16 @@ def calc_annual_inflation_rate(ec: Economy) -> None:
     if p_prev <= 0:
         log.warning(
             "  Cannot calculate inflation, previous price level was zero or negative. "
-            "Setting to 0.0.")
+            "Setting to 0.0."
+        )
         inflation = 0.0
     else:
         inflation = (p_now - p_prev) / p_prev
 
     ec.inflation_history = np.append(ec.inflation_history, inflation)
     log.info(
-        f"  Annual inflation calculated for period t={hist.size - 1}: {inflation:+.3%}")
+        f"  Annual inflation calculated for period t={hist.size - 1}: {inflation:+.3%}"
+    )
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"    Calculation: (p_now={p_now:.3f} / p_t-4={p_prev:.3f}) - 1")
     log.info("--- Annual Inflation Calculation complete ---")
@@ -65,7 +68,8 @@ def calc_inflation_and_adjust_minimum_wage(ec: Economy) -> None:
     if ec.avg_mkt_price_history.size <= m:
         log.debug(
             f"  Skipping min wage adjustment: "
-            f"not enough history ({ec.avg_mkt_price_history.size} <= {m}).")
+            f"not enough history ({ec.avg_mkt_price_history.size} <= {m})."
+        )
         return
     if (ec.avg_mkt_price_history.size - 1) % m != 0:
         log.debug(f"  Skipping min wage adjustment: not a revision period.")
@@ -84,7 +88,8 @@ def calc_inflation_and_adjust_minimum_wage(ec: Economy) -> None:
     log.info(
         f"  Minimum wage revision: "
         f"Inflation over last {m} periods: {inflation:+.3%}. "
-        f"Min wage: {old_min_wage:.3f} → {ec.min_wage:.3f}")
+        f"Min wage: {old_min_wage:.3f} → {ec.min_wage:.3f}"
+    )
     log.warning("--- Minimum Wage Adjustment (Combined) complete ---")
 
 
@@ -102,7 +107,8 @@ def adjust_minimum_wage(ec: Economy) -> None:
     m = ec.min_wage_rev_period
     if ec.avg_mkt_price_history.size <= m:
         log.debug(
-            f"  Skipping: not enough history ({ec.avg_mkt_price_history.size} <= {m}).")
+            f"  Skipping: not enough history ({ec.avg_mkt_price_history.size} <= {m})."
+        )
         return
     if (ec.avg_mkt_price_history.size - 1) % m != 0:
         log.debug(f"  Skipping: not a revision period.")
@@ -114,17 +120,18 @@ def adjust_minimum_wage(ec: Economy) -> None:
     ec.min_wage = ec.min_wage * (1.0 + inflation)
     log.info(
         f"  Minimum wage revision: "
-        f"Using most recent annual inflation from history ({inflation:+.3%}).")
+        f"Using most recent annual inflation from history ({inflation:+.3%})."
+    )
     log.info(f"  Min wage: {old_min_wage:.3f} → {ec.min_wage:.3f}")
     log.info("--- Minimum Wage Adjustment complete ---")
 
 
 def firms_decide_wage_offer(
-        emp: Employer,
-        *,
-        w_min: float,
-        h_xi: float,
-        rng: Generator = default_rng(),
+    emp: Employer,
+    *,
+    w_min: float,
+    h_xi: float,
+    rng: Generator = default_rng(),
 ) -> None:
     """
     Firms with vacancies post a wage offer as a markup over their previous offer.
@@ -139,7 +146,8 @@ def firms_decide_wage_offer(
     # TODO Observe how many firm offers are near the minimum wage
     log.info("--- Firms Deciding Wage Offers ---")
     log.info(
-        f"  Inputs: Min Wage (w_min)={w_min:.3f} | Max Wage Shock (h_ξ)={h_xi:.3f}")
+        f"  Inputs: Min Wage (w_min)={w_min:.3f} | Max Wage Shock (h_ξ)={h_xi:.3f}"
+    )
     shape = emp.wage_offer.shape
 
     # permanent scratch
@@ -158,26 +166,29 @@ def firms_decide_wage_offer(
 
     hiring_firms_mask = emp.n_vacancies > 0
     num_hiring_firms = np.sum(hiring_firms_mask)
-    avg_offer_hiring = emp.wage_offer[
-        hiring_firms_mask].mean() if num_hiring_firms > 0 else 0.0
+    avg_offer_hiring = (
+        emp.wage_offer[hiring_firms_mask].mean() if num_hiring_firms > 0 else 0.0
+    )
 
     log.info(f"  {num_hiring_firms} firms with vacancies are setting wage offers.")
     log.info(
         f"  Min wage: {w_min:.3f}. "
-        f"Average offer from hiring firms: {avg_offer_hiring:.3f}")
+        f"Average offer from hiring firms: {avg_offer_hiring:.3f}"
+    )
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"  Wage offers (first 10 firms): "
-            f"{np.array2string(emp.wage_offer[:10], precision=2)}")
+            f"{np.array2string(emp.wage_offer[:10], precision=2)}"
+        )
     log.info("--- Wage Offer Decision complete ---")
 
 
 def workers_decide_firms_to_apply(
-        wrk: Worker,
-        emp: Employer,
-        *,
-        max_M: int,
-        rng: Generator = default_rng(),
+    wrk: Worker,
+    emp: Employer,
+    *,
+    max_M: int,
+    rng: Generator = default_rng(),
 ) -> None:
     """
     Unemployed workers choose up to `max_M` firms to apply to, sorted by wage.
@@ -187,10 +198,12 @@ def workers_decide_firms_to_apply(
     hiring = np.where(emp.n_vacancies > 0)[0]
     unemp = np.where(wrk.employed == 0)[0]
 
-    log.info(f"  {unemp.size} unemployed workers "
-             f"prepare up to {max_M} applications each "
-             f"to {hiring.size} firms "
-             f"with a total of {emp.n_vacancies.sum():,} open vacancies.")
+    log.info(
+        f"  {unemp.size} unemployed workers "
+        f"prepare up to {max_M} applications each "
+        f"to {hiring.size} firms "
+        f"with a total of {emp.n_vacancies.sum():,} open vacancies."
+    )
 
     # fast exits
     if unemp.size == 0:
@@ -213,10 +226,12 @@ def workers_decide_firms_to_apply(
     for row, j in enumerate(unemp):
         sample[row] = rng.choice(hiring, size=M_eff, replace=False)
         if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
-            log.deep(f"  Worker {j}: initial sample={sample[row]}, "
-                     f"previous: {wrk.employer_prev[j]}, "
-                     f"contract_expired: {wrk.contract_expired[j]}, "
-                     f"fired: {wrk.fired[j]}")
+            log.deep(
+                f"  Worker {j}: initial sample={sample[row]}, "
+                f"previous: {wrk.employer_prev[j]}, "
+                f"contract_expired: {wrk.contract_expired[j]}, "
+                f"fired: {wrk.fired[j]}"
+            )
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"  Initial random firm sample (first 10 workers, if any):\n"
@@ -224,9 +239,7 @@ def workers_decide_firms_to_apply(
         )
 
     # wage-descending partial sort
-    topk = select_top_k_indices_sorted(
-        emp.wage_offer[sample], k=M_eff, descending=True
-    )
+    topk = select_top_k_indices_sorted(emp.wage_offer[sample], k=M_eff, descending=True)
     sorted_sample = np.take_along_axis(sample, topk, axis=1)
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
@@ -237,9 +250,9 @@ def workers_decide_firms_to_apply(
     # loyalty rule
     # TODO Move loyalty logic to a separate system
     loyal_mask = (
-            (wrk.contract_expired[unemp] == 1)
-            & (wrk.fired[unemp] == 0)
-            & np.isin(wrk.employer_prev[unemp], hiring)
+        (wrk.contract_expired[unemp] == 1)
+        & (wrk.fired[unemp] == 0)
+        & np.isin(wrk.employer_prev[unemp], hiring)
     )
     num_loyal_workers = np.sum(loyal_mask)
     log.info(f"  Applying loyalty rule for {num_loyal_workers} worker(s).")
@@ -257,12 +270,14 @@ def workers_decide_firms_to_apply(
                 log.deep(
                     f"      Adjusting for loyalty: "
                     f"Worker ID {actual_worker_id} (row {row}), "
-                    f"Prev Emp: {prev_employer_id}")
+                    f"Prev Emp: {prev_employer_id}"
+                )
                 log.deep(f"      Application row BEFORE: {application_row.copy()}")
 
             try:
                 current_pos_of_prev_emp = (
-                    np.where(application_row == prev_employer_id))[0][0]
+                    np.where(application_row == prev_employer_id)
+                )[0][0]
                 if current_pos_of_prev_emp != 0:
                     employer_to_move = application_row[current_pos_of_prev_emp]
                     for j in range(current_pos_of_prev_emp, 0, -1):
@@ -273,7 +288,8 @@ def workers_decide_firms_to_apply(
                 if num_applications > 0:
                     if num_applications > 1:
                         application_row[1:num_applications] = application_row[
-                                                              0: num_applications - 1]
+                            0 : num_applications - 1
+                        ]
                     application_row[0] = prev_employer_id
 
             if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
@@ -308,7 +324,7 @@ def workers_decide_firms_to_apply(
 
 
 def workers_send_one_round(
-        wrk: Worker, emp: Employer, rng: Generator = default_rng()
+    wrk: Worker, emp: Employer, rng: Generator = default_rng()
 ) -> None:
     """A single round of job applications being sent and received."""
     log.info("--- Workers Sending One Round of Applications ---")
@@ -337,22 +353,23 @@ def workers_send_one_round(
     for j in unemp_ids_applying:
         head = wrk.job_apps_head[j]
         if head < 0:
-            log.warning(
-                f"  Worker {j} in applying list but head is {head}. Skipping.")
+            log.warning(f"  Worker {j} in applying list but head is {head}. Skipping.")
             continue
 
         row_from_head, col = divmod(head, stride)
         if row_from_head != j:
             log.error(
                 f"  CRITICAL MISMATCH for worker {j}: "
-                f"head={head} decoded to row {row_from_head}.")
+                f"head={head} decoded to row {row_from_head}."
+            )
 
         if col >= stride:
             # Normal exit condition for a worker who finished their list.
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(
                     f"    Worker {j} exhausted all {stride} application slots. "
-                    f"Setting head to -1.")
+                    f"Setting head to -1."
+                )
             wrk.job_apps_head[j] = -1
             continue
 
@@ -361,7 +378,8 @@ def workers_send_one_round(
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(
                     f"    Worker {j} encountered sentinel (-1) at col {col}. "
-                    f"End of list. Setting head to -1.")
+                    f"End of list. Setting head to -1."
+                )
             wrk.job_apps_head[j] = -1
             continue
 
@@ -373,7 +391,8 @@ def workers_send_one_round(
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(
                     f"  Firm {firm_id} has no more open vacancies. "
-                    f"Worker {j} application dropped.")
+                    f"Worker {j} application dropped."
+                )
             apps_dropped_no_vacancy += 1
             wrk.job_apps_head[j] = head + 1
             wrk.job_apps_targets[row_from_head, col] = -1
@@ -385,7 +404,8 @@ def workers_send_one_round(
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(
                     f"    Firm {firm_id} application queue full. "
-                    f"Worker {j} application dropped.")
+                    f"Worker {j} application dropped."
+                )
             apps_dropped_queue_full += 1
             wrk.job_apps_head[j] = head + 1
             wrk.job_apps_targets[row_from_head, col] = -1
@@ -397,7 +417,8 @@ def workers_send_one_round(
         apps_sent_successfully += 1
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
-                f"    Worker {j} application queued at firm {firm_id} slot {ptr}.")
+                f"    Worker {j} application queued at firm {firm_id} slot {ptr}."
+            )
 
         wrk.job_apps_head[j] = head + 1
         wrk.job_apps_targets[row_from_head, col] = -1
@@ -407,11 +428,13 @@ def workers_send_one_round(
     log.info(
         f"  Round Summary: "
         f"{apps_sent_successfully} applications successfully queued, "
-        f"{total_dropped} dropped.")
+        f"{total_dropped} dropped."
+    )
     if total_dropped > 0 and log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"    Dropped breakdown -> Queue Full: {apps_dropped_queue_full},"
-            f" No Vacancy: {apps_dropped_no_vacancy}")
+            f" No Vacancy: {apps_dropped_no_vacancy}"
+        )
     log.info("--- Application Sending Round complete ---")
 
 
@@ -468,7 +491,8 @@ def _clean_queue(slice_: Idx1D, wrk: Worker, firm_idx_for_log: int) -> Idx1D:
     if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
         log.deep(
             f"    Firm {firm_idx_for_log}: "
-            f"Cleaning queue. Initial raw slice: {slice_}")
+            f"Cleaning queue. Initial raw slice: {slice_}"
+        )
 
     # Drop -1 sentinels
     cleaned_slice = slice_[slice_ >= 0]
@@ -476,13 +500,15 @@ def _clean_queue(slice_: Idx1D, wrk: Worker, firm_idx_for_log: int) -> Idx1D:
         if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
             log.deep(
                 f"    Firm {firm_idx_for_log}: "
-                f"Queue empty after dropping sentinels.")
+                f"Queue empty after dropping sentinels."
+            )
         return cleaned_slice.astype(np.intp)
 
     if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
         log.deep(
             f"    Firm {firm_idx_for_log}: "
-            f"Queue after dropping sentinels: {cleaned_slice}")
+            f"Queue after dropping sentinels: {cleaned_slice}"
+        )
 
     # Unique *without* sorting
     first_idx = np.unique(cleaned_slice, return_index=True)[1]
@@ -490,7 +516,8 @@ def _clean_queue(slice_: Idx1D, wrk: Worker, firm_idx_for_log: int) -> Idx1D:
     if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
         log.deep(
             f"    Firm {firm_idx_for_log}: "
-            f"Queue after unique (order kept): {unique_slice}")
+            f"Queue after unique (order kept): {unique_slice}"
+        )
 
     # Keep only unemployed workers
     unemployed_mask = wrk.employed[unique_slice] == 0
@@ -498,17 +525,18 @@ def _clean_queue(slice_: Idx1D, wrk: Worker, firm_idx_for_log: int) -> Idx1D:
     if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
         log.deep(
             f"    Firm {firm_idx_for_log}: "
-            f"Final cleaned queue (unique, unemployed): {final_queue}")
+            f"Final cleaned queue (unique, unemployed): {final_queue}"
+        )
 
     return cast(Idx1D, final_queue)
 
 
 def firms_hire_workers(
-        wrk: Worker,
-        emp: Employer,
-        *,
-        theta: int,
-        rng: Generator = default_rng(),
+    wrk: Worker,
+    emp: Employer,
+    *,
+    theta: int,
+    rng: Generator = default_rng(),
 ) -> None:
     """Match firms with queued applicants and update all related state."""
     log.info("--- Firms Hiring Workers ---")
@@ -516,7 +544,8 @@ def firms_hire_workers(
     total_vacancies = emp.n_vacancies.sum()
     log.info(
         f"  {hiring_ids.size} firms have {total_vacancies:,} "
-        f"total vacancies and are attempting to hire.")
+        f"total vacancies and are attempting to hire."
+    )
 
     total_hires_this_round = 0
 
@@ -536,7 +565,8 @@ def firms_hire_workers(
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
                 f"    Firm {i} raw application queue "
-                f"({n_recv} applications): {raw_queue}")
+                f"({n_recv} applications): {raw_queue}"
+            )
 
         queue = _clean_queue(raw_queue, wrk, firm_idx_for_log=i)
 
@@ -544,21 +574,22 @@ def firms_hire_workers(
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(
                     f"    Firm {i}: no valid (unique, unemployed) "
-                    f"applicants in queue. Flushing.")
+                    f"applicants in queue. Flushing."
+                )
             emp.recv_job_apps_head[i] = -1
             emp.recv_job_apps[i, :n_recv] = -1
             continue
 
         if log.isEnabledFor(logging.DEBUG):
-            log.debug(
-                f"    Firm {i} has {queue.size} valid potential hires: {queue}")
+            log.debug(f"    Firm {i} has {queue.size} valid potential hires: {queue}")
 
         num_to_hire = min(queue.size, emp.n_vacancies[i])
         if num_to_hire < queue.size:
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(
                     f"    Firm {i} capping hires from {queue.size} "
-                    f"to {num_to_hire} due to vacancy limit.")
+                    f"to {num_to_hire} due to vacancy limit."
+                )
 
         final_hires = queue[:num_to_hire]
 
@@ -569,7 +600,8 @@ def firms_hire_workers(
 
         log.info(
             f"    Firm {i} is hiring {final_hires.size} worker(s): "
-            f"{final_hires.tolist()}")
+            f"{final_hires.tolist()}"
+        )
         total_hires_this_round += final_hires.size
 
         # worker‑side updates
@@ -589,7 +621,8 @@ def firms_hire_workers(
         log.debug(
             f"      Firm {i} state updated: "
             f"current_labor={emp.current_labor[i]}, "
-            f"n_vacancies={emp.n_vacancies[i]}")
+            f"n_vacancies={emp.n_vacancies[i]}"
+        )
 
         # flush inbound queue for this firm
         emp.recv_job_apps_head[i] = -1
@@ -606,15 +639,18 @@ def firms_hire_workers(
         if mismatched_firms.size:
             log.error(
                 f"[GLOBAL LABOR MISMATCH] {mismatched_firms.size} firms "
-                f"have inconsistent labor counts.")
+                f"have inconsistent labor counts."
+            )
             for i_mismatch in mismatched_firms:
                 log.error(
                     f"  Firm {i_mismatch}: recorded={emp.current_labor[i_mismatch]}, "
-                    f"true={true_labor_counts[i_mismatch]}")
+                    f"true={true_labor_counts[i_mismatch]}"
+                )
         else:
             log.debug(
                 "[GLOBAL LABOR CONSISTENCY] "
-                "All firm labor counts match worker table after hiring.")
+                "All firm labor counts match worker table after hiring."
+            )
     log.info("--- Firms Hiring Workers complete ---")
 
 
@@ -632,13 +668,12 @@ def firms_calc_wage_bill(emp: Employer, wrk: Worker) -> None:
     num_employed = np.sum(employed_mask)
     log.info(
         f"  Calculating wage bill based on "
-        f"{num_employed:,} currently employed workers.")
+        f"{num_employed:,} currently employed workers."
+    )
 
     n_firms = emp.wage_offer.size
     emp.wage_bill[:] = np.bincount(
-        wrk.employer[employed_mask],
-        weights=wrk.wage[employed_mask],
-        minlength=n_firms
+        wrk.employer[employed_mask], weights=wrk.wage[employed_mask], minlength=n_firms
     )
 
     total_wage_bill = emp.wage_bill.sum()
@@ -650,5 +685,6 @@ def firms_calc_wage_bill(emp: Employer, wrk: Worker) -> None:
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"  Final Wage Bill per firm (first 10 firms): "
-            f"{np.array2string(emp.wage_bill[:10], precision=2)}")
+            f"{np.array2string(emp.wage_bill[:10], precision=2)}"
+        )
     log.info("--- Wage Bill Calculation complete ---")

@@ -127,7 +127,8 @@ from bamengine.systems.production import (
 #     sch.wrk.employed[:] = 1
 #
 #     # assign workers round-robin to firms
-#     sch.wrk.employer[:] = np.arange(sch.wrk.employed.size) % sch.emp.current_labor.size
+#      sch.wrk.employer[:] = (
+#              np.arange(sch.wrk.employed.size) % sch.emp.current_labor.size)
 #
 #     # derive true labour counts from the worker table
 #     counts = np.bincount(sch.wrk.employer, minlength=sch.emp.current_labor.size)
