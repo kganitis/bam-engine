@@ -1,70 +1,33 @@
-# BAM-Engine (Work in Progress)
+# BAM Engine
 
-A high-performance Python implementation of the BAM model from *Macroeconomics from the Bottom-Up* (Delli Gatti et al., 2011).
+### What's this project?
+This is a Python implementation of the BAM model (Delli Gatti et al., 2008). Below is a short outline of the model (in greek)
 
----
+**Περιγραφή του μοντέλου**
 
-### Architecture
+Το πιο σημαντικό μοντέλο στην κατηγορία των CATS (Complex Adaptive Trivial Systems), μια οικογένεια μακροοικονομικών μοντέλων βασισμένων σε πράκτορες. 
+Αποτελεί τη βάση και τον πυρήνα μιας σειράς από πολλά μοντέλα που ακολούθησαν, όπως το CC-MABM *(Macroeconomic Agent-Based Model with Capital & Credit) (Assenza et al., 2015)*. 
+Περιλαμβάνει τρεις βασικούς τύπους πρακτόρων: νοικοκυριά, επιχειρήσεις και τράπεζες, οι οποίοι αλληλεπιδρούν μεταξύ τους σε τρεις διαφορετικές αγορές: εργασίας, πίστωσης και καταναλωτικών αγαθών. 
+Το μοντέλο καταγράφει το πώς οι διάφορες δυναμικές στις αγορές μπορούν και αναδύονται ενδογενώς μέσα από τις αλληλεπιδράσεις μεταξύ ετερογενών (και όχι ομοιογενών) πρακτόρων, και χωρίς την επιβολή εξωτερικά προκαθορισμένων ισορροπιών.
 
-**Entity–Component–System (ECS)** architecture optimized for large-scale agent-based modeling:
+### What's its architecture?
+It's almost fully vectorized, with mostly numpy operations, where for loops are only used to iterate through market trials and implement the market queuing system.
 
-* **Entities** – Economic actors (firms, households, banks) are represented as integer indices, eliminating object overhead
-* **Components** – Immutable NumPy dataclass containers in `bamengine.components` hold pure state (e.g., `Producer`, `Worker`, `Lender`) with zero business logic
-* **Systems** – Vectorized functions in `bamengine.systems.*` implement economic behavior through efficient in-place mutations
-* **Simulation** – `bamengine.Simulation` orchestrates the simulation lifecycle. Basic public API that enables one-liner usage:
+### Pros and cons of this approach
+This version works perfectly, as intended, but it's not very modular. It's a monolith, just in separate files. So it's hard to modify or extend any part of the BAM framework.
 
-```python
-import bamengine as be
+### Future work & research extensions
 
-# Configure and run simulation
-sim = be.Simulation.init(n_firms=100, n_households=500, n_banks=10)
-sim.run(n_periods=1000)    # or sim.step() for single-period control
-```
+#### Low-priority housekeeping
 
----
+* Use consistent naming: e.g. when to use `firm` vs `borrower`/`employer`
+* How to deal with _EPS values: where to use them, how often they actually occur
 
-### Technologies
+#### Research Extensions
 
-**Minimal, high-performance stack:**
-
-* **Python 3.10+** – Fully type-annotated with `py.typed` for downstream type checking
-* **NumPy** – Dense arrays and vectorized operations for maximum computational efficiency
-* **PyYAML** – Declarative configuration system (`defaults.yml` + user overrides)
-
-**Zero heavyweight dependencies** – No pandas, no complex frameworks. Pure scientific Python for predictable performance and easy deployment.
-
----
-
-### Current Status
-
-**Version 0.0.0 – Experimental proof-of-concept**
-
-##### Implemented
-* Complete BAM model systems with comprehensive unit tests
-* Efficient vectorized kernels handling thousands of agents on standard hardware
-* Validated output replicating key results from the original paper
-* Extensive logging infrastructure for debugging and analysis
-
-##### Limitations
-* Public API restricted to basic `Simulation` interface
-* Monolithic simulation design limits extensibility
-* Hard-coded logging integration across systems
-* Minimal documentation and examples
-
----
-
-### Roadmap
-
-##### Research
-* Replicate **all** figures and empirical results from *Macroeconomics from the Bottom-Up*
-* Comprehensive performance profiling and optimization
-
-##### Engineering
-* Achieve >95% test coverage across all modules
-* Implement structured, configurable logging system
-* Refactor monolithic `Simulation` into modular, plugin-based architecture with clean separation of concerns
-
-##### Usage
-* Comprehensive API documentation with examples
-* End-to-end Jupyter notebook tutorials
-* Production-ready packaging and distribution
+* Implement "growth+" model with R&D and productivity
+* Consumption and buffer shock
+* Exploration of the parameter space
+* Preferential attachment in consumption and the entry mechanism
+* Add reinforcement-learning agents for policy search experiments
+* Investigate GPU or distributed back-ends once single-node scaling limits are reached

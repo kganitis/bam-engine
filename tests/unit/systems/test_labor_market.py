@@ -18,7 +18,8 @@ from bamengine.components import Employer, Worker
 
 # noinspection PyProtectedMember
 from bamengine.systems.labor_market import (
-    calc_inflation_and_adjust_minimum_wage,
+    adjust_minimum_wage,
+    calc_annual_inflation_rate,
     firms_decide_wage_offer,
     firms_hire_workers,
     workers_decide_firms_to_apply,
@@ -69,6 +70,23 @@ def _mini_state(
     return emp, wrk, rng, M
 
 
+def test_calc_annual_inflation_rate_min_history() -> None:
+    from bamengine.systems.labor_market import calc_annual_inflation_rate
+
+    ec = mock_economy(avg_mkt_price_history=np.array([1.0, 1.1, 1.2, 1.3]))
+    calc_annual_inflation_rate(ec)
+    assert ec.inflation_history[-1] == 0.0
+
+
+def test_calc_annual_inflation_rate_prev_nonpositive() -> None:
+    from bamengine.systems.labor_market import calc_annual_inflation_rate
+
+    # t = 4 (len=5); p_{t-4} is index 0 -> set to 0.0 to trigger branch
+    ec = mock_economy(avg_mkt_price_history=np.array([0.0, 1.0, 1.1, 1.2, 1.3]))
+    calc_annual_inflation_rate(ec)
+    assert ec.inflation_history[-1] == 0.0
+
+
 @pytest.mark.parametrize(
     ("prices", "direction"),
     [
@@ -86,7 +104,8 @@ def test_adjust_minimum_wage_edges(prices: NDArray[np.float64], direction: str) 
         min_wage_rev_period=4,
     )
     old = ec.min_wage
-    calc_inflation_and_adjust_minimum_wage(ec)
+    calc_annual_inflation_rate(ec)
+    adjust_minimum_wage(ec)
     if direction == "up":
         assert ec.min_wage > old
     elif direction == "down":
@@ -104,8 +123,34 @@ def test_adjust_minimum_wage_revision() -> None:
         ),  # t = 4 (len = 5)
         min_wage_rev_period=4,
     )
-    calc_inflation_and_adjust_minimum_wage(ec)
+    calc_annual_inflation_rate(ec)
+    adjust_minimum_wage(ec)
     assert ec.min_wage == pytest.approx(1.20)  # +20 % inflation
+
+
+def test_adjust_minimum_wage_from_history_revision() -> None:
+    ec = mock_economy(
+        min_wage=1.0,
+        avg_mkt_price_history=np.array([1, 1, 1, 1, 1]),  # len=5, m=4 -> revision
+        min_wage_rev_period=4,
+    )
+    ec.inflation_history = np.array([0.10])  # +10%
+    adjust_minimum_wage(ec)
+    assert ec.min_wage == pytest.approx(1.1)
+
+
+def test_adjust_minimum_wage_skips_when_not_revision() -> None:
+    ec = mock_economy(
+        min_wage=1.0,
+        avg_mkt_price_history=np.array(
+            [1, 1, 1, 1, 1, 1]
+        ),  # len=6, not revision (5 % 4 != 0)
+        min_wage_rev_period=4,
+    )
+    ec.inflation_history = np.array([0.25])
+    old = ec.min_wage
+    adjust_minimum_wage(ec)
+    assert ec.min_wage == pytest.approx(old)
 
 
 def test_decide_wage_offer_basic() -> None:
@@ -224,11 +269,36 @@ def test_prepare_applications_loyalty_swap_branch() -> None:
     stub_rng = FixedRNG(np.array([[1, 1]], dtype=np.int64))
 
     # Cast keeps the production code’s type hints intact
-    workers_decide_firms_to_apply(wrk, emp, max_M=2, rng=cast(Generator, stub_rng))
+    workers_decide_firms_to_apply(
+        wrk, emp, max_M=2, rng=cast(Generator, cast(object, stub_rng))
+    )
 
     # assertions
     assert wrk.job_apps_targets[0, 0] == 0  # previous employer in col-0
     assert wrk.job_apps_targets[0, 1] == 1  # other firm in col-1
+
+
+def test_prepare_applications_loyalty_noop_when_already_first() -> None:
+    emp = mock_employer(
+        n=2,
+        queue_m=2,
+        wage_offer=np.array([10.0, 1.0]),  # prev employer (0) has higher wage
+        n_vacancies=np.array([1, 1]),
+    )
+    wrk = mock_worker(
+        n=1,
+        queue_m=2,
+        employed=np.array([False]),
+        contract_expired=np.array([True]),
+        fired=np.array([False]),
+        employer_prev=np.array([0]),
+    )
+    # Sample [0,1] so sort keeps 0 in col-0
+    stub_rng = FixedRNG(np.array([[0, 1]], dtype=np.int64))
+    workers_decide_firms_to_apply(
+        wrk, emp, max_M=2, rng=cast(Generator, cast(object, stub_rng))
+    )
+    np.testing.assert_array_equal(wrk.job_apps_targets[0], np.array([0, 1]))
 
 
 def test_prepare_applications_one_trial() -> None:
@@ -256,6 +326,17 @@ def test_prepare_applications_large_unemployment() -> None:
     ws = mock_worker(n=n_wrk, queue_m=M)
     workers_decide_firms_to_apply(ws, fw, max_M=M, rng=rng)
     assert (ws.job_apps_targets[ws.job_apps_targets >= 0] < n_emp).all()
+
+
+def test_prepare_applications_no_hiring_but_unemployed() -> None:
+    emp = mock_employer(
+        n=3, wage_offer=np.array([1.0, 1.5, 1.2]), n_vacancies=np.array([0, 0, 0])
+    )
+    wrk = mock_worker(n=4, queue_m=2, employed=np.array([False, False, True, False]))
+    workers_decide_firms_to_apply(wrk, emp, max_M=2, rng=default_rng(0))
+    unemp = np.where(wrk.employed == 0)[0]
+    assert np.all(wrk.job_apps_head[unemp] == -1)
+    assert np.all(wrk.job_apps_targets[unemp] == -1)
 
 
 def test_workers_send_one_round() -> None:
@@ -382,6 +463,111 @@ def test_workers_send_one_round_exhausted_target() -> None:
     assert emp.recv_job_apps_head[0] == -1
 
 
+def test_workers_send_one_round_drops_due_to_no_vacancy() -> None:
+    M = 2
+    emp = mock_employer(
+        n=1, queue_m=M, wage_offer=np.array([1.0]), n_vacancies=np.array([0])
+    )
+    wrk = mock_worker(
+        n=1,
+        queue_m=M,
+        employed=np.array([False]),
+        job_apps_head=np.array([0]),
+        job_apps_targets=np.array([[0]], dtype=np.intp),
+    )
+    workers_send_one_round(wrk, emp)
+    assert wrk.job_apps_head[0] == 1
+    assert wrk.job_apps_targets[0, 0] == -1
+    assert emp.recv_job_apps_head[0] == -1  # nothing queued
+
+
+def test_send_one_job_app_head_negative_after_shuffle_branch() -> None:
+    """
+    Reach the branch:
+        if head < 0:  # worker considered active but head flipped negative
+            ... continue
+    We simulate an external mutation by providing a custom RNG whose shuffle()
+    both shuffles and sets one worker's head to -1 *after* unemp_ids_applying
+    is constructed but *before* the loop reads head.
+    """
+    # One firm with capacity; one unemployed worker with a valid head/target
+    M = 1
+    emp = mock_employer(
+        n=1,
+        queue_m=M,
+        wage_offer=np.array([1.0]),
+        n_vacancies=np.array([1]),
+    )
+    wrk = mock_worker(
+        n=1,
+        queue_m=M,
+        employed=np.array([False]),
+        job_apps_head=np.array([0]),  # would otherwise proceed
+        job_apps_targets=np.array([[0]], dtype=np.intp),  # firm 0
+    )
+
+    class EvilRng:
+        @staticmethod
+        def shuffle(arr: np.ndarray) -> None:
+            # Flip the head of the first worker in the shuffled list to -1
+            if arr.size > 0:
+                idx = int(arr[0])
+                wrk.job_apps_head[idx] = -1
+            # deterministic "shuffle"
+            arr[:] = arr[::-1]
+
+    workers_send_one_round(wrk, emp, rng=cast(Generator, cast(object, EvilRng())))
+
+    # Since the only worker got head < 0 right before the loop,
+    # nothing should have been queued and head should remain -1.
+    assert emp.recv_job_apps_head[0] == -1
+    assert wrk.job_apps_head[0] == -1
+    assert np.all(emp.recv_job_apps[0] == -1)
+
+
+def test_send_one_job_app_exhausted_then_cleanup_next_round() -> None:
+    """
+    Cover the branch: head >= (j + 1) * stride  → mark worker done (head = -1).
+    Let a worker consume all their slots; on the *next* call they should be
+    detected as exhausted and cleaned up without queue writes.
+    """
+    # One worker, one firm, stride = 2 (two application slots)
+    M = 2
+    emp = mock_employer(
+        n=1,
+        queue_m=M,
+        wage_offer=np.array([1.0]),
+        n_vacancies=np.array([2]),  # allow both apps to be queued
+    )
+    wrk = mock_worker(
+        n=1,
+        queue_m=M,
+        employed=np.array([False]),
+        job_apps_head=np.array([0]),  # start at first cell
+        job_apps_targets=np.array([[0, 0]], dtype=np.intp),  # same firm twice is fine
+    )
+
+    # First call → consumes col=0, advances head to 1
+    workers_send_one_round(wrk, emp)
+    assert wrk.job_apps_head[0] == 1
+    assert emp.recv_job_apps_head[0] == 0  # one application landed
+
+    # Second call → consumes col=1, advances head to 2 == (j+1)*stride
+    workers_send_one_round(wrk, emp)
+    assert wrk.job_apps_head[0] == 2
+    assert emp.recv_job_apps_head[0] == 1  # two applications landed
+
+    # Third call → triggers the exhausted-branch and cleans up (no extra writes)
+    queue_before = emp.recv_job_apps.copy()
+    head_before = int(emp.recv_job_apps_head[0])
+
+    workers_send_one_round(wrk, emp)
+
+    assert wrk.job_apps_head[0] == -1
+    assert emp.recv_job_apps_head[0] == head_before  # unchanged
+    np.testing.assert_array_equal(emp.recv_job_apps, queue_before)
+
+
 def test_firms_hire_workers_basic() -> None:
     """
     A firm with vacancies hires the first two applicants in its queue
@@ -479,6 +665,22 @@ def test_hire_workers_skips_invalid_slots() -> None:
     # nothing hired, vacancies unchanged
     np.testing.assert_array_equal(emp.current_labor, start)
     assert emp.n_vacancies[0] == 1
+
+
+def test_firms_hire_capped_by_vacancies() -> None:
+    emp = mock_employer(
+        n=1,
+        queue_m=3,
+        n_vacancies=np.array([1]),
+        current_labor=np.array([0], dtype=np.int64),
+    )
+    wrk = mock_worker(n=3, queue_m=3)
+    emp.recv_job_apps_head[0] = 2
+    emp.recv_job_apps[0, :3] = [0, 1, 2]
+    firms_hire_workers(wrk, emp, theta=8)
+    assert emp.current_labor[0] == 1
+    assert wrk.employed.sum() == 1
+    assert emp.n_vacancies[0] == 0
 
 
 def _queues_with_dupes(
@@ -611,3 +813,15 @@ def test_full_round() -> None:
     assert wrk.employed.any()
     assert emp.current_labor.sum() >= start_total_labor
     assert np.all((wrk.job_apps_head[wrk.employed] == -1))
+
+
+def test_firms_calc_wage_bill_basic() -> None:
+    from bamengine.systems.labor_market import firms_calc_wage_bill
+
+    emp = mock_employer(n=3)
+    wrk = mock_worker(n=5)
+    wrk.employed[:] = np.array([1, 1, 0, 1, 1], dtype=np.bool_)
+    wrk.employer[:] = np.array([0, 0, -1, 2, 2], dtype=np.intp)
+    wrk.wage[:] = np.array([1.0, 1.5, 9.9, 2.0, 3.0])
+    firms_calc_wage_bill(emp, wrk)
+    np.testing.assert_allclose(emp.wage_bill, np.array([2.5, 0.0, 5.0]))

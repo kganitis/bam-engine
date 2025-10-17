@@ -6,15 +6,14 @@ Event‑3  –  Credit‑market systems
 from __future__ import annotations
 
 import logging
-from typing import cast
 
 import numpy as np
 from numpy.random import Generator, default_rng
 
 from bamengine import _logging_ext
 from bamengine.components import Borrower, Employer, Lender, LoanBook, Worker
-from bamengine.utils import select_top_k_indices_sorted
 from bamengine.typing import Idx1D
+from bamengine.utils import select_top_k_indices_sorted
 
 log = _logging_ext.getLogger(__name__)
 
@@ -281,7 +280,7 @@ def firms_send_one_loan_app(
     borrowers_applying = borrowers[active_applicants_mask]
 
     if borrowers_applying.size == 0:
-        log.info(f"  No borrowers with pending applications found. Skipping round.")
+        log.info("  No borrowers with pending applications found. Skipping round.")
         log.info("--- Application Sending Round complete ---")
         return
 
@@ -312,7 +311,7 @@ def firms_send_one_loan_app(
                 f"head={head} decoded to row {row_from_head}."
             )
 
-        if col >= stride:
+        if head >= (i + 1) * stride:
             # Normal exit condition for an applicant who finished their list.
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(
@@ -387,7 +386,9 @@ def firms_send_one_loan_app(
     log.info("--- Application Sending Round complete ---")
 
 
-def _clean_queue(slice_: Idx1D, bor: Borrower, bank_idx_for_log: int) -> Idx1D:
+def _clean_queue(
+    slice_: Idx1D, bor: Borrower, bank_idx_for_log: int
+) -> Idx1D:  # pragma: no cover
     # TODO Unify with `labor_market._clean_queue`
     #  Make sorting optional
     """
@@ -435,7 +436,7 @@ def _clean_queue(slice_: Idx1D, bor: Borrower, bank_idx_for_log: int) -> Idx1D:
                 f"    Bank {bank_idx_for_log}: "
                 f"No borrowers left after credit-demand filter."
             )
-        return cast(Idx1D, filtered_queue)
+        return filtered_queue
 
     # Sort by net worth (descending)
     sort_idx = np.argsort(-bor.net_worth[filtered_queue])
@@ -446,7 +447,7 @@ def _clean_queue(slice_: Idx1D, bor: Borrower, bank_idx_for_log: int) -> Idx1D:
             f"Final cleaned queue (net_worth-desc): {ordered_queue}"
         )
 
-    return cast(Idx1D, ordered_queue)
+    return ordered_queue
 
 
 def banks_provide_loans(
@@ -456,7 +457,6 @@ def banks_provide_loans(
     *,
     r_bar: float,
     h_phi: float,
-    rng: Generator = default_rng(),
 ) -> None:
     """Process queued applications and update all related state in‑place."""
     log.info("--- Banks Providing Loans ---")
@@ -527,7 +527,8 @@ def banks_provide_loans(
             max_grant[first_exceed + 1 :] = 0.0
 
         mask = max_grant > 0.0
-        if not mask.any():
+        # check if any loans were granted, should never trigger
+        if not mask.any():  # pragma: no cover
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(f"    Bank {k}: No loans granted this round. Flushing queue.")
             lend.recv_loan_apps_head[k] = -1
@@ -538,7 +539,8 @@ def banks_provide_loans(
         final_amounts = max_grant[mask]
         final_rates = r_bar * (1.0 + h_phi * frag[mask])
 
-        if final_borrowers.size == 0:
+        # extra validation, should never trigger
+        if final_borrowers.size == 0:  # pragma: no cover
             lend.recv_loan_apps_head[k] = -1
             lend.recv_loan_apps[k, :n_recv] = -1
             continue
@@ -561,8 +563,8 @@ def banks_provide_loans(
         assert (bor.credit_demand >= -_EPS).all(), "negative credit_demand"
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
-                f"      Borrower state updated: "
-                f"total_funds increased, credit_demand decreased"
+                "      Borrower state updated: "
+                "total_funds increased, credit_demand decreased"
             )
 
         # lender‑side updates
@@ -643,23 +645,14 @@ def firms_fire_workers(
                 f"(total: {worker_wages.sum():.2f})"
             )
 
-        if method == "random":
-            # Sequential random firing until gap is covered
-            shuffled_indices = rng.permutation(workforce.size)
-            shuffled_wages = worker_wages[shuffled_indices]
-            cumsum_wages = np.cumsum(shuffled_wages)
+        if method not in ("random", "expensive"):  # pragma: no cover
+            log.error(
+                f"    Unknown firing method '{method}' specified. "
+                f"Defaulting to 'random'."
+            )
+            method = "random"
 
-            # Find first position where cumulative wages >= gap
-            sufficient_mask = cumsum_wages >= gap
-            if sufficient_mask.any():
-                n_fire = sufficient_mask.argmax() + 1
-            else:
-                n_fire = workforce.size  # Fire everyone if still not enough
-
-            victims_indices = shuffled_indices[:n_fire]
-            victims = workforce[victims_indices]
-
-        elif method == "expensive":
+        if method == "expensive":
             # Fire most expensive workers first
             sorted_indices = np.argsort(worker_wages)[::-1]  # Descending order
             sorted_wages = worker_wages[sorted_indices]
@@ -675,24 +668,35 @@ def firms_fire_workers(
             victims_indices = sorted_indices[:n_fire]
             victims = workforce[victims_indices]
 
-        else:
-            raise ValueError(
-                f"Unknown firing_method: {method}. " f"Must be 'random' or 'expensive'."
-            )
+        else:  # method == "random"
+            # Sequential random firing until gap is covered
+            shuffled_indices = rng.permutation(workforce.size)
+            shuffled_wages = worker_wages[shuffled_indices]
+            cumsum_wages = np.cumsum(shuffled_wages)
 
-        final_victims = victims
-        fired_wages = wrk.wage[final_victims]
+            # Find first position where cumulative wages >= gap
+            sufficient_mask = cumsum_wages >= gap
+            if sufficient_mask.any():
+                n_fire = sufficient_mask.argmax() + 1
+            else:
+                n_fire = workforce.size  # Fire everyone if still not enough
+
+            victims_indices = shuffled_indices[:n_fire]
+            victims = workforce[victims_indices]
+
+        fired_wages = wrk.wage[victims]
         total_fired_wage = fired_wages.sum()
 
-        if final_victims.size == 0:
+        # extra validation, should never trigger
+        if victims.size == 0:  # pragma: no cover
             continue
 
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
-                f"    Firm {i} is firing {final_victims.size} worker(s): "
-                f"{final_victims.tolist()} (total wage savings: {total_fired_wage:.2f})"
+                f"    Firm {i} is firing {victims.size} worker(s): "
+                f"{victims.tolist()} (total wage savings: {total_fired_wage:.2f})"
             )
-        total_workers_fired_this_step += final_victims.size
+        total_workers_fired_this_step += victims.size
 
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
@@ -702,17 +706,17 @@ def firms_fire_workers(
             )
 
         # worker‑side updates
-        log.debug(f"      Updating state for {final_victims.size} fired workers.")
-        wrk.employed[final_victims] = 0
-        wrk.employer[final_victims] = -1
-        wrk.employer_prev[final_victims] = i
-        wrk.wage[final_victims] = 0.0
-        wrk.periods_left[final_victims] = 0
-        wrk.contract_expired[final_victims] = 0
-        wrk.fired[final_victims] = 1
+        log.debug(f"      Updating state for {victims.size} fired workers.")
+        wrk.employed[victims] = 0
+        wrk.employer[victims] = -1
+        wrk.employer_prev[victims] = i
+        wrk.wage[victims] = 0.0
+        wrk.periods_left[victims] = 0
+        wrk.contract_expired[victims] = 0
+        wrk.fired[victims] = 1
 
         # firm‑side updates
-        emp.current_labor[i] -= final_victims.size
+        emp.current_labor[i] -= victims.size
         # Recalculate wage bill based on remaining workers
         remaining_workforce = np.where((wrk.employed == 1) & (wrk.employer == i))[0]
         emp.wage_bill[i] = (

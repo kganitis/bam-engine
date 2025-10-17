@@ -1,5 +1,6 @@
 # tests/conftest.py
 import logging
+
 import pytest
 
 from bamengine.simulation import Simulation

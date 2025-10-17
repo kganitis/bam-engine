@@ -16,7 +16,8 @@ from .goods_market import (
     consumers_shop_one_round,
 )
 from .labor_market import (
-    calc_inflation_and_adjust_minimum_wage,
+    adjust_minimum_wage,
+    calc_annual_inflation_rate,
     firms_calc_wage_bill,
     firms_decide_wage_offer,
     firms_hire_workers,
@@ -24,11 +25,11 @@ from .labor_market import (
     workers_send_one_round,
 )
 from .planning import (
+    firms_adjust_price,
+    firms_calc_breakeven_price,
     firms_decide_desired_labor,
     firms_decide_desired_production,
     firms_decide_vacancies,
-    firms_adjust_price,
-    firms_calc_breakeven_price,
 )
 from .production import (
     firms_pay_wages,
@@ -51,7 +52,8 @@ __all__: list[str] = [
     "firms_decide_desired_labor",
     "firms_decide_vacancies",
     # labor market
-    "calc_inflation_and_adjust_minimum_wage",
+    "calc_annual_inflation_rate",
+    "adjust_minimum_wage",
     "firms_calc_wage_bill",
     "firms_decide_wage_offer",
     "firms_hire_workers",

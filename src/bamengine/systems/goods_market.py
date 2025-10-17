@@ -202,7 +202,7 @@ def consumers_decide_firms_to_visit(
     total_selections_made = 0
     consumers_processed = 0
 
-    log.info(f"  Processing firm selection for each consumer...")
+    log.info("  Processing firm selection for each consumer...")
 
     for h in range(con.income_to_spend.size):
         if con.income_to_spend[h] <= _EPS:
@@ -346,7 +346,7 @@ def consumers_shop_one_round(
 
     # Randomize shopping order for fairness
     rng.shuffle(buyers_indices)
-    log.info(f"  Shopping order randomized for fairness.")
+    log.info("  Shopping order randomized for fairness.")
 
     # Track round statistics
     successful_purchases = 0

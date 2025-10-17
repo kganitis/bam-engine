@@ -1,4 +1,10 @@
+# BAM Calibration and design choices
 
+This document lists the various design choices that the author has made while implementing the BAM framework.
+These choices are not clearly specified in the original BAM paper (Delli Gatti et al., 2008).
+Each item has a short description of the options available, and the default choice is marked with backticks.
+This document is a living document and will be updated as new options are added or existing ones are modified.
+---
 - When to call breakeven price calculation
   - `During planning`
     - Wage Bill:
@@ -55,7 +61,7 @@
   - `Mark them as bankrupt`
   - Handle them in other way (e.g don't reset their inventory history)
 
-- New firms entry
+- New firms entry parameters
   - Size factor
   - Production
   - Wage offer

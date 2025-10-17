@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from bamengine.typing import Float1D, Idx1D, Int1D, Bool1D
+from bamengine.typing import Bool1D, Float1D, Idx1D, Int1D
 
 
 @dataclass(slots=True)

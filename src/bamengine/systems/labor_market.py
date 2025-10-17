@@ -11,8 +11,8 @@ from numpy.random import Generator, default_rng
 
 from bamengine import _logging_ext
 from bamengine.components import Economy, Employer, Worker
-from bamengine.utils import select_top_k_indices_sorted
 from bamengine.typing import Idx1D, Int1D
+from bamengine.utils import select_top_k_indices_sorted
 
 log = _logging_ext.getLogger(__name__)
 
@@ -58,41 +58,6 @@ def calc_annual_inflation_rate(ec: Economy) -> None:
     log.info("--- Annual Inflation Calculation complete ---")
 
 
-def calc_inflation_and_adjust_minimum_wage(ec: Economy) -> None:
-    """
-    [DEPRECATED/ALTERNATIVE]
-    Every `min_wage_rev_period` periods, calculate annual inflation π and update ŵ_t.
-    """
-    log.warning("--- Adjusting Minimum Wage (using Combined Calculation) ---")
-    m = ec.min_wage_rev_period
-    if ec.avg_mkt_price_history.size <= m:
-        log.debug(
-            f"  Skipping min wage adjustment: "
-            f"not enough history ({ec.avg_mkt_price_history.size} <= {m})."
-        )
-        return
-    if (ec.avg_mkt_price_history.size - 1) % m != 0:
-        log.debug(f"  Skipping min wage adjustment: not a revision period.")
-        return
-
-    p_now = ec.avg_mkt_price_history[-1]
-    p_prev = ec.avg_mkt_price_history[-m - 1]
-
-    if p_prev <= 0:
-        log.warning("  Cannot adjust min wage, past price level was zero or negative.")
-        return
-
-    inflation = (p_now - p_prev) / p_prev
-    old_min_wage = ec.min_wage
-    ec.min_wage = ec.min_wage * (1.0 + inflation)
-    log.info(
-        f"  Minimum wage revision: "
-        f"Inflation over last {m} periods: {inflation:+.3%}. "
-        f"Min wage: {old_min_wage:.3f} → {ec.min_wage:.3f}"
-    )
-    log.warning("--- Minimum Wage Adjustment (Combined) complete ---")
-
-
 def adjust_minimum_wage(ec: Economy) -> None:
     """
     Every `min_wage_rev_period` periods update ŵ_t by realised inflation π.
@@ -111,13 +76,13 @@ def adjust_minimum_wage(ec: Economy) -> None:
         )
         return
     if (ec.avg_mkt_price_history.size - 1) % m != 0:
-        log.debug(f"  Skipping: not a revision period.")
+        log.debug("  Skipping: not a revision period.")
         return
 
     # TODO: Make sure inflation history is up to date
-    inflation = ec.inflation_history[-1]
+    inflation = float(ec.inflation_history[-1])
     old_min_wage = ec.min_wage
-    ec.min_wage = ec.min_wage * (1.0 + inflation)
+    ec.min_wage = float(ec.min_wage) * (1.0 + inflation)
     log.info(
         f"  Minimum wage revision: "
         f"Using most recent annual inflation from history ({inflation:+.3%})."
@@ -320,7 +285,7 @@ def workers_decide_firms_to_apply(
     wrk.fired[unemp] = 0
 
     log.info(f"  {unemp.size} unemployed workers prepared {M_eff} applications each.")
-    log.info(f"--- Workers Deciding Firms to Apply complete ---")
+    log.info("--- Workers Deciding Firms to Apply complete ---")
 
 
 def workers_send_one_round(
@@ -334,7 +299,7 @@ def workers_send_one_round(
     unemp_ids_applying = unemp_ids[active_applicants_mask]
 
     if unemp_ids_applying.size == 0:
-        log.info(f"  No workers with pending applications found. Skipping round.")
+        log.info("  No workers with pending applications found. Skipping round.")
         log.info("--- Application Sending Round complete ---")
         return
 
@@ -352,7 +317,7 @@ def workers_send_one_round(
 
     for j in unemp_ids_applying:
         head = wrk.job_apps_head[j]
-        if head < 0:
+        if head < 0:  # TODO branch is uncovered by unit tests
             log.warning(f"  Worker {j} in applying list but head is {head}. Skipping.")
             continue
 
@@ -363,7 +328,7 @@ def workers_send_one_round(
                 f"head={head} decoded to row {row_from_head}."
             )
 
-        if col >= stride:
+        if head >= (j + 1) * stride:  # TODO branch is uncovered by unit tests
             # Normal exit condition for a worker who finished their list.
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(
@@ -460,7 +425,7 @@ def _check_labor_consistency(tag: str, i: int, wrk: Worker, emp: Employer) -> bo
     return True
 
 
-def _safe_bincount_employed(wrk: Worker, n_firms: int) -> Int1D:
+def _safe_bincount_employed(wrk: Worker, n_firms: int) -> Int1D:  # pragma: no cover
     """
     Return head-counts per firm, *ignoring* any corrupted rows where
     wrk.employed == 1 but wrk.employer < 0.
@@ -593,7 +558,8 @@ def firms_hire_workers(
 
         final_hires = queue[:num_to_hire]
 
-        if final_hires.size == 0:
+        # extra validation, should never trigger
+        if final_hires.size == 0:  # pragma: no cover
             emp.recv_job_apps_head[i] = -1
             emp.recv_job_apps[i, :n_recv] = -1
             continue
