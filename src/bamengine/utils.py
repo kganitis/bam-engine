@@ -1,7 +1,6 @@
 # src/bamengine/utils.py
 import numpy as np
 from numpy.random import Generator, default_rng
-from numpy.typing import NDArray
 
 from bamengine.typing import Float1D, Idx1D
 
@@ -38,11 +37,11 @@ def trimmed_weighted_mean(
             return float(values.mean())
         # Trimming only, unweighted
         k = int(round(trim_pct * values.size))
-        if k == 0 or values.size == 0:
+        if k == 0 or values.size == 0:  # TODO Not covered by unit tests
             return float(values.mean())
         idx = np.argsort(values)
         trimmed = values[idx][k : values.size - k]
-        if trimmed.size == 0:
+        if trimmed.size == 0:  # TODO Not covered by unit tests
             return 0.0
         return float(trimmed.mean())
 
@@ -201,11 +200,11 @@ def select_top_k_indices_sorted(
       shaped empty index arrays.
     """
     # Ensure input is a NumPy array.
-    if not isinstance(values, np.ndarray):
+    if not isinstance(values, np.ndarray):  # TODO Not covered by unit tests
         values = np.array(values, dtype=float)
 
     # Ensure values is at least 1D for consistent axis=-1 operations.
-    if values.ndim == 0:
+    if values.ndim == 0:  # TODO Not covered by unit tests
         values = np.atleast_1d(values)
 
     # If k is non-positive, return an empty array with appropriate shape.

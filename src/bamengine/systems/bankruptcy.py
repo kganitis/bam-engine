@@ -102,7 +102,7 @@ def mark_bankrupt_firms(
         f"  {bankrupt_indices.size} firm(s) have gone bankrupt: "
         f"{bankrupt_indices.tolist()}"
     )
-    if log.isEnabledFor(logging.DEBUG):
+    if log.isEnabledFor(logging.DEBUG):  # pragma: no cover
         nw_bankrupt = np.where(bor.net_worth < _EPS)[0]
         prod_bankrupt = np.where(prod.production <= 0)[0]
         log.debug(
@@ -203,7 +203,7 @@ def spawn_replacement_firms(
     log.info(f"  Spawning {num_exiting} new firm(s) to replace bankrupt ones.")
 
     # handle full market collapse
-    if num_exiting == bor.net_worth.size:
+    if num_exiting == bor.net_worth.size:  # TODO TEST
         log.critical("!!! ALL FIRMS ARE BANKRUPT !!! SIMULATION ENDING.")
         ec.destroyed = True
         return

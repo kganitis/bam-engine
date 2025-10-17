@@ -4,13 +4,9 @@ Unit tests for production systems.
 """
 from __future__ import annotations
 
-from unittest.mock import patch
-
 import numpy as np
-from numpy.random import default_rng
-from numpy.typing import NDArray
 
-from bamengine.components import Employer, LoanBook, Worker
+from bamengine.components import Employer, Worker
 from bamengine.systems.production import (
     # firms_decide_price,
     firms_pay_wages,
@@ -23,11 +19,9 @@ from tests.helpers.factories import (
     mock_consumer,
     mock_economy,
     mock_employer,
-    mock_loanbook,
     mock_producer,
     mock_worker,
 )
-
 
 # def test_firms_decide_price_obeys_break_even_and_shocks() -> None:
 #     rng = default_rng(0)

@@ -13,20 +13,6 @@ The two tests below exercise the full production round on the *tiny* simulation:
 """
 from __future__ import annotations
 
-import numpy as np
-from numpy.typing import NDArray
-
-from bamengine.simulation import Simulation
-from bamengine.systems.labor_market import firms_calc_wage_bill
-from bamengine.systems.production import (
-    # firms_decide_price,
-    firms_pay_wages,
-    firms_run_production,
-    update_avg_mkt_price,
-    workers_receive_wage,
-    workers_update_contracts,
-)
-
 
 # def _run_production_event(
 #     sch: Simulation, *, with_expiration: bool = False

@@ -1,7 +1,6 @@
 # src/bamengine/simulation.py
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
@@ -47,20 +46,20 @@ from bamengine.systems.goods_market import (
     consumers_shop_one_round,
 )
 from bamengine.systems.labor_market import (
+    adjust_minimum_wage,
+    calc_annual_inflation_rate,
     firms_calc_wage_bill,
     firms_decide_wage_offer,
     firms_hire_workers,
     workers_decide_firms_to_apply,
     workers_send_one_round,
-    adjust_minimum_wage,
-    calc_annual_inflation_rate,
 )
 from bamengine.systems.planning import (
+    firms_adjust_price,
+    firms_calc_breakeven_price,
     firms_decide_desired_labor,
     firms_decide_desired_production,
     firms_decide_vacancies,
-    firms_adjust_price,
-    firms_calc_breakeven_price,
 )
 from bamengine.systems.production import (
     calc_unemployment_rate,
