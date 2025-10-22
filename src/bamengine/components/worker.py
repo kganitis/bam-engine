@@ -1,11 +1,17 @@
 # src/bamengine/components/worker.py
 from dataclasses import dataclass
 
+from bamengine.core import Role
 from bamengine.typing import Bool1D, Float1D, Idx1D, Idx2D, Int1D
 
 
 @dataclass(slots=True)
-class Worker:
+class Worker(Role):
+    """
+    Worker role for agents.
+
+    Represents and entity that is able to provide labor for an offered wage.
+    """
 
     employed: Bool1D
     employer: Idx1D

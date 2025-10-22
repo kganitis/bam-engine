@@ -12,7 +12,7 @@ from bamengine.typing import Float1D
 
 @dataclass(slots=True)
 class DummyRole(Role):
-    """Concrete role for testing."""
+    """Concrete event for testing."""
 
     values: Float1D
     flags: np.ndarray

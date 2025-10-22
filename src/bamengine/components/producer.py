@@ -1,11 +1,19 @@
 # src/bamengine/components/producer.py
 from dataclasses import dataclass, field
+from typing import Optional
 
+from bamengine.core import Role
 from bamengine.typing import Bool1D, Float1D
 
 
 @dataclass(slots=True)
-class Producer:
+class Producer(Role):
+    """
+    Producer role for agents.
+
+    Represents an entity that is able to produce consumer goods
+    using labor and trade them for an offered price.
+    """
 
     production: Float1D
     inventory: Float1D
@@ -15,8 +23,8 @@ class Producer:
     breakeven_price: Float1D
     price: Float1D
 
-    # Scratch buffers
-    prod_shock: Float1D | None = field(default=None, repr=False)
-    prod_mask_up: Bool1D | None = field(default=None, repr=False)
-    prod_mask_dn: Bool1D | None = field(default=None, repr=False)
-    price_shock: Float1D | None = field(default=None, repr=False)
+    # Scratch buffers (optional for performance)
+    prod_shock: Optional[Float1D] = field(default=None, repr=False)
+    prod_mask_up: Optional[Bool1D] = field(default=None, repr=False)
+    prod_mask_dn: Optional[Bool1D] = field(default=None, repr=False)
+    price_shock: Optional[Float1D] = field(default=None, repr=False)

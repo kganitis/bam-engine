@@ -27,7 +27,7 @@ __version__: str = "0.0.0"
 # --------------------------------------------------------------------- #
 # core ECS components for extensibility
 # --------------------------------------------------------------------- #
-from .core import Agent, AgentType, Event, Role, event, role
+from .core import Agent, AgentType, Event, Role, event
 from .simulation import Simulation  # noqa: E402  (circular‑safe)
 
 __all__: list[str] = [
@@ -38,6 +38,5 @@ __all__: list[str] = [
     "AgentType",
     "Role",
     "Event",
-    "role",
     "event",
 ]

@@ -1,17 +1,17 @@
 """Core ECS infrastructure for BAM Engine."""
 
 from bamengine.core.agent import Agent, AgentType
-from bamengine.core.role import Role
 from bamengine.core.event import Event
-from bamengine.core.registry import role, event, get_role, get_event
+from bamengine.core.registry import get_event, get_role, list_events, list_roles
+from bamengine.core.role import Role
 
 __all__ = [
     "Agent",
     "AgentType",
-    "Role",
     "Event",
-    "role",
-    "event",
-    "get_role",
+    "Role",
     "get_event",
+    "get_role",
+    "list_events",
+    "list_roles",
 ]
