@@ -30,7 +30,7 @@ class Economy:
     exiting_firms: Idx1D = field(default_factory=lambda: np.empty(0, np.intp))
     exiting_banks: Idx1D = field(default_factory=lambda: np.empty(0, np.intp))
 
-    # End simulation flag
+    # Termination flag
     destroyed: bool = False
 
 

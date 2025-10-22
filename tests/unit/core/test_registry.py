@@ -5,64 +5,59 @@ from dataclasses import dataclass
 # noinspection PyPackageRequirements
 import pytest
 
-from bamengine.core import Role, Event, role, event, get_role, get_event
+from bamengine.core import Role, Event, get_role, get_event
 from bamengine.core.registry import clear_registry, list_events, list_roles
 from bamengine.typing import Float1D
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def clean_registry():
-    """Clear registry before and after each test."""
+    """
+    Clear registry before and after the test.
+
+    This fixture should be explicitly requested by tests that need isolation
+    from real BAM components. Tests should use this fixture if they create
+    synthetic roles for testing registry mechanics.
+
+    DO NOT use autouse=True, as it would interfere with integration tests
+    that rely on real components being registered.
+    """
     clear_registry()
     yield
     clear_registry()
 
 
-def test_role_registration_with_name():
-    """Test registering a role with explicit name."""
+def test_role_auto_registration_via_metaclass(clean_registry):
+    """Test that roles are auto-registered via __init_subclass__ (no decorator)."""
 
-    @role("TestRole")
-    @dataclass(slots=True)
-    class MyRole(Role):
-        values: Float1D
-
-    retrieved = get_role("TestRole")
-    assert retrieved is MyRole
-
-
-def test_role_registration_without_name():
-    """Test registering a role using class name."""
-
-    @role()
     @dataclass(slots=True)
     class MyRole(Role):
         values: Float1D
 
     retrieved = get_role("MyRole")
     assert retrieved is MyRole
+    assert hasattr(MyRole, "__dataclass_fields__")  # Auto-dataclass
+    assert MyRole.name == "MyRole"  # Auto-named
 
 
-def test_event_registration_with_name():
-    """Test registering an event with explicit name."""
+def test_role_custom_name(clean_registry):
+    """Test that roles can have custom names during class definition."""
 
-    @event("test_event")
+    @dataclass(slots=True)
+    class MyRole(Role, name="custom_role_name"):
+        values: Float1D
+
+    # Should be registered under custom name
+    retrieved = get_role("custom_role_name")
+    assert retrieved is MyRole
+    assert MyRole.name == "custom_role_name"
+    assert MyRole.__name__ == "MyRole"  # Class name unchanged
+
+
+def test_event_auto_registration():
+    """Test that events are auto-registered via __init_subclass__ (no decorator)."""
+
     class MyEvent(Event):
-        name = "test_event"
-
-        def execute(self, sim):
-            pass
-
-    retrieved = get_event("test_event")
-    assert retrieved is MyEvent
-
-
-def test_event_registration_without_name():
-    """Test registering an event using name attribute."""
-
-    @event()
-    class MyEvent(Event):
-        name = "my_event"
-
         def execute(self, sim):
             pass
 
@@ -70,47 +65,64 @@ def test_event_registration_without_name():
     assert retrieved is MyEvent
 
 
-# noinspection PyUnusedLocal
-def test_last_registration_wins_role():
-    """Test that last role registration overwrites previous."""
+def test_event_custom_name():
+    """Test that events can have custom names during class definition."""
 
-    @role("MyRole")
     @dataclass(slots=True)
-    class FirstRole(Role):
+    class MyEvent(Event, name="custom_event_name"):
+        def execute(self, sim):
+            pass
+
+    # Should be registered under custom name
+    retrieved = get_event("custom_event_name")
+    assert retrieved is MyEvent
+    assert MyEvent.name == "custom_event_name"
+    assert MyEvent.__name__ == "MyEvent"  # Class name unchanged
+
+
+# noinspection PyUnusedLocal
+def test_last_registration_wins_role(clean_registry):
+    """Test that last role registration overwrites previous (auto-registration)."""
+
+    # Note: In practice, you wouldn't do this. But __init_subclass__ allows it.
+    # The second class replaces the first in the registry.
+
+    @dataclass(slots=True)
+    class MyRole(Role):
         values: Float1D
 
-    @role("MyRole")
+    # This replaces the previous MyRole
     @dataclass(slots=True)
-    class SecondRole(Role):
+    class MyRole(Role):  # noqa: F811
         data: Float1D
 
     retrieved = get_role("MyRole")
-    assert retrieved is SecondRole
+    assert retrieved.__name__ == "MyRole"
+    # CLAUDE fix Unresolved attribute reference '__dataclass_fields__' for class 'type'
+    assert "data" in retrieved.__dataclass_fields__
 
 
 # noinspection PyUnusedLocal
 def test_last_registration_wins_event():
-    """Test that last event registration overwrites previous."""
+    """Test that last event registration overwrites previous (auto-registration)."""
 
-    @event("my_event")
-    class FirstEvent(Event):
-        name = "my_event"
-
+    @dataclass(slots=True)
+    class MyEvent(Event):
         def execute(self, sim):
             pass
 
-    @event("my_event")
-    class SecondEvent(Event):
-        name = "my_event"
-
+    # This replaces the previous MyEvent
+    @dataclass(slots=True)
+    class MyEvent(Event):  # noqa: F811
         def execute(self, sim):
             pass
 
     retrieved = get_event("my_event")
-    assert retrieved is SecondEvent
+    assert retrieved.__name__ == "MyEvent"
+    assert "execute" in dir(retrieved)
 
 
-def test_get_role_not_found():
+def test_get_role_not_found(clean_registry):
     """Test clear error when role not found."""
     with pytest.raises(KeyError, match="Role 'NonExistent' not found"):
         get_role("NonExistent")
@@ -123,15 +135,13 @@ def test_get_event_not_found():
 
 
 # noinspection PyUnusedLocal
-def test_list_roles():
+def test_list_roles(clean_registry):
     """Test listing all registered roles."""
 
-    @role()
     @dataclass(slots=True)
     class RoleA(Role):
         x: Float1D
 
-    @role()
     @dataclass(slots=True)
     class RoleB(Role):
         y: Float1D
@@ -144,19 +154,15 @@ def test_list_roles():
 
 # noinspection PyUnusedLocal
 def test_list_events():
-    """Test listing all registered events."""
+    """Test listing all registered events (auto-registration)."""
 
-    @event()
+    @dataclass(slots=True)
     class EventA(Event):
-        name = "event_a"
-
         def execute(self, sim):
             pass
 
-    @event()
+    @dataclass(slots=True)
     class EventB(Event):
-        name = "event_b"
-
         def execute(self, sim):
             pass
 

@@ -1,11 +1,18 @@
 # src/bamengine/components/borrower.py
 from dataclasses import dataclass
 
+from bamengine.core import Role
 from bamengine.typing import Float1D, Idx1D, Idx2D
 
 
 @dataclass(slots=True)
-class Borrower:
+class Borrower(Role):
+    """
+    Borrower role for agents.
+
+    Represents an entity that is able to receive credit,
+    manage finances and collect revenues.
+    """
 
     rnd_intensity: Float1D  # μ
 

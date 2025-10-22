@@ -1,72 +1,59 @@
-"""Tests for Event base class."""
+"""Unit tests for Event base class."""
 
-import logging
-from unittest.mock import MagicMock
+from dataclasses import dataclass
 
-# noinspection PyPackageRequirements
-import pytest
-
-from bamengine.core import Event
+from bamengine import Simulation
+from bamengine.core.event import Event
 
 
-class TestEvent(Event):
-    """Concrete event for testing."""
+@dataclass(slots=True)
+class DummyEvent(Event):
+    """Concrete role for testing."""
 
-    name = "test_event"
-
-    def execute(self, sim):
-        """Test implementation."""
+    def execute(self, sim: Simulation):
         pass
 
 
-class TestEventWithDeps(Event):
-    """Event with dependencies."""
+def test_event_dependencies_default_empty():
+    """Event dependencies default to empty tuple."""
 
-    name = "test_event_with_deps"
+    class SimpleEvent(Event):
+        def execute(self, sim):
+            pass
 
-    def execute(self, sim):
-        pass
-
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        return "event_a", "event_b"
-
-
-def test_event_creation():
-    """Test creating a concrete event."""
-    event = TestEvent()
-
-    assert event.name == "test_event"
+    event = SimpleEvent()
     assert event.dependencies == ()
-    assert event.log_level == logging.INFO
 
 
-def test_event_execute():
-    """Test event execute method."""
-    event = TestEvent()
-    sim = MagicMock()
+def test_event_dependencies_custom():
+    """Event can declare custom dependencies."""
 
-    # Should not raise
-    event.execute(sim)
+    class DependentEvent(Event):
+        name = "dependent"
 
+        def execute(self, sim):
+            pass
 
-def test_event_dependencies():
-    """Test event with dependencies."""
-    event = TestEventWithDeps()
+        @property
+        def dependencies(self) -> tuple[str, ...]:
+            return "event_a", "event_b"
 
+    event = DependentEvent()
     assert event.dependencies == ("event_a", "event_b")
 
 
+def test_event_slots():
+    """Test that event uses slots (no __dict__)."""
+    event = DummyEvent()
+    assert not hasattr(event, "__dict__")
+
+
 def test_event_repr():
-    """Test event string representation."""
-    event = TestEvent()
-    repr_str = repr(event)
+    """Event repr shows name."""
 
-    assert "test_event" in repr_str
+    class MyEvent(Event):
+        def execute(self, sim):
+            pass
 
-
-def test_event_abstract():
-    """Test that Event cannot be instantiated directly."""
-    with pytest.raises(TypeError):
-        # noinspection PyAbstractClass
-        Event()
+    event = MyEvent()
+    assert repr(event) == "MyEvent(name='my_event')"

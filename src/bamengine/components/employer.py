@@ -1,11 +1,18 @@
 # src/bamengine/components/employer.py
 from dataclasses import dataclass, field
+from typing import Optional
 
+from bamengine.core import Role
 from bamengine.typing import Float1D, Idx1D, Idx2D, Int1D
 
 
 @dataclass(slots=True)
-class Employer:
+class Employer(Role):
+    """
+    Employer role for agents.
+
+    Represents an entity that is able to hire labor and pay wages.
+    """
 
     desired_labor: Int1D
     current_labor: Int1D
@@ -13,11 +20,12 @@ class Employer:
     wage_bill: Float1D
     n_vacancies: Int1D
 
-    total_funds: Float1D  # shared view with Borrower
+    # Shared view with Borrower role (same array in memory)
+    total_funds: Float1D
 
     # Scratch queues
     recv_job_apps_head: Idx1D
     recv_job_apps: Idx2D  # shape (n_firms, n_households)
 
-    # Scratch buffer
-    wage_shock: Float1D | None = field(default=None, repr=False)
+    # Scratch buffer (optional for performance)
+    wage_shock: Optional[Float1D] = field(default=None, repr=False)
