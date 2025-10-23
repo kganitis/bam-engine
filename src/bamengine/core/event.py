@@ -52,13 +52,15 @@ class Event(ABC):
         Parameters
         ----------
         name : str, optional
-            Custom name for the event. If not provided, uses the class name.
+            Custom name for the event.
+            If not provided, uses the class name converted to snake_case.
         **kwargs
             Additional keyword arguments passed to parent __init_subclass__.
         """
         super(Event, cls).__init_subclass__(**kwargs)
 
-        # Use custom name if provided, otherwise preserve existing name or use cls name
+        # Use custom name if provided, otherwise preserve existing name
+        # or use cls name converted to snake_case
         # This handles the case where @dataclass(slots=True) creates a new class
         # and triggers __init_subclass__ a second time without the custom name
         if name is not None:

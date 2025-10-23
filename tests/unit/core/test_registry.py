@@ -27,7 +27,7 @@ def clean_registry():
     clear_registry()
 
 
-def test_role_auto_registration_via_metaclass(clean_registry):
+def test_role_auto_registration(clean_registry):
     """Test that roles are auto-registered via __init_subclass__ (no decorator)."""
 
     @dataclass(slots=True)
@@ -54,7 +54,7 @@ def test_role_custom_name(clean_registry):
     assert MyRole.__name__ == "MyRole"  # Class name unchanged
 
 
-def test_event_auto_registration():
+def test_event_auto_registration(clean_registry):
     """Test that events are auto-registered via __init_subclass__ (no decorator)."""
 
     class MyEvent(Event):
@@ -65,7 +65,7 @@ def test_event_auto_registration():
     assert retrieved is MyEvent
 
 
-def test_event_custom_name():
+def test_event_custom_name(clean_registry):
     """Test that events can have custom names during class definition."""
 
     @dataclass(slots=True)
@@ -88,37 +88,37 @@ def test_last_registration_wins_role(clean_registry):
     # The second class replaces the first in the registry.
 
     @dataclass(slots=True)
-    class MyRole(Role):
+    class FirstRole(Role, name="MyRole"):
         values: Float1D
 
     # This replaces the previous MyRole
     @dataclass(slots=True)
-    class MyRole(Role):  # noqa: F811
+    class SecondRole(Role, name="MyRole"):
         data: Float1D
 
     retrieved = get_role("MyRole")
-    assert retrieved.__name__ == "MyRole"
-    # CLAUDE fix Unresolved attribute reference '__dataclass_fields__' for class 'type'
+    assert retrieved.__name__ == "SecondRole"
+    # noinspection PyUnresolvedReferences
     assert "data" in retrieved.__dataclass_fields__
 
 
 # noinspection PyUnusedLocal
-def test_last_registration_wins_event():
+def test_last_registration_wins_event(clean_registry):
     """Test that last event registration overwrites previous (auto-registration)."""
 
     @dataclass(slots=True)
-    class MyEvent(Event):
+    class FirstEvent(Event, name="my_event"):
         def execute(self, sim):
             pass
 
     # This replaces the previous MyEvent
     @dataclass(slots=True)
-    class MyEvent(Event):  # noqa: F811
+    class SecondEvent(Event, name="my_event"):
         def execute(self, sim):
             pass
 
     retrieved = get_event("my_event")
-    assert retrieved.__name__ == "MyEvent"
+    assert retrieved.__name__ == "SecondEvent"
     assert "execute" in dir(retrieved)
 
 
@@ -128,7 +128,7 @@ def test_get_role_not_found(clean_registry):
         get_role("NonExistent")
 
 
-def test_get_event_not_found():
+def test_get_event_not_found(clean_registry):
     """Test clear error when event not found."""
     with pytest.raises(KeyError, match="Event 'NonExistent' not found"):
         get_event("NonExistent")
@@ -153,7 +153,7 @@ def test_list_roles(clean_registry):
 
 
 # noinspection PyUnusedLocal
-def test_list_events():
+def test_list_events(clean_registry):
     """Test listing all registered events (auto-registration)."""
 
     @dataclass(slots=True)
