@@ -2,7 +2,7 @@
 """
 Reusable builders for component instances in unit / property tests.
 
-* They construct the **full** dataclasses from `bamengine.components`.
+* They construct the **full** dataclasses from `bamengine.roles`.
 * All vectors are initialised with small, deterministic defaults.
 * You can override any field via keyword arguments.
 
@@ -18,7 +18,7 @@ from typing import Any
 
 import numpy as np
 
-from bamengine.components import (
+from bamengine.roles import (
     Borrower,
     Consumer,
     Economy,

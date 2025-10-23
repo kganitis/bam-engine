@@ -7,7 +7,7 @@ import numpy as np
 from numpy.random import Generator, default_rng
 
 from bamengine import _logging_ext
-from bamengine.components import Employer, LoanBook, Producer
+from bamengine.roles import Employer, LoanBook, Producer
 
 log = _logging_ext.getLogger(__name__)
 

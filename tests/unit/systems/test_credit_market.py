@@ -12,7 +12,7 @@ from hypothesis import strategies as st
 from numpy.random import Generator, default_rng
 from numpy.typing import NDArray
 
-from bamengine.components import Borrower, Lender, LoanBook
+from bamengine.roles import Borrower, Lender, LoanBook
 
 # noinspection PyProtectedMember
 from bamengine.systems.credit_market import (

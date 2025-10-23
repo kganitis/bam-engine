@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from bamengine.components import Employer, Worker
+from bamengine.roles import Employer, Worker
 from bamengine.systems.production import (
     # firms_decide_price,
     firms_pay_wages,

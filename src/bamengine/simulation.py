@@ -11,7 +11,7 @@ import yaml
 from numpy.random import Generator, default_rng
 
 from bamengine._logging_ext import getLogger
-from bamengine.components import (
+from bamengine.roles import (
     Borrower,
     Consumer,
     Economy,

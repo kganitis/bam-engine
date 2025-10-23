@@ -7,7 +7,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from bamengine.components import Borrower, Lender, LoanBook
+from bamengine.roles import Borrower, Lender, LoanBook
 from bamengine.systems.revenue import (
     firms_collect_revenue,
     firms_pay_dividends,

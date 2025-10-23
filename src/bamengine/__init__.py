@@ -10,7 +10,7 @@ Public surface
 >>> sim = be.Simulation.init(n_firms=10, n_households=50)
 >>> sim.step()
 
-Everything else (`bamengine.components`, `bamengine.systems`, …) is **internal**
+Everything else (`bamengine.roles`, `bamengine.systems`, …) is **internal**
 and may change without notice.
 """
 
