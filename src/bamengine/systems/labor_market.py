@@ -643,7 +643,7 @@ def firms_calc_wage_bill(emp: Employer, wrk: Worker) -> None:
     )
 
     total_wage_bill = emp.wage_bill.sum()
-    avg_wage_of_employed = wrk.wage[employed_mask].mean()
+    avg_wage_of_employed = wrk.wage[employed_mask].mean() if num_employed > 0 else 0.0
     log.info(
         f"  Total economy-wide wage bill calculated: {total_wage_bill:,.2f} "
         f"(Avg wage for employed workers: {avg_wage_of_employed:.3f})"
