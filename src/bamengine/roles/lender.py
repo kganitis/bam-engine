@@ -1,4 +1,4 @@
-# src/bamengine/components/lender.py
+# src/bamengine/roles/lender.py
 from dataclasses import dataclass, field
 from typing import Optional
 

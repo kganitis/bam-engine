@@ -1,4 +1,4 @@
-# src/bamengine/components/consumer.py
+# src/bamengine/roles/consumer.py
 from dataclasses import dataclass
 
 from bamengine.core import Role

@@ -19,8 +19,8 @@ from bamengine.core.registry import list_roles, get_role
 
 def test_all_roles_registered():
     """Verify all BAM roles are in registry."""
-    # Import all components to ensure they're loaded
-    from bamengine.components import (
+    # Import all roles to ensure they're loaded
+    from bamengine.roles import (
         Producer,
         Employer,
         Borrower,
@@ -52,7 +52,7 @@ def test_all_roles_registered():
 
 def test_role_instantiation_via_registry():
     """Test creating role instances via registry lookup."""
-    from bamengine.components import Employer
+    from bamengine.roles import Employer
 
     # Ensure Employer is in registry (in case it was cleared)
     if "Employer" not in list_roles():
@@ -84,7 +84,7 @@ def test_role_instantiation_via_registry():
 
 def test_role_has_slots():
     """Test that imported roles have slots enabled."""
-    from bamengine.components import Producer
+    from bamengine.roles import Producer
 
     # Should have __slots__ (via @dataclass(slots=True))
     assert hasattr(Producer, "__slots__")
@@ -105,15 +105,15 @@ def test_role_has_slots():
 
 def test_role_is_dataclass():
     """Test that imported roles are dataclasses."""
-    from bamengine.components import Producer
+    from bamengine.roles import Producer
 
     assert hasattr(Producer, "__dataclass_fields__")
     assert "__init__" in dir(Producer)  # Has generated __init__
 
 
 def test_role_inheritance():
-    """Verify all components inherit from Role."""
-    from bamengine.components import (
+    """Verify all roles inherit from Role."""
+    from bamengine.roles import (
         Producer,
         Worker,
         Lender,

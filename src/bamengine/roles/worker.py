@@ -1,4 +1,4 @@
-# src/bamengine/components/worker.py
+# src/bamengine/roles/worker.py
 from dataclasses import dataclass
 
 from bamengine.core import Role

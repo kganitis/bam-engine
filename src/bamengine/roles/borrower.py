@@ -1,4 +1,4 @@
-# src/bamengine/components/borrower.py
+# src/bamengine/roles/borrower.py
 from dataclasses import dataclass
 
 from bamengine.core import Role

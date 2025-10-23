@@ -10,7 +10,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from numpy.random import Generator, default_rng
 
-from bamengine.components import Consumer, Producer
+from bamengine.roles import Consumer, Producer
 from bamengine.systems.goods_market import (
     consumers_calc_propensity,
     consumers_decide_firms_to_visit,
@@ -29,7 +29,7 @@ def _mini_state(
     seed: int = 0,
 ) -> tuple[Consumer, Producer, Generator, int]:
     """
-    Return Consumer & Producer components plus an RNG and queue width *Z*.
+    Return Consumer & Producer roles plus an RNG and queue width *Z*.
     """
     rng = default_rng(seed)
     con = mock_consumer(

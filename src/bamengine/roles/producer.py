@@ -1,4 +1,4 @@
-# src/bamengine/components/producer.py
+# src/bamengine/roles/producer.py
 from dataclasses import dataclass, field
 from typing import Optional
 

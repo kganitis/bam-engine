@@ -11,7 +11,7 @@ import numpy as np
 from numpy.random import Generator, default_rng
 
 from bamengine import _logging_ext
-from bamengine.components import Borrower, Employer, Lender, LoanBook, Worker
+from bamengine.roles import Borrower, Employer, Lender, LoanBook, Worker
 from bamengine.typing import Idx1D
 from bamengine.utils import select_top_k_indices_sorted
 

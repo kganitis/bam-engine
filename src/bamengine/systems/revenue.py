@@ -9,7 +9,7 @@ import logging
 import numpy as np
 
 from bamengine import _logging_ext
-from bamengine.components import Borrower, Lender, LoanBook, Producer
+from bamengine.roles import Borrower, Lender, LoanBook, Producer
 
 _EPS = 1.0e-9
 

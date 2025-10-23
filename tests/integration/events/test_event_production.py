@@ -9,7 +9,7 @@ The two tests below exercise the full production round on the *tiny* simulation:
 
 2. test_production_post_state_consistency
    – deeper invariants that involve contract expiration and labour
-     book-keeping across Worker ↔ Employer components.
+     book-keeping across Worker ↔ Employer roles.
 """
 from __future__ import annotations
 

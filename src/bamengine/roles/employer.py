@@ -1,4 +1,4 @@
-# src/bamengine/components/employer.py
+# src/bamengine/roles/employer.py
 from dataclasses import dataclass, field
 from typing import Optional
 

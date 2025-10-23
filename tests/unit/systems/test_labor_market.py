@@ -14,7 +14,7 @@ from hypothesis import strategies as st
 from numpy.random import Generator, default_rng
 from numpy.typing import NDArray
 
-from bamengine.components import Employer, Worker
+from bamengine.roles import Employer, Worker
 
 # noinspection PyProtectedMember
 from bamengine.systems.labor_market import (
@@ -345,7 +345,7 @@ def test_workers_send_one_round() -> None:
     firm's inbound queue and advance her head pointer by exactly +1.
     """
     M = 2
-    # build minimal components
+    # build minimal roles
     emp = mock_employer(
         n=1,
         queue_m=M,
@@ -744,7 +744,7 @@ def test_hire_invariants_with_duplicates(
     n_firms, M, V_in, n_workers, q_raw = random_case
     vacancies: NDArray[np.int64] = V_in
 
-    # build minimal components
+    # build minimal roles
     emp = mock_employer(
         n=n_firms,
         queue_m=M,
