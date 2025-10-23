@@ -6,11 +6,17 @@ from importlib import resources
 from pathlib import Path
 from typing import Any, Dict, Mapping
 
+# noinspection PyPackageRequirements
 import numpy as np
+
+# noinspection PyPackageRequirements
 import yaml
+
+# noinspection PyPackageRequirements
 from numpy.random import Generator, default_rng
 
 from bamengine._logging_ext import getLogger
+from bamengine.config import Config
 from bamengine.roles import (
     Borrower,
     Consumer,
@@ -107,7 +113,7 @@ def _validate_float1d(
     name: str,
     arr: float | Float1D,
     expected_len: int,
-) -> Float1D | float:
+) -> float | Float1D:
     """Ensure Float1D has the right length; scalars are accepted verbatim."""
     if np.isscalar(arr):
         return float(arr)  # type: ignore[arg-type]
@@ -141,6 +147,9 @@ class Simulation:
     con: Consumer
     lb: LoanBook
 
+    # configuration
+    config: Config
+
     # population sizes
     n_firms: int
     n_households: int
@@ -150,19 +159,56 @@ class Simulation:
     n_periods: int  # run length
     t: int  # current period
 
-    # simulation parameters
-    h_rho: float  # max production-growth shock
-    h_xi: float  # max wage-growth shock
-    h_phi: float  # max bank operational costs shock
-    h_eta: float  # max price-growth shock
-    max_M: int  # max job applications per unemployed worker
-    max_H: int  # max loan applications per firm
-    max_Z: int  # max firm visits per consumer
+    # Backward-compatible properties (delegate to config)
+    @property
+    def h_rho(self) -> float:
+        """Max production-growth shock."""
+        return self.config.h_rho
 
-    # economy level parameters
-    theta: int  # job contract length θ
-    beta: float  # propensity to consume exponent β
-    delta: float  # dividend payout ratio δ (DPR)
+    @property
+    def h_xi(self) -> float:
+        """Max wage-growth shock."""
+        return self.config.h_xi
+
+    @property
+    def h_phi(self) -> float:
+        """Max bank operational costs shock."""
+        return self.config.h_phi
+
+    @property
+    def h_eta(self) -> float:
+        """Max price-growth shock."""
+        return self.config.h_eta
+
+    @property
+    def max_M(self) -> int:
+        """Max job applications per unemployed worker."""
+        return self.config.max_M
+
+    @property
+    def max_H(self) -> int:
+        """Max loan applications per firm."""
+        return self.config.max_H
+
+    @property
+    def max_Z(self) -> int:
+        """Max firm visits per consumer."""
+        return self.config.max_Z
+
+    @property
+    def theta(self) -> int:
+        """Job contract length θ."""
+        return self.config.theta
+
+    @property
+    def beta(self) -> float:
+        """Propensity to consume exponent β."""
+        return self.config.beta
+
+    @property
+    def delta(self) -> float:
+        """Dividend payout ratio δ (DPR)."""
+        return self.config.delta
 
     # Constructor
     # ---------------------------------------------------------------------
@@ -182,39 +228,39 @@ class Simulation:
             3. explicit keyword arguments (**overrides)
         """
         # 1 + 2 + 3 → one merged dict
-        cfg: Dict[str, Any] = _package_defaults()
-        cfg.update(_read_yaml(config))
-        cfg.update(overrides)
+        cfg_dict: Dict[str, Any] = _package_defaults()
+        cfg_dict.update(_read_yaml(config))
+        cfg_dict.update(overrides)
 
         # pull required scalars
-        n_firms = int(cfg.pop("n_firms"))
-        n_households = int(cfg.pop("n_households"))
-        n_banks = int(cfg.pop("n_banks"))
+        n_firms = int(cfg_dict.pop("n_firms"))
+        n_households = int(cfg_dict.pop("n_households"))
+        n_banks = int(cfg_dict.pop("n_banks"))
 
         # Random-seed handling
-        seed_val = cfg.pop("seed", None)
+        seed_val = cfg_dict.pop("seed", None)
         rng: Generator = (
             seed_val if isinstance(seed_val, Generator) else default_rng(seed_val)
         )
 
         # vector params (validate size)
-        cfg["net_worth_init"] = _validate_float1d(
-            "net_worth_init", cfg.get("net_worth_init", 10.0), n_firms
+        cfg_dict["net_worth_init"] = _validate_float1d(
+            "net_worth_init", cfg_dict.get("net_worth_init", 10.0), n_firms
         )
-        cfg["production_init"] = _validate_float1d(
-            "production_init", cfg.get("production_init", 1.0), n_firms
+        cfg_dict["production_init"] = _validate_float1d(
+            "production_init", cfg_dict.get("production_init", 1.0), n_firms
         )
-        cfg["price_init"] = _validate_float1d(
-            "price_init", cfg.get("price_init", 1.5), n_firms
+        cfg_dict["price_init"] = _validate_float1d(
+            "price_init", cfg_dict.get("price_init", 1.5), n_firms
         )
-        cfg["wage_offer_init"] = _validate_float1d(
-            "wage_offer_init", cfg.get("wage_offer_init", 1.0), n_firms
+        cfg_dict["wage_offer_init"] = _validate_float1d(
+            "wage_offer_init", cfg_dict.get("wage_offer_init", 1.0), n_firms
         )
-        cfg["savings_init"] = _validate_float1d(
-            "savings_init", cfg.get("savings_init", 1.0), n_households
+        cfg_dict["savings_init"] = _validate_float1d(
+            "savings_init", cfg_dict.get("savings_init", 1.0), n_households
         )
-        cfg["equity_base_init"] = _validate_float1d(
-            "equity_base_init", cfg.get("equity_base_init", 10_000.0), n_banks
+        cfg_dict["equity_base_init"] = _validate_float1d(
+            "equity_base_init", cfg_dict.get("equity_base_init", 10_000.0), n_banks
         )
 
         # delegate to private constructor
@@ -223,7 +269,7 @@ class Simulation:
             n_firms=n_firms,
             n_households=n_households,
             n_banks=n_banks,
-            **cfg,  # all remaining, size-checked parameters
+            **cfg_dict,  # all remaining, size-checked parameters
         )
 
     @classmethod
@@ -373,20 +419,8 @@ class Simulation:
             shop_visits_targets=shop_visits_targets,
         )
 
-        return cls(
-            ec=ec,
-            prod=prod,
-            wrk=wrk,
-            emp=emp,
-            bor=bor,
-            lend=lend,
-            lb=LoanBook(),
-            con=con,
-            n_firms=p["n_firms"],
-            n_households=p["n_households"],
-            n_banks=p["n_banks"],
-            n_periods=p["n_periods"],
-            t=0,
+        # Create config object
+        cfg = Config(
             h_rho=p["h_rho"],
             h_xi=p["h_xi"],
             h_phi=p["h_phi"],
@@ -397,6 +431,24 @@ class Simulation:
             theta=p["theta"],
             beta=p["beta"],
             delta=p["delta"],
+            cap_factor=p.get("cap_factor"),
+        )
+
+        return cls(
+            ec=ec,
+            prod=prod,
+            wrk=wrk,
+            emp=emp,
+            bor=bor,
+            lend=lend,
+            lb=LoanBook(),
+            con=con,
+            config=cfg,
+            n_firms=p["n_firms"],
+            n_households=p["n_households"],
+            n_banks=p["n_banks"],
+            n_periods=p["n_periods"],
+            t=0,
             rng=rng,
         )
 
