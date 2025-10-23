@@ -15,6 +15,7 @@ from bamengine.utils import trimmed_weighted_mean
 log = _logging_ext.getLogger(__name__)
 
 
+# TODO Not unit tested yet
 def calc_unemployment_rate(
     ec: Economy,
     wrk: Worker,
