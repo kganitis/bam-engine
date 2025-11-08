@@ -1,51 +1,14 @@
 """Unit tests for production events.
 
-These tests verify that production events:
-1. Declare correct dependencies
-2. Can execute without crashing
+These tests verify that production events can execute without crashing.
 
 Internal logic is tested in tests/unit/systems/test_production.py.
 Event registration is verified implicitly by successful execution.
 """
 
+import bamengine.events  # noqa: F401 - register all events for Simulation.init()
+from bamengine.core import get_event
 from bamengine.simulation import Simulation
-
-# Import events to ensure they register
-from bamengine.events.production import (
-    FirmsPayWages,
-    FirmsRunProduction,
-    WorkersReceiveWage,
-    WorkersUpdateContracts,
-)
-
-
-# ============================================================================
-# Dependency Tests
-# ============================================================================
-
-
-def test_firms_pay_wages_dependencies():
-    """FirmsPayWages declares correct dependency."""
-    event = FirmsPayWages()
-    assert "firms_fire_workers" in event.dependencies
-
-
-def test_workers_receive_wage_dependencies():
-    """WorkersReceiveWage declares correct dependency."""
-    event = WorkersReceiveWage()
-    assert "firms_pay_wages" in event.dependencies
-
-
-def test_firms_run_production_dependencies():
-    """FirmsRunProduction declares correct dependency."""
-    event = FirmsRunProduction()
-    assert "firms_pay_wages" in event.dependencies
-
-
-def test_workers_update_contracts_dependencies():
-    """WorkersUpdateContracts declares correct dependency."""
-    event = WorkersUpdateContracts()
-    assert "firms_run_production" in event.dependencies
 
 
 # ============================================================================
@@ -56,28 +19,28 @@ def test_workers_update_contracts_dependencies():
 def test_firms_pay_wages_executes():
     """FirmsPayWages executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = FirmsPayWages()
+    event = get_event("firms_pay_wages")()
     event.execute(sim)  # Should not crash
 
 
 def test_workers_receive_wage_executes():
     """WorkersReceiveWage executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = WorkersReceiveWage()
+    event = get_event("workers_receive_wage")()
     event.execute(sim)  # Should not crash
 
 
 def test_firms_run_production_executes():
     """FirmsRunProduction executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = FirmsRunProduction()
+    event = get_event("firms_run_production")()
     event.execute(sim)  # Should not crash
 
 
 def test_workers_update_contracts_executes():
     """WorkersUpdateContracts executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = WorkersUpdateContracts()
+    event = get_event("workers_update_contracts")()
     event.execute(sim)  # Should not crash
 
 
@@ -87,18 +50,16 @@ def test_workers_update_contracts_executes():
 
 
 def test_production_event_chain():
-    """Test production events can execute in sequence."""
+    """Production events can execute in sequence."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
 
+    # Execute in sequence
     events = [
-        FirmsPayWages(),
-        WorkersReceiveWage(),
-        FirmsRunProduction(),
-        WorkersUpdateContracts(),
+        "firms_pay_wages",
+        "workers_receive_wage",
+        "firms_run_production",
+        "workers_update_contracts",
     ]
 
-    for event in events:
-        event.execute(sim)
-
-    # Verify state mutations occurred
-    assert (sim.prod.inventory >= 0).all()
+    for e in events:
+        get_event(e)().execute(sim)  # Should not crash

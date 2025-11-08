@@ -65,11 +65,6 @@ class AdjustMinimumWage(Event):
     bamengine.systems.labor_market.adjust_minimum_wage : Underlying logic
     """
 
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("calc_annual_inflation_rate",)
-
     def execute(self, sim: Simulation) -> None:
         """Execute minimum wage adjustment."""
         from bamengine.systems.labor_market import adjust_minimum_wage
@@ -100,11 +95,6 @@ class FirmsDecideWageOffer(Event):
     --------
     bamengine.systems.labor_market.firms_decide_wage_offer : Underlying logic
     """
-
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("firms_decide_vacancies",)
 
     def execute(self, sim: Simulation) -> None:
         """Execute wage offer decision."""
@@ -138,11 +128,6 @@ class WorkersDecideFirmsToApply(Event):
     --------
     bamengine.systems.labor_market.workers_decide_firms_to_apply : Underlying logic
     """
-
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("firms_decide_wage_offer",)
 
     def execute(self, sim: Simulation) -> None:
         """Execute worker application decision."""
@@ -179,11 +164,6 @@ class WorkersSendOneRound(Event):
     bamengine.systems.labor_market.workers_send_one_round : Underlying logic
     """
 
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("workers_decide_firms_to_apply",)
-
     def execute(self, sim: Simulation) -> None:
         """Execute one application sending round."""
         from bamengine.systems.labor_market import workers_send_one_round
@@ -213,11 +193,6 @@ class FirmsHireWorkers(Event):
     --------
     bamengine.systems.labor_market.firms_hire_workers : Underlying logic
     """
-
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("workers_send_one_round",)
 
     def execute(self, sim: Simulation) -> None:
         """Execute hiring decision."""
@@ -251,11 +226,6 @@ class FirmsCalcWageBill(Event):
     --------
     bamengine.systems.labor_market.firms_calc_wage_bill : Underlying logic
     """
-
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("firms_hire_workers",)
 
     def execute(self, sim: Simulation) -> None:
         """Execute wage bill calculation."""

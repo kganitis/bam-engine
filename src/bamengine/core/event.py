@@ -25,25 +25,26 @@ class Event(ABC):
     Base class for all events (systems) in the BAM-ECS architecture.
 
     An Event encapsulates economic logic that operates on roles and mutates
-    simulation state in-place. Events are executed by the Pipeline in a
-    specific order determined by dependencies.
+    simulation state in-place. Events are executed by the Pipeline in the
+    exact order specified.
 
     Design Guidelines
     -----------------
     - Inherit from Event and implement `execute()` method
     - Use `name` class variable for unique identification
-    - Declare dependencies via `dependencies` property (optional)
     - Events receive full Simulation instance for maximum flexibility
 
     Notes
     -----
     Events are registered automatically via __init_subclass__ hook.
+    The order of event execution is critical and must be explicitly
+    defined in the pipeline configuration.
     """
 
     # Class variable for event name (set by subclass)
-    name: ClassVar[str | None] = None
+    name: ClassVar[str] = ""
 
-    def __init_subclass__(cls, name: str | None = None, **kwargs: Any) -> None:
+    def __init_subclass__(cls, name: str = "", **kwargs: Any) -> None:
         """
         Auto-register Event subclasses in the global registry.
 
@@ -63,9 +64,9 @@ class Event(ABC):
         # or use cls name converted to snake_case
         # This handles the case where @dataclass(slots=True) creates a new class
         # and triggers __init_subclass__ a second time without the custom name
-        if name is not None:
+        if name != "":
             cls.name = name
-        elif cls.name is None:
+        elif cls.name == "":
             cls.name = _camel_to_snake(cls.__name__)
 
         # Auto-register in global registry
@@ -92,22 +93,6 @@ class Event(ABC):
         """
         pass
 
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """
-        Events that must run before this one.
-
-        Override this property in subclasses to declare dependencies.
-
-        Returns
-        -------
-        tuple[str, ...]
-            Tuple of event names that must execute before this event.
-        """
-        return ()
-
     def __repr__(self) -> str:
         """Provide informative repr."""
-        deps = self.dependencies
-        dep_str = f", deps={len(deps)}" if deps else ""
-        return f"{self.__class__.__name__}(name={self.name!r}{dep_str})"
+        return f"{self.__class__.__name__}(name={self.name!r})"

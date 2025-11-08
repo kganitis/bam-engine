@@ -36,11 +36,6 @@ class UpdateAvgMktPrice(Event):
     bamengine.systems.production.update_avg_mkt_price : Underlying logic
     """
 
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("firms_adjust_price",)
-
     def execute(self, sim: Simulation) -> None:
         """Execute average market price update."""
         from bamengine.systems.production import update_avg_mkt_price
@@ -68,11 +63,6 @@ class CalcUnemploymentRate(Event):
     --------
     bamengine.systems.production.calc_unemployment_rate : Underlying logic
     """
-
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("spawn_replacement_banks",)
 
     def execute(self, sim: Simulation) -> None:
         """Execute unemployment rate calculation."""

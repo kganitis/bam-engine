@@ -14,34 +14,6 @@ class DummyEvent(Event):
         pass
 
 
-def test_event_dependencies_default_empty():
-    """Event dependencies default to empty tuple."""
-
-    class SimpleEvent(Event):
-        def execute(self, sim):
-            pass
-
-    event = SimpleEvent()
-    assert event.dependencies == ()
-
-
-def test_event_dependencies_custom():
-    """Event can declare custom dependencies."""
-
-    class DependentEvent(Event):
-        name = "dependent"
-
-        def execute(self, sim):
-            pass
-
-        @property
-        def dependencies(self) -> tuple[str, ...]:
-            return "event_a", "event_b"
-
-    event = DependentEvent()
-    assert event.dependencies == ("event_a", "event_b")
-
-
 def test_event_slots():
     """Test that event uses slots (no __dict__)."""
     event = DummyEvent()

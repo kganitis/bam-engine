@@ -15,8 +15,11 @@ import yaml
 # noinspection PyPackageRequirements
 from numpy.random import Generator, default_rng
 
+import bamengine.events  # noqa: F401 - needed to register events
 from bamengine._logging_ext import getLogger
 from bamengine.config import Config
+from bamengine.core.default_pipeline import create_default_pipeline
+from bamengine.core.pipeline import Pipeline
 from bamengine.roles import (
     Borrower,
     Consumer,
@@ -149,6 +152,9 @@ class Simulation:
 
     # configuration
     config: Config
+
+    # event pipeline
+    pipeline: Pipeline
 
     # population sizes
     n_firms: int
@@ -434,6 +440,11 @@ class Simulation:
             cap_factor=p.get("cap_factor"),
         )
 
+        # Create default event pipeline
+        pipeline = create_default_pipeline(
+            max_M=p["max_M"], max_H=p["max_H"], max_Z=p["max_Z"]
+        )
+
         return cls(
             ec=ec,
             prod=prod,
@@ -444,6 +455,7 @@ class Simulation:
             lb=LoanBook(),
             con=con,
             config=cfg,
+            pipeline=pipeline,
             n_firms=p["n_firms"],
             n_households=p["n_households"],
             n_banks=p["n_banks"],
@@ -468,7 +480,36 @@ class Simulation:
             self.step()
 
     def step(self) -> None:
-        """Advance the economy by exactly **one** period."""
+        """
+        Advance the economy by exactly one period using the event pipeline.
+
+        This method executes all events in the pipeline in dependency-resolved
+        order. The pipeline can be customized by users before calling step().
+
+        See Also
+        --------
+        _step_legacy : Legacy implementation for backward compatibility
+        pipeline : Event pipeline attribute that can be modified
+        """
+        if self.ec.destroyed:
+            return
+
+        self.t += 1
+
+        # Execute pipeline
+        self.pipeline.execute(self)
+
+        if self.ec.destroyed:
+            log.info("SIMULATION TERMINATED")
+
+    def _step_legacy(self) -> None:
+        """
+        Legacy step implementation (pre-pipeline).
+
+        This method is kept for backward compatibility and golden master testing.
+        It will be removed in a future version once pipeline implementation
+        is fully validated.
+        """
 
         # TODO
         #  - Wrap for-loops into their own systems

@@ -66,11 +66,6 @@ class BanksDecideInterestRate(Event):
     bamengine.systems.credit_market.banks_decide_interest_rate : Underlying logic
     """
 
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("banks_decide_credit_supply",)
-
     def execute(self, sim: Simulation) -> None:
         """Execute interest rate decision."""
         from bamengine.systems.credit_market import banks_decide_interest_rate
@@ -102,11 +97,6 @@ class FirmsDecideCreditDemand(Event):
     bamengine.systems.credit_market.firms_decide_credit_demand : Underlying logic
     """
 
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("firms_calc_wage_bill",)
-
     def execute(self, sim: Simulation) -> None:
         """Execute credit demand decision."""
         from bamengine.systems.credit_market import firms_decide_credit_demand
@@ -132,11 +122,6 @@ class FirmsCalcCreditMetrics(Event):
     --------
     bamengine.systems.credit_market.firms_calc_credit_metrics : Underlying logic
     """
-
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("firms_decide_credit_demand",)
 
     def execute(self, sim: Simulation) -> None:
         """Execute credit metrics calculation."""
@@ -164,11 +149,6 @@ class FirmsPrepareLoanApplications(Event):
     --------
     bamengine.systems.credit_market.firms_prepare_loan_applications : Underlying logic
     """
-
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("firms_calc_credit_metrics", "banks_decide_interest_rate")
 
     def execute(self, sim: Simulation) -> None:
         """Execute loan application preparation."""
@@ -204,11 +184,6 @@ class FirmsSendOneLoanApp(Event):
     bamengine.systems.credit_market.firms_send_one_loan_app : Underlying logic
     """
 
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("firms_prepare_loan_applications",)
-
     def execute(self, sim: Simulation) -> None:
         """Execute one loan application sending round."""
         from bamengine.systems.credit_market import firms_send_one_loan_app
@@ -237,11 +212,6 @@ class BanksProvideLoans(Event):
     --------
     bamengine.systems.credit_market.banks_provide_loans : Underlying logic
     """
-
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("firms_send_one_loan_app",)
 
     def execute(self, sim: Simulation) -> None:
         """Execute loan provision."""
@@ -274,11 +244,6 @@ class FirmsFireWorkers(Event):
     --------
     bamengine.systems.credit_market.firms_fire_workers : Underlying logic
     """
-
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("banks_provide_loans",)
 
     def execute(self, sim: Simulation) -> None:
         """Execute worker firing decision."""

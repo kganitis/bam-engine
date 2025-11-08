@@ -35,11 +35,6 @@ class FirmsUpdateNetWorth(Event):
     bamengine.systems.bankruptcy.firms_update_net_worth : Underlying logic
     """
 
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("firms_pay_dividends",)
-
     def execute(self, sim: Simulation) -> None:
         """Execute net worth update."""
         from bamengine.systems.bankruptcy import firms_update_net_worth
@@ -65,11 +60,6 @@ class MarkBankruptFirms(Event):
     --------
     bamengine.systems.bankruptcy.mark_bankrupt_firms : Underlying logic
     """
-
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("firms_update_net_worth",)
 
     def execute(self, sim: Simulation) -> None:
         """Execute bankruptcy marking for firms."""
@@ -104,11 +94,6 @@ class MarkBankruptBanks(Event):
     bamengine.systems.bankruptcy.mark_bankrupt_banks : Underlying logic
     """
 
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("mark_bankrupt_firms",)
-
     def execute(self, sim: Simulation) -> None:
         """Execute bankruptcy marking for banks."""
         from bamengine.systems.bankruptcy import mark_bankrupt_banks
@@ -134,11 +119,6 @@ class SpawnReplacementFirms(Event):
     --------
     bamengine.systems.bankruptcy.spawn_replacement_firms : Underlying logic
     """
-
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("mark_bankrupt_firms",)
 
     def execute(self, sim: Simulation) -> None:
         """Execute firm replacement spawning."""
@@ -171,11 +151,6 @@ class SpawnReplacementBanks(Event):
     --------
     bamengine.systems.bankruptcy.spawn_replacement_banks : Underlying logic
     """
-
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("mark_bankrupt_banks",)
 
     def execute(self, sim: Simulation) -> None:
         """Execute bank replacement spawning."""

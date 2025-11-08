@@ -70,11 +70,6 @@ class FirmsCalcBreakevenPrice(Event):
     bamengine.systems.planning.firms_calc_breakeven_price : Underlying logic
     """
 
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("firms_decide_desired_production",)
-
     def execute(self, sim: Simulation) -> None:
         """Execute breakeven price calculation."""
         from bamengine.systems.planning import firms_calc_breakeven_price
@@ -108,11 +103,6 @@ class FirmsAdjustPrice(Event):
     bamengine.systems.planning.firms_adjust_price : Underlying logic
     """
 
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("firms_calc_breakeven_price",)
-
     def execute(self, sim: Simulation) -> None:
         """Execute price adjustment decision."""
         from bamengine.systems.planning import firms_adjust_price
@@ -144,11 +134,6 @@ class FirmsDecideDesiredLabor(Event):
     bamengine.systems.planning.firms_decide_desired_labor : Underlying logic
     """
 
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("firms_decide_desired_production",)
-
     def execute(self, sim: Simulation) -> None:
         """Execute desired labor calculation."""
         from bamengine.systems.planning import firms_decide_desired_labor
@@ -174,11 +159,6 @@ class FirmsDecideVacancies(Event):
     --------
     bamengine.systems.planning.firms_decide_vacancies : Underlying logic
     """
-
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("firms_decide_desired_labor",)
 
     def execute(self, sim: Simulation) -> None:
         """Execute vacancy decision."""
