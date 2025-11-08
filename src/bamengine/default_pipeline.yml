@@ -1,0 +1,66 @@
+# Default BAM Simulation Event Pipeline
+#
+# Events are executed in the exact order listed below.
+#
+# Special syntax for market rounds:
+#   - 'event_name x N' - repeat event N times
+#   - 'event1 <-> event2 x N' - interleave two events N times (event1, event2, event1, event2, ...)
+#
+# Parameters {max_M}, {max_H}, {max_Z} are substituted at runtime.
+
+# TODO integrate with defaults.yml parameters
+events:
+  # Planning phase
+  - firms_decide_desired_production
+  - firms_calc_breakeven_price
+  - firms_adjust_price
+  - update_avg_mkt_price
+  - calc_annual_inflation_rate
+  - firms_decide_desired_labor
+  - firms_decide_vacancies
+
+  # Labor market phase
+  - adjust_minimum_wage
+  - firms_decide_wage_offer
+  - workers_decide_firms_to_apply
+  - workers_send_one_round <-> firms_hire_workers x {max_M}
+  - firms_calc_wage_bill
+
+  # Credit market phase
+  - banks_decide_credit_supply
+  - banks_decide_interest_rate
+  - firms_decide_credit_demand
+  - firms_calc_credit_metrics
+  - firms_prepare_loan_applications
+  - firms_send_one_loan_app <-> banks_provide_loans x {max_H}
+  - firms_fire_workers
+
+  # Production phase
+  - firms_pay_wages
+  - workers_receive_wage
+  - firms_run_production
+  - workers_update_contracts
+
+  # Goods market phase
+  - consumers_calc_propensity
+  - consumers_decide_income_to_spend
+  - consumers_decide_firms_to_visit
+  - consumers_shop_one_round x {max_Z}
+  - consumers_finalize_purchases
+
+  # Revenue phase
+  - firms_collect_revenue
+  - firms_validate_debt_commitments
+  - firms_pay_dividends
+
+  # Bankruptcy phase
+  - firms_update_net_worth
+  - mark_bankrupt_firms
+  - mark_bankrupt_banks
+
+  # Entry phase
+  - spawn_replacement_firms
+  - spawn_replacement_banks
+
+  # End of period
+  - calc_unemployment_rate

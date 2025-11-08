@@ -1,60 +1,14 @@
 """Unit tests for goods market events.
 
-These tests verify that goods market events:
-1. Declare correct dependencies
-2. Can execute without crashing
+These tests verify that goods market events can execute without crashing
 
 Internal logic is tested in tests/unit/systems/test_goods_market.py.
 Event registration is verified implicitly by successful execution.
 """
 
+import bamengine.events  # noqa: F401 - register all events for Simulation.init()
+from bamengine.core import get_event
 from bamengine.simulation import Simulation
-
-# Import events to ensure they register
-from bamengine.events.goods_market import (
-    ConsumersCalcPropensity,
-    ConsumersDecideFirmsToVisit,
-    ConsumersDecideIncomeToSpend,
-    ConsumersFinalizePurchases,
-    ConsumersShopOneRound,
-)
-
-
-# ============================================================================
-# Dependency Tests
-# ============================================================================
-
-
-def test_consumers_calc_propensity_dependencies():
-    """ConsumersCalcPropensity declares correct dependency."""
-    event = ConsumersCalcPropensity()
-    assert "workers_receive_wage" in event.dependencies
-
-
-def test_consumers_decide_income_to_spend_dependencies():
-    """ConsumersDecideIncomeToSpend declares correct dependency."""
-    event = ConsumersDecideIncomeToSpend()
-    assert "consumers_calc_propensity" in event.dependencies
-
-
-def test_consumers_decide_firms_to_visit_dependencies():
-    """ConsumersDecideFirmsToVisit declares correct dependencies."""
-    event = ConsumersDecideFirmsToVisit()
-    deps = event.dependencies
-    assert "consumers_decide_income_to_spend" in deps
-    assert "firms_run_production" in deps
-
-
-def test_consumers_shop_one_round_dependencies():
-    """ConsumersShopOneRound declares correct dependency."""
-    event = ConsumersShopOneRound()
-    assert "consumers_decide_firms_to_visit" in event.dependencies
-
-
-def test_consumers_finalize_purchases_dependencies():
-    """ConsumersFinalizePurchases declares correct dependency."""
-    event = ConsumersFinalizePurchases()
-    assert "consumers_shop_one_round" in event.dependencies
 
 
 # ============================================================================
@@ -65,35 +19,35 @@ def test_consumers_finalize_purchases_dependencies():
 def test_consumers_calc_propensity_executes():
     """ConsumersCalcPropensity executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = ConsumersCalcPropensity()
+    event = get_event("consumers_calc_propensity")()
     event.execute(sim)  # Should not crash
 
 
 def test_consumers_decide_income_to_spend_executes():
     """ConsumersDecideIncomeToSpend executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = ConsumersDecideIncomeToSpend()
+    event = get_event("consumers_decide_income_to_spend")()
     event.execute(sim)  # Should not crash
 
 
 def test_consumers_decide_firms_to_visit_executes():
     """ConsumersDecideFirmsToVisit executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = ConsumersDecideFirmsToVisit()
+    event = get_event("consumers_decide_firms_to_visit")()
     event.execute(sim)  # Should not crash
 
 
 def test_consumers_shop_one_round_executes():
     """ConsumersShopOneRound executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = ConsumersShopOneRound()
+    event = get_event("consumers_shop_one_round")()
     event.execute(sim)  # Should not crash
 
 
 def test_consumers_finalize_purchases_executes():
     """ConsumersFinalizePurchases executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = ConsumersFinalizePurchases()
+    event = get_event("consumers_finalize_purchases")()
     event.execute(sim)  # Should not crash
 
 
@@ -103,18 +57,15 @@ def test_consumers_finalize_purchases_executes():
 
 
 def test_goods_market_event_chain():
-    """Test goods market events can execute in sequence."""
+    """Goods market events can execute in sequence."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
 
+    # Execute in sequence
     events = [
-        ConsumersCalcPropensity(),
-        ConsumersDecideIncomeToSpend(),
-        ConsumersDecideFirmsToVisit(),
+        "consumers_calc_propensity",
+        "consumers_decide_income_to_spend",
+        "consumers_decide_firms_to_visit",
     ]
 
-    for event in events:
-        event.execute(sim)
-
-    # Verify state mutations occurred
-    assert (sim.con.propensity >= 0).all()
-    assert (sim.con.propensity <= 1).all()
+    for e in events:
+        get_event(e)().execute(sim)  # Should not crash

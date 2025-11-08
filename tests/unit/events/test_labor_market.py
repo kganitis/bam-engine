@@ -1,72 +1,14 @@
 """Unit tests for labor market events.
 
-These tests verify that labor market events:
-1. Declare correct dependencies
-2. Can execute without crashing
+These tests verify that labor market events can execute without crashing.
 
 Internal logic is tested in tests/unit/systems/test_labor_market.py.
 Event registration is verified implicitly by successful execution.
 """
 
+import bamengine.events  # noqa: F401 - register all events for Simulation.init()
+from bamengine.core import get_event
 from bamengine.simulation import Simulation
-
-# Import events to ensure they register
-from bamengine.events.labor_market import (  # noqa: E402
-    AdjustMinimumWage,
-    CalcAnnualInflationRate,
-    FirmsCalcWageBill,
-    FirmsDecideWageOffer,
-    FirmsHireWorkers,
-    WorkersDecideFirmsToApply,
-    WorkersSendOneRound,
-)
-
-
-# ============================================================================
-# Dependency Tests
-# ============================================================================
-
-
-def test_calc_annual_inflation_rate_no_dependencies():
-    """CalcAnnualInflationRate has no dependencies."""
-    event = CalcAnnualInflationRate()
-    assert event.dependencies == ()
-
-
-def test_adjust_minimum_wage_dependencies():
-    """AdjustMinimumWage declares correct dependency."""
-    event = AdjustMinimumWage()
-    assert event.dependencies == ("calc_annual_inflation_rate",)
-
-
-def test_firms_decide_wage_offer_dependencies():
-    """FirmsDecideWageOffer declares correct dependency."""
-    event = FirmsDecideWageOffer()
-    assert event.dependencies == ("firms_decide_vacancies",)
-
-
-def test_workers_decide_firms_to_apply_dependencies():
-    """WorkersDecideFirmsToApply declares correct dependency."""
-    event = WorkersDecideFirmsToApply()
-    assert event.dependencies == ("firms_decide_wage_offer",)
-
-
-def test_workers_send_one_round_dependencies():
-    """WorkersSendOneRound declares correct dependency."""
-    event = WorkersSendOneRound()
-    assert event.dependencies == ("workers_decide_firms_to_apply",)
-
-
-def test_firms_hire_workers_dependencies():
-    """FirmsHireWorkers declares correct dependency."""
-    event = FirmsHireWorkers()
-    assert event.dependencies == ("workers_send_one_round",)
-
-
-def test_firms_calc_wage_bill_dependencies():
-    """FirmsCalcWageBill declares correct dependency."""
-    event = FirmsCalcWageBill()
-    assert event.dependencies == ("firms_hire_workers",)
 
 
 # ============================================================================
@@ -77,49 +19,49 @@ def test_firms_calc_wage_bill_dependencies():
 def test_calc_annual_inflation_rate_executes():
     """CalcAnnualInflationRate executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = CalcAnnualInflationRate()
+    event = get_event("calc_annual_inflation_rate")()
     event.execute(sim)  # Should not crash
 
 
 def test_adjust_minimum_wage_executes():
     """AdjustMinimumWage executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = AdjustMinimumWage()
+    event = get_event("adjust_minimum_wage")()
     event.execute(sim)  # Should not crash
 
 
 def test_firms_decide_wage_offer_executes():
     """FirmsDecideWageOffer executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = FirmsDecideWageOffer()
+    event = get_event("firms_decide_wage_offer")()
     event.execute(sim)  # Should not crash
 
 
 def test_workers_decide_firms_to_apply_executes():
     """WorkersDecideFirmsToApply executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = WorkersDecideFirmsToApply()
+    event = get_event("workers_decide_firms_to_apply")()
     event.execute(sim)  # Should not crash
 
 
 def test_workers_send_one_round_executes():
     """WorkersSendOneRound executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = WorkersSendOneRound()
+    event = get_event("workers_send_one_round")()
     event.execute(sim)  # Should not crash
 
 
 def test_firms_hire_workers_executes():
     """FirmsHireWorkers executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = FirmsHireWorkers()
+    event = get_event("firms_hire_workers")()
     event.execute(sim)  # Should not crash
 
 
 def test_firms_calc_wage_bill_executes():
     """FirmsCalcWageBill executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = FirmsCalcWageBill()
+    event = get_event("firms_calc_wage_bill")()
     event.execute(sim)  # Should not crash
 
 
@@ -129,19 +71,19 @@ def test_firms_calc_wage_bill_executes():
 
 
 def test_labor_market_event_chain_executes():
-    """Labor market events can execute in dependency order."""
+    """Labor market events can execute in sequence."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
 
-    # Execute in dependency order
+    # Execute in sequence
     events = [
-        CalcAnnualInflationRate(),
-        AdjustMinimumWage(),
-        FirmsDecideWageOffer(),
-        WorkersDecideFirmsToApply(),
-        WorkersSendOneRound(),
-        FirmsHireWorkers(),
-        FirmsCalcWageBill(),
+        "calc_annual_inflation_rate",
+        "adjust_minimum_wage",
+        "firms_decide_wage_offer",
+        "workers_decide_firms_to_apply",
+        "workers_send_one_round",
+        "firms_hire_workers",
+        "firms_calc_wage_bill",
     ]
 
-    for event in events:
-        event.execute(sim)  # Should not crash
+    for e in events:
+        get_event(e)().execute(sim)  # Should not crash

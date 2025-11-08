@@ -38,11 +38,6 @@ class ConsumersCalcPropensity(Event):
     bamengine.systems.goods_market.consumers_calc_propensity : Underlying logic
     """
 
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("workers_receive_wage",)
-
     def execute(self, sim: Simulation) -> None:
         """Execute propensity calculation."""
         from bamengine.systems.goods_market import consumers_calc_propensity
@@ -72,11 +67,6 @@ class ConsumersDecideIncomeToSpend(Event):
     bamengine.systems.goods_market.consumers_decide_income_to_spend : Underlying logic
     """
 
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("consumers_calc_propensity",)
-
     def execute(self, sim: Simulation) -> None:
         """Execute spending decision."""
         from bamengine.systems.goods_market import consumers_decide_income_to_spend
@@ -103,11 +93,6 @@ class ConsumersDecideFirmsToVisit(Event):
     --------
     bamengine.systems.goods_market.consumers_decide_firms_to_visit : Underlying logic
     """
-
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("consumers_decide_income_to_spend", "firms_run_production")
 
     def execute(self, sim: Simulation) -> None:
         """Execute firm selection decision."""
@@ -142,11 +127,6 @@ class ConsumersShopOneRound(Event):
     bamengine.systems.goods_market.consumers_shop_one_round : Underlying logic
     """
 
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("consumers_decide_firms_to_visit",)
-
     def execute(self, sim: Simulation) -> None:
         """Execute one shopping round."""
         from bamengine.systems.goods_market import consumers_shop_one_round
@@ -172,11 +152,6 @@ class ConsumersFinalizePurchases(Event):
     --------
     bamengine.systems.goods_market.consumers_finalize_purchases : Underlying logic
     """
-
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("consumers_shop_one_round",)
 
     def execute(self, sim: Simulation) -> None:
         """Execute purchase finalization."""

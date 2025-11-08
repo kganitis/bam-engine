@@ -35,11 +35,6 @@ class FirmsPayWages(Event):
     bamengine.systems.production.firms_pay_wages : Underlying logic
     """
 
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("firms_fire_workers",)
-
     def execute(self, sim: Simulation) -> None:
         """Execute wage payment."""
         from bamengine.systems.production import firms_pay_wages
@@ -65,11 +60,6 @@ class WorkersReceiveWage(Event):
     --------
     bamengine.systems.production.workers_receive_wage : Underlying logic
     """
-
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("firms_pay_wages",)
 
     def execute(self, sim: Simulation) -> None:
         """Execute wage receipt."""
@@ -99,11 +89,6 @@ class FirmsRunProduction(Event):
     bamengine.systems.production.firms_run_production : Underlying logic
     """
 
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("firms_pay_wages",)
-
     def execute(self, sim: Simulation) -> None:
         """Execute production."""
         from bamengine.systems.production import firms_run_production
@@ -131,11 +116,6 @@ class WorkersUpdateContracts(Event):
     --------
     bamengine.systems.production.workers_update_contracts : Underlying logic
     """
-
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("firms_run_production",)
 
     def execute(self, sim: Simulation) -> None:
         """Execute contract update."""

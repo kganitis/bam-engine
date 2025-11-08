@@ -37,11 +37,6 @@ class FirmsCollectRevenue(Event):
     bamengine.systems.revenue.firms_collect_revenue : Underlying logic
     """
 
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("consumers_finalize_purchases",)
-
     def execute(self, sim: Simulation) -> None:
         """Execute revenue collection."""
         from bamengine.systems.revenue import firms_collect_revenue
@@ -68,11 +63,6 @@ class FirmsValidateDebtCommitments(Event):
     --------
     bamengine.systems.revenue.firms_validate_debt_commitments : Underlying logic
     """
-
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("firms_collect_revenue",)
 
     def execute(self, sim: Simulation) -> None:
         """Execute debt validation and repayment."""
@@ -101,11 +91,6 @@ class FirmsPayDividends(Event):
     --------
     bamengine.systems.revenue.firms_pay_dividends : Underlying logic
     """
-
-    @property
-    def dependencies(self) -> tuple[str, ...]:
-        """Events that must run before this one."""
-        return ("firms_validate_debt_commitments",)
 
     def execute(self, sim: Simulation) -> None:
         """Execute dividend payment."""

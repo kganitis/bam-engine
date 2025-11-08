@@ -3,6 +3,7 @@ import logging
 
 import pytest
 
+import bamengine.events  # noqa: F401 - register all events
 from bamengine.simulation import Simulation
 
 
