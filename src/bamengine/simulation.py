@@ -238,6 +238,25 @@ class Simulation:
         cfg_dict.update(_read_yaml(config))
         cfg_dict.update(overrides)
 
+        # Validate configuration (centralized validation)
+        from bamengine.config import ConfigValidator
+
+        ConfigValidator.validate_config(cfg_dict)
+
+        # Validate pipeline path if specified
+        pipeline_path = cfg_dict.get("pipeline_path")
+        if pipeline_path is not None:
+            ConfigValidator.validate_pipeline_path(pipeline_path)
+            # Validate pipeline YAML with available parameters
+            ConfigValidator.validate_pipeline_yaml(
+                pipeline_path,
+                params={
+                    "max_M": cfg_dict.get("max_M", 4),
+                    "max_H": cfg_dict.get("max_H", 2),
+                    "max_Z": cfg_dict.get("max_Z", 2),
+                },
+            )
+
         # pull required scalars
         n_firms = int(cfg_dict.pop("n_firms"))
         n_households = int(cfg_dict.pop("n_households"))
@@ -277,6 +296,30 @@ class Simulation:
             n_banks=n_banks,
             **cfg_dict,  # all remaining, size-checked parameters
         )
+
+    @staticmethod
+    def _configure_logging(log_config: Dict[str, Any]) -> None:
+        """
+        Configure logging levels for bamengine loggers.
+
+        Parameters
+        ----------
+        log_config : dict
+            Logging configuration with keys:
+            - default_level: str (e.g., 'INFO', 'DEBUG')
+            - events: dict[str, str] (per-event overrides)
+        """
+        import logging
+
+        # Set default level for bamengine logger
+        default_level = log_config.get("default_level", "INFO")
+        logging.getLogger("bamengine").setLevel(getattr(logging, default_level))
+
+        # Set per-event log level overrides
+        event_levels = log_config.get("events", {})
+        for event_name, level in event_levels.items():
+            logger_name = f"bamengine.events.{event_name}"
+            logging.getLogger(logger_name).setLevel(getattr(logging, level))
 
     @classmethod
     def _from_params(cls, *, rng: Generator, **p: Any) -> "Simulation":  # noqa: C901
@@ -440,10 +483,25 @@ class Simulation:
             cap_factor=p.get("cap_factor"),
         )
 
-        # Create default event pipeline
-        pipeline = create_default_pipeline(
-            max_M=p["max_M"], max_H=p["max_H"], max_Z=p["max_Z"]
-        )
+        # Create event pipeline (default or custom)
+        pipeline_path = p.get("pipeline_path")
+        if pipeline_path is not None:
+            from bamengine.core.pipeline import Pipeline
+
+            pipeline = Pipeline.from_yaml(
+                pipeline_path,
+                max_M=p["max_M"],
+                max_H=p["max_H"],
+                max_Z=p["max_Z"],
+            )
+        else:
+            pipeline = create_default_pipeline(
+                max_M=p["max_M"], max_H=p["max_H"], max_Z=p["max_Z"]
+            )
+
+        # Configure logging (if specified)
+        if "logging" in p:
+            cls._configure_logging(p["logging"])
 
         return cls(
             ec=ec,

@@ -40,3 +40,11 @@ equity_base_init:     5.0        # initial (per bank) equity base (units of mone
 
 # ── RNG seed ───────────────────────────────────────────────────────────
 seed:               12345        # int; Generator in code to override
+
+# ── pipeline configuration ─────────────────────────────────────────────
+pipeline_path:      null         # Path to custom pipeline YAML file (null = use default)
+
+# ── logging configuration ──────────────────────────────────────────────
+logging:
+  default_level:    INFO         # Default log level for bamengine logger
+  events:           {}            # Per-event log level overrides, e.g., {workers_send_one_round: DEBUG}

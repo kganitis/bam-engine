@@ -8,7 +8,6 @@
 #
 # Parameters {max_M}, {max_H}, {max_Z} are substituted at runtime.
 
-# TODO integrate with defaults.yml parameters
 events:
   # Planning phase
   - firms_decide_desired_production
