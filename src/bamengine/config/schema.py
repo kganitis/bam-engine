@@ -1,4 +1,4 @@
-# src/bamengine/config.py
+# src/bamengine/schema.py
 """Configuration dataclass for simulation parameters."""
 
 from __future__ import annotations
