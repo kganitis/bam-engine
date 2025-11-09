@@ -10,7 +10,6 @@ from hypothesis import given, settings, strategies as st
 
 from bamengine import Simulation
 
-
 # Hypothesis strategies for valid parameter ranges
 n_firms_strategy = st.integers(min_value=10, max_value=200)
 n_households_strategy = st.integers(min_value=50, max_value=1000)
@@ -172,6 +171,7 @@ class TestProductionInvariants:
         """Inventory should follow conservation law."""
         sim = Simulation.init(n_firms=n_firms, seed=seed)
 
+        # TODO: Local variable 'initial_inventory' value is not used
         initial_inventory = sim.prod.inventory.copy()
 
         sim.step()

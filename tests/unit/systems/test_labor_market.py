@@ -11,12 +11,10 @@ import numpy as np
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
-from bamengine import Rng, make_rng
 from numpy.typing import NDArray
 
+from bamengine import Rng, make_rng
 from bamengine.roles import Employer, Worker
-
-# noinspection PyProtectedMember
 from bamengine.systems.labor_market import (
     adjust_minimum_wage,
     calc_annual_inflation_rate,

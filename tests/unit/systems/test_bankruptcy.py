@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import numpy as np
-from bamengine import make_rng
 
+from bamengine import make_rng
 from bamengine.systems.bankruptcy import (
     firms_update_net_worth,
     mark_bankrupt_banks,

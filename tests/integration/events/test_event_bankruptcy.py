@@ -126,7 +126,7 @@ def test_event_bankruptcy_entry_basic(tiny_sched: Simulation) -> None:
         | (snap["lb_borrower_before"] == 2)
         | (snap["lb_lender_before"] == 1)
     )
-    assert sch.lb.size == snap["lb_borrower_before"].size - bad_rows.sum()
+    assert sch.lb.size == snap["lb_borrower_before"].size - np.sum(bad_rows)
 
     #  all workers who had employer 0 or 2 became unemployed
     was_with_bad_firm = (

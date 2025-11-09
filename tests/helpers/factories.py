@@ -29,6 +29,7 @@ from bamengine.roles import (
     Worker,
 )
 
+
 # ───────────────────────── default dictionaries ────────────────────────── #
 
 

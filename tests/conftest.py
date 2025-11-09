@@ -1,9 +1,11 @@
 # tests/conftest.py
+"""Pytest configuration and fixtures for bamengine tests."""
+
 import pytest
 
 import bamengine.events  # noqa: F401 - register all events
-from bamengine.simulation import Simulation
 from bamengine import logging
+from bamengine.simulation import Simulation
 
 
 @pytest.fixture

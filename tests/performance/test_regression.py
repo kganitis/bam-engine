@@ -5,9 +5,11 @@ thresholds. Baselines are established from benchmarking runs and updated
 after confirmed improvements.
 """
 
-import time
 import logging
+import time
+
 import pytest
+
 from bamengine import Simulation
 
 # Disable logging for performance tests

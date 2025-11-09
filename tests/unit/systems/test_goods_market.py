@@ -8,8 +8,8 @@ import numpy as np
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
-from bamengine import Rng, make_rng
 
+from bamengine import Rng, make_rng
 from bamengine.roles import Consumer, Producer
 from bamengine.systems.goods_market import (
     consumers_calc_propensity,

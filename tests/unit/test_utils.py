@@ -3,8 +3,8 @@ from typing import Callable
 
 import numpy as np
 import pytest
-from bamengine import make_rng
 
+from bamengine import make_rng
 from bamengine.utils import (
     sample_beta_with_mean,
     select_top_k_indices_sorted,

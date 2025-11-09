@@ -23,6 +23,7 @@ from tests.helpers.factories import (
     mock_worker,
 )
 
+
 # def test_firms_decide_price_obeys_break_even_and_shocks() -> None:
 #     rng = make_rng(0)
 #

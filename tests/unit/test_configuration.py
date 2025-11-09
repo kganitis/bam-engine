@@ -4,8 +4,6 @@ import logging
 import tempfile
 from pathlib import Path
 
-import pytest
-
 import bamengine.events  # noqa: F401 - register events
 from bamengine.simulation import Simulation
 
@@ -160,6 +158,9 @@ def test_logging_default_level():
         "events": {},
     }
 
+    # TODO Local variable 'sim' value is not used
+    #  Make sure the test actually tests the logging level
+    #  If so, why is sim needed at all?
     sim = Simulation.init(
         n_firms=10,
         n_households=50,
@@ -182,6 +183,9 @@ def test_logging_per_event_overrides():
         },
     }
 
+    # TODO Local variable 'sim' value is not used
+    #  Make sure the test actually tests the logging level
+    #  If so, why is sim needed at all?
     sim = Simulation.init(
         n_firms=10,
         n_households=50,
@@ -216,6 +220,9 @@ logging:
         f.write(yaml_content)
         yaml_path = f.name
 
+    # TODO Local variable 'sim' value is not used
+    #  Make sure the test actually tests the logging level
+    #  If so, why is sim needed at all?
     try:
         sim = Simulation.init(config=yaml_path, seed=42)
 
@@ -285,6 +292,9 @@ logging:
             "events": {},
         }
 
+        # TODO Local variable 'sim' value is not used
+        #  Make sure the test actually tests the logging level
+        #  If so, why is sim needed at all?
         sim = Simulation.init(
             config=yaml_path,
             n_firms=10,

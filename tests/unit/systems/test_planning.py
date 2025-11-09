@@ -9,8 +9,8 @@ import numpy as np
 import pytest
 from hypothesis import assume, given, settings
 from hypothesis import strategies as st
-from bamengine import make_rng
 
+from bamengine import make_rng
 from bamengine.systems.planning import (
     _EPS,
     firms_adjust_price,

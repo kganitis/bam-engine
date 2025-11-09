@@ -34,7 +34,9 @@ class TestProductionSystemValidation:
         sim_ops.step()
 
         # Save original state
+        # TODO Local variable 'original_production_numpy' value is not used
         original_production_numpy = sim_numpy.prod.desired_production.copy()
+        # TODO Local variable 'original_production_ops' value is not used
         original_production_ops = sim_ops.prod.desired_production.copy()
 
         # NumPy implementation (from original system function)
@@ -66,7 +68,7 @@ class TestProductionSystemValidation:
         up_mask_ops = ops.logical_and(
             ops.equal(prod_ops.inventory, 0.0), ops.greater_equal(prod_ops.price, p_avg)
         )
-        increase_factor = ops.add(1.0, shock_ops)
+        increase_factor = ops.add(shock_ops, 1.0)
         new_production_up = ops.where(
             up_mask_ops,
             ops.multiply(prod_ops.desired_production, increase_factor),
@@ -77,7 +79,7 @@ class TestProductionSystemValidation:
         down_mask_ops = ops.logical_and(
             ops.greater(prod_ops.inventory, 0.0), ops.less(prod_ops.price, p_avg)
         )
-        decrease_factor = ops.subtract(1.0, shock_ops)
+        decrease_factor = ops.subtract(shock_ops, 1.0)
         new_production_final = ops.where(
             down_mask_ops,
             ops.multiply(new_production_up, decrease_factor),
@@ -131,10 +133,10 @@ class TestLaborMarketSystemValidation:
         shock_ops = ops.uniform(rng_ops, 0.0, h_xi, len(emp_ops.wage_offer))
 
         # Wage with shock
-        shock_factor = ops.add(1.0, shock_ops)
+        shock_factor = ops.add(shock_ops, 1.0)
         new_wage_ops = ops.multiply(emp_ops.wage_offer, shock_factor)
         # Enforce minimum wage floor
-        final_wage = ops.maximum(w_min, new_wage_ops)
+        final_wage = ops.maximum(new_wage_ops, w_min)
         ops.assign(emp_ops.wage_offer, final_wage)
 
         # Results should match
@@ -178,7 +180,7 @@ class TestCreditMarketSystemValidation:
 
         # Credit demand = max(0, wage_bill - net_worth)
         credit_need_ops = ops.subtract(emp_ops.wage_bill, bor_ops.net_worth)
-        final_demand = ops.maximum(0.0, credit_need_ops)
+        final_demand = ops.maximum(credit_need_ops, 0.0)
         ops.assign(bor_ops.credit_demand, final_demand)
 
         # Results should match
@@ -293,7 +295,7 @@ class TestPricingSystemValidation:
             ops.equal(prod_ops.inventory, 0.0), ops.greater_equal(prod_ops.price, p_avg)
         )
 
-        shock_factor = ops.add(1.0, shock_ops)
+        shock_factor = ops.add(shock_ops, 1.0)
         increased_price = ops.multiply(prod_ops.price, shock_factor)
         new_price_ops = ops.where(should_increase_ops, increased_price, prod_ops.price)
 
@@ -440,6 +442,7 @@ class TestFullEventReimplementation:
                 super().__init__()
                 self.markup = markup
 
+            # noinspection PyShadowingNames
             def execute(self, sim):
                 prod = sim.get_role("Producer")
                 emp = sim.get_role("Employer")

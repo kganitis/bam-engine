@@ -228,7 +228,7 @@ def test_ops_credit_demand_logic():
     np_credit_demand = np.maximum(0.0, np.subtract(wage_bill, net_worth))
 
     # ops implementation
-    ops_credit_demand = ops.maximum(0.0, ops.subtract(wage_bill, net_worth))
+    ops_credit_demand = ops.maximum(ops.subtract(wage_bill, net_worth), 0.0)
 
     # Should match
     np.testing.assert_array_almost_equal(ops_credit_demand, np_credit_demand)
@@ -253,7 +253,7 @@ def test_ops_wage_calculation_with_floor():
 
     # ops implementation
     ops_wage_with_shock = ops.multiply(base_wage, 1.0 + shock)
-    ops_wage = ops.maximum(min_wage, ops_wage_with_shock)
+    ops_wage = ops.maximum(ops_wage_with_shock, min_wage)
 
     # Should match
     np.testing.assert_array_almost_equal(ops_wage, np_wage)
