@@ -3,7 +3,7 @@ from typing import Callable
 
 import numpy as np
 import pytest
-from numpy.random import default_rng
+from bamengine import make_rng
 
 from bamengine.utils import (
     sample_beta_with_mean,
@@ -242,14 +242,14 @@ def test_sample_beta_with_mean_invalid_args() -> None:
 
 
 def test_sample_beta_with_mean_scalar_vs_array() -> None:
-    x = sample_beta_with_mean(mean=10.0, n=1, rng=default_rng(0))
+    x = sample_beta_with_mean(mean=10.0, n=1, rng=make_rng(0))
     assert isinstance(x, float)
-    xs = sample_beta_with_mean(mean=10.0, n=5, rng=default_rng(0))
+    xs = sample_beta_with_mean(mean=10.0, n=5, rng=make_rng(0))
     assert isinstance(xs, np.ndarray) and xs.shape == (5,)
 
 
 def test_sample_beta_with_mean_auto_bounds_contain_samples() -> None:
-    rng = default_rng(123)
+    rng = make_rng(123)
     # mean near zero triggers tiny symmetric bounds around mean after eps-fix
     xs = sample_beta_with_mean(mean=0.0, n=1000, rng=rng)
     assert np.all(np.isfinite(xs))
@@ -257,14 +257,14 @@ def test_sample_beta_with_mean_auto_bounds_contain_samples() -> None:
 
 
 def test_sample_beta_with_mean_explicit_bounds_respected() -> None:
-    rng = default_rng(42)
+    rng = make_rng(42)
     low, high = 8.0, 12.0
     xs = sample_beta_with_mean(mean=10.0, n=1000, low=low, high=high, rng=rng)
     assert np.all(xs >= low) and np.all(xs <= high)
 
 
 def test_sample_beta_with_mean_mean_match_approximately() -> None:
-    rng = default_rng(7)
+    rng = make_rng(7)
     mean = 25.0
     xs = sample_beta_with_mean(mean=mean, n=200_000, concentration=200.0, rng=rng)
     # With high concentration and many samples, sample mean ~ desired mean

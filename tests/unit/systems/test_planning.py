@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 from hypothesis import assume, given, settings
 from hypothesis import strategies as st
-from numpy.random import default_rng
+from bamengine import make_rng
 
 from bamengine.systems.planning import (
     _EPS,
@@ -39,7 +39,7 @@ def test_production_branches(
     """
     Check that each branch of the BAM rule moves Yd in the correct direction.
     """
-    rng = default_rng(5)
+    rng = make_rng(5)
     prod = mock_producer(inventory=np.array([inventory]), price=np.array([price]))
     firms_decide_desired_production(prod, p_avg=p_avg, h_rho=0.1, rng=rng)
     yd = prod.desired_production[0]
@@ -57,7 +57,7 @@ def test_decide_desired_production_vector() -> None:
     Compare full-vector output against a hand-calculated expectation
     (identical RNG seed).
     """
-    rng = default_rng(1)
+    rng = make_rng(1)
     prod = mock_producer(
         n=5,
         inventory=np.array([0.0, 0.0, 5.0, 0.0, 5.0]),
@@ -71,7 +71,7 @@ def test_decide_desired_production_vector() -> None:
     assert prod.desired_production.shape == (5,)
 
     # _tests reference with same seed
-    shocks = default_rng(1).uniform(0.0, 0.1, 5)
+    shocks = make_rng(1).uniform(0.0, 0.1, 5)
     expected = np.array(
         [
             10.0 * (1 + shocks[0]),  # cond_up
@@ -91,12 +91,12 @@ def test_shock_off_no_change() -> None:
     With h_rho = 0 the rule must leave Yd unchanged, regardless of conditions.
     """
     prod = mock_producer(production=np.array([5.0]))
-    firms_decide_desired_production(prod, p_avg=1.5, h_rho=0.0, rng=default_rng(7))
+    firms_decide_desired_production(prod, p_avg=1.5, h_rho=0.0, rng=make_rng(7))
     assert np.isclose(prod.desired_production[0], 5.0)
 
 
 def test_reuses_internal_buffers() -> None:
-    rng = default_rng(0)
+    rng = make_rng(0)
     prod = mock_producer(n=2, alloc_scratch=False)
 
     # first call allocates the scratch arrays
@@ -273,7 +273,7 @@ def test_price_adjust_raise_branch() -> None:
     """
     Inventory == 0 and price < p_avg → raise by (1 + shock) and respect breakeven floor.
     """
-    rng = default_rng(0)
+    rng = make_rng(0)
     prod = mock_producer(n=1)
     prod.inventory[:] = 0.0
     prod.price[:] = 1.0
@@ -283,7 +283,7 @@ def test_price_adjust_raise_branch() -> None:
     firms_adjust_price(prod, p_avg=2.0, h_eta=0.1, rng=rng)
 
     # replicate the single shock deterministically
-    shock = default_rng(0).uniform(0.0, 0.1, 1)[0]
+    shock = make_rng(0).uniform(0.0, 0.1, 1)[0]
     expected = max(float(old[0] * (1.0 + shock)), float(prod.breakeven_price[0]))
 
     assert prod.price[0] == pytest.approx(expected)
@@ -295,7 +295,7 @@ def test_price_adjust_cut_branch_with_floor_increase() -> None:
     Inventory > 0 and price >= p_avg → cut by (1 - shock) but *not below* breakeven.
     If breakeven > old price, the price should increase to the floor (warning case).
     """
-    rng = default_rng(1)
+    rng = make_rng(1)
     prod = mock_producer(n=2)
 
     # both firms in "cut" set (inventory>0 & price >= p_avg)
@@ -321,7 +321,7 @@ def test_price_adjust_noop_when_masks_empty() -> None:
       - inventory == 0 and price >= p_avg  (not mask_up since price !< p_avg)
       - inventory > 0 and price < p_avg   (not mask_dn since price !>= p_avg)
     """
-    rng = default_rng(3)
+    rng = make_rng(3)
     prod = mock_producer(n=2)
     prod.inventory[:] = np.array([0.0, 10.0])
     prod.price[:] = np.array([2.0, 0.5])

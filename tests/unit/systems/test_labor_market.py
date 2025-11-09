@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
-from numpy.random import Generator, default_rng
+from bamengine import Rng, make_rng
 from numpy.typing import NDArray
 
 from bamengine.roles import Employer, Worker
@@ -39,7 +39,7 @@ def _mini_state(
     n_employers: int = 3,
     M: int = 2,
     seed: int = 1,
-) -> tuple[Employer, Worker, Generator, int]:
+) -> tuple[Employer, Worker, Rng, int]:
     """
     Build **one** fully-featured Employer and one Worker component,
     plus an RNG and queue width *M*.
@@ -50,7 +50,7 @@ def _mini_state(
       of the application logic.
     """
     assert M > 0
-    rng = default_rng(seed)
+    rng = make_rng(seed)
     emp = mock_employer(
         n=n_employers,
         queue_m=M,
@@ -155,7 +155,7 @@ def test_adjust_minimum_wage_skips_when_not_revision() -> None:
 
 def test_decide_wage_offer_basic() -> None:
     """Hiring firms get a stochastic mark-up, non-hiring firms keep their offer."""
-    rng = default_rng(0)
+    rng = make_rng(0)
     emp = mock_employer(
         n=4,
         n_vacancies=np.array([3, 0, 2, 0]),
@@ -177,7 +177,7 @@ def test_decide_wage_offer_floor_and_shock() -> None:
     If w_prev < w_min the floor binds;
     otherwise a positive shock draws w_offer above w_prev.
     """
-    rng = default_rng(2)
+    rng = make_rng(2)
     emp = mock_employer(
         n=2,
         n_vacancies=np.array([0, 3]),
@@ -190,9 +190,9 @@ def test_decide_wage_offer_floor_and_shock() -> None:
 
 def test_decide_wage_offer_reuses_scratch() -> None:
     emp = mock_employer(n=3, n_vacancies=np.array([1, 0, 2]))
-    firms_decide_wage_offer(emp, w_min=1.0, h_xi=0.1, rng=default_rng(0))
+    firms_decide_wage_offer(emp, w_min=1.0, h_xi=0.1, rng=make_rng(0))
     buf0 = emp.wage_shock
-    firms_decide_wage_offer(emp, w_min=1.1, h_xi=0.1, rng=default_rng(0))
+    firms_decide_wage_offer(emp, w_min=1.1, h_xi=0.1, rng=make_rng(0))
     buf1 = emp.wage_shock
     assert buf0 is buf1  # same object
     assert buf1 is not None and buf1.flags.writeable
@@ -221,7 +221,7 @@ def test_prepare_applications_no_unemployed() -> None:
         n_vacancies=np.array([0, 0, 0]),
     )
     wrk = mock_worker(n=3, employed=np.ones(3, dtype=np.bool_))
-    workers_decide_firms_to_apply(wrk, emp, max_M=2, rng=default_rng(0))
+    workers_decide_firms_to_apply(wrk, emp, max_M=2, rng=make_rng(0))
     assert np.all((wrk.job_apps_head == -1))
 
 
@@ -270,7 +270,7 @@ def test_prepare_applications_loyalty_swap_branch() -> None:
 
     # Cast keeps the production code’s type hints intact
     workers_decide_firms_to_apply(
-        wrk, emp, max_M=2, rng=cast(Generator, cast(object, stub_rng))
+        wrk, emp, max_M=2, rng=cast(Rng, cast(object, stub_rng))
     )
 
     # assertions
@@ -296,7 +296,7 @@ def test_prepare_applications_loyalty_noop_when_already_first() -> None:
     # Sample [0,1] so sort keeps 0 in col-0
     stub_rng = FixedRNG(np.array([[0, 1]], dtype=np.int64))
     workers_decide_firms_to_apply(
-        wrk, emp, max_M=2, rng=cast(Generator, cast(object, stub_rng))
+        wrk, emp, max_M=2, rng=cast(Rng, cast(object, stub_rng))
     )
     np.testing.assert_array_equal(wrk.job_apps_targets[0], np.array([0, 1]))
 
@@ -315,7 +315,7 @@ def test_prepare_applications_large_unemployment() -> None:
     More unemployed workers than emp × M.
     Sampling with replacement must still yield valid firm indices.
     """
-    rng = default_rng(5)
+    rng = make_rng(5)
     n_wrk, n_emp, M = 20, 3, 2
     fw = mock_employer(
         n=n_emp,
@@ -333,7 +333,7 @@ def test_prepare_applications_no_hiring_but_unemployed() -> None:
         n=3, wage_offer=np.array([1.0, 1.5, 1.2]), n_vacancies=np.array([0, 0, 0])
     )
     wrk = mock_worker(n=4, queue_m=2, employed=np.array([False, False, True, False]))
-    workers_decide_firms_to_apply(wrk, emp, max_M=2, rng=default_rng(0))
+    workers_decide_firms_to_apply(wrk, emp, max_M=2, rng=make_rng(0))
     unemp = np.where(wrk.employed == 0)[0]
     assert np.all(wrk.job_apps_head[unemp] == -1)
     assert np.all(wrk.job_apps_targets[unemp] == -1)
@@ -355,7 +355,7 @@ def test_workers_send_one_round() -> None:
     wrk = mock_worker(n=1, queue_m=M)  # 1 unemployed worker
 
     # prepare targets & head pointer
-    workers_decide_firms_to_apply(wrk, emp, max_M=M, rng=default_rng(0))
+    workers_decide_firms_to_apply(wrk, emp, max_M=M, rng=make_rng(0))
     head_before = int(wrk.job_apps_head[0])
 
     workers_send_one_round(wrk, emp)
@@ -516,7 +516,7 @@ def test_send_one_job_app_head_negative_after_shuffle_branch() -> None:
             # deterministic "shuffle"
             arr[:] = arr[::-1]
 
-    workers_send_one_round(wrk, emp, rng=cast(Generator, cast(object, EvilRng())))
+    workers_send_one_round(wrk, emp, rng=cast(Rng, cast(object, EvilRng())))
 
     # Since the only worker got head < 0 right before the loop,
     # nothing should have been queued and head should remain -1.
@@ -583,8 +583,8 @@ def test_firms_hire_workers_basic() -> None:
     )
     wrk = mock_worker(n=3, queue_m=M)
 
-    rng = default_rng(0)
-    rng_check = default_rng(0)
+    rng = make_rng(0)
+    rng_check = make_rng(0)
     expected_extra = rng_check.poisson(10)
 
     # preload queue with worker-ids 0 and 1

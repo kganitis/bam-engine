@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import numpy as np
-from numpy.random import default_rng
+from bamengine import make_rng
 
 from bamengine.systems.bankruptcy import (
     firms_update_net_worth,
@@ -122,7 +122,7 @@ def test_mark_bankrupt_banks_purges_loans() -> None:
 
 
 def test_spawn_replacement_firms_restores_positive_equity() -> None:
-    rng = default_rng(42)
+    rng = make_rng(42)
 
     ec = mock_economy()
     ec.exiting_firms = np.array([0, 2], dtype=np.int64)
@@ -150,7 +150,7 @@ def test_spawn_replacement_firms_restores_positive_equity() -> None:
 
 
 def test_spawn_replacement_banks_clone_and_fallback() -> None:
-    rng = default_rng(7)
+    rng = make_rng(7)
 
     # case-A: clone from healthy peer
     ec = mock_economy()

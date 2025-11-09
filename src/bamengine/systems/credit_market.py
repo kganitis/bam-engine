@@ -8,9 +8,8 @@ Event‑3  –  Credit‑market systems
 from __future__ import annotations
 
 import numpy as np
-from numpy.random import Generator, default_rng
 
-from bamengine import logging
+from bamengine import logging, Rng, make_rng
 from bamengine.roles import Borrower, Employer, Lender, LoanBook, Worker
 from bamengine.typing import Idx1D
 from bamengine.utils import select_top_k_indices_sorted
@@ -57,7 +56,7 @@ def banks_decide_interest_rate(
     *,
     r_bar: float,
     h_phi: float,
-    rng: Generator = default_rng(),
+    rng: Rng = make_rng(),
 ) -> None:
     """
     Banks set their nominal interest rate as a markup over a base rate.
@@ -202,7 +201,7 @@ def firms_prepare_loan_applications(
     lend: Lender,
     *,
     max_H: int,
-    rng: Generator = default_rng(),
+    rng: Rng = make_rng(),
 ) -> None:
     """
     Borrowers with credit demand choose up to `max_H` banks to apply to,
@@ -268,9 +267,7 @@ def firms_prepare_loan_applications(
     log.info("--- Loan Application Preparation complete ---")
 
 
-def firms_send_one_loan_app(
-    bor: Borrower, lend: Lender, rng: Generator = default_rng()
-) -> None:
+def firms_send_one_loan_app(bor: Borrower, lend: Lender, rng: Rng = make_rng()) -> None:
     # TODO Look into unifying common logic with `workers_send_one_round`
     """ """
     log.info("--- Borrowers Sending One Round of Applications ---")
@@ -593,7 +590,7 @@ def firms_fire_workers(
     wrk: Worker,
     *,
     method: str = "random",
-    rng: Generator = default_rng(),
+    rng: Rng = make_rng(),
 ) -> None:
     """Fire workers to close financing gaps and update all related state."""
     log.info("--- Firms Firing Workers ---")
