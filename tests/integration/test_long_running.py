@@ -109,7 +109,9 @@ class TestLongRunningStability:
         # Unemployment should be reasonable
         employed = sim.wrk.employed.sum()
         unemployment_rate = 1.0 - (employed / sim.n_households)
-        assert 0.0 <= unemployment_rate <= 0.9, f"Unemployment unreasonable: {unemployment_rate:.2%}"
+        assert (
+            0.0 <= unemployment_rate <= 0.9
+        ), f"Unemployment unreasonable: {unemployment_rate:.2%}"
 
         # Total production should be reasonable (positive and finite)
         total_production = sim.prod.production.sum()
@@ -180,7 +182,9 @@ class TestCumulativeErrors:
             # Employment should match across roles
             total_employed = sim.wrk.employed.sum()
             total_firm_labor = sim.emp.current_labor.sum()
-            assert abs(total_employed - total_firm_labor) <= 1, "Labor accounting mismatch"
+            assert (
+                abs(total_employed - total_firm_labor) <= 1
+            ), "Labor accounting mismatch"
 
 
 class TestStressConditions:
@@ -193,7 +197,7 @@ class TestStressConditions:
             n_households=250,
             h_rho=0.5,  # High production shocks
             h_eta=0.5,  # High price shocks
-            h_xi=0.5,   # High wage shocks
+            h_xi=0.5,  # High wage shocks
             h_phi=0.5,  # High bank shocks
             seed=333,
         )
@@ -229,8 +233,8 @@ class TestStressConditions:
             n_firms=50,
             n_households=250,
             max_M=10,  # High job applications
-            max_H=5,   # High loan applications
-            max_Z=5,   # High shop visits
+            max_H=5,  # High loan applications
+            max_Z=5,  # High shop visits
             seed=555,
         )
 
@@ -258,7 +262,7 @@ class TestMemoryUsage:
         # (This is a rough estimate - actual memory tracking would need profiling tools)
         initial_size = sum(
             sys.getsizeof(getattr(sim, attr))
-            for attr in ['prod', 'wrk', 'emp', 'bor', 'lend', 'con', 'ec', 'lb']
+            for attr in ["prod", "wrk", "emp", "bor", "lend", "con", "ec", "lb"]
         )
 
         # Run for 100 periods
@@ -267,7 +271,7 @@ class TestMemoryUsage:
         # Get final size estimate
         final_size = sum(
             sys.getsizeof(getattr(sim, attr))
-            for attr in ['prod', 'wrk', 'emp', 'bor', 'lend', 'con', 'ec', 'lb']
+            for attr in ["prod", "wrk", "emp", "bor", "lend", "con", "ec", "lb"]
         )
 
         # Size should not have grown significantly (allow some variance)
@@ -293,5 +297,9 @@ class TestDeterminism:
         final_prices2 = sim2.prod.price.copy()
 
         # Results should be identical
-        assert final_production1 == final_production2, "Total production not deterministic"
-        np.testing.assert_array_equal(final_prices1, final_prices2, err_msg="Prices not deterministic")
+        assert (
+            final_production1 == final_production2
+        ), "Total production not deterministic"
+        np.testing.assert_array_equal(
+            final_prices1, final_prices2, err_msg="Prices not deterministic"
+        )

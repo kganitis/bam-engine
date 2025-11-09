@@ -26,6 +26,12 @@ coverage.xml
 coverage.json
 htmlcov/
 
+# Benchmarking outputs
+*.prof
+*.svg
+benchmarks/*.prof
+benchmarks/*.svg
+
 # IDEs
 .idea/
 .vscode/
