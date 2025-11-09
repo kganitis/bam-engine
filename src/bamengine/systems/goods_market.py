@@ -5,9 +5,8 @@ Event-5 – Goods-market systems
 from __future__ import annotations
 
 import numpy as np
-from numpy.random import Generator, default_rng
 
-from bamengine import logging
+from bamengine import logging, Rng, make_rng
 from bamengine.roles import Consumer, Producer
 
 log = logging.getLogger(__name__)
@@ -156,7 +155,7 @@ def consumers_decide_firms_to_visit(
     prod: Producer,
     *,
     max_Z: int,
-    rng: Generator = default_rng(),
+    rng: Rng = make_rng(),
 ) -> None:
     """
     Each consumer with spending budget selects up to max_Z firms to potentially visit.
@@ -298,7 +297,7 @@ def consumers_decide_firms_to_visit(
 
 
 def consumers_shop_one_round(
-    con: Consumer, prod: Producer, rng: Generator = default_rng()
+    con: Consumer, prod: Producer, rng: Rng = make_rng()
 ) -> None:
     """
     Execute one complete round of shopping across all consumers with spending budget.

@@ -10,7 +10,7 @@ Strategy: Create parallel implementations using ops, run both, compare results.
 
 import numpy as np
 
-from bamengine import Simulation, ops
+from bamengine import Simulation, ops, make_rng
 
 
 def test_getter_methods_work():
@@ -39,7 +39,7 @@ def test_getter_methods_work():
 
 def test_ops_arithmetic_matches_numpy():
     """Verify ops arithmetic operations match NumPy."""
-    rng = np.random.default_rng(42)
+    rng = make_rng(42)
 
     a = rng.uniform(1, 100, 50)
     b = rng.uniform(1, 100, 50)
@@ -67,7 +67,7 @@ def test_ops_arithmetic_matches_numpy():
 
 def test_ops_conditional_matches_numpy():
     """Verify ops conditional operations match NumPy."""
-    rng = np.random.default_rng(42)
+    rng = make_rng(42)
 
     condition = rng.uniform(0, 1, 50) > 0.5
     true_vals = rng.uniform(10, 20, 50)
@@ -81,7 +81,7 @@ def test_ops_conditional_matches_numpy():
 
 def test_ops_comparisons_match_numpy():
     """Verify ops comparison operations match NumPy."""
-    rng = np.random.default_rng(42)
+    rng = make_rng(42)
 
     a = rng.uniform(1, 100, 50)
     b = rng.uniform(1, 100, 50)
@@ -114,7 +114,7 @@ def test_ops_comparisons_match_numpy():
 
 def test_ops_aggregation_matches_numpy():
     """Verify ops aggregation operations match NumPy."""
-    rng = np.random.default_rng(42)
+    rng = make_rng(42)
 
     a = rng.uniform(1, 100, 50)
 
@@ -131,7 +131,7 @@ def test_ops_aggregation_matches_numpy():
 
 def test_ops_element_wise_matches_numpy():
     """Verify ops element-wise operations match NumPy."""
-    rng = np.random.default_rng(42)
+    rng = make_rng(42)
 
     a = rng.uniform(1, 100, 50)
     b = rng.uniform(1, 100, 50)
@@ -159,7 +159,7 @@ def test_ops_simple_pricing_logic():
     This validates that a simple markup pricing calculation using ops
     produces consistent results with direct NumPy operations.
     """
-    rng = np.random.default_rng(42)
+    rng = make_rng(42)
 
     # Setup test data
     wage = rng.uniform(10, 20, 50)
@@ -184,7 +184,7 @@ def test_ops_inventory_based_production_logic():
 
     This validates conditional logic similar to firms_decide_desired_production.
     """
-    rng = np.random.default_rng(42)
+    rng = make_rng(42)
 
     # Setup test data
     inventory = rng.uniform(0, 50, 50)
@@ -218,7 +218,7 @@ def test_ops_credit_demand_logic():
 
     This validates logic similar to firms_decide_credit_demand.
     """
-    rng = np.random.default_rng(42)
+    rng = make_rng(42)
 
     # Setup test data
     wage_bill = rng.uniform(100, 500, 50)
@@ -240,7 +240,7 @@ def test_ops_wage_calculation_with_floor():
 
     This validates logic similar to firms_decide_wage_offer.
     """
-    rng = np.random.default_rng(42)
+    rng = make_rng(42)
 
     # Setup test data
     base_wage = rng.uniform(8, 15, 50)
@@ -265,7 +265,7 @@ def test_ops_multi_condition_select():
 
     This validates logic for categorizing firms into different states.
     """
-    rng = np.random.default_rng(42)
+    rng = make_rng(42)
 
     # Setup test data
     inventory = rng.uniform(0, 50, 50)
@@ -304,7 +304,7 @@ def test_ops_in_place_operations():
 
     This validates the out= parameter pattern.
     """
-    rng = np.random.default_rng(42)
+    rng = make_rng(42)
 
     # Setup test data
     a = rng.uniform(1, 100, 50)

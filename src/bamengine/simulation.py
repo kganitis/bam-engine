@@ -6,17 +6,12 @@ from importlib import resources
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional
 
-# noinspection PyPackageRequirements
 import numpy as np
 
-# noinspection PyPackageRequirements
 import yaml
 
-# noinspection PyPackageRequirements
-from numpy.random import Generator, default_rng
-
 import bamengine.events  # noqa: F401 - needed to register events
-from bamengine import logging
+from bamengine import logging, Rng, make_rng
 from bamengine.config import Config
 from bamengine.core.pipeline import Pipeline, create_default_pipeline
 from bamengine.roles import (
@@ -139,7 +134,7 @@ class Simulation:
     """
 
     # core state
-    rng: Generator
+    rng: Rng
     ec: Economy
     prod: Producer
     wrk: Worker
@@ -263,9 +258,7 @@ class Simulation:
 
         # Random-seed handling
         seed_val = cfg_dict.pop("seed", None)
-        rng: Generator = (
-            seed_val if isinstance(seed_val, Generator) else default_rng(seed_val)
-        )
+        rng: Rng = seed_val if isinstance(seed_val, Rng) else make_rng(seed_val)
 
         # vector params (validate size)
         cfg_dict["net_worth_init"] = _validate_float1d(
@@ -338,7 +331,7 @@ class Simulation:
             logging.getLogger(logger_name).setLevel(level_value)
 
     @classmethod
-    def _from_params(cls, *, rng: Generator, **p: Any) -> "Simulation":  # noqa: C901
+    def _from_params(cls, *, rng: Rng, **p: Any) -> "Simulation":  # noqa: C901
 
         # Vector initilization
 

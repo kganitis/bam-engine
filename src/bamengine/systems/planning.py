@@ -2,9 +2,8 @@
 from __future__ import annotations
 
 import numpy as np
-from numpy.random import Generator, default_rng
 
-from bamengine import logging
+from bamengine import logging, Rng, make_rng
 from bamengine.roles import Employer, LoanBook, Producer
 
 log = logging.getLogger(__name__)
@@ -13,11 +12,7 @@ _EPS = 1.0e-9
 
 
 def firms_decide_desired_production(
-    prod: Producer,
-    *,
-    p_avg: float,
-    h_rho: float,
-    rng: Generator = default_rng(),
+    prod: Producer, *, p_avg: float, h_rho: float, rng: Rng = make_rng()
 ) -> None:
     """
     Calculate expected demand and update desired production.
@@ -172,11 +167,7 @@ def firms_calc_breakeven_price(
 
 
 def firms_adjust_price(
-    prod: Producer,
-    *,
-    p_avg: float,
-    h_eta: float,
-    rng: Generator = default_rng(),
+    prod: Producer, *, p_avg: float, h_eta: float, rng: Rng = make_rng()
 ) -> None:
     """
     Nominal price-adjustment rule.

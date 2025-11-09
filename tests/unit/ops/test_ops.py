@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from bamengine import ops
+from bamengine import ops, make_rng
 
 
 class TestArithmetic:
@@ -311,21 +311,21 @@ class TestRandom:
     """Test random operations."""
 
     def test_uniform_shape(self):
-        rng = np.random.default_rng(42)
+        rng = make_rng(42)
         result = ops.uniform(rng, 0.0, 1.0, 10)
         assert result.shape == (10,)
         assert np.all(result >= 0.0)
         assert np.all(result <= 1.0)
 
     def test_uniform_bounds(self):
-        rng = np.random.default_rng(42)
+        rng = make_rng(42)
         result = ops.uniform(rng, 5.0, 10.0, 100)
         assert np.all(result >= 5.0)
         assert np.all(result <= 10.0)
 
     def test_uniform_deterministic(self):
-        rng1 = np.random.default_rng(42)
-        rng2 = np.random.default_rng(42)
+        rng1 = make_rng(42)
+        rng2 = make_rng(42)
         result1 = ops.uniform(rng1, 0.0, 1.0, 10)
         result2 = ops.uniform(rng2, 0.0, 1.0, 10)
         np.testing.assert_array_equal(result1, result2)

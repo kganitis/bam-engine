@@ -6,9 +6,8 @@ Event-8  ─  Entry (spawn replacements for those exits)
 from __future__ import annotations
 
 import numpy as np
-from numpy.random import Generator, default_rng
 
-from bamengine import logging
+from bamengine import logging, Rng, make_rng
 from bamengine.roles import (
     Borrower,
     Economy,
@@ -175,12 +174,7 @@ def mark_bankrupt_banks(ec: Economy, lend: Lender, lb: LoanBook) -> None:
 
 
 def spawn_replacement_firms(
-    ec: Economy,
-    prod: Producer,
-    emp: Employer,
-    bor: Borrower,
-    *,
-    rng: Generator = default_rng(),
+    ec: Economy, prod: Producer, emp: Employer, bor: Borrower, rng: Rng = make_rng()
 ) -> None:
     """
     Create one brand-new firm to replace each firm that went bankrupt.
@@ -201,7 +195,7 @@ def spawn_replacement_firms(
     log.info(f"  Spawning {num_exiting} new firm(s) to replace bankrupt ones.")
 
     # handle full market collapse
-    if num_exiting == bor.net_worth.size:  # TODO TEST
+    if num_exiting == bor.net_worth.size:  # TODO: Uncovered branch
         log.critical("!!! ALL FIRMS ARE BANKRUPT !!! SIMULATION ENDING.")
         ec.destroyed = True
         return
@@ -261,7 +255,7 @@ def spawn_replacement_banks(
     ec: Economy,
     lend: Lender,
     *,
-    rng: Generator = default_rng(),
+    rng: Rng = make_rng(),
 ) -> None:
     """
     Create one brand-new bank to replace each bank that went bankrupt.

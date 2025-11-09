@@ -11,9 +11,8 @@ in user-facing code.
 """
 
 import numpy as np
-import pytest
 
-from bamengine import Simulation, ops
+from bamengine import Simulation, ops, make_rng
 
 
 class TestProductionSystemValidation:
@@ -43,7 +42,7 @@ class TestProductionSystemValidation:
         h_rho = sim_numpy.config.h_rho
         p_avg = sim_numpy.ec.avg_mkt_price
 
-        rng_numpy = np.random.default_rng(123)
+        rng_numpy = make_rng(123)
         shock = rng_numpy.uniform(0.0, h_rho, len(prod_np.price))
 
         # Case 1: inventory = 0 and price >= avg → increase
@@ -60,7 +59,7 @@ class TestProductionSystemValidation:
 
         # ops implementation
         prod_ops = sim_ops.prod
-        rng_ops = np.random.default_rng(123)
+        rng_ops = make_rng(123)
         shock_ops = ops.uniform(rng_ops, 0.0, h_rho, len(prod_ops.price))
 
         # Case 1: inventory = 0 and price >= avg → increase
@@ -118,7 +117,7 @@ class TestLaborMarketSystemValidation:
         w_min = sim_numpy.ec.min_wage
         h_xi = sim_numpy.config.h_xi
 
-        rng_numpy = np.random.default_rng(456)
+        rng_numpy = make_rng(456)
         shock = rng_numpy.uniform(0.0, h_xi, len(emp_np.wage_offer))
 
         # Wage with shock
@@ -128,7 +127,7 @@ class TestLaborMarketSystemValidation:
 
         # ops implementation
         emp_ops = sim_ops.emp
-        rng_ops = np.random.default_rng(456)
+        rng_ops = make_rng(456)
         shock_ops = ops.uniform(rng_ops, 0.0, h_xi, len(emp_ops.wage_offer))
 
         # Wage with shock
@@ -267,7 +266,7 @@ class TestPricingSystemValidation:
         prod_ops = sim_ops.prod
 
         # NumPy implementation: price increase logic
-        rng_numpy = np.random.default_rng(789)
+        rng_numpy = make_rng(789)
         h_eta = sim_numpy.config.h_eta
         p_avg = sim_numpy.ec.avg_mkt_price
 
@@ -287,7 +286,7 @@ class TestPricingSystemValidation:
         prod_np.price[:] = capped_price_np
 
         # ops implementation
-        rng_ops = np.random.default_rng(789)
+        rng_ops = make_rng(789)
         shock_ops = ops.uniform(rng_ops, 0.0, h_eta, len(prod_ops.price))
 
         should_increase_ops = ops.logical_and(
@@ -366,7 +365,7 @@ class TestComplexConditionalValidation:
         Uses select() operation to test switch/case style logic.
         """
         # Create test data
-        rng = np.random.default_rng(999)
+        rng = make_rng(999)
         inventory = rng.uniform(0, 50, 100)
         price = rng.uniform(80, 120, 100)
         avg_price = 100.0

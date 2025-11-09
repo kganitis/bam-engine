@@ -7,9 +7,8 @@ Event‑2  –  Labour‑market systems
 from typing import cast
 
 import numpy as np
-from numpy.random import Generator, default_rng
 
-from bamengine import logging
+from bamengine import logging, Rng, make_rng
 from bamengine.roles import Economy, Employer, Worker
 from bamengine.typing import Idx1D, Int1D
 from bamengine.utils import select_top_k_indices_sorted
@@ -96,7 +95,7 @@ def firms_decide_wage_offer(
     *,
     w_min: float,
     h_xi: float,
-    rng: Generator = default_rng(),
+    rng: Rng = make_rng(),
 ) -> None:
     """
     Firms with vacancies post a wage offer as a markup over their previous offer.
@@ -153,7 +152,7 @@ def workers_decide_firms_to_apply(
     emp: Employer,
     *,
     max_M: int,
-    rng: Generator = default_rng(),
+    rng: Rng = make_rng(),
 ) -> None:
     """
     Unemployed workers choose up to `max_M` firms to apply to, sorted by wage.
@@ -288,9 +287,7 @@ def workers_decide_firms_to_apply(
     log.info("--- Workers Deciding Firms to Apply complete ---")
 
 
-def workers_send_one_round(
-    wrk: Worker, emp: Employer, rng: Generator = default_rng()
-) -> None:
+def workers_send_one_round(wrk: Worker, emp: Employer, rng: Rng = make_rng()) -> None:
     """A single round of job applications being sent and received."""
     log.info("--- Workers Sending One Round of Applications ---")
     stride = wrk.job_apps_targets.shape[1]
@@ -501,7 +498,7 @@ def firms_hire_workers(
     emp: Employer,
     *,
     theta: int,
-    rng: Generator = default_rng(),
+    rng: Rng = make_rng(),
 ) -> None:
     """Match firms with queued applicants and update all related state."""
     log.info("--- Firms Hiring Workers ---")

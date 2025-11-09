@@ -24,7 +24,7 @@ from tests.helpers.factories import (
 )
 
 # def test_firms_decide_price_obeys_break_even_and_shocks() -> None:
-#     rng = default_rng(0)
+#     rng = make_rng(0)
 #
 #     prod = mock_producer(
 #         n=4,

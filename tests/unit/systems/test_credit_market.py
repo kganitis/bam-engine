@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 from hypothesis import assume, given, settings
 from hypothesis import strategies as st
-from numpy.random import Generator, default_rng
+from bamengine import Rng, make_rng
 from numpy.typing import NDArray
 
 from bamengine.roles import Borrower, Lender, LoanBook
@@ -43,14 +43,14 @@ def _mini_state(
     n_lenders: int = 2,
     H: int = 2,
     seed: int = 7,
-) -> tuple[Borrower, Lender, LoanBook, Generator, int]:
+) -> tuple[Borrower, Lender, LoanBook, Rng, int]:
     """
     Build minimal Borrower, Lender, and empty LoanBook components plus an RNG.
 
     * Borrowers: wage_bill > net_worth for the first 2 borrowers so they demand credit.
     * Lenders:   non-zero credit_supply, distinct interest rates.
     """
-    rng = default_rng(seed)
+    rng = make_rng(seed)
 
     bor = mock_borrower(
         n=n_borrowers,
@@ -83,22 +83,22 @@ def test_decide_credit_supply_basic() -> None:
 
 def test_interest_rate_basic() -> None:
     lend = mock_lender(n=4, queue_h=2)
-    banks_decide_interest_rate(lend, r_bar=0.05, h_phi=0.1, rng=default_rng(0))
+    banks_decide_interest_rate(lend, r_bar=0.05, h_phi=0.1, rng=make_rng(0))
     assert (lend.interest_rate >= 0.05 - 1e-12).all()
     assert (lend.interest_rate <= 0.05 * 1.1 + 1e-12).all()
 
 
 def test_interest_rate_zero_shock() -> None:
     lend = mock_lender(n=2, queue_h=2)
-    banks_decide_interest_rate(lend, r_bar=0.05, h_phi=0.0, rng=default_rng(0))
+    banks_decide_interest_rate(lend, r_bar=0.05, h_phi=0.0, rng=make_rng(0))
     assert np.allclose(lend.interest_rate, 0.05, atol=1e-12)
 
 
 def test_interest_rate_reuses_scratch() -> None:
     lend = mock_lender(n=3, queue_h=2)
-    banks_decide_interest_rate(lend, r_bar=0.05, h_phi=0.1, rng=default_rng(0))
+    banks_decide_interest_rate(lend, r_bar=0.05, h_phi=0.1, rng=make_rng(0))
     buf0 = lend.opex_shock
-    banks_decide_interest_rate(lend, r_bar=0.06, h_phi=0.1, rng=default_rng(1))
+    banks_decide_interest_rate(lend, r_bar=0.06, h_phi=0.1, rng=make_rng(1))
     assert buf0 is lend.opex_shock
     # mypy: lend.opex_shock is Optional[…]; prove it's not None first
     assert lend.opex_shock is not None and lend.opex_shock.flags.writeable
@@ -198,7 +198,7 @@ def test_prepare_applications_single_trial() -> None:
 def test_prepare_applications_no_demand() -> None:
     bor = mock_borrower(n=2, queue_h=2, credit_demand=np.zeros(2))
     lend = mock_lender(n=2, queue_h=2)
-    firms_prepare_loan_applications(bor, lend, max_H=2, rng=default_rng(0))
+    firms_prepare_loan_applications(bor, lend, max_H=2, rng=make_rng(0))
     assert np.all((bor.loan_apps_head == -1))
     assert np.all(bor.loan_apps_targets == -1)
 
@@ -235,7 +235,7 @@ def _run_basic_loan_cycle(
     bor: Borrower,
     lend: Lender,
     ledger: LoanBook,
-    rng: Generator,
+    rng: Rng,
     H: int,
 ) -> NDArray[np.float64]:
     """helper used by many tests"""
@@ -334,7 +334,7 @@ def test_firms_fire_workers_gap_closed() -> None:
     wrk.employed[:] = True
     wrk.employer[:] = 0
 
-    firms_fire_workers(emp, wrk, rng=default_rng(0))
+    firms_fire_workers(emp, wrk, rng=make_rng(0))
 
     assert emp.wage_bill[0] <= emp.total_funds[0] + 1e-12
     assert emp.current_labor[0] == wrk.employed.sum()
@@ -361,7 +361,7 @@ def test_firms_fire_workers_zero_needed() -> None:
     before_employer = wrk.employer.copy()
     before_wage = wrk.wage.copy()
 
-    firms_fire_workers(emp, wrk, rng=default_rng(42))
+    firms_fire_workers(emp, wrk, rng=make_rng(42))
 
     # Nothing should change when there is no financing gap
     np.testing.assert_array_equal(emp.current_labor, before_labor)
@@ -387,7 +387,7 @@ def test_firms_fire_workers_no_workforce() -> None:
     )
     wrk = mock_worker(n=2)  # but both workers are unemployed
 
-    firms_fire_workers(emp, wrk, rng=default_rng(0))
+    firms_fire_workers(emp, wrk, rng=make_rng(0))
 
     assert wrk.fired.sum() == 0
 
@@ -401,7 +401,7 @@ def test_firms_fire_workers_no_workforce() -> None:
 def test_banks_provide_loans_properties(
     n_borrowers: int, n_lenders: int, H: int
 ) -> None:
-    rng = default_rng(999)
+    rng = make_rng(999)
     bor = mock_borrower(n=n_borrowers, queue_h=H)
     lend = mock_lender(n=n_lenders, queue_h=H)
 
@@ -521,7 +521,7 @@ def test_firms_fire_workers_random_sufficient_mask_branch() -> None:
     wrk.employer[:] = 0
     wrk.wage[:] = 1.0
 
-    firms_fire_workers(emp, wrk, rng=default_rng(123), method="random")
+    firms_fire_workers(emp, wrk, rng=make_rng(123), method="random")
 
     # Minimal number that covers 2.4 with 1.0 wages is 3 workers
     assert wrk.fired.sum() == 3
@@ -581,7 +581,7 @@ def test_firms_fire_workers_expensive_picks_top_wages() -> None:
     wrk.employer[:] = 0
     wrk.wage[:] = wages
 
-    firms_fire_workers(emp, wrk, method="expensive", rng=default_rng(0))
+    firms_fire_workers(emp, wrk, method="expensive", rng=make_rng(0))
 
     fired_idx = set(np.flatnonzero(wrk.fired))
     # Expect the two most expensive: indices 3 (wage 5) and 2 (wage 4)
@@ -613,7 +613,7 @@ def test_firms_fire_workers_expensive_fire_all_if_insufficient() -> None:
     wrk.employer[:] = 0
     wrk.wage[:] = wages
 
-    firms_fire_workers(emp, wrk, method="expensive", rng=default_rng(0))
+    firms_fire_workers(emp, wrk, method="expensive", rng=make_rng(0))
 
     # Both fired
     assert wrk.fired.sum() == 2
@@ -702,7 +702,7 @@ def test_prepare_applications_no_lenders_early_exit() -> None:
     lend = mock_lender(n=2, queue_h=2)
     lend.credit_supply[:] = 0.0  # no lenders available
 
-    firms_prepare_loan_applications(bor, lend, max_H=2, rng=default_rng(0))
+    firms_prepare_loan_applications(bor, lend, max_H=2, rng=make_rng(0))
 
     # All heads must be -1; targets remain all -1 (initialized by factory)
     assert np.all(bor.loan_apps_head == -1)
@@ -727,7 +727,7 @@ def test_prepare_applications_Heff_lt_H_and_sorted_by_rate() -> None:
     )
     lend.credit_supply[:] = 100.0
 
-    firms_prepare_loan_applications(bor, lend, max_H=H, rng=default_rng(0))
+    firms_prepare_loan_applications(bor, lend, max_H=H, rng=make_rng(0))
 
     demanding = np.where(bor.credit_demand > 0)[0]
     for f_id in demanding:

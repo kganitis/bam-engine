@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
-from numpy.random import Generator, default_rng
+from bamengine import Rng, make_rng
 
 from bamengine.roles import Consumer, Producer
 from bamengine.systems.goods_market import (
@@ -27,11 +27,11 @@ def _mini_state(
     n_firms: int = 3,
     Z: int = 2,
     seed: int = 0,
-) -> tuple[Consumer, Producer, Generator, int]:
+) -> tuple[Consumer, Producer, Rng, int]:
     """
     Return Consumer & Producer roles plus an RNG and queue width *Z*.
     """
-    rng = default_rng(seed)
+    rng = make_rng(seed)
     con = mock_consumer(
         n=n_hh,
         queue_z=Z,
@@ -134,7 +134,7 @@ def test_loyalty_swap_keeps_prev_at_slot0() -> None:
 
     consumers_calc_propensity(con, avg_sav=1.0, beta=0.9)
     consumers_decide_income_to_spend(con)
-    consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=default_rng(42))
+    consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=make_rng(42))
 
     # loyalty guarantee: despite being pricier, firm-1 stays in column-0
     assert con.shop_visits_targets[0, 0] == 1
@@ -188,7 +188,7 @@ def test_one_round_skip_sold_out() -> None:
     head_before = int(con.shop_visits_head[0])
     budget_before = float(con.income_to_spend[0])
 
-    consumers_shop_one_round(con, prod, rng=default_rng(7))
+    consumers_shop_one_round(con, prod, rng=make_rng(7))
 
     # Pointer advanced exactly one and the slot was cleared
     assert con.shop_visits_head[0] == head_before + 1
@@ -260,7 +260,7 @@ def test_finalize_transfers_leftover_to_savings() -> None:
     Z=st.integers(min_value=1, max_value=3),
 )
 def test_visit_invariants(n_hh: int, n_firms: int, Z: int) -> None:
-    rng = default_rng(123)
+    rng = make_rng(123)
     # random positive inventory & price
     prod = mock_producer(
         n=n_firms,
