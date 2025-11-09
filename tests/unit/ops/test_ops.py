@@ -2,7 +2,6 @@
 """Unit tests for bamengine.ops module."""
 
 import numpy as np
-import pytest
 
 from bamengine import ops
 

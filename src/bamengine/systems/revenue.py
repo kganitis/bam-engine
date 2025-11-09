@@ -146,6 +146,7 @@ def firms_validate_debt_commitments(
         bor.total_funds[repay_firms] -= total_debt[repay_firms]
 
         if log.isEnabledFor(logging.DEBUG):
+            # noinspection PyUnboundLocalVariable
             for firm_idx in sample_repay_firms:
                 log.debug(
                     f"      Firm {firm_idx}: "
@@ -173,6 +174,7 @@ def firms_validate_debt_commitments(
         )
 
         if num_loans_repaid > 0 and log.isEnabledFor(logging.DEBUG):
+            # noinspection PyUnboundLocalVariable
             log.debug(
                 f"    Lender equity updated for "
                 f"{affected_lenders_repayment.size} lenders due to repayments."
@@ -181,6 +183,7 @@ def firms_validate_debt_commitments(
             for i_lender, lender_idx in enumerate(
                 affected_lenders_repayment[: min(5, affected_lenders_repayment.size)]
             ):
+                # noinspection PyUnboundLocalVariable
                 log.debug(
                     f"      Lender {lender_idx}: "
                     f"equity from {old_lender_equity_repayment[i_lender]:.2f} "
@@ -304,6 +307,7 @@ def firms_validate_debt_commitments(
                 for i_lender, lender_idx in enumerate(
                     affected_lenders_default[: min(5, affected_lenders_default.size)]
                 ):
+                    # noinspection PyUnboundLocalVariable
                     log.debug(
                         f"      Lender {lender_idx}: "
                         f"equity from {old_lender_equity_default[i_lender]:.2f} "

@@ -2,6 +2,8 @@
 """
 Event‑2  –  Labour‑market systems
 """
+# TODO This module has multiple duplicated code fragments
+
 from typing import cast
 
 import numpy as np

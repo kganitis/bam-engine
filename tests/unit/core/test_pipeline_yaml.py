@@ -154,7 +154,7 @@ pipeline:
 
 def test_default_pipeline_loads_from_yaml():
     """Default pipeline successfully loads from YAML."""
-    from bamengine.core.default_pipeline import create_default_pipeline
+    from bamengine.core.pipeline import create_default_pipeline
 
     pipeline = create_default_pipeline(max_M=4, max_H=2, max_Z=2)
 

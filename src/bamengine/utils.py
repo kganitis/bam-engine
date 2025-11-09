@@ -1,4 +1,6 @@
 # src/bamengine/utils.py
+from typing import Optional
+
 import numpy as np
 from numpy.random import Generator, default_rng
 
@@ -19,7 +21,7 @@ def trim_mean(values: Float1D, trim_pct: float = 0.05) -> float:
 
 def trimmed_weighted_mean(
     values: Float1D,
-    weights: Float1D | None = None,
+    weights: Optional[Float1D] = None,
     trim_pct: float = 0.05,
     min_weight: float = 1e-3,
 ) -> float:
