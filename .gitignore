@@ -23,6 +23,7 @@ dist/
 .tox/
 .coverage
 coverage.xml
+coverage.json
 htmlcov/
 
 # IDEs
