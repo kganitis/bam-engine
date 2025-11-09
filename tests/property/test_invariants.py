@@ -24,6 +24,7 @@ shock_strategy = st.floats(min_value=0.01, max_value=0.5)
 friction_strategy = st.integers(min_value=1, max_value=10)
 
 
+@pytest.mark.invariants
 class TestSimulationInvariants:
     """Test that economic invariants hold for any valid parameters."""
 
@@ -34,9 +35,7 @@ class TestSimulationInvariants:
         seed=seed_strategy,
     )
     @settings(max_examples=50, deadline=5000)
-    def test_initialization_invariants(
-        self, n_firms, n_households, n_banks, seed
-    ):
+    def test_initialization_invariants(self, n_firms, n_households, n_banks, seed):
         """Initial state should satisfy all invariants."""
         sim = Simulation.init(
             n_firms=n_firms,
@@ -70,9 +69,7 @@ class TestSimulationInvariants:
     @settings(max_examples=30, deadline=10000)
     def test_single_step_invariants(self, n_firms, n_households, seed):
         """Invariants should hold after one simulation step."""
-        sim = Simulation.init(
-            n_firms=n_firms, n_households=n_households, seed=seed
-        )
+        sim = Simulation.init(n_firms=n_firms, n_households=n_households, seed=seed)
 
         sim.step()
 
@@ -81,7 +78,9 @@ class TestSimulationInvariants:
 
         # Production is non-negative
         assert (sim.prod.production >= 0).all(), "Production must be non-negative"
-        assert (sim.prod.desired_production >= 0).all(), "Desired production non-negative"
+        assert (
+            sim.prod.desired_production >= 0
+        ).all(), "Desired production non-negative"
 
         # No NaN or Inf values
         assert np.isfinite(sim.prod.price).all(), "Prices must be finite"
@@ -89,7 +88,9 @@ class TestSimulationInvariants:
 
         # Employment constraints
         assert (sim.emp.current_labor >= 0).all(), "Labor must be non-negative"
-        assert (sim.emp.current_labor <= n_households).all(), "Can't employ more than population"
+        assert (
+            sim.emp.current_labor <= n_households
+        ).all(), "Can't employ more than population"
 
     @given(
         n_firms=n_firms_strategy,
@@ -117,17 +118,24 @@ class TestSimulationInvariants:
 
             # Prices should remain positive and finite
             assert (sim.prod.price > 0).all(), f"Non-positive price at period {period}"
-            assert np.isfinite(sim.prod.price).all(), f"Infinite price at period {period}"
+            assert np.isfinite(
+                sim.prod.price
+            ).all(), f"Infinite price at period {period}"
 
             # Production should be non-negative and finite
-            assert (sim.prod.production >= 0).all(), f"Negative production at period {period}"
-            assert np.isfinite(sim.prod.production).all(), f"Infinite production at period {period}"
+            assert (
+                sim.prod.production >= 0
+            ).all(), f"Negative production at period {period}"
+            assert np.isfinite(
+                sim.prod.production
+            ).all(), f"Infinite production at period {period}"
 
             # No mass unemployment (at least some employed)
             employed_count = sim.wrk.employed.sum()
             assert employed_count > 0, f"Mass unemployment at period {period}"
 
 
+@pytest.mark.invariants
 class TestProductionInvariants:
     """Test production-specific invariants."""
 
@@ -147,7 +155,9 @@ class TestProductionInvariants:
 
         # Production changes should not exceed shock bounds
         # (relaxed constraint due to other factors affecting production)
-        production_ratio = sim.prod.desired_production / np.maximum(initial_production, 1e-10)
+        production_ratio = sim.prod.desired_production / np.maximum(
+            initial_production, 1e-10
+        )
 
         # Allow for some flexibility due to market conditions
         # Production can grow by up to (1 + h_rho) or shrink to 0
@@ -172,6 +182,7 @@ class TestProductionInvariants:
         assert (sim.prod.inventory >= 0).all(), "Inventory became negative"
 
 
+@pytest.mark.invariants
 class TestLaborMarketInvariants:
     """Test labor market invariants."""
 
@@ -183,9 +194,7 @@ class TestLaborMarketInvariants:
     @settings(max_examples=30, deadline=10000)
     def test_employment_constraints(self, n_firms, n_households, seed):
         """Employment should respect population constraints."""
-        sim = Simulation.init(
-            n_firms=n_firms, n_households=n_households, seed=seed
-        )
+        sim = Simulation.init(n_firms=n_firms, n_households=n_households, seed=seed)
 
         sim.step()
 
@@ -195,7 +204,9 @@ class TestLaborMarketInvariants:
 
         # Each firm's labor cannot exceed population
         assert (sim.emp.current_labor >= 0).all(), "Negative labor"
-        assert (sim.emp.current_labor <= n_households).all(), "Firm employs more than population"
+        assert (
+            sim.emp.current_labor <= n_households
+        ).all(), "Firm employs more than population"
 
         # Sum of firm labor should match employed workers
         total_firm_labor = sim.emp.current_labor.sum()
@@ -222,9 +233,12 @@ class TestLaborMarketInvariants:
             employed_mask = sim.wrk.employed
             if employed_mask.any():
                 employed_wages = sim.wrk.wage[employed_mask]
-                assert (employed_wages >= sim.ec.min_wage).all(), "Employed wage below minimum"
+                assert (
+                    employed_wages >= sim.ec.min_wage
+                ).all(), "Employed wage below minimum"
 
 
+@pytest.mark.invariants
 class TestFinancialInvariants:
     """Test financial/accounting invariants."""
 
@@ -253,9 +267,7 @@ class TestFinancialInvariants:
     @settings(max_examples=20, deadline=10000)
     def test_bank_equity_positive(self, n_firms, n_banks, seed):
         """Bank equity should remain positive (or bank fails)."""
-        sim = Simulation.init(
-            n_firms=n_firms, n_banks=n_banks, seed=seed
-        )
+        sim = Simulation.init(n_firms=n_firms, n_banks=n_banks, seed=seed)
 
         # Run multiple periods
         for _ in range(5):
@@ -263,9 +275,12 @@ class TestFinancialInvariants:
 
             # Banks that survive must have positive equity
             # (bankrupt banks are replaced)
-            assert (sim.lend.equity_base > 0).all(), "Bank with non-positive equity survived"
+            assert (
+                sim.lend.equity_base > 0
+            ).all(), "Bank with non-positive equity survived"
 
 
+@pytest.mark.invariants
 class TestPricingInvariants:
     """Test pricing mechanism invariants."""
 
@@ -309,6 +324,7 @@ class TestPricingInvariants:
             assert 0.01 < avg_price < 1000, f"Average price unreasonable: {avg_price}"
 
 
+@pytest.mark.invariants
 class TestNumericalStability:
     """Test numerical stability (no NaN, Inf, overflow)."""
 
@@ -320,9 +336,7 @@ class TestNumericalStability:
     @settings(max_examples=30, deadline=10000)
     def test_no_nan_values(self, n_firms, n_households, seed):
         """No NaN values should appear in any state."""
-        sim = Simulation.init(
-            n_firms=n_firms, n_households=n_households, seed=seed
-        )
+        sim = Simulation.init(n_firms=n_firms, n_households=n_households, seed=seed)
 
         for _ in range(5):
             sim.step()
