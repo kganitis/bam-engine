@@ -5,6 +5,7 @@ import numpy as np
 from bamengine.core import Role
 from bamengine.core.registry import list_roles, get_role
 
+
 # Note: These tests require real BAM components to be in the registry.
 # If unit tests run first and clear the registry, components won't
 # re-register on import (Python caches modules). Solution: these tests
@@ -67,6 +68,7 @@ def test_role_instantiation_via_registry():
     assert EmployerCls is Employer
 
     # Should be able to instantiate
+    # noinspection PyArgumentList
     emp = EmployerCls(
         wage_offer=np.ones(10),
         current_labor=np.zeros(10, dtype=int),
@@ -78,6 +80,7 @@ def test_role_instantiation_via_registry():
         recv_job_apps=np.zeros((10, 5), dtype=int),
     )
 
+    # noinspection PyUnresolvedReferences
     assert len(emp.wage_offer) == 10
     assert emp.name == "Employer"
 

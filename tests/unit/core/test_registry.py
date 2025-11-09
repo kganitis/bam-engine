@@ -22,6 +22,7 @@ def clean_registry():
     DO NOT use autouse=True, as it would interfere with integration tests
     that rely on real components being registered.
     """
+    # noinspection PyProtectedMember
     from bamengine.core.registry import _ROLE_REGISTRY, _EVENT_REGISTRY
 
     # Save current state

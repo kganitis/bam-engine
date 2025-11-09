@@ -2,7 +2,6 @@
 
 import bamengine.events  # noqa: F401 - needed to register events
 from bamengine.core.pipeline import create_default_pipeline
-from bamengine.core.pipeline import RepeatedEvent
 
 
 def test_create_default_pipeline():

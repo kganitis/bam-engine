@@ -1,8 +1,9 @@
 """Unit tests for Pipeline class."""
+from typing import cast
 
+import numpy as np
 import pytest
 
-from bamengine.core.event import Event
 from bamengine.core.pipeline import Pipeline
 from bamengine.events.planning import (
     FirmsAdjustPrice,
@@ -162,7 +163,7 @@ def test_pipeline_execute():
 
     # Verify event actually ran (desired production should change)
     # Since inventory is 0 and price >= avg, production should increase
-    assert not (sim.prod.desired_production == initial_desired_production).all()
+    assert not np.all(sim.prod.desired_production == initial_desired_production)
 
 
 def test_pipeline_repr():
@@ -248,7 +249,7 @@ def test_repeated_event_executes_multiple_times():
     repeated.execute(sim)
 
     # Should have executed (production changed)
-    assert not (sim.prod.desired_production == initial_desired_production).all()
+    assert not np.all(sim.prod.desired_production == initial_desired_production)
 
 
 def test_repeated_event_name_property():
@@ -276,11 +277,18 @@ def test_pipeline_with_repeats():
         },
     )
 
+    event1 = pipeline.events[0]
+    event2 = pipeline.events[1]
+
     # Both events should be wrapped in RepeatedEvent
-    assert isinstance(pipeline.events[0], RepeatedEvent)
-    assert isinstance(pipeline.events[1], RepeatedEvent)
-    assert pipeline.events[0].n_repeats == 5
-    assert pipeline.events[1].n_repeats == 5
+    assert isinstance(event1, RepeatedEvent)
+    assert isinstance(event2, RepeatedEvent)
+    # Cast to RepeatedEvent to check n_repeats
+    cast(RepeatedEvent, event1)
+    cast(RepeatedEvent, event2)
+    # Both should have n_repeats of 5
+    assert event1.n_repeats == 5
+    assert event2.n_repeats == 5
 
 
 def test_pipeline_repeated_events_preserve_order():

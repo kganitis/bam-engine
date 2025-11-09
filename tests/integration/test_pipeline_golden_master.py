@@ -1,7 +1,6 @@
 """Golden master tests comparing pipeline vs legacy implementation."""
 
 import numpy as np
-import pytest
 
 from bamengine.simulation import Simulation
 
