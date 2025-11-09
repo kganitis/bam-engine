@@ -1,13 +1,13 @@
 # src/bamengine/roles/lender.py
-from dataclasses import dataclass, field
+from dataclasses import field
 from typing import Optional
 
-from bamengine.core import Role
+from bamengine.core.decorators import role
 from bamengine.typing import Float1D, Idx1D, Idx2D
 
 
-@dataclass(slots=True)
-class Lender(Role):
+@role
+class Lender:
     """
     Lender role for agents.
 

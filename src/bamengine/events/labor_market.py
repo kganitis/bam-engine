@@ -7,17 +7,16 @@ labor market operations.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from bamengine.core import Event
+from bamengine.core.decorators import event
 
 if TYPE_CHECKING:
     from bamengine.simulation import Simulation
 
 
-@dataclass(slots=True)
-class CalcAnnualInflationRate(Event):
+@event
+class CalcAnnualInflationRate:
     """
     Calculate annual inflation rate based on price history.
 
@@ -27,14 +26,6 @@ class CalcAnnualInflationRate(Event):
     where P̄ is the average market price. Requires at least 5 periods of history.
 
     This event wraps `bamengine.systems.labor_market.calc_annual_inflation_rate`.
-
-    Dependencies
-    ------------
-    None (first event in labor market phase, uses historical data)
-
-    See Also
-    --------
-    bamengine.systems.labor_market.calc_annual_inflation_rate : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -44,8 +35,8 @@ class CalcAnnualInflationRate(Event):
         calc_annual_inflation_rate(sim.ec)
 
 
-@dataclass(slots=True)
-class AdjustMinimumWage(Event):
+@event
+class AdjustMinimumWage:
     """
     Adjust minimum wage based on realized inflation.
 
@@ -55,14 +46,6 @@ class AdjustMinimumWage(Event):
     where π_t is the most recent annual inflation rate.
 
     This event wraps `bamengine.systems.labor_market.adjust_minimum_wage`.
-
-    Dependencies
-    ------------
-    - calc_annual_inflation_rate : Uses inflation_history
-
-    See Also
-    --------
-    bamengine.systems.labor_market.adjust_minimum_wage : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -72,8 +55,8 @@ class AdjustMinimumWage(Event):
         adjust_minimum_wage(sim.ec)
 
 
-@dataclass(slots=True)
-class FirmsDecideWageOffer(Event):
+@event
+class FirmsDecideWageOffer:
     """
     Firms with vacancies set wage offers as markup over previous wage.
 
@@ -85,15 +68,6 @@ class FirmsDecideWageOffer(Event):
     Firms with zero vacancies keep their previous wage offer unchanged.
 
     This event wraps `bamengine.systems.labor_market.firms_decide_wage_offer`.
-
-    Dependencies
-    ------------
-    - adjust_minimum_wage : Uses current minimum wage
-    - firms_decide_vacancies : Wage shock only applied to firms with vacancies
-
-    See Also
-    --------
-    bamengine.systems.labor_market.firms_decide_wage_offer : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -108,8 +82,8 @@ class FirmsDecideWageOffer(Event):
         )
 
 
-@dataclass(slots=True)
-class WorkersDecideFirmsToApply(Event):
+@event
+class WorkersDecideFirmsToApply:
     """
     Unemployed workers choose firms to apply to, sorted by wage offer.
 
@@ -118,15 +92,6 @@ class WorkersDecideFirmsToApply(Event):
     contract expired naturally (not fired) and that employer is hiring.
 
     This event wraps `bamengine.systems.labor_market.workers_decide_firms_to_apply`.
-
-    Dependencies
-    ------------
-    - firms_decide_wage_offer : Uses wage offers for ranking
-    - firms_decide_vacancies : Uses vacancy information
-
-    See Also
-    --------
-    bamengine.systems.labor_market.workers_decide_firms_to_apply : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -141,8 +106,8 @@ class WorkersDecideFirmsToApply(Event):
         )
 
 
-@dataclass(slots=True)
-class WorkersSendOneRound(Event):
+@event
+class WorkersSendOneRound:
     """
     Workers send one round of job applications to firms.
 
@@ -154,14 +119,6 @@ class WorkersSendOneRound(Event):
     process all applications.
 
     This event wraps `bamengine.systems.labor_market.workers_send_one_round`.
-
-    Dependencies
-    ------------
-    - workers_decide_firms_to_apply : Uses application queues
-
-    See Also
-    --------
-    bamengine.systems.labor_market.workers_send_one_round : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -171,8 +128,8 @@ class WorkersSendOneRound(Event):
         workers_send_one_round(sim.wrk, sim.emp, rng=sim.rng)
 
 
-@dataclass(slots=True)
-class FirmsHireWorkers(Event):
+@event
+class FirmsHireWorkers:
     """
     Firms process applications and hire workers.
 
@@ -184,14 +141,6 @@ class FirmsHireWorkers(Event):
     alternating with WorkersSendOneRound.
 
     This event wraps `bamengine.systems.labor_market.firms_hire_workers`.
-
-    Dependencies
-    ------------
-    - workers_send_one_round : Processes applications sent in current round
-
-    See Also
-    --------
-    bamengine.systems.labor_market.firms_hire_workers : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -206,8 +155,8 @@ class FirmsHireWorkers(Event):
         )
 
 
-@dataclass(slots=True)
-class FirmsCalcWageBill(Event):
+@event
+class FirmsCalcWageBill:
     """
     Firms calculate total wage bill based on currently employed workers.
 
@@ -217,14 +166,6 @@ class FirmsCalcWageBill(Event):
     where w_j is the individual wage of worker j.
 
     This event wraps `bamengine.systems.labor_market.firms_calc_wage_bill`.
-
-    Dependencies
-    ------------
-    - firms_hire_workers : Uses final employment state after hiring
-
-    See Also
-    --------
-    bamengine.systems.labor_market.firms_calc_wage_bill : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:

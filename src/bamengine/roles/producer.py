@@ -1,13 +1,13 @@
 # src/bamengine/roles/producer.py
-from dataclasses import dataclass, field
+from dataclasses import field
 from typing import Optional
 
-from bamengine.core import Role
+from bamengine.core.decorators import role
 from bamengine.typing import Bool1D, Float1D
 
 
-@dataclass(slots=True)
-class Producer(Role):
+@role
+class Producer:
     """
     Producer role for agents.
 

@@ -7,17 +7,16 @@ spawning of replacement agents.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from bamengine.core import Event
+from bamengine.core.decorators import event
 
 if TYPE_CHECKING:
     from bamengine.simulation import Simulation
 
 
-@dataclass(slots=True)
-class FirmsUpdateNetWorth(Event):
+@event
+class FirmsUpdateNetWorth:
     """
     Firms update net worth based on current financial position.
 
@@ -25,14 +24,6 @@ class FirmsUpdateNetWorth(Event):
     calculates final net worth after all financial transactions.
 
     This event wraps `bamengine.systems.bankruptcy.firms_update_net_worth`.
-
-    Dependencies
-    ------------
-    - firms_pay_dividends : All financial transactions complete
-
-    See Also
-    --------
-    bamengine.systems.bankruptcy.firms_update_net_worth : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -42,8 +33,8 @@ class FirmsUpdateNetWorth(Event):
         firms_update_net_worth(sim.bor)
 
 
-@dataclass(slots=True)
-class MarkBankruptFirms(Event):
+@event
+class MarkBankruptFirms:
     """
     Identify and mark bankrupt firms.
 
@@ -51,14 +42,6 @@ class MarkBankruptFirms(Event):
     Bankrupt firms lay off all workers and are removed from the loan book.
 
     This event wraps `bamengine.systems.bankruptcy.mark_bankrupt_firms`.
-
-    Dependencies
-    ------------
-    - firms_update_net_worth : Uses final net worth
-
-    See Also
-    --------
-    bamengine.systems.bankruptcy.mark_bankrupt_firms : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -75,8 +58,8 @@ class MarkBankruptFirms(Event):
         )
 
 
-@dataclass(slots=True)
-class MarkBankruptBanks(Event):
+@event
+class MarkBankruptBanks:
     """
     Identify and mark bankrupt banks.
 
@@ -84,14 +67,6 @@ class MarkBankruptBanks(Event):
     the loan book.
 
     This event wraps `bamengine.systems.bankruptcy.mark_bankrupt_banks`.
-
-    Dependencies
-    ------------
-    - mark_bankrupt_firms : Firms bankruptcy resolved first
-
-    See Also
-    --------
-    bamengine.systems.bankruptcy.mark_bankrupt_banks : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -101,8 +76,8 @@ class MarkBankruptBanks(Event):
         mark_bankrupt_banks(sim.ec, sim.lend, sim.lb)
 
 
-@dataclass(slots=True)
-class SpawnReplacementFirms(Event):
+@event
+class SpawnReplacementFirms:
     """
     Spawn replacement firms to replace bankrupt ones.
 
@@ -110,14 +85,6 @@ class SpawnReplacementFirms(Event):
     constant population size.
 
     This event wraps `bamengine.systems.bankruptcy.spawn_replacement_firms`.
-
-    Dependencies
-    ------------
-    - mark_bankrupt_firms : Bankruptcy identified
-
-    See Also
-    --------
-    bamengine.systems.bankruptcy.spawn_replacement_firms : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -133,8 +100,8 @@ class SpawnReplacementFirms(Event):
         )
 
 
-@dataclass(slots=True)
-class SpawnReplacementBanks(Event):
+@event
+class SpawnReplacementBanks:
     """
     Spawn replacement banks to replace bankrupt ones.
 
@@ -142,14 +109,6 @@ class SpawnReplacementBanks(Event):
     constant population size.
 
     This event wraps `bamengine.systems.bankruptcy.spawn_replacement_banks`.
-
-    Dependencies
-    ------------
-    - mark_bankrupt_banks : Bankruptcy identified
-
-    See Also
-    --------
-    bamengine.systems.bankruptcy.spawn_replacement_banks : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:

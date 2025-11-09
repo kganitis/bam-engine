@@ -7,17 +7,16 @@ and dividend distribution.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from bamengine.core import Event
+from bamengine.core.decorators import event
 
 if TYPE_CHECKING:
     from bamengine.simulation import Simulation
 
 
-@dataclass(slots=True)
-class FirmsCollectRevenue(Event):
+@event
+class FirmsCollectRevenue:
     """
     Firms collect revenue from goods sold during the period.
 
@@ -27,14 +26,6 @@ class FirmsCollectRevenue(Event):
     Revenue is added to net worth.
 
     This event wraps `bamengine.systems.revenue.firms_collect_revenue`.
-
-    Dependencies
-    ------------
-    - consumers_finalize_purchases : All sales complete
-
-    See Also
-    --------
-    bamengine.systems.revenue.firms_collect_revenue : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -44,8 +35,8 @@ class FirmsCollectRevenue(Event):
         firms_collect_revenue(sim.prod, sim.bor)
 
 
-@dataclass(slots=True)
-class FirmsValidateDebtCommitments(Event):
+@event
+class FirmsValidateDebtCommitments:
     """
     Firms repay loans and update debt obligations.
 
@@ -54,14 +45,6 @@ class FirmsValidateDebtCommitments(Event):
     and remove fully paid loans.
 
     This event wraps `bamengine.systems.revenue.firms_validate_debt_commitments`.
-
-    Dependencies
-    ------------
-    - firms_collect_revenue : Uses revenue for debt repayment
-
-    See Also
-    --------
-    bamengine.systems.revenue.firms_validate_debt_commitments : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -71,8 +54,8 @@ class FirmsValidateDebtCommitments(Event):
         firms_validate_debt_commitments(sim.bor, sim.lend, sim.lb)
 
 
-@dataclass(slots=True)
-class FirmsPayDividends(Event):
+@event
+class FirmsPayDividends:
     """
     Firms distribute dividends to owners (shareholders).
 
@@ -82,14 +65,6 @@ class FirmsPayDividends(Event):
     where δ is the dividend payout ratio.
 
     This event wraps `bamengine.systems.revenue.firms_pay_dividends`.
-
-    Dependencies
-    ------------
-    - firms_validate_debt_commitments : After debt repayment
-
-    See Also
-    --------
-    bamengine.systems.revenue.firms_pay_dividends : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:

@@ -7,17 +7,16 @@ contract management.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from bamengine.core import Event
+from bamengine.core.decorators import event
 
 if TYPE_CHECKING:
     from bamengine.simulation import Simulation
 
 
-@dataclass(slots=True)
-class FirmsPayWages(Event):
+@event
+class FirmsPayWages:
     """
     Firms pay wages to employed workers, reducing net worth.
 
@@ -25,14 +24,6 @@ class FirmsPayWages(Event):
         NW_i(t) = NW_i(t-1) - wage_bill_i
 
     This event wraps `bamengine.systems.production.firms_pay_wages`.
-
-    Dependencies
-    ------------
-    - firms_fire_workers : Uses final employment state after layoffs
-
-    See Also
-    --------
-    bamengine.systems.production.firms_pay_wages : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -42,8 +33,8 @@ class FirmsPayWages(Event):
         firms_pay_wages(sim.emp)
 
 
-@dataclass(slots=True)
-class WorkersReceiveWage(Event):
+@event
+class WorkersReceiveWage:
     """
     Workers receive wages as income, adding to savings.
 
@@ -51,14 +42,6 @@ class WorkersReceiveWage(Event):
         S_j(t) = S_j(t-1) + w_j
 
     This event wraps `bamengine.systems.production.workers_receive_wage`.
-
-    Dependencies
-    ------------
-    - firms_pay_wages : Wages must be paid first
-
-    See Also
-    --------
-    bamengine.systems.production.workers_receive_wage : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -68,8 +51,8 @@ class WorkersReceiveWage(Event):
         workers_receive_wage(sim.con, sim.wrk)
 
 
-@dataclass(slots=True)
-class FirmsRunProduction(Event):
+@event
+class FirmsRunProduction:
     """
     Firms execute production based on labor and productivity.
 
@@ -79,14 +62,6 @@ class FirmsRunProduction(Event):
     Output is added to inventory.
 
     This event wraps `bamengine.systems.production.firms_run_production`.
-
-    Dependencies
-    ------------
-    - firms_pay_wages : Production happens after wage payment
-
-    See Also
-    --------
-    bamengine.systems.production.firms_run_production : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -96,8 +71,8 @@ class FirmsRunProduction(Event):
         firms_run_production(sim.prod, sim.emp)
 
 
-@dataclass(slots=True)
-class WorkersUpdateContracts(Event):
+@event
+class WorkersUpdateContracts:
     """
     Decrement worker employment contract durations.
 
@@ -107,14 +82,6 @@ class WorkersUpdateContracts(Event):
     Workers with expired contracts (contract == 0) become unemployed.
 
     This event wraps `bamengine.systems.production.workers_update_contracts`.
-
-    Dependencies
-    ------------
-    - firms_run_production : Production period complete
-
-    See Also
-    --------
-    bamengine.systems.production.workers_update_contracts : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:

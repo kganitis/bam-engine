@@ -7,17 +7,16 @@ start of each simulation period.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from bamengine.core import Event
+from bamengine.core.decorators import event
 
 if TYPE_CHECKING:
     from bamengine.simulation import Simulation
 
 
-@dataclass(slots=True)
-class FirmsDecideDesiredProduction(Event):
+@event
+class FirmsDecideDesiredProduction:
     """
     Firms decide desired production based on inventory and market price.
 
@@ -27,14 +26,6 @@ class FirmsDecideDesiredProduction(Event):
     - Otherwise keep previous production level
 
     This event wraps `bamengine.systems.planning.firms_decide_desired_production`.
-
-    Dependencies
-    ------------
-    None (first event in planning phase)
-
-    See Also
-    --------
-    bamengine.systems.planning.firms_decide_desired_production : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -49,8 +40,8 @@ class FirmsDecideDesiredProduction(Event):
         )
 
 
-@dataclass(slots=True)
-class FirmsCalcBreakevenPrice(Event):
+@event
+class FirmsCalcBreakevenPrice:
     """
     Firms calculate breakeven price based on expected costs.
 
@@ -60,14 +51,6 @@ class FirmsCalcBreakevenPrice(Event):
     This represents the minimum price needed to cover costs.
 
     This event wraps `bamengine.systems.planning.firms_calc_breakeven_price`.
-
-    Dependencies
-    ------------
-    - firms_decide_desired_production : Sets expected_demand used in calculation
-
-    See Also
-    --------
-    bamengine.systems.planning.firms_calc_breakeven_price : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -82,8 +65,8 @@ class FirmsCalcBreakevenPrice(Event):
         )
 
 
-@dataclass(slots=True)
-class FirmsAdjustPrice(Event):
+@event
+class FirmsAdjustPrice:
     """
     Firms adjust nominal prices based on inventory and market conditions.
 
@@ -93,14 +76,6 @@ class FirmsAdjustPrice(Event):
     - Prices are floored at breakeven level
 
     This event wraps `bamengine.systems.planning.firms_adjust_price`.
-
-    Dependencies
-    ------------
-    - firms_calc_breakeven_price : Sets breakeven_price floor
-
-    See Also
-    --------
-    bamengine.systems.planning.firms_adjust_price : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -115,8 +90,8 @@ class FirmsAdjustPrice(Event):
         )
 
 
-@dataclass(slots=True)
-class FirmsDecideDesiredLabor(Event):
+@event
+class FirmsDecideDesiredLabor:
     """
     Firms decide desired labor based on production targets and productivity.
 
@@ -124,14 +99,6 @@ class FirmsDecideDesiredLabor(Event):
         L_desired = ceil(desired_production / labor_productivity)
 
     This event wraps `bamengine.systems.planning.firms_decide_desired_labor`.
-
-    Dependencies
-    ------------
-    - firms_decide_desired_production : Sets desired_production
-
-    See Also
-    --------
-    bamengine.systems.planning.firms_decide_desired_labor : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -141,8 +108,8 @@ class FirmsDecideDesiredLabor(Event):
         firms_decide_desired_labor(sim.prod, sim.emp)
 
 
-@dataclass(slots=True)
-class FirmsDecideVacancies(Event):
+@event
+class FirmsDecideVacancies:
     """
     Firms decide how many job vacancies to post.
 
@@ -150,14 +117,6 @@ class FirmsDecideVacancies(Event):
         V = max(L_desired - L_current, 0)
 
     This event wraps `bamengine.systems.planning.firms_decide_vacancies`.
-
-    Dependencies
-    ------------
-    - firms_decide_desired_labor : Sets desired_labor
-
-    See Also
-    --------
-    bamengine.systems.planning.firms_decide_vacancies : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:

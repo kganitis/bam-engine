@@ -1,12 +1,11 @@
 # src/bamengine/roles/borrower.py
-from dataclasses import dataclass
 
-from bamengine.core import Role
+from bamengine.core.decorators import role
 from bamengine.typing import Float1D, Idx1D, Idx2D
 
 
-@dataclass(slots=True)
-class Borrower(Role):
+@role
+class Borrower:
     """
     Borrower role for agents.
 
