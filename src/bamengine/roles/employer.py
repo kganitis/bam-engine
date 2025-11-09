@@ -1,13 +1,13 @@
 # src/bamengine/roles/employer.py
-from dataclasses import dataclass, field
+from dataclasses import field
 from typing import Optional
 
-from bamengine.core import Role
+from bamengine.core.decorators import role
 from bamengine.typing import Float1D, Idx1D, Idx2D, Int1D
 
 
-@dataclass(slots=True)
-class Employer(Role):
+@role
+class Employer:
     """
     Employer role for agents.
 

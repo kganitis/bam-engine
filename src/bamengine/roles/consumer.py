@@ -1,12 +1,10 @@
 # src/bamengine/roles/consumer.py
-from dataclasses import dataclass
-
-from bamengine.core import Role
+from bamengine.core.decorators import role
 from bamengine.typing import Float1D, Idx1D, Idx2D
 
 
-@dataclass(slots=True)
-class Consumer(Role):
+@role
+class Consumer:
     """
     Consumer role for agents.
 

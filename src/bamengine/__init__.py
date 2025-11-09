@@ -80,7 +80,18 @@ from .simulation import Simulation  # noqa: E402  (circular‑safe)
 # ============================================================================
 # ECS extensibility components
 # ============================================================================
-from .core import Agent, AgentType, Event, Role, event
+from .core import (
+    Agent,
+    AgentType,
+    Event,
+    Role,
+    event,
+    get_event,
+    get_role,
+    list_events,
+    list_roles,
+    role,
+)
 
 # ============================================================================
 # Public API exports
@@ -95,6 +106,11 @@ __all__: list[str] = [
     "Role",
     "Event",
     "event",
+    "role",
+    "get_event",
+    "get_role",
+    "list_events",
+    "list_roles",
     # Type system
     "Float",
     "Int",

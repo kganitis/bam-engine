@@ -1,12 +1,10 @@
 # src/bamengine/roles/worker.py
-from dataclasses import dataclass
-
-from bamengine.core import Role
+from bamengine.core.decorators import role
 from bamengine.typing import Bool1D, Float1D, Idx1D, Idx2D, Int1D
 
 
-@dataclass(slots=True)
-class Worker(Role):
+@role
+class Worker:
     """
     Worker role for agents.
 

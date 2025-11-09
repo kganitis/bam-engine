@@ -7,17 +7,16 @@ credit market operations.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from bamengine.core import Event
+from bamengine.core.decorators import event
 
 if TYPE_CHECKING:
     from bamengine.simulation import Simulation
 
 
-@dataclass(slots=True)
-class BanksDecideCreditSupply(Event):
+@event
+class BanksDecideCreditSupply:
     """
     Banks decide total credit supply based on equity and leverage ratio.
 
@@ -27,14 +26,6 @@ class BanksDecideCreditSupply(Event):
     where v is the bank's leverage ratio and E_i is equity.
 
     This event wraps `bamengine.systems.credit_market.banks_decide_credit_supply`.
-
-    Dependencies
-    ------------
-    None (first event in credit market phase)
-
-    See Also
-    --------
-    bamengine.systems.credit_market.banks_decide_credit_supply : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -44,8 +35,8 @@ class BanksDecideCreditSupply(Event):
         banks_decide_credit_supply(sim.lend, v=sim.ec.v)
 
 
-@dataclass(slots=True)
-class BanksDecideInterestRate(Event):
+@event
+class BanksDecideInterestRate:
     """
     Banks set interest rates as markup over base rate with random shock.
 
@@ -56,14 +47,6 @@ class BanksDecideInterestRate(Event):
     where r̄ is the base interest rate.
 
     This event wraps `bamengine.systems.credit_market.banks_decide_interest_rate`.
-
-    Dependencies
-    ------------
-    - banks_decide_credit_supply : Credit supply decision
-
-    See Also
-    --------
-    bamengine.systems.credit_market.banks_decide_interest_rate : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -78,8 +61,8 @@ class BanksDecideInterestRate(Event):
         )
 
 
-@dataclass(slots=True)
-class FirmsDecideCreditDemand(Event):
+@event
+class FirmsDecideCreditDemand:
     """
     Firms decide desired credit based on funding needs.
 
@@ -87,14 +70,6 @@ class FirmsDecideCreditDemand(Event):
         D_i = max(wage_bill_i - NW_i, 0)
 
     This event wraps `bamengine.systems.credit_market.firms_decide_credit_demand`.
-
-    Dependencies
-    ------------
-    - firms_calc_wage_bill : Uses wage bill for credit calculation
-
-    See Also
-    --------
-    bamengine.systems.credit_market.firms_decide_credit_demand : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -104,8 +79,8 @@ class FirmsDecideCreditDemand(Event):
         firms_decide_credit_demand(sim.bor)
 
 
-@dataclass(slots=True)
-class FirmsCalcCreditMetrics(Event):
+@event
+class FirmsCalcCreditMetrics:
     """
     Firms calculate credit metrics for loan applications.
 
@@ -113,14 +88,6 @@ class FirmsCalcCreditMetrics(Event):
     and other measures used by banks to evaluate loan applications.
 
     This event wraps `bamengine.systems.credit_market.firms_calc_credit_metrics`.
-
-    Dependencies
-    ------------
-    - firms_decide_credit_demand : Uses credit demand
-
-    See Also
-    --------
-    bamengine.systems.credit_market.firms_calc_credit_metrics : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -130,8 +97,8 @@ class FirmsCalcCreditMetrics(Event):
         firms_calc_credit_metrics(sim.bor)
 
 
-@dataclass(slots=True)
-class FirmsPrepareLoanApplications(Event):
+@event
+class FirmsPrepareLoanApplications:
     """
     Firms select banks to apply to for loans.
 
@@ -139,15 +106,6 @@ class FirmsPrepareLoanApplications(Event):
     ranked by interest rate (ascending - prefer lower rates).
 
     This event wraps `bamengine.systems.credit_market.firms_prepare_loan_applications`.
-
-    Dependencies
-    ------------
-    - firms_calc_credit_metrics : Credit metrics calculated
-    - banks_decide_interest_rate : Interest rates available
-
-    See Also
-    --------
-    bamengine.systems.credit_market.firms_prepare_loan_applications : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -162,8 +120,8 @@ class FirmsPrepareLoanApplications(Event):
         )
 
 
-@dataclass(slots=True)
-class FirmsSendOneLoanApp(Event):
+@event
+class FirmsSendOneLoanApp:
     """
     Firms send one round of loan applications to banks.
 
@@ -174,14 +132,6 @@ class FirmsSendOneLoanApp(Event):
     Note: This event is typically repeated max_H times in the pipeline.
 
     This event wraps `bamengine.systems.credit_market.firms_send_one_loan_app`.
-
-    Dependencies
-    ------------
-    - firms_prepare_loan_applications : Uses loan application queues
-
-    See Also
-    --------
-    bamengine.systems.credit_market.firms_send_one_loan_app : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -191,8 +141,8 @@ class FirmsSendOneLoanApp(Event):
         firms_send_one_loan_app(sim.bor, sim.lend, rng=sim.rng)
 
 
-@dataclass(slots=True)
-class BanksProvideLoans(Event):
+@event
+class BanksProvideLoans:
     """
     Banks process loan applications and provide credit.
 
@@ -203,14 +153,6 @@ class BanksProvideLoans(Event):
     alternating with FirmsSendOneLoanApp.
 
     This event wraps `bamengine.systems.credit_market.banks_provide_loans`.
-
-    Dependencies
-    ------------
-    - firms_send_one_loan_app : Processes applications sent in current round
-
-    See Also
-    --------
-    bamengine.systems.credit_market.banks_provide_loans : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -226,8 +168,8 @@ class BanksProvideLoans(Event):
         )
 
 
-@dataclass(slots=True)
-class FirmsFireWorkers(Event):
+@event
+class FirmsFireWorkers:
     """
     Firms that failed to obtain sufficient credit fire workers.
 
@@ -235,14 +177,6 @@ class FirmsFireWorkers(Event):
     until wage commitments are within available funds.
 
     This event wraps `bamengine.systems.credit_market.firms_fire_workers`.
-
-    Dependencies
-    ------------
-    - banks_provide_loans : Uses final credit provision state
-
-    See Also
-    --------
-    bamengine.systems.credit_market.firms_fire_workers : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:

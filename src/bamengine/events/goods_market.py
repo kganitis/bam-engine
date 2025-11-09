@@ -7,17 +7,16 @@ and purchase execution.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from bamengine.core import Event
+from bamengine.core.decorators import event
 
 if TYPE_CHECKING:
     from bamengine.simulation import Simulation
 
 
-@dataclass(slots=True)
-class ConsumersCalcPropensity(Event):
+@event
+class ConsumersCalcPropensity:
     """
     Consumers calculate propensity to consume based on savings.
 
@@ -28,14 +27,6 @@ class ConsumersCalcPropensity(Event):
     the sensitivity.
 
     This event wraps `bamengine.systems.goods_market.consumers_calc_propensity`.
-
-    Dependencies
-    ------------
-    - workers_receive_wage : Uses updated savings after wage receipt
-
-    See Also
-    --------
-    bamengine.systems.goods_market.consumers_calc_propensity : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -46,8 +37,8 @@ class ConsumersCalcPropensity(Event):
         consumers_calc_propensity(sim.con, avg_sav=_avg_sav, beta=sim.config.beta)
 
 
-@dataclass(slots=True)
-class ConsumersDecideIncomeToSpend(Event):
+@event
+class ConsumersDecideIncomeToSpend:
     """
     Consumers decide how much income to spend on consumption.
 
@@ -57,14 +48,6 @@ class ConsumersDecideIncomeToSpend(Event):
     where c_j is propensity to consume and S_j is savings.
 
     This event wraps `bamengine.systems.goods_market.consumers_decide_income_to_spend`.
-
-    Dependencies
-    ------------
-    - consumers_calc_propensity : Uses calculated propensity
-
-    See Also
-    --------
-    bamengine.systems.goods_market.consumers_decide_income_to_spend : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -74,8 +57,8 @@ class ConsumersDecideIncomeToSpend(Event):
         consumers_decide_income_to_spend(sim.con)
 
 
-@dataclass(slots=True)
-class ConsumersDecideFirmsToVisit(Event):
+@event
+class ConsumersDecideFirmsToVisit:
     """
     Consumers select firms to visit for shopping.
 
@@ -83,15 +66,6 @@ class ConsumersDecideFirmsToVisit(Event):
     inventory levels (firms with more inventory more likely to be selected).
 
     This event wraps `bamengine.systems.goods_market.consumers_decide_firms_to_visit`.
-
-    Dependencies
-    ------------
-    - consumers_decide_income_to_spend : Spending budget determined
-    - firms_run_production : Uses current inventory levels
-
-    See Also
-    --------
-    bamengine.systems.goods_market.consumers_decide_firms_to_visit : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -106,8 +80,8 @@ class ConsumersDecideFirmsToVisit(Event):
         )
 
 
-@dataclass(slots=True)
-class ConsumersShopOneRound(Event):
+@event
+class ConsumersShopOneRound:
     """
     Consumers visit one firm and attempt to purchase goods.
 
@@ -117,14 +91,6 @@ class ConsumersShopOneRound(Event):
     Note: This event is typically repeated max_Z times in the pipeline.
 
     This event wraps `bamengine.systems.goods_market.consumers_shop_one_round`.
-
-    Dependencies
-    ------------
-    - consumers_decide_firms_to_visit : Uses shopping queues
-
-    See Also
-    --------
-    bamengine.systems.goods_market.consumers_shop_one_round : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -134,8 +100,8 @@ class ConsumersShopOneRound(Event):
         consumers_shop_one_round(sim.con, sim.prod, rng=sim.rng)
 
 
-@dataclass(slots=True)
-class ConsumersFinalizePurchases(Event):
+@event
+class ConsumersFinalizePurchases:
     """
     Consumers finalize purchases by deducting spending from savings.
 
@@ -143,14 +109,6 @@ class ConsumersFinalizePurchases(Event):
         S_j(t) = S_j(t-1) - total_spending_j
 
     This event wraps `bamengine.systems.goods_market.consumers_finalize_purchases`.
-
-    Dependencies
-    ------------
-    - consumers_shop_one_round : All purchases complete
-
-    See Also
-    --------
-    bamengine.systems.goods_market.consumers_finalize_purchases : Underlying logic
     """
 
     def execute(self, sim: Simulation) -> None:
