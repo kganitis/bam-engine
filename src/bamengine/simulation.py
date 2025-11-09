@@ -306,20 +306,39 @@ class Simulation:
         ----------
         log_config : dict
             Logging configuration with keys:
-            - default_level: str (e.g., 'INFO', 'DEBUG')
+            - default_level: str (e.g., 'INFO', 'DEBUG', 'DEEP_DEBUG')
             - events: dict[str, str] (per-event overrides)
+
+        Notes
+        -----
+        Supports standard Python logging levels (DEBUG, INFO, WARNING, ERROR,
+        CRITICAL) plus custom DEEP_DEBUG level (5) for fine-grained debugging.
         """
         import logging
+        from bamengine._logging_ext import DEEP_DEBUG
+
+        # Map level names to numeric values
+        # Include standard levels + custom DEEP_DEBUG
+        level_map = {
+            "DEEP_DEBUG": DEEP_DEBUG,
+            "DEBUG": logging.DEBUG,
+            "INFO": logging.INFO,
+            "WARNING": logging.WARNING,
+            "ERROR": logging.ERROR,
+            "CRITICAL": logging.CRITICAL,
+        }
 
         # Set default level for bamengine logger
         default_level = log_config.get("default_level", "INFO")
-        logging.getLogger("bamengine").setLevel(getattr(logging, default_level))
+        level_value = level_map.get(default_level, logging.INFO)
+        logging.getLogger("bamengine").setLevel(level_value)
 
         # Set per-event log level overrides
         event_levels = log_config.get("events", {})
         for event_name, level in event_levels.items():
             logger_name = f"bamengine.events.{event_name}"
-            logging.getLogger(logger_name).setLevel(getattr(logging, level))
+            level_value = level_map.get(level, logging.INFO)
+            logging.getLogger(logger_name).setLevel(level_value)
 
     @classmethod
     def _from_params(cls, *, rng: Generator, **p: Any) -> "Simulation":  # noqa: C901

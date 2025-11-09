@@ -46,5 +46,5 @@ pipeline_path:      null         # Path to custom pipeline YAML file (null = use
 
 # ── logging configuration ──────────────────────────────────────────────
 logging:
-  default_level:    INFO         # Default log level for bamengine logger
-  events:           {}            # Per-event log level overrides, e.g., {workers_send_one_round: DEBUG}
+  default_level:    INFO         # Default log level for bamengine logger (DEEP_DEBUG, DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  events:           {}            # Per-event log level overrides, e.g., {workers_send_one_round: DEEP_DEBUG, firms_hire_workers: DEBUG}
