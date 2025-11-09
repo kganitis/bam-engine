@@ -560,6 +560,122 @@ class Simulation:
         if self.ec.destroyed:
             log.info("SIMULATION TERMINATED")
 
+    def get_role(self, name: str) -> Any:
+        """
+        Get role instance by name.
+
+        Parameters
+        ----------
+        name : str
+            Role name (case-insensitive): 'Producer', 'Worker', 'Employer',
+            'Borrower', 'Lender', 'Consumer'.
+
+        Returns
+        -------
+        Role
+            Role instance from simulation.
+
+        Raises
+        ------
+        ValueError
+            If role name not found.
+
+        Examples
+        --------
+        >>> sim = Simulation.init()
+        >>> prod = sim.get_role("Producer")
+        >>> assert prod is sim.prod
+        """
+        role_map = {
+            "producer": self.prod,
+            "worker": self.wrk,
+            "employer": self.emp,
+            "borrower": self.bor,
+            "lender": self.lend,
+            "consumer": self.con,
+        }
+
+        name_lower = name.lower()
+        if name_lower not in role_map:
+            available = list(role_map.keys())
+            raise ValueError(f"Role '{name}' not found. Available roles: {available}")
+
+        return role_map[name_lower]
+
+    def get_event(self, name: str) -> Any:
+        """
+        Get event instance from pipeline by name.
+
+        Parameters
+        ----------
+        name : str
+            Event name (e.g., 'firms_adjust_price').
+
+        Returns
+        -------
+        Event
+            Event instance from current pipeline.
+
+        Raises
+        ------
+        KeyError
+            If event not found in pipeline.
+
+        Examples
+        --------
+        >>> sim = Simulation.init()
+        >>> pricing_event = sim.get_event("firms_adjust_price")
+        """
+        for event in self.pipeline.events:
+            if event.name == name:
+                return event
+
+        available = [e.name for e in self.pipeline.events[:5]]
+        raise KeyError(
+            f"Event '{name}' not found in pipeline. "
+            f"Available (first 5): {available}..."
+        )
+
+    def get(self, name: str) -> Any:
+        """
+        Get role or event by name (searches roles first, then events).
+
+        Parameters
+        ----------
+        name : str
+            Role or event name.
+
+        Returns
+        -------
+        Role | Event
+            Role or event instance from simulation.
+
+        Raises
+        ------
+        ValueError
+            If name not found in roles or events.
+
+        Examples
+        --------
+        >>> sim = Simulation.init()
+        >>> prod = sim.get("Producer")
+        >>> event = sim.get("firms_adjust_price")
+        """
+        try:
+            return self.get_role(name)
+        except ValueError:
+            pass
+
+        try:
+            return self.get_event(name)
+        except KeyError:
+            pass
+
+        raise ValueError(
+            f"'{name}' not found in roles or events. "
+            "Use get_role() or get_event() for more specific error messages."
+        )
+
     def _step_legacy(self) -> None:
         """
         Legacy step implementation (pre-pipeline).
