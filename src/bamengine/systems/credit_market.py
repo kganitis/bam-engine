@@ -5,17 +5,15 @@ Event‑3  –  Credit‑market systems
 
 from __future__ import annotations
 
-import logging
-
 import numpy as np
 from numpy.random import Generator, default_rng
 
-from bamengine import _logging_ext
+from bamengine import logging
 from bamengine.roles import Borrower, Employer, Lender, LoanBook, Worker
 from bamengine.typing import Idx1D
 from bamengine.utils import select_top_k_indices_sorted
 
-log = _logging_ext.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 _EPS = 1e-6
 
@@ -259,7 +257,7 @@ def firms_prepare_loan_applications(
             bor.loan_apps_targets[f_id, H_eff:max_H] = -1
         bor.loan_apps_head[f_id] = f_id * stride
 
-        if log.isEnabledFor(_logging_ext.DEEP_DEBUG) and i < 10:
+        if log.isEnabledFor(logging.DEEP_DEBUG) and i < 10:
             log.deep(
                 f"    Borrower {f_id}: targets={bor.loan_apps_targets[f_id]}, "
                 f"head_ptr={bor.loan_apps_head[f_id]}"
@@ -396,7 +394,7 @@ def _clean_queue(
     from the raw queue slice (may contain -1 sentinels and duplicates),
     sorted by their net worth.
     """
-    if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
+    if log.isEnabledFor(logging.DEEP_DEBUG):
         log.deep(
             f"    Bank {bank_idx_for_log}: Cleaning queue. "
             f"Initial raw slice: {slice_}"
@@ -405,14 +403,14 @@ def _clean_queue(
     # Drop -1 sentinels
     cleaned_slice = slice_[slice_ >= 0]
     if cleaned_slice.size == 0:
-        if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
+        if log.isEnabledFor(logging.DEEP_DEBUG):
             log.deep(
                 f"    Bank {bank_idx_for_log}: "
                 f"Queue empty after dropping sentinels."
             )
         return cleaned_slice.astype(np.intp)
 
-    if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
+    if log.isEnabledFor(logging.DEEP_DEBUG):
         log.deep(
             f"    Bank {bank_idx_for_log}: "
             f"Queue after dropping sentinels: {cleaned_slice}"
@@ -421,7 +419,7 @@ def _clean_queue(
     # Unique *without* sorting
     first_idx = np.unique(cleaned_slice, return_index=True)[1]
     unique_slice = cleaned_slice[np.sort(first_idx)]
-    if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
+    if log.isEnabledFor(logging.DEEP_DEBUG):
         log.deep(
             f"    Bank {bank_idx_for_log}: "
             f"Queue after unique (order kept): {unique_slice}"
@@ -431,7 +429,7 @@ def _clean_queue(
     cd_mask = bor.credit_demand[unique_slice] > 0
     filtered_queue = unique_slice[cd_mask]
     if filtered_queue.size == 0:
-        if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
+        if log.isEnabledFor(logging.DEEP_DEBUG):
             log.deep(
                 f"    Bank {bank_idx_for_log}: "
                 f"No borrowers left after credit-demand filter."
@@ -441,7 +439,7 @@ def _clean_queue(
     # Sort by net worth (descending)
     sort_idx = np.argsort(-bor.net_worth[filtered_queue])
     ordered_queue = filtered_queue[sort_idx]
-    if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
+    if log.isEnabledFor(logging.DEEP_DEBUG):
         log.deep(
             f"    Bank {bank_idx_for_log}: "
             f"Final cleaned queue (net_worth-desc): {ordered_queue}"

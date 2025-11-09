@@ -33,7 +33,7 @@ from .simulation import Simulation  # noqa: E402  (circular‑safe)
 # --------------------------------------------------------------------- #
 # user-facing API: operations and types for custom roles/events
 # --------------------------------------------------------------------- #
-from . import ops
+from . import logging, ops
 from .typing import Agent as AgentId
 from .typing import Bool, Float, Int
 
@@ -52,4 +52,5 @@ __all__: list[str] = [
     "Int",
     "Bool",
     "AgentId",
+    "logging",
 ]

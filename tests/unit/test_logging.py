@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from bamengine import Simulation
-from bamengine._logging_ext import DEEP_DEBUG, BamLogger, getLogger
+from bamengine.logging import DEEP_DEBUG, BamLogger, getLogger
 
 
 class TestBamLogger:

@@ -1,6 +1,13 @@
 import logging
 from typing import Any
 
+(CRITICAL, ERROR, WARNING, INFO, DEBUG) = (
+    logging.CRITICAL,
+    logging.ERROR,
+    logging.WARNING,
+    logging.INFO,
+    logging.DEBUG,
+)
 DEEP_DEBUG = 5
 logging.addLevelName(DEEP_DEBUG, "DEEP")
 

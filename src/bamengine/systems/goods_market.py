@@ -4,15 +4,13 @@ Event-5 – Goods-market systems
 """
 from __future__ import annotations
 
-import logging
-
 import numpy as np
 from numpy.random import Generator, default_rng
 
-from bamengine import _logging_ext
+from bamengine import logging
 from bamengine.roles import Consumer, Producer
 
-log = _logging_ext.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 _EPS = 1e-9
 
@@ -219,7 +217,7 @@ def consumers_decide_firms_to_visit(
             row[0] = prev
             filled = 1
             loyalty_applied += 1
-            if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
+            if log.isEnabledFor(logging.DEEP_DEBUG):
                 log.deep(f"    Consumer {h}: Applied loyalty to firm {prev} (slot 0)")
 
         # Fill remaining slots with random sampling
@@ -234,7 +232,7 @@ def consumers_decide_firms_to_visit(
                 row[filled : filled + n_draw] = sample[order]
                 filled += n_draw
 
-                if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
+                if log.isEnabledFor(logging.DEEP_DEBUG):
                     log.deep(
                         f"    Consumer {h}: Added {n_draw} firms, "
                         f"sorted by price: {sample[order]}"
@@ -368,7 +366,7 @@ def consumers_shop_one_round(
         if firm_idx < 0:  # Reached end of queue
             con.shop_visits_head[h] = -1
             consumers_exhausted_queue += 1
-            if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
+            if log.isEnabledFor(logging.DEEP_DEBUG):
                 log.deep(f"    Consumer {h} exhausted firm queue at col {col}")
             continue
 
@@ -377,7 +375,7 @@ def consumers_shop_one_round(
             # Firm sold out - skip but advance pointer
             con.shop_visits_head[h] = ptr + 1
             con.shop_visits_targets[row, col] = -1
-            if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
+            if log.isEnabledFor(logging.DEEP_DEBUG):
                 log.deep(f"    Consumer {h}: Firm {firm_idx} sold out, skipping")
             continue
 
@@ -407,7 +405,7 @@ def consumers_shop_one_round(
         total_quantity_sold += qty
         total_revenue += spent
 
-        if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
+        if log.isEnabledFor(logging.DEEP_DEBUG):
             log.deep(
                 f"    Consumer {h} bought {qty:.2f} from firm {firm_idx} "
                 f"for {spent:.2f} (price={price:.2f})"
@@ -421,7 +419,7 @@ def consumers_shop_one_round(
         if con.income_to_spend[h] <= _EPS:  # Effectively zero
             consumers_exhausted_budget += 1
             con.shop_visits_head[h] = -1  # Stop shopping
-            if log.isEnabledFor(_logging_ext.DEEP_DEBUG):
+            if log.isEnabledFor(logging.DEEP_DEBUG):
                 log.deep(f"    Consumer {h} exhausted spending budget")
 
     # Post-round statistics
