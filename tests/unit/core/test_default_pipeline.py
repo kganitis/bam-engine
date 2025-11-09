@@ -1,7 +1,7 @@
 """Tests for default pipeline builder."""
 
 import bamengine.events  # noqa: F401 - needed to register events
-from bamengine.core.default_pipeline import create_default_pipeline
+from bamengine.core.pipeline import create_default_pipeline
 from bamengine.core.pipeline import RepeatedEvent
 
 

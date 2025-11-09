@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
-from typing import Any, Dict, Mapping
+from typing import Any, Dict, Mapping, Optional
 
 # noinspection PyPackageRequirements
 import numpy as np
@@ -18,8 +18,7 @@ from numpy.random import Generator, default_rng
 import bamengine.events  # noqa: F401 - needed to register events
 from bamengine import logging
 from bamengine.config import Config
-from bamengine.core.default_pipeline import create_default_pipeline
-from bamengine.core.pipeline import Pipeline
+from bamengine.core.pipeline import Pipeline, create_default_pipeline
 from bamengine.roles import (
     Borrower,
     Consumer,
@@ -541,7 +540,7 @@ class Simulation:
 
     # public API
     # ---------------------------------------------------------------------
-    def run(self, n_periods: int | None = None) -> None:
+    def run(self, n_periods: Optional[int]) -> None:
         """
         Advance the simulation *n_periods* steps
         (defaults to the ``n_periods`` passed at construction).

@@ -3,6 +3,8 @@
 Event‑3  –  Credit‑market systems
 """
 
+# TODO This module has multiple duplicated code fragments.
+
 from __future__ import annotations
 
 import numpy as np
@@ -269,7 +271,7 @@ def firms_prepare_loan_applications(
 def firms_send_one_loan_app(
     bor: Borrower, lend: Lender, rng: Generator = default_rng()
 ) -> None:
-    # TODO Look into unifying with `workers_send_one_round`
+    # TODO Look into unifying common logic with `workers_send_one_round`
     """ """
     log.info("--- Borrowers Sending One Round of Applications ---")
     stride = bor.loan_apps_targets.shape[1]  # max_H

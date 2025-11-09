@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import warnings
 from typing import Any
 
@@ -322,7 +321,7 @@ class ConfigValidator:
         if not path.is_file():
             raise ValueError(f"Pipeline path '{pipeline_path}' is not a file")
 
-        if not path.suffix in [".yml", ".yaml"]:
+        if path.suffix not in [".yml", ".yaml"]:
             warnings.warn(
                 f"Pipeline path '{pipeline_path}' does not have .yml/.yaml extension",
                 UserWarning,

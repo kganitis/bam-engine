@@ -37,26 +37,14 @@ bamengine.typing : Type aliases for defining custom roles
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union, Optional
 
 import numpy as np
-from numpy.typing import NDArray
+
+from bamengine.typing import Float, Int, Bool, Agent
 
 if TYPE_CHECKING:
     from numpy.random import Generator
-
-# Type aliases for runtime use
-Float = NDArray[np.float64]
-Int = NDArray[np.int64]
-Bool = NDArray[np.bool_]
-Agent = NDArray[np.intp]
-
-# Union type aliases for function signatures
-FloatOrScalar = Union[Float, float]
-FloatOrNone = Union[Float, None]
-IntOrAgent = Union[Int, Agent]
-FloatOrIntOrAgent = Union[Float, Int, Agent]
-BoolOrNone = Union[Bool, None]
 
 __all__ = [
     # Arithmetic
@@ -108,7 +96,7 @@ __all__ = [
 # === Arithmetic Operations ===
 
 
-def add(a: Float, b: FloatOrScalar, out: FloatOrNone = None) -> Float:
+def add(a: Float, b: float | Float, out: Optional[Float] = None) -> Float:
     """
     Add two arrays or array and scalar.
 
@@ -140,7 +128,7 @@ def add(a: Float, b: FloatOrScalar, out: FloatOrNone = None) -> Float:
     return out
 
 
-def subtract(a: Float, b: FloatOrScalar, out: FloatOrNone = None) -> Float:
+def subtract(a: Float, b: float | Float, out: Optional[Float] = None) -> Float:
     """
     Subtract two arrays or array and scalar.
 
@@ -172,7 +160,7 @@ def subtract(a: Float, b: FloatOrScalar, out: FloatOrNone = None) -> Float:
     return out
 
 
-def multiply(a: Float, b: FloatOrScalar, out: FloatOrNone = None) -> Float:
+def multiply(a: Float, b: float | Float, out: Optional[Float] = None) -> Float:
     """
     Multiply two arrays or array and scalar.
 
@@ -204,7 +192,7 @@ def multiply(a: Float, b: FloatOrScalar, out: FloatOrNone = None) -> Float:
     return out
 
 
-def divide(a: Float, b: FloatOrScalar, out: FloatOrNone = None) -> Float:
+def divide(a: Float, b: float | Float, out: Optional[Float] = None) -> Float:
     """
     Divide two arrays or array and scalar (safe - avoids division by zero).
 
@@ -239,7 +227,7 @@ def divide(a: Float, b: FloatOrScalar, out: FloatOrNone = None) -> Float:
     division by zero errors by replacing zero denominators with 1e-10.
     """
     # Make denominator safe
-    b_safe: FloatOrScalar
+    b_safe: float | Float
     if isinstance(b, np.ndarray):
         b_safe = np.maximum(b, 1e-10)
     else:
@@ -256,7 +244,7 @@ def divide(a: Float, b: FloatOrScalar, out: FloatOrNone = None) -> Float:
 # === Assignment ===
 
 
-def assign(target: Float, value: FloatOrScalar) -> None:
+def assign(target: Float, value: float | Float) -> None:
     """
     Assign value to target array (in-place operation).
 
@@ -283,32 +271,32 @@ def assign(target: Float, value: FloatOrScalar) -> None:
 # === Comparison Operations ===
 
 
-def equal(a: Float, b: FloatOrScalar) -> Bool:
+def equal(a: Float, b: float | Float) -> Bool:
     """Element-wise equality comparison."""
     return np.equal(a, b)
 
 
-def not_equal(a: Float, b: FloatOrScalar) -> Bool:
+def not_equal(a: Float, b: float | Float) -> Bool:
     """Element-wise inequality comparison."""
     return np.not_equal(a, b)
 
 
-def less(a: Float, b: FloatOrScalar) -> Bool:
+def less(a: Float, b: float | Float) -> Bool:
     """Element-wise less than comparison."""
     return a < b
 
 
-def less_equal(a: Float, b: FloatOrScalar) -> Bool:
+def less_equal(a: Float, b: float | Float) -> Bool:
     """Element-wise less than or equal comparison."""
     return a <= b
 
 
-def greater(a: Float, b: FloatOrScalar) -> Bool:
+def greater(a: Float, b: float | Float) -> Bool:
     """Element-wise greater than comparison."""
     return a > b
 
 
-def greater_equal(a: Float, b: FloatOrScalar) -> Bool:
+def greater_equal(a: Float, b: float | Float) -> Bool:
     """Element-wise greater than or equal comparison."""
     return a >= b
 
@@ -391,7 +379,7 @@ def logical_not(a: Bool) -> Bool:
 # === Conditional Operations ===
 
 
-def where(condition: Bool, true_val: FloatOrScalar, false_val: FloatOrScalar) -> Float:
+def where(condition: Bool, true_val: float | Float, false_val: float | Float) -> Float:
     """
     Vectorized if-then-else (ternary operator).
 
@@ -426,7 +414,7 @@ def where(condition: Bool, true_val: FloatOrScalar, false_val: FloatOrScalar) ->
 
 
 def select(
-    conditions: list[Bool], choices: list[FloatOrScalar], default: FloatOrScalar = 0.0
+    conditions: list[Bool], choices: list[float | Float], default: float | Float = 0.0
 ) -> Float:
     """
     Select from multiple conditions (like switch/case statement).
@@ -478,7 +466,7 @@ def select(
 # === Element-wise Operations ===
 
 
-def maximum(a: Float, b: FloatOrScalar) -> Float:
+def maximum(a: Float, b: float | Float) -> Float:
     """
     Element-wise maximum of array elements.
 
@@ -506,7 +494,7 @@ def maximum(a: Float, b: FloatOrScalar) -> Float:
     return np.maximum(a, b)
 
 
-def minimum(a: Float, b: FloatOrScalar) -> Float:
+def minimum(a: Float, b: float | Float) -> Float:
     """
     Element-wise minimum of array elements.
 
@@ -534,7 +522,9 @@ def minimum(a: Float, b: FloatOrScalar) -> Float:
     return np.minimum(a, b)
 
 
-def clip(a: Float, min_val: float, max_val: float, out: FloatOrNone = None) -> Float:
+def clip(
+    a: Float, min_val: float, max_val: float, out: Optional[Float] = None
+) -> Float:
     """
     Clip (limit) values to range [min_val, max_val].
 
@@ -571,7 +561,10 @@ def clip(a: Float, min_val: float, max_val: float, out: FloatOrNone = None) -> F
 # === Aggregation Operations ===
 
 
-def sum(a: Float, axis: int | None = None, where: BoolOrNone = None) -> FloatOrScalar:
+# noinspection PyShadowingBuiltins
+def sum(
+    a: Float, axis: int | None = None, where: Optional[Bool] = None
+) -> float | Float:
     """
     Sum array elements, optionally over axis or subset.
 
@@ -608,7 +601,9 @@ def sum(a: Float, axis: int | None = None, where: BoolOrNone = None) -> FloatOrS
     return float(np.sum(a[where]))
 
 
-def mean(a: Float, axis: int | None = None, where: BoolOrNone = None) -> FloatOrScalar:
+def mean(
+    a: Float, axis: int | None = None, where: Optional[Bool] = None
+) -> float | Float:
     """
     Calculate mean, optionally over axis or subset.
 
@@ -643,6 +638,7 @@ def mean(a: Float, axis: int | None = None, where: BoolOrNone = None) -> FloatOr
     return float(np.mean(a[where]))
 
 
+# noinspection PyShadowingBuiltins
 def any(a: Bool) -> bool:
     """
     Test whether any array element is True.
@@ -667,6 +663,7 @@ def any(a: Bool) -> bool:
     return bool(np.any(a))
 
 
+# noinspection PyShadowingBuiltins
 def all(a: Bool) -> bool:
     """
     Test whether all array elements are True.
@@ -790,7 +787,7 @@ def empty(n: int) -> Float:
 # === Utility Operations ===
 
 
-def unique(a: FloatOrIntOrAgent) -> FloatOrIntOrAgent:
+def unique(a: Union[Float, Int, Agent]) -> Union[Float, Int, Agent]:
     """
     Find unique elements in array.
 
@@ -815,7 +812,7 @@ def unique(a: FloatOrIntOrAgent) -> FloatOrIntOrAgent:
     return result  # type: ignore[return-value]
 
 
-def bincount(a: IntOrAgent, minlength: int = 0) -> Int:
+def bincount(a: Union[Int, Agent], minlength: int = 0) -> Int:
     """
     Count occurrences of each value in array of non-negative ints.
 
@@ -843,7 +840,9 @@ def bincount(a: IntOrAgent, minlength: int = 0) -> Int:
     return np.bincount(a, minlength=minlength)
 
 
-def isin(element: FloatOrIntOrAgent, test_elements: FloatOrIntOrAgent) -> Bool:
+def isin(
+    element: Union[Float, Int, Agent], test_elements: Union[Float, Int, Agent]
+) -> Bool:
     """
     Test whether each element is in test_elements.
 
