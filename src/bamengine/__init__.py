@@ -30,6 +30,13 @@ __version__: str = "0.0.0"
 from .core import Agent, AgentType, Event, Role, event
 from .simulation import Simulation  # noqa: E402  (circular‑safe)
 
+# --------------------------------------------------------------------- #
+# user-facing API: operations and types for custom roles/events
+# --------------------------------------------------------------------- #
+from . import ops
+from .typing import Agent as AgentId
+from .typing import Bool, Float, Int
+
 __all__: list[str] = [
     "Simulation",
     "__version__",
@@ -39,4 +46,10 @@ __all__: list[str] = [
     "Role",
     "Event",
     "event",
+    # User-facing API
+    "ops",
+    "Float",
+    "Int",
+    "Bool",
+    "AgentId",
 ]
