@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-import logging
+from bamengine import logging
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar, Any
@@ -40,6 +40,15 @@ class Event(ABC):
     Events are registered automatically via __init_subclass__ hook.
     The order of event execution is critical and must be explicitly
     defined in the pipeline configuration.
+
+    Logging
+    -------
+    Use self.get_logger() to get a logger with per-event log level:
+
+        logger = self.get_logger()
+        logger.info("Starting execution")
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("Expensive debug info: %s", compute_stats())
     """
 
     # Class variable for event name (set by subclass)
@@ -75,7 +84,7 @@ class Event(ABC):
 
         _EVENT_REGISTRY[cls.name] = cls
 
-    def get_logger(self) -> logging.Logger:
+    def get_logger(self) -> logging.BamLogger:
         """
         Get logger for this event with per-event log level applied.
 

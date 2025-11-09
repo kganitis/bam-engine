@@ -4,15 +4,13 @@ Event-4 – Production systems
 """
 from __future__ import annotations
 
-import logging
-
 import numpy as np
 
-from bamengine import _logging_ext
+from bamengine import logging
 from bamengine.roles import Consumer, Economy, Employer, Producer, Worker
 from bamengine.utils import trimmed_weighted_mean
 
-log = _logging_ext.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 # TODO Not unit tested yet

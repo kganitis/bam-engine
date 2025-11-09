@@ -4,16 +4,14 @@ Event-6 – Revenue, debt-service & dividends
 """
 from __future__ import annotations
 
-import logging
-
 import numpy as np
 
-from bamengine import _logging_ext
+from bamengine import logging
 from bamengine.roles import Borrower, Lender, LoanBook, Producer
 
 _EPS = 1.0e-9
 
-log = _logging_ext.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 def firms_collect_revenue(prod: Producer, bor: Borrower) -> None:

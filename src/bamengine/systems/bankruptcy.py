@@ -5,12 +5,10 @@ Event-8  ─  Entry (spawn replacements for those exits)
 """
 from __future__ import annotations
 
-import logging
-
 import numpy as np
 from numpy.random import Generator, default_rng
 
-from bamengine import _logging_ext
+from bamengine import logging
 from bamengine.roles import (
     Borrower,
     Economy,
@@ -22,7 +20,7 @@ from bamengine.roles import (
 )
 from bamengine.utils import trim_mean
 
-log = _logging_ext.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 _EPS = 1.0e-9
 

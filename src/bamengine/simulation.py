@@ -16,7 +16,7 @@ import yaml
 from numpy.random import Generator, default_rng
 
 import bamengine.events  # noqa: F401 - needed to register events
-from bamengine._logging_ext import getLogger
+from bamengine import logging
 from bamengine.config import Config
 from bamengine.core.default_pipeline import create_default_pipeline
 from bamengine.core.pipeline import Pipeline
@@ -87,7 +87,7 @@ from bamengine.typing import Float1D
 
 __all__ = ["Simulation"]
 
-log = getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 # helpers
@@ -314,13 +314,11 @@ class Simulation:
         Supports standard Python logging levels (DEBUG, INFO, WARNING, ERROR,
         CRITICAL) plus custom DEEP_DEBUG level (5) for fine-grained debugging.
         """
-        import logging
-        from bamengine._logging_ext import DEEP_DEBUG
 
         # Map level names to numeric values
         # Include standard levels + custom DEEP_DEBUG
         level_map = {
-            "DEEP_DEBUG": DEEP_DEBUG,
+            "DEEP_DEBUG": logging.DEEP_DEBUG,
             "DEBUG": logging.DEBUG,
             "INFO": logging.INFO,
             "WARNING": logging.WARNING,
