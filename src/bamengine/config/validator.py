@@ -19,7 +19,7 @@ class ConfigValidator:
     """
 
     # Valid log levels for logging configuration
-    VALID_LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+    VALID_LOG_LEVELS = {"DEEP_DEBUG", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 
     @staticmethod
     def validate_config(cfg: dict[str, Any]) -> None:

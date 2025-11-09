@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import logging
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar, Any
@@ -74,6 +75,28 @@ class Event(ABC):
 
         _EVENT_REGISTRY[cls.name] = cls
 
+    def get_logger(self) -> logging.Logger:
+        """
+        Get logger for this event with per-event log level applied.
+
+        Returns
+        -------
+        logging.Logger
+            Logger instance with event-specific configuration.
+
+        Notes
+        -----
+        Logger name format: 'bamengine.events.{event_name}'
+        Per-event log levels can be configured via defaults.yml or kwargs:
+
+        logging:
+          events:
+            firms_adjust_price: DEBUG
+            workers_send_one_round: WARNING
+        """
+        logger_name = f"bamengine.events.{self.name}"
+        return logging.getLogger(logger_name)
+
     @abstractmethod
     def execute(self, sim: Simulation) -> None:
         """
@@ -90,6 +113,15 @@ class Event(ABC):
         -------
         None
             All mutations are in-place.
+
+        Notes
+        -----
+        Use self.get_logger() to get a logger with per-event log level:
+
+        logger = self.get_logger()
+        logger.info("Starting execution")
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("Expensive debug info: %s", compute_stats())
         """
         pass
 
