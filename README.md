@@ -13,6 +13,23 @@ This is a Python implementation of the BAM model (Delli Gatti et al., 2008). Bel
 ### What's its architecture?
 It's almost fully vectorized, with mostly numpy operations, where for loops are only used to iterate through market trials and implement the market queuing system.
 
+### Performance
+
+BAM Engine is highly optimized with NumPy vectorization:
+
+**Benchmark Results** (100 periods, on Apple Silicon):
+- Small (100 firms, 500 households): **0.57s**
+- Medium (200 firms, 1,000 households): **0.96s**
+- Large (500 firms, 2,500 households): **2.24s**
+- Very Large (1,000 firms, 5,000 households): **4.62s**
+- Huge (2,000 firms, 10,000 households): **9.74s**
+
+**Scaling**: Near-linear to sub-linear (exponent 0.85-1.08). Memory footprint is negligible (~2-3 MB for 12,000 agents).
+
+**Recommended scale for research**: 1,000-2,000 firms, 5,000-10,000 households. This aligns with established ABM literature and provides excellent performance for interactive experimentation.
+
+See `benchmarks/` for detailed performance analysis and scalability testing.
+
 ### Pros and cons of this approach
 This version works perfectly, as intended, but it's not very modular. It's a monolith, just in separate files. So it's hard to modify or extend any part of the BAM framework.
 
