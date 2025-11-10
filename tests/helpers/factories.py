@@ -29,7 +29,6 @@ from bamengine.roles import (
     Worker,
 )
 
-
 # ───────────────────────── default dictionaries ────────────────────────── #
 
 
@@ -118,8 +117,12 @@ def _lender_defaults(n: int, *, queue_h: int) -> dict[str, Any]:
 
 def _loanbook_defaults(n: int, *, queue_: int) -> dict[str, Any]:
     return dict(
-        borrower=np.empty(n, dtype=np.int64),
-        lender=np.empty(n, dtype=np.int64),
+        source_ids=np.empty(
+            n, dtype=np.int64
+        ),  # borrower (updated for Relationship base)
+        target_ids=np.empty(
+            n, dtype=np.int64
+        ),  # lender (updated for Relationship base)
         principal=np.empty(n, dtype=np.float64),
         rate=np.empty(n, dtype=np.float64),
         interest=np.empty(n, dtype=np.float64),

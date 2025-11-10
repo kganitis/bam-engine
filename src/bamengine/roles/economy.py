@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from bamengine.core import relationship
 from bamengine.typing import Bool1D, Float1D, Idx1D, Int1D
 
 
@@ -34,30 +35,50 @@ class Economy:
     destroyed: bool = False
 
 
-# TODO Move LoanBook and its tests to a separate module
-#  - also consider moving the methods into systems
-@dataclass(slots=True)
+# Avoid circular imports by importing roles here (after Economy definition)
+# This allows LoanBook to reference Borrower and Lender types
+def _get_borrower_role() -> type:
+    """Lazy import to avoid circular dependency."""
+    from bamengine.roles.borrower import Borrower
+
+    return Borrower
+
+
+def _get_lender_role() -> type:
+    """Lazy import to avoid circular dependency."""
+    from bamengine.roles.lender import Lender
+
+    return Lender
+
+
+# Use @relationship decorator to define LoanBook as a Relationship between
+# Borrower (source) and Lender (target) roles
+# Note: We use lazy imports above to avoid circular import issues
+@relationship(  # type: ignore[operator]
+    source=_get_borrower_role(),
+    target=_get_lender_role(),
+    cardinality="many-to-many",
+    name="LoanBook",
+)
 class LoanBook:
     # noinspection PyUnresolvedReferences
     """
     Edge-list ledger for storing and managing *active* loans.
 
-    This structure maintains a sparse representation of loan contracts
-    using a **Coordinate List (COO) format**. It efficiently tracks lending
-    relationships without the need for a dense `(N_borrowers × N_lenders)` matrix,
-    reducing memory consumption and enhancing vectorized operations.
+    This is a Relationship between Borrower (source) and Lender (target) roles,
+    maintaining a sparse representation of loan contracts using **Coordinate List
+    (COO) format**. It efficiently tracks lending relationships without the need
+    for a dense `(N_borrowers × N_lenders)` matrix, reducing memory consumption
+    and enhancing vectorized operations.
 
-    The `LoanBook` is designed to grow automatically, with amortized O(1) complexity
-    for append operations, avoiding per-step allocations during hot loops.
+    Inherits from Relationship base class, which provides:
+    - source_ids (borrower indices)
+    - target_ids (lender indices)
+    - size (number of active loans)
+    - capacity (allocated storage)
 
-    Attributes
-    ----------
-    borrower : Int1D
-        Array of indices (`int64`) representing borrowers.
-        Size: `M`, where `M` is the number of active loans.
-    lender : Int1D
-        Array of indices (`int64`) representing lenders.
-        Size: `M`.
+    Edge Components (per loan)
+    ---------------------------
     principal : Float1D
         Array of principal amounts (`float64`) for each loan.
         This is the original loan amount at the time of signing.
@@ -68,11 +89,6 @@ class LoanBook:
         This enables O(1) aggregation without recomputation.
     debt : Float1D
         Cached total debt amounts (`float64`) calculated as `principal * (1 + rate)`.
-    capacity : int, optional
-        The current physical storage capacity of the ledger (default is 128).
-        This represents the allocated space, not the number of active rows.
-    size : int, optional
-        The number of currently active loans in the ledger (default is 0).
 
     Notes
     -----
@@ -80,12 +96,10 @@ class LoanBook:
     loan relationships are recorded. The edge list grows as new loans are issued
     and is only resized when capacity is exhausted, ensuring optimal memory usage.
 
-    The six columns are 1-D NumPy arrays of equal length `M`, where `M` is the
-    number of active loans. Operations such as aggregation and updates are
-    efficiently vectorized. For example, to sum all debt per borrower:
+    Operations such as aggregation and updates are efficiently vectorized.
+    For example, to sum all debt per borrower:
 
-        >>> borrower_debt = np.zeros(N)
-        >>> np.add.at(borrower_debt, lb.borrower, lb.debt)
+        >>> borrower_debt = lb.aggregate_by_source(lb.debt, func="sum", n_sources=N)
 
     Advantages of the edge-list design:
     - **Sparse Representation:** Memory usage scales with the number of active loans,
@@ -98,47 +112,119 @@ class LoanBook:
     ensuring amortized O(1) append complexity.
     """
 
-    borrower: Int1D = field(default_factory=lambda: np.empty(0, np.int64))
-    lender: Int1D = field(default_factory=lambda: np.empty(0, np.int64))
+    # Edge-specific components (loan data per edge)
     principal: Float1D = field(default_factory=lambda: np.empty(0, np.float64))
     rate: Float1D = field(default_factory=lambda: np.empty(0, np.float64))
     interest: Float1D = field(default_factory=lambda: np.empty(0, np.float64))
     debt: Float1D = field(default_factory=lambda: np.empty(0, np.float64))
-    capacity: int = 128  # current physical length
-    size: int = 0  # number of *filled* rows
+
+    # Default values for base class fields (from Relationship)
+    # These must come after edge components due to dataclass field ordering
+    source_ids: Idx1D = field(default_factory=lambda: np.empty(0, np.int64))
+    target_ids: Idx1D = field(default_factory=lambda: np.empty(0, np.int64))
+    size: int = 0
+    capacity: int = 128
+
+    # Backward compatibility aliases for existing code
+    @property
+    def borrower(self) -> Int1D:
+        """Alias for source_ids (borrower indices)."""
+        return self.source_ids
+
+    @borrower.setter
+    def borrower(self, value: Int1D) -> None:
+        """Alias setter for source_ids."""
+        self.source_ids = value
+
+    @property
+    def lender(self) -> Int1D:
+        """Alias for target_ids (lender indices)."""
+        return self.target_ids
+
+    @lender.setter
+    def lender(self, value: Int1D) -> None:
+        """Alias setter for target_ids."""
+        self.target_ids = value
 
     def _ensure_capacity(self, extra: int) -> None:
+        """
+        Ensure capacity for additional edges, resizing arrays if needed.
+
+        Parameters
+        ----------
+        extra : int
+            Number of additional edges to accommodate
+        """
         needed = self.size + extra
         if needed <= self.capacity:
             new_cap = self.capacity
         else:
             new_cap = max(self.capacity * 2, needed, 128)
 
-        for name in ("borrower", "lender", "principal", "rate", "interest", "debt"):
+        # Resize base class arrays (source_ids, target_ids)
+        for name in ("source_ids", "target_ids"):
+            arr = getattr(self, name)
+            if arr.size != new_cap:  # only when really needed
+                new_arr = np.resize(arr, new_cap)
+                setattr(self, name, new_arr)
+
+        # Resize edge-specific component arrays
+        for name in ("principal", "rate", "interest", "debt"):
             arr = getattr(self, name)
             if arr.size != new_cap:  # only when really needed
                 new_arr = np.resize(arr, new_cap)
                 setattr(self, name, new_arr)
 
         self.capacity = new_cap
-        # sanity
+        # sanity check
         assert all(
             getattr(self, n).size == new_cap
-            for n in ("borrower", "lender", "principal", "rate", "interest", "debt")
+            for n in (
+                "source_ids",
+                "target_ids",
+                "principal",
+                "rate",
+                "interest",
+                "debt",
+            )
         )
 
     # ------------------------------------------------------------------ #
-    #   API                                                              #
+    #   API (using Relationship base methods)                           #
     # ------------------------------------------------------------------ #
     def debt_per_borrower(self, n_borrowers: int) -> Float1D:
-        out = np.zeros(n_borrowers, dtype=np.float64)
-        np.add.at(out, self.borrower[: self.size], self.debt[: self.size])
-        return out
+        """
+        Aggregate total debt per borrower.
+
+        Parameters
+        ----------
+        n_borrowers : int
+            Number of borrowers in the simulation
+
+        Returns
+        -------
+        Float1D
+            Array of total debt per borrower
+        """
+        return self.aggregate_by_source(self.debt, func="sum", n_sources=n_borrowers)  # type: ignore[no-any-return, attr-defined]
 
     def interest_per_borrower(self, n_borrowers: int) -> Float1D:
-        out = np.zeros(n_borrowers, dtype=np.float64)
-        np.add.at(out, self.borrower[: self.size], self.interest[: self.size])
-        return out
+        """
+        Aggregate total interest per borrower.
+
+        Parameters
+        ----------
+        n_borrowers : int
+            Number of borrowers in the simulation
+
+        Returns
+        -------
+        Float1D
+            Array of total interest per borrower
+        """
+        return self.aggregate_by_source(  # type: ignore[no-any-return, attr-defined]
+            self.interest, func="sum", n_sources=n_borrowers
+        )
 
     def append_loans_for_lender(
         self,
@@ -147,11 +233,28 @@ class LoanBook:
         amount: Float1D,
         rate: Float1D,
     ) -> None:
+        """
+        Append new loans from a specific lender to multiple borrowers.
+
+        Parameters
+        ----------
+        lender_idx : np.intp
+            Index of the lender providing loans
+        borrower_indices : Idx1D
+            Indices of borrowers receiving loans
+        amount : Float1D
+            Principal amounts for each loan
+        rate : Float1D
+            Interest rates for each loan
+        """
         self._ensure_capacity(amount.size)
         start, stop = self.size, self.size + amount.size
 
-        self.borrower[start:stop] = borrower_indices
-        self.lender[start:stop] = lender_idx  # ← scalar broadcast
+        # Use base class fields (source_ids, target_ids)
+        self.source_ids[start:stop] = borrower_indices
+        self.target_ids[start:stop] = lender_idx  # ← scalar broadcast
+
+        # Set edge-specific components
         self.principal[start:stop] = amount
         self.rate[start:stop] = rate
         self.interest[start:stop] = amount * rate
@@ -162,6 +265,9 @@ class LoanBook:
         """
         Hard-delete the rows where *rows_mask* is True and compact the edge list
         **in-place**.
+
+        Overrides Relationship.drop_rows() to also compact loan-specific
+        component arrays.
 
         Parameters
         ----------
@@ -183,7 +289,12 @@ class LoanBook:
         new_size = int(keep.sum())
 
         if new_size < self.size:  # only touch memory when shrinking
-            for name in ("borrower", "lender", "principal", "rate", "interest", "debt"):
+            # Compact base class arrays (source_ids, target_ids)
+            self.source_ids[:new_size] = self.source_ids[: self.size][keep]
+            self.target_ids[:new_size] = self.target_ids[: self.size][keep]
+
+            # Compact edge-specific component arrays
+            for name in ("principal", "rate", "interest", "debt"):
                 col = getattr(self, name)
                 col[:new_size] = col[: self.size][keep]
 
@@ -197,22 +308,34 @@ class LoanBook:
         """
         Remove every loan whose *borrower* is in *borrower_ids*.
 
+        Uses Relationship.purge_sources() internally.
+
+        Parameters
+        ----------
+        borrower_ids : Idx1D
+            Array of borrower indices to purge
+
         Returns
         -------
         int
             Number of rows removed.
         """
-        mask = np.isin(self.borrower[: self.size], borrower_ids)
-        return self.drop_rows(mask)
+        return self.purge_sources(borrower_ids)  # type: ignore[no-any-return, attr-defined]
 
     def purge_lenders(self, lender_ids: Idx1D) -> int:
         """
         Delete every loan whose *lender* is in *lender_ids*.
 
+        Uses Relationship.purge_targets() internally.
+
+        Parameters
+        ----------
+        lender_ids : Idx1D
+            Array of lender indices to purge
+
         Returns
         -------
         int
             Number of rows removed.
         """
-        mask = np.isin(self.lender[: self.size], lender_ids)
-        return self.drop_rows(mask)
+        return self.purge_targets(lender_ids)  # type: ignore[no-any-return, attr-defined]

@@ -82,7 +82,9 @@ class WorkersDecideFirmsToApply:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.events._internal.labor_market import workers_decide_firms_to_apply
+        from bamengine.events._internal.labor_market import (
+            workers_decide_firms_to_apply,
+        )
 
         workers_decide_firms_to_apply(
             wrk=sim.wrk,
