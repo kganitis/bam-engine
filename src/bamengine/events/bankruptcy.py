@@ -1,4 +1,5 @@
-"""Bankruptcy events for insolvency detection and agent replacement.
+"""
+Bankruptcy events for insolvency detection and agent replacement.
 
 Each event encapsulates net worth updates, bankruptcy detection, and
 spawning of replacement agents.

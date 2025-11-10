@@ -1,4 +1,5 @@
-"""Labor market events for wage setting, applications, and hiring.
+"""
+Labor market events for wage setting, applications, and hiring.
 
 Each event encapsulates wage setting, job applications, hiring, and related
 labor market operations.

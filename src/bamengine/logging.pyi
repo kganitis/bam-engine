@@ -1,4 +1,3 @@
-# bamengine/_logging_ext.pyi
 import logging
 from typing import Any, Optional
 

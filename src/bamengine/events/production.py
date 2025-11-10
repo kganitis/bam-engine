@@ -1,4 +1,5 @@
-"""Production events for wage payments, production, and contract updates.
+"""
+Production events for wage payments, production, and contract updates.
 
 Each event encapsulates production execution, wage payments, and employment
 contract management.

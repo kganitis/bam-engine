@@ -1,4 +1,3 @@
-# tests/integration/events/test_event_bankruptcy.py
 """
 Event-7 / Event-8 integration tests  ⸺  bankruptcy & entry
 ==========================================================

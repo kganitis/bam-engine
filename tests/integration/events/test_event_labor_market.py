@@ -1,4 +1,3 @@
-# tests/integration/events/test_event_labor_market.py
 """
 Event-2 integration tests (labor market)
 

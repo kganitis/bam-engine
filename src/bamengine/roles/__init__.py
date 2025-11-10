@@ -1,4 +1,3 @@
-# src/bamengine/roles/__init__.py
 """Internal dataclass bundles."""
 
 from bamengine.roles.borrower import Borrower

@@ -1,4 +1,3 @@
-# tests/unit/test_utils.py
 from typing import Callable
 
 import numpy as np

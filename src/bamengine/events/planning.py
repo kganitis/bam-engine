@@ -1,4 +1,5 @@
-"""Planning events for firm decision-making.
+"""
+Planning events for firm decision-making.
 
 Each event encapsulates a specific planning decision that firms make at the
 start of each simulation period.

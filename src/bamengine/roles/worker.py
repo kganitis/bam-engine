@@ -1,4 +1,3 @@
-# src/bamengine/roles/worker.py
 from bamengine.core.decorators import role
 from bamengine.typing import Bool1D, Float1D, Idx1D, Idx2D, Int1D
 

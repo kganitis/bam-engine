@@ -1,4 +1,3 @@
-# src/bamengine/utils.py
 from typing import Optional
 
 import numpy as np

@@ -1,4 +1,5 @@
-"""Goods market events for consumption decisions and shopping.
+"""
+Goods market events for consumption decisions and shopping.
 
 Each event encapsulates consumption propensity calculation, shopping decisions,
 and purchase execution.

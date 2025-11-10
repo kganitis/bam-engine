@@ -1,4 +1,3 @@
-# tests/unit/test_ops_system_validation.py
 """
 System-level validation tests for ops module.
 

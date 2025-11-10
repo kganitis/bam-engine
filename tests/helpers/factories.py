@@ -1,4 +1,3 @@
-# tests/helpers/factories.py
 """
 Reusable builders for component instances in unit / property tests.
 
