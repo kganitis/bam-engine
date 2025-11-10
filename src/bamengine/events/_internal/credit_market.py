@@ -2,8 +2,6 @@
 Credit‑market events internal implementation.
 """
 
-# TODO This module has multiple duplicated code fragments.
-
 from __future__ import annotations
 
 import numpy as np
@@ -267,8 +265,10 @@ def firms_prepare_loan_applications(
 
 
 def firms_send_one_loan_app(bor: Borrower, lend: Lender, rng: Rng = make_rng()) -> None:
-    # TODO Look into unifying common logic with `workers_send_one_round`
-    """ """
+    """
+    Borrowers with pending applications send one application each
+    to their targeted banks, if possible. Updates all related state in‑place.
+    """
     log.info("--- Borrowers Sending One Round of Applications ---")
     stride = bor.loan_apps_targets.shape[1]  # max_H
     borrowers = np.where(bor.credit_demand > 0.0)[0]  # borrowers ids
@@ -385,8 +385,7 @@ def firms_send_one_loan_app(bor: Borrower, lend: Lender, rng: Rng = make_rng()) 
 def _clean_queue(
     slice_: Idx1D, bor: Borrower, bank_idx_for_log: int
 ) -> Idx1D:  # pragma: no cover
-    # TODO Unify with `labor_market._clean_queue`
-    #  Make sorting optional
+    # TODO Make sorting optional
     """
     Return a queue (Idx1D) of *unique* borrower ids that still demand credit
     from the raw queue slice (may contain -1 sentinels and duplicates),

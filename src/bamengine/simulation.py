@@ -694,10 +694,6 @@ class Simulation:
         is fully validated.
         """
 
-        # TODO
-        #  - Wrap for-loops into their own systems
-        #  - Break systems into simpler systems
-
         if self.ec.destroyed:
             return
 

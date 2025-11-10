@@ -154,7 +154,6 @@ def firms_validate_debt_commitments(
                 )
 
         # aggregate per-lender payments
-        # TODO: Break lender-side repayment into a separate system
         row_sel = np.isin(lb.borrower[: lb.size], repay_firms)
         num_loans_repaid = row_sel.sum()
 
@@ -220,7 +219,6 @@ def firms_validate_debt_commitments(
         bor.total_funds[bad_firms] = 0.0
 
         # process loan book write-offs
-        # TODO: Break bad debt handling into a separate system
         borrowers_from_lb = lb.borrower[: lb.size]
         bad_rows_in_lb_mask = np.isin(borrowers_from_lb, bad_firms)
 
@@ -320,7 +318,6 @@ def firms_validate_debt_commitments(
             )
 
     # calculate net profit
-    # TODO Separate net profit calculation
     log.info("  Calculating net profit (gross profit - total interest)")
     bor.net_profit[:] = bor.gross_profit - total_interest
     total_net_profit = bor.net_profit.sum()
@@ -350,7 +347,6 @@ def firms_pay_dividends(bor: Borrower, *, delta: float) -> None:
     • Cash decreases by dividends paid
     • Net-worth is **not** updated here
     """
-    # TODO: Separate dividends from retained profit calculation
     log.info(
         f"--- Firms Paying Dividends (Payout Ratio δ for profits = {delta:.2f}) ---"
     )
