@@ -11,7 +11,8 @@ from hypothesis import strategies as st
 from numpy.typing import NDArray
 
 from bamengine import Rng, make_rng
-from bamengine.roles import Borrower, Lender, LoanBook
+from bamengine.roles import Borrower, Lender
+from bamengine.relationships import LoanBook
 from bamengine.events._internal.credit_market import (
     banks_decide_credit_supply,
     banks_decide_interest_rate,

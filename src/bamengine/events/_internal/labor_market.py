@@ -9,7 +9,8 @@ from typing import cast
 import numpy as np
 
 from bamengine import logging, Rng, make_rng
-from bamengine.roles import Economy, Employer, Worker
+from bamengine.roles import Employer, Worker
+from bamengine.economy import Economy
 from bamengine.typing import Idx1D, Int1D
 from bamengine.utils import select_top_k_indices_sorted
 

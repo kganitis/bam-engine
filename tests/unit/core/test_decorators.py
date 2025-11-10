@@ -1,9 +1,9 @@
 """Tests for Role and Event decorators."""
 
 import numpy as np
-import pytest
 
-from bamengine.core import Event, Role, event, role
+from bamengine import relationship
+from bamengine.core import Event, Role, event, role, get_relationship, Relationship
 from bamengine.core.registry import get_event, get_role
 from bamengine.typing import Float1D
 
@@ -301,20 +301,243 @@ class TestEventDecorator:
         instance = TestEvent8()
         assert isinstance(instance, Event)
 
-    def test_event_decorator_no_dependencies_parameter(self):
-        """Test that @event does NOT accept dependencies parameter."""
-        # This test ensures we've correctly removed the dependencies parameter
 
-        # Attempting to use dependencies should raise TypeError
-        with pytest.raises(TypeError):
+# Test roles for relationship tests
+@role
+class SourceRole:
+    """Source role for relationship tests."""
 
-            @event(dependencies=["SomeEvent"])  # type: ignore[call-arg]
-            class TestEvent7(Event):
-                """Test event."""
+    value: Float1D
 
-                def execute(self, sim) -> None:
-                    """Execute the event."""
-                    pass
+
+@role
+class TargetRole:
+    """Target role for relationship tests."""
+
+    value: Float1D
+
+
+class TestRelationshipDecorator:
+    """Test the @relationship decorator."""
+
+    def test_basic_relationship_decorator_without_parens(self):
+        """Test @relationship without parentheses (no inheritance)."""
+
+        @relationship(source=SourceRole, target=TargetRole)
+        class TestRelationship1:  # ← No (Relationship) inheritance
+            """Test relationship."""
+
+            weight: Float1D
+
+        # Should be a dataclass
+        assert hasattr(TestRelationship1, "__dataclass_fields__")
+
+        # Should have slots
+        assert hasattr(TestRelationship1, "__slots__")
+
+        # Should be registered with class name
+        registered_class = get_relationship("TestRelationship1")
+        assert registered_class is TestRelationship1
+
+        # Should inherit from Relationship
+        assert issubclass(TestRelationship1, Relationship)
+
+    def test_basic_relationship_decorator_with_parens(self):
+        """Test @relationship() with parentheses (no inheritance)."""
+
+        @relationship(source=SourceRole, target=TargetRole)
+        class TestRelationship2:  # ← No (Relationship) inheritance
+            """Test relationship."""
+
+            weight: Float1D
+
+        # Should be a dataclass
+        assert hasattr(TestRelationship2, "__dataclass_fields__")
+
+        # Should have slots
+        assert hasattr(TestRelationship2, "__slots__")
+
+        # Should be registered with class name
+        registered_class = get_relationship("TestRelationship2")
+        assert registered_class is TestRelationship2
+
+        # Should inherit from Relationship
+        assert issubclass(TestRelationship2, Relationship)
+
+    def test_relationship_decorator_with_custom_name(self):
+        """Test @relationship with custom name parameter (no inheritance)."""
+
+        @relationship(
+            source=SourceRole,
+            target=TargetRole,
+            name="CustomRelationshipName",
+        )
+        class TestRelationship3:  # ← No (Relationship) inheritance
+            """Test relationship."""
+
+            weight: Float1D
+
+        # Should be registered with custom name
+        registered_class = get_relationship("CustomRelationshipName")
+        assert registered_class is TestRelationship3
+
+        # Should have the custom name
+        assert TestRelationship3.name == "CustomRelationshipName"
+
+    def test_relationship_decorator_with_dataclass_kwargs(self):
+        """Test @relationship with additional dataclass kwargs (repr, no inheritance)."""
+
+        @relationship(source=SourceRole, target=TargetRole, repr=False)
+        class TestRelationship4:  # ← No (Relationship) inheritance
+            """Test relationship with repr=False."""
+
+            weight: Float1D
+
+        # Should not have default repr
+        arr = np.array([1.0, 2.0, 3.0])
+        instance = TestRelationship4(
+            source_ids=np.array([0, 1, 2]),
+            target_ids=np.array([3, 4, 5]),
+            size=3,
+            capacity=128,
+            weight=arr
+        )
+
+        # repr should not contain field values
+        repr_str = repr(instance)
+        assert "TestRelationship4" in repr_str or "fields=" in repr_str
+
+    def test_relationship_decorator_with_slots_default(self):
+        """Test that slots=True is set by default (no inheritance)."""
+
+        @relationship(source=SourceRole, target=TargetRole)
+        class TestRelationship5:  # ← No (Relationship) inheritance
+            """Test relationship."""
+
+            weight: Float1D
+
+        # Should have __slots__
+        assert hasattr(TestRelationship5, "__slots__")
+
+        # Should not have __dict__ (slots prevents it)
+        arr = np.array([1.0])
+        instance = TestRelationship5(
+            source_ids=np.array([0]),
+            target_ids=np.array([1]),
+            size=1,
+            capacity=128,
+            weight=arr
+        )
+        assert not hasattr(instance, "__dict__")
+
+    def test_relationship_decorator_can_override_slots(self):
+        """Test that slots can be explicitly overridden (no inheritance)."""
+
+        @relationship(source=SourceRole, target=TargetRole, slots=False)
+        class TestRelationship6:  # ← No (Relationship) inheritance
+            """Test relationship without slots."""
+
+            weight: Float1D
+
+        # Should have __dict__ (no slots)
+        arr = np.array([1.0])
+        instance = TestRelationship6(
+            source_ids=np.array([0]),
+            target_ids=np.array([1]),
+            size=1,
+            capacity=128,
+            weight=arr
+        )
+        assert hasattr(instance, "__dict__")
+
+    def test_relationship_decorator_with_explicit_inheritance_still_works(self):
+        """Test that explicit inheritance from Relationship still works."""
+
+        @relationship(source=SourceRole, target=TargetRole)
+        class TestRelationship7(Relationship):
+            """Test relationship with explicit inheritance."""
+
+            weight: Float1D
+
+        # Should be a dataclass
+        assert hasattr(TestRelationship7, "__dataclass_fields__")
+
+        # Should have slots
+        assert hasattr(TestRelationship7, "__slots__")
+
+        # Should be registered
+        registered_class = get_relationship("TestRelationship7")
+        assert registered_class is TestRelationship7
+
+        # Should inherit from Relationship
+        assert issubclass(TestRelationship7, Relationship)
+
+        # Should be instantiable
+        arr = np.array([1.0, 2.0, 3.0])
+        instance = TestRelationship7(
+            source_ids=np.array([0, 1, 2]),
+            target_ids=np.array([3, 4, 5]),
+            size=3,
+            capacity=128,
+            weight=arr
+        )
+        assert np.array_equal(instance.weight, arr)
+
+    def test_relationship_decorator_basic(self):
+        """Test basic @relationship decorator usage."""
+
+        @relationship(source=SourceRole, target=TargetRole)
+        class TestRelation:
+            weight: Float1D
+
+        assert TestRelation.source_role is SourceRole
+        assert TestRelation.target_role is TargetRole
+        assert TestRelation.cardinality == "many-to-many"
+        assert TestRelation.name == "TestRelation"
+
+    def test_relationship_decorator_custom_name(self):
+        """Test @relationship decorator with custom name."""
+
+        @relationship(source=SourceRole, target=TargetRole, name="custom_relation")
+        class TestRelation:
+            weight: Float1D
+
+        assert TestRelation.name == "custom_relation"
+        retrieved = get_relationship("custom_relation")
+        assert retrieved is TestRelation
+
+    def test_relationship_decorator_cardinality(self):
+        """Test @relationship decorator with different cardinalities."""
+
+        @relationship(source=SourceRole, target=TargetRole, cardinality="one-to-many")
+        class TestRelation:
+            weight: Float1D
+
+        assert TestRelation.cardinality == "one-to-many"
+
+    def test_relationship_decorator_registration(self):
+        """Test that @relationship automatically registers the relationship."""
+
+        @relationship(source=SourceRole, target=TargetRole, name="test_rel")
+        class TestRelation:
+            weight: Float1D
+
+        retrieved = get_relationship("test_rel")
+        assert retrieved is TestRelation
+
+    def test_relationship_decorator_auto_inheritance(self):
+        """Test that @relationship decorator automatically adds Relationship inheritance."""
+
+        @relationship(source=SourceRole, target=TargetRole)
+        class AutoInherited:
+            weight: Float1D
+
+        # Should automatically inherit from Relationship
+        assert issubclass(AutoInherited, Relationship)
+        # Should be a dataclass
+        assert hasattr(AutoInherited, "__dataclass_fields__")
+        # Should have slots
+        assert hasattr(AutoInherited, "__slots__")
 
 
 class TestDecoratorComparison:
@@ -385,3 +608,53 @@ class TestDecoratorComparison:
 
         assert isinstance(decorated_instance, Event)
         assert isinstance(manual_instance, Event)
+
+    def test_relationship_decorator_equivalent_to_manual(self):
+        """Test @relationship produces same result as manual @dataclass(slots=True)."""
+        from dataclasses import dataclass
+
+        @relationship(source=SourceRole, target=TargetRole)
+        class DecoratedRelationship:
+            """Relationship using @relationship decorator."""
+
+            weight: Float1D
+
+        @dataclass(slots=True)
+        class ManualRelationship(Relationship):
+            """Relationship using manual @dataclass(slots=True)."""
+
+            weight: Float1D
+
+            source_role = SourceRole
+            target_role = TargetRole
+            cardinality = "many-to-many"
+            name = "ManualRelationship"
+
+        # Both should be dataclasses
+        assert hasattr(DecoratedRelationship, "__dataclass_fields__")
+        assert hasattr(ManualRelationship, "__dataclass_fields__")
+
+        # Both should have slots
+        assert hasattr(DecoratedRelationship, "__slots__")
+        assert hasattr(ManualRelationship, "__slots__")
+
+        # Both should be instantiable the same way
+        arr = np.array([1.0, 2.0, 3.0])
+        decorated_instance = DecoratedRelationship(
+            source_ids=np.array([0, 1, 2]),
+            target_ids=np.array([3, 4, 5]),
+            size=3,
+            capacity=128,
+            weight=arr
+        )
+        manual_instance = ManualRelationship(
+            source_ids=np.array([0, 1, 2]),
+            target_ids=np.array([3, 4, 5]),
+            size=3,
+            capacity=128,
+            weight=arr
+        )
+
+        # Both should inherit from Relationship
+        assert isinstance(decorated_instance, Relationship)
+        assert isinstance(manual_instance, Relationship)

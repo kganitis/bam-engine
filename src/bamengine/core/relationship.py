@@ -1,15 +1,14 @@
 """
 Relationship system for managing many-to-many relationships between roles.
 
-This module provides a base class and decorator for defining relationships
-between roles.
+This module provides a base class for defining relationships between roles.
 """
 
 from __future__ import annotations
 
 from abc import ABC
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeVar, Optional
 
 import numpy as np
 
@@ -18,18 +17,13 @@ from bamengine.typing import Float1D, Idx1D
 if TYPE_CHECKING:
     from bamengine.core.role import Role
 
-_EPS = 1.0e-9
-
 T = TypeVar("T")
-
-# Global relationship registry
-_RELATIONSHIP_REGISTRY: dict[str, type[Relationship]] = {}
 
 
 @dataclass(slots=True)
 class Relationship(ABC):
     """
-    Base class for many-to-many relationships between roles.
+    Base class for defining relationships between roles.
 
     Relationships store edges (connections) between agents in different roles,
     along with edge-specific data. Internally uses COO (Coordinate List) sparse
@@ -40,8 +34,7 @@ class Relationship(ABC):
     Define a loan relationship between borrowers and lenders::
 
         @relationship(source=Borrower, target=Lender, cardinality="many-to-many")
-        @dataclass(slots=True)
-        class LoanBook(Relationship):
+        class LoanBook:
             principal: Float1D
             rate: Float1D
             interest: Float1D
@@ -64,21 +57,93 @@ class Relationship(ABC):
     - Empty slots are filled with sentinels (-1 for indices)
     - Subclasses define edge-specific data as additional fields
     - Query methods use NumPy operations for vectorized performance
+    - The __init_subclass__ hook automatically registers relationships
     """
 
-    # Metadata (set by subclass or decorator)
-    _source_role: ClassVar[type[Role] | None] = None
-    _target_role: ClassVar[type[Role] | None] = None
-    _cardinality: ClassVar[Literal["many-to-many", "one-to-many", "many-to-one"]] = (
+    # Metadata (set by __init_subclass__)
+    name: ClassVar[str | None] = None
+    source_role: ClassVar[type[Role] | None] = None
+    target_role: ClassVar[type[Role] | None] = None
+    cardinality: ClassVar[Literal["many-to-many", "one-to-many", "many-to-one"]] = (
         "many-to-many"
     )
-    _relationship_name: ClassVar[str] = ""
 
     # COO format arrays (always present)
     source_ids: Idx1D  # Source entity IDs
     target_ids: Idx1D  # Target entity IDs
     size: int  # Current number of active edges
     capacity: int  # Maximum number of edges
+
+    def __init_subclass__(
+        cls,
+        name: str | None = None,
+        source: type[Role] | None = None,
+        target: type[Role] | None = None,
+        cardinality: Literal[
+            "many-to-many", "one-to-many", "many-to-one"] = "many-to-many",
+        **kwargs: Any,
+    ) -> None:
+        """
+        Auto-register Relationship subclasses in the global registry.
+
+        This hook is called automatically when a class inherits from Relationship.
+
+        Parameters
+        ----------
+        name : str, optional
+            Custom name for the relationship. If not provided, uses the class name.
+        source : type[Role], optional
+            Source role class for the relationship
+        target : type[Role], optional
+            Target role class for the relationship
+        cardinality : {"many-to-many", "one-to-many", "many-to-one"},
+            optional, default "many-to-many",
+            Cardinality constraint for the relationship
+        **kwargs
+            Additional keyword arguments passed to parent __init_subclass__.
+        """
+        super(Relationship, cls).__init_subclass__(**kwargs)
+
+        # Use custom name if provided, otherwise preserve existing name or use cls name
+        # This handles the case where @dataclass(slots=True) creates a new class
+        # and triggers __init_subclass__ a second time without the custom name
+        if name is not None:
+            cls.name = name
+        elif cls.name is None:
+            cls.name = cls.__name__
+
+        # Set relationship metadata
+        if source is not None:
+            cls.source_role = source
+        if target is not None:
+            cls.target_role = target
+        if cardinality != "many-to-many" or cls.cardinality == "many-to-many":
+            cls.cardinality = cardinality
+
+        # Auto-register in global registry
+        from bamengine.core.registry import _RELATIONSHIP_REGISTRY
+
+        _RELATIONSHIP_REGISTRY[cls.name] = cls
+
+    def __repr__(self) -> str:
+        """Provide informative repr showing relationship metadata and state."""
+        fields = getattr(self, "__dataclass_fields__", {})
+        # Count only the edge data fields (exclude the base fields)
+        base_fields = {"source_ids", "target_ids", "size", "capacity"}
+        edge_fields = [f for f in fields if f not in base_fields]
+
+        relationship_name = self.name or self.__class__.__name__
+        source_name = self.source_role.__name__ if self.source_role else "?"
+        target_name = self.target_role.__name__ if self.target_role else "?"
+
+        return (
+            f"{relationship_name}("
+            f"{source_name}->{target_name}, "
+            f"cardinality={self.cardinality}, "
+            f"edges={self.size}/{self.capacity}, "
+            f"fields={len(edge_fields)}"
+            ")"
+        )
 
     def query_sources(self, source_id: int) -> Idx1D:
         """
@@ -113,12 +178,12 @@ class Relationship(ABC):
         return np.where(self.target_ids[: self.size] == target_id)[0]
 
     def aggregate_by_source(
-        self,
-        component: np.ndarray,
-        *,
-        func: Literal["sum", "mean", "count"] = "sum",
-        n_sources: int | None = None,
-        out: Float1D | None = None,
+            self,
+            component: np.ndarray,
+            *,
+            func: Literal["sum", "mean", "count"] = "sum",
+            n_sources: int | None = None,
+            out: Optional[Float1D] = None,
     ) -> Float1D:
         """
         Aggregate component values grouped by source.
@@ -174,12 +239,12 @@ class Relationship(ABC):
         return out
 
     def aggregate_by_target(
-        self,
-        component: np.ndarray,
-        *,
-        func: Literal["sum", "mean", "count"] = "sum",
-        n_targets: int | None = None,
-        out: Float1D | None = None,
+            self,
+            component: np.ndarray,
+            *,
+            func: Literal["sum", "mean", "count"] = "sum",
+            n_targets: int | None = None,
+            out: Optional[Float1D] = None,
     ) -> Float1D:
         """
         Aggregate component values grouped by target.
@@ -316,10 +381,10 @@ class Relationship(ABC):
         return self.drop_rows(drop_mask)
 
     def append_edges(
-        self,
-        source_ids: Idx1D,
-        target_ids: Idx1D,
-        **component_arrays: Any,
+            self,
+            source_ids: Idx1D,
+            target_ids: Idx1D,
+            **component_arrays: Any,
     ) -> None:
         """
         Append new edges with given source/target IDs and component values.
@@ -362,203 +427,3 @@ class Relationship(ABC):
 
         # Update size
         self.size = new_end
-
-
-def relationship(
-    cls: type[T] | None = None,
-    *,
-    source: type[Role] | None = None,
-    target: type[Role] | None = None,
-    cardinality: Literal["many-to-many", "one-to-many", "many-to-one"] = "many-to-many",
-    name: str | None = None,
-    **dataclass_kwargs: Any,
-) -> type[T] | Callable[[type[T]], type[T]]:
-    """
-    Decorator to define a Relationship with automatic inheritance and registration.
-
-    This decorator dramatically simplifies Relationship definition by:
-    1. Making the class inherit from Relationship (if not already)
-    2. Applying @dataclass(slots=True)
-    3. Setting source/target roles as class variables
-    4. Setting cardinality
-    5. Registering the relationship in the global registry
-
-    Parameters
-    ----------
-    cls : type | None
-        The class to decorate (provided automatically when used without parens)
-    source : type[Role], optional
-        Source role type (e.g., Borrower)
-    target : type[Role], optional
-        Target role type (e.g., Lender)
-    cardinality : {"many-to-many", "one-to-many", "many-to-one"}, default "many-to-many"
-        Relationship cardinality
-    name : str, optional
-        Custom name for the relationship. If None, uses the class name.
-    **dataclass_kwargs : Any
-        Additional keyword arguments to pass to @dataclass.
-        By default, slots=True is set.
-
-    Returns
-    -------
-    type | Callable
-        The decorated class or a decorator function
-
-    Examples
-    --------
-    Simplest usage (no inheritance needed)::
-
-        @relationship(source=Borrower, target=Lender)
-        class LoanBook:
-            principal: Float1D
-            rate: Float1D
-            interest: Float1D
-            debt: Float1D
-
-    With custom name and cardinality::
-
-        @relationship(
-            source=Worker,
-            target=Employer,
-            cardinality="many-to-many",
-            name="MultiJobEmployment"
-        )
-        class Employment:
-            wage: Float1D
-            contract_duration: Int1D
-
-    Traditional usage (still works)::
-
-        @relationship(source=Borrower, target=Lender)
-        class LoanBook(Relationship):
-            principal: Float1D
-            rate: Float1D
-
-    Notes
-    -----
-    - No need to inherit from Relationship explicitly (decorator adds it)
-    - No need for @dataclass(slots=True) (decorator applies it)
-    - Registration happens automatically
-    - slots=True is set by default for memory efficiency
-    - Source and target roles can be None (useful to avoid circular imports)
-    """
-    # Set default slots=True unless explicitly overridden
-    dataclass_kwargs.setdefault("slots", True)
-
-    def decorator(cls: type[T]) -> type[T]:
-        # Check if cls already inherits from Relationship
-        if not issubclass(cls, Relationship):
-            # Dynamically create a new class that inherits from Relationship
-            # Copy annotations and methods from the original class
-            namespace = {
-                "__module__": cls.__module__,
-                "__qualname__": cls.__qualname__,
-                "__annotations__": getattr(cls, "__annotations__", {}),
-            }
-            # Copy methods and class attributes
-            for attr_name in dir(cls):
-                if not attr_name.startswith("__"):
-                    namespace[attr_name] = getattr(cls, attr_name)
-
-            cls = type(cls.__name__, (Relationship,), namespace)
-
-        # Set metadata as class variables
-        cls._source_role = source  # type: ignore[attr-defined]
-        cls._target_role = target  # type: ignore[attr-defined]
-        cls._cardinality = cardinality  # type: ignore[attr-defined]
-
-        # Determine relationship name
-        relationship_name = name if name is not None else cls.__name__
-        cls._relationship_name = relationship_name  # type: ignore[attr-defined]
-
-        # Apply dataclass decorator
-        # Check if class already has __slots__ (from Relationship base)
-        # If it does, don't apply slots=True again to avoid conflicts
-        if hasattr(cls, "__slots__"):
-            # Remove slots from dataclass_kwargs to avoid conflict
-            dc_kwargs = {k: v for k, v in dataclass_kwargs.items() if k != "slots"}
-            cls = dataclass(**dc_kwargs)(cls)
-        else:
-            cls = dataclass(**dataclass_kwargs)(cls)
-
-        # Register in global registry
-        if relationship_name in _RELATIONSHIP_REGISTRY:
-            raise ValueError(
-                f"Relationship '{relationship_name}' is already registered. "
-                f"Use a different name or unregister the existing one first."
-            )
-
-        _RELATIONSHIP_REGISTRY[relationship_name] = cls  # type: ignore[assignment]
-
-        return cls
-
-    # Support both @relationship and @relationship() syntax
-    if cls is None:
-        # Called with arguments: @relationship(source=..., target=...)
-        return decorator
-    else:
-        # Called without arguments: @relationship (not typical for relationships)
-        return decorator(cls)
-
-
-def get_relationship(name: str) -> type[Relationship]:
-    """
-    Retrieve a registered relationship class by name.
-
-    Parameters
-    ----------
-    name : str
-        Name of the relationship
-
-    Returns
-    -------
-    type[Relationship]
-        Relationship class
-
-    Raises
-    ------
-    KeyError
-        If relationship is not registered
-    """
-    try:
-        return _RELATIONSHIP_REGISTRY[name]
-    except KeyError:
-        raise KeyError(
-            f"Relationship '{name}' not found in registry. "
-            f"Available relationships: {list(_RELATIONSHIP_REGISTRY.keys())}"
-        )
-
-
-def list_relationships() -> list[str]:
-    """
-    List all registered relationships.
-
-    Returns
-    -------
-    list[str]
-        List of registered relationship names
-    """
-    return list(_RELATIONSHIP_REGISTRY.keys())
-
-
-def unregister_relationship(name: str) -> None:
-    """
-    Remove a relationship from the registry.
-
-    Parameters
-    ----------
-    name : str
-        Name of the relationship to unregister
-
-    Raises
-    ------
-    KeyError
-        If relationship is not registered
-    """
-    try:
-        del _RELATIONSHIP_REGISTRY[name]
-    except KeyError:
-        raise KeyError(
-            f"Relationship '{name}' not found in registry. "
-            f"Available relationships: {list(_RELATIONSHIP_REGISTRY.keys())}"
-        )

@@ -7,7 +7,8 @@ from __future__ import annotations
 import numpy as np
 
 from bamengine import logging
-from bamengine.roles import Borrower, Lender, LoanBook, Producer
+from bamengine.roles import Borrower, Lender, Producer
+from bamengine.relationships import LoanBook
 
 _EPS = 1.0e-9
 

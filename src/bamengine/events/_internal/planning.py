@@ -7,7 +7,8 @@ from __future__ import annotations
 import numpy as np
 
 from bamengine import logging, Rng, make_rng
-from bamengine.roles import Employer, LoanBook, Producer
+from bamengine.roles import Employer, Producer
+from bamengine.relationships import LoanBook
 
 log = logging.getLogger(__name__)
 

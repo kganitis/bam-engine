@@ -7,15 +7,15 @@ from __future__ import annotations
 import numpy as np
 
 from bamengine import logging, Rng, make_rng
+from bamengine.economy import Economy
 from bamengine.roles import (
     Borrower,
-    Economy,
     Employer,
     Lender,
-    LoanBook,
     Producer,
     Worker,
 )
+from bamengine.relationships import LoanBook
 from bamengine.utils import trim_mean
 
 log = logging.getLogger(__name__)

@@ -17,16 +17,17 @@ from typing import Any
 
 import numpy as np
 
+from bamengine.economy import Economy
 from bamengine.roles import (
     Borrower,
     Consumer,
-    Economy,
     Employer,
     Lender,
-    LoanBook,
     Producer,
     Worker,
 )
+from bamengine.relationships import LoanBook
+
 
 # ───────────────────────── default dictionaries ────────────────────────── #
 
