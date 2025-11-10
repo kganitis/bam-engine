@@ -1,6 +1,5 @@
-# src/bamengine/systems/credit_market.py
 """
-Event‑3  –  Credit‑market systems
+Credit‑market events internal implementation.
 """
 
 # TODO This module has multiple duplicated code fragments.

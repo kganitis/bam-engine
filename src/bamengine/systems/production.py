@@ -1,7 +1,7 @@
-# src/bamengine/systems/production.py
 """
-Event-4 – Production systems
+Production events internal implementations.
 """
+
 from __future__ import annotations
 
 import numpy as np

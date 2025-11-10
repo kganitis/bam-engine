@@ -1,8 +1,9 @@
-# src/bamengine/systems/labor_market.py
 """
-Event‑2  –  Labour‑market systems
+Labour‑market events internal implementation.
 """
+
 # TODO This module has multiple duplicated code fragments
+from __future__ import annotations
 
 from typing import cast
 

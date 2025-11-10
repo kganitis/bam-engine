@@ -1,3 +1,7 @@
+"""
+BAM Events internal implementations.
+"""
+
 from .credit_market import (
     banks_decide_credit_supply,
     banks_decide_interest_rate,

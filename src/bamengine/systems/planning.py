@@ -1,7 +1,9 @@
-# src/bamengine/systems/planning.py
+"""
+Planning events internal implementation.
+"""
+
 from __future__ import annotations
 
-import warnings
 import numpy as np
 
 from bamengine import logging, Rng, make_rng
@@ -31,12 +33,6 @@ def firms_decide_desired_production(
 
     S: Inventory, P: Indivudual Price, P̄: Avg Market Price, h_ρ: Max Price Growth
     """
-    warnings.warn(
-        "firms_decide_desired_production() is deprecated. "
-        "Logic has been moved to FirmsDecideDesiredProduction event class.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
     log.info("--- Firms Deciding Desired Production ---")
     log.info(
         f"  Inputs: Avg Market Price (p_avg)={p_avg:.3f}  |  "
@@ -124,12 +120,6 @@ def firms_calc_breakeven_price(
         Logic has been moved to FirmsCalcBreakevenPrice event class.
         This function is maintained for backward compatibility only.
     """
-    warnings.warn(
-        "firms_calc_breakeven_price() is deprecated. "
-        "Logic has been moved to FirmsCalcBreakevenPrice event class.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
     # TODO Decide when to calc breakeven price
     #    - Case 1: During planning (use values from last period)
     #              - Use wage bill after firing or after contracts expiring?
@@ -200,12 +190,6 @@ def firms_adjust_price(
         Logic has been moved to FirmsAdjustPrice event class.
         This function is maintained for backward compatibility only.
     """
-    warnings.warn(
-        "firms_adjust_price() is deprecated. "
-        "Logic has been moved to FirmsAdjustPrice event class.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
     # TODO Decide on whether to cap P to Pl or not
     #      As implemented, the new price is `max(shocked_price, breakeven_price)`.
     #      This can lead to prices jumping to the breakeven floor, which may be
@@ -325,12 +309,6 @@ def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
 
     Ld: Desired Labour, Yd: Desired Production, a: Labour Productivity
     """
-    warnings.warn(
-        "firms_decide_desired_labor() is deprecated. "
-        "Logic has been moved to FirmsDecideDesiredLabor event class.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
     log.info("--- Firms Deciding Desired Labor ---")
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
@@ -376,12 +354,6 @@ def firms_decide_vacancies(emp: Employer) -> None:
 
     V: Number of Open Vacancies, Ld: Desired Labour, L: Actual Labour
     """
-    warnings.warn(
-        "firms_decide_vacancies() is deprecated. "
-        "Logic has been moved to FirmsDecideVacancies event class.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
     log.info("--- Firms Deciding Vacancies ---")
     log.info(
         f"  Inputs: Total Desired Labor={emp.desired_labor.sum():,}  |"
