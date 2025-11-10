@@ -89,8 +89,10 @@ from .core import (
     get_role,
     list_events,
     list_roles,
+    relationship,
     role,
 )
+from .economy import Economy
 
 # ============================================================================
 # Public API exports
@@ -103,6 +105,7 @@ __all__: list[str] = [
     "Agent",
     "AgentType",
     "Role",
+    "Economy",
     "Event",
     "event",
     "role",
@@ -110,6 +113,7 @@ __all__: list[str] = [
     "get_role",
     "list_events",
     "list_roles",
+    "relationship",
     # Type system
     "Float",
     "Int",

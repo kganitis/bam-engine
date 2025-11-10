@@ -16,13 +16,13 @@ from bamengine.core.pipeline import Pipeline, create_default_pipeline
 from bamengine.roles import (
     Borrower,
     Consumer,
-    Economy,
     Employer,
     Lender,
-    LoanBook,
     Producer,
     Worker,
 )
+from bamengine.economy import Economy
+from bamengine.relationships import LoanBook
 from bamengine.events._internal.bankruptcy import (
     firms_update_net_worth,
     mark_bankrupt_banks,

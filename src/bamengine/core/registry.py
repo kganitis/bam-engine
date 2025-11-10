@@ -1,4 +1,4 @@
-"""Registry system for roles and events."""
+"""Registry system for roles, events and relationships."""
 
 from __future__ import annotations
 
@@ -7,14 +7,17 @@ from typing import TYPE_CHECKING, TypeVar
 if TYPE_CHECKING:
     from bamengine.core.event import Event
     from bamengine.core.role import Role
+    from bamengine.core.relationship import Relationship, _RELATIONSHIP_REGISTRY
 
 # Type variables for generic decorator typing
 R = TypeVar("R", bound="Role")
 E = TypeVar("E", bound="Event")
+L = TypeVar("L", bound="Relationship")
 
 # Global registry storage
 _ROLE_REGISTRY: dict[str, type[Role]] = {}
 _EVENT_REGISTRY: dict[str, type[Event]] = {}
+_RELATIONSHIP_REGISTRY: dict[str, type[Relationship]] = {}
 
 
 def get_role(name: str) -> type[Role]:
@@ -71,6 +74,34 @@ def get_event(name: str) -> type[Event]:
     return _EVENT_REGISTRY[name]
 
 
+def get_relationship(name: str) -> type[Relationship]:
+    """
+    Retrieve a relationship class from the registry by name.
+
+    Parameters
+    ----------
+    name : str
+        Name of the relationship to retrieve.
+
+    Returns
+    -------
+    type[Relationship]
+        The registered relationship class
+
+    Raises
+    ------
+    KeyError
+        If the relationship name is not found in the registry.
+    """
+    if name not in _RELATIONSHIP_REGISTRY:
+        available = ", ".join(sorted(_RELATIONSHIP_REGISTRY.keys()))
+        raise KeyError(
+            f"Relationship '{name}' not found in registry. "
+            f"Available relationships: {available}"
+        )
+    return _RELATIONSHIP_REGISTRY[name]
+
+
 def list_roles() -> list[str]:
     """Return sorted list of all registered role names."""
     return sorted(_ROLE_REGISTRY.keys())
@@ -81,6 +112,11 @@ def list_events() -> list[str]:
     return sorted(_EVENT_REGISTRY.keys())
 
 
+def list_relationships() -> list[str]:
+    """Return sorted list of all registered relationship names."""
+    return sorted(_RELATIONSHIP_REGISTRY.keys())
+
+
 def clear_registry() -> None:
     """
     Clear all registrations (useful for testing).
@@ -89,3 +125,4 @@ def clear_registry() -> None:
     """
     _ROLE_REGISTRY.clear()
     _EVENT_REGISTRY.clear()
+    _RELATIONSHIP_REGISTRY.clear()

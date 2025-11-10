@@ -1,9 +1,9 @@
 """
-Decorators for simplified Role and Event definition.
+Decorators for simplified Role, Event and Relationships definition.
 
-This module provides decorators that dramatically simplify the syntax for
-defining Roles and Events. They automatically apply @dataclass(slots=True),
-handle inheritance from Role/Event, and manage registration.
+This module provides decorators that simplify the syntax for defining
+Roles, Events and Relationships. They automatically apply @dataclass(slots=True),
+handle inheritance from Role/Event/Relationship, and manage registration.
 
 Usage
 -----
@@ -39,7 +39,7 @@ The decorator handles:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, TypeVar, Literal
 
 if TYPE_CHECKING:
     pass
@@ -88,20 +88,6 @@ def role(
         class Producer:
             price: Float
             production: Float
-
-    Traditional usage (still works):
-        @role
-        class Producer(Role):
-            price: Float
-            production: Float
-
-    Notes
-    -----
-    - No need to inherit from Role explicitly (decorator adds it)
-    - No need for @dataclass(slots=True) (decorator applies it)
-    - Registration happens automatically via Role.__init_subclass__
-    - slots=True is set by default for memory efficiency
-    - frozen=True is not supported (Role base class is not frozen)
     """
     # Import here to avoid circular imports
     from bamengine.core.role import Role
@@ -187,21 +173,6 @@ def event(
         class Planning:
             def execute(self, sim: Simulation) -> None:
                 # implementation
-
-    Traditional usage (still works):
-        @event
-        class Planning(Event):
-            def execute(self, sim: Simulation) -> None:
-                # implementation
-
-    Notes
-    -----
-    - No need to inherit from Event explicitly (decorator adds it)
-    - No need for @dataclass(slots=True) (decorator applies it)
-    - Registration happens automatically via Event.__init_subclass__
-    - slots=True is set by default for memory efficiency
-    - frozen=True is not supported (Event base class is not frozen)
-    - Dependencies are NOT supported (they've been removed from the Event system)
     """
     # Import here to avoid circular imports
     from bamengine.core.event import Event
@@ -243,4 +214,116 @@ def event(
         return decorator
     else:
         # Called without arguments: @event
+        return decorator(cls)
+
+
+def relationship(
+    cls: type[T] | None = None,
+    *,
+    source: type[Role] | None = None,
+    target: type[Role] | None = None,
+    cardinality: Literal["many-to-many", "one-to-many", "many-to-one"] = "many-to-many",
+    name: str | None = None,
+    **dataclass_kwargs: Any,
+) -> type[T] | Callable[[type[T]], type[T]]:
+    """
+    Decorator to define a Relationship with automatic inheritance and registration.
+
+    This decorator dramatically simplifies Relationship definition by:
+    1. Making the class inherit from Relationship (if not already)
+    2. Applying @dataclass(slots=True)
+    3. Setting source/target roles as class variables
+    4. Setting cardinality
+    5. Registering the relationship in the global registry
+
+    Parameters
+    ----------
+    cls : type | None
+        The class to decorate (provided automatically when used without parens)
+    source : type[Role], optional
+        Source role type (e.g., Borrower)
+    target : type[Role], optional
+        Target role type (e.g., Lender)
+    cardinality : {"many-to-many", "one-to-many", "many-to-one"}, default "many-to-many"
+        Relationship cardinality
+    name : str, optional
+        Custom name for the relationship. If None, uses the class name.
+    **dataclass_kwargs : Any
+        Additional keyword arguments to pass to @dataclass.
+        By default, slots=True is set.
+
+    Returns
+    -------
+    type | Callable
+        The decorated class or a decorator function
+
+    Examples
+    --------
+    Simplest usage::
+
+        from bamengine import get_role
+
+        @relationship(source=get_role("Borrower"), target=get_role("Lender"))
+        class LoanBook:
+            principal: Float1D
+            rate: Float1D
+            interest: Float1D
+            debt: Float1D
+
+    With custom name and cardinality::
+
+        @relationship(
+            source=get_role("Worker"),
+            target=get_role("Employer"),
+            cardinality="many-to-many",
+            name="MultiJobEmployment"
+        )
+        class Employment:
+            wage: Float1D
+            contract_duration: Int1D
+    """
+    # Import here to avoid circular imports
+    from bamengine.core import Relationship
+
+    # Set default slots=True unless explicitly overridden
+    dataclass_kwargs.setdefault("slots", True)
+
+    def decorator(cls: type[T]) -> type[T]:
+        # Check if cls already inherits from Relationship
+        if not issubclass(cls, Relationship):
+            # Dynamically create a new class that inherits from Relationship
+            # Copy annotations and methods from the original class
+            namespace = {
+                "__module__": cls.__module__,
+                "__qualname__": cls.__qualname__,
+                "__annotations__": getattr(cls, "__annotations__", {}),
+            }
+            # Copy methods and class attributes
+            for attr_name in dir(cls):
+                if not attr_name.startswith("__"):
+                    namespace[attr_name] = getattr(cls, attr_name)
+
+            cls = type(cls.__name__, (Relationship,), namespace)
+
+        # Set metadata as class variables
+        cls.source_role = source  # type: ignore[attr-defined]
+        cls.target_role = target  # type: ignore[attr-defined]
+        cls.cardinality = cardinality  # type: ignore[attr-defined]
+
+        # Set custom name BEFORE applying dataclass
+        # This ensures __init_subclass__ sees the correct name
+        if name is not None:
+            cls.name = name  # type: ignore[attr-defined]
+
+        # Apply dataclass decorator
+        cls = dataclass(**dataclass_kwargs)(cls)
+
+        return cls
+
+    # Support both @relationship and @relationship() syntax
+    if cls is None:
+        # Called with arguments: @relationship(source=..., target=...)
+        return decorator
+    else:
+        # Called without arguments: @relationship (not typical for relationships)
         return decorator(cls)

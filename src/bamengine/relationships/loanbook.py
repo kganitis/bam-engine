@@ -1,61 +1,19 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import field
 
 import numpy as np
 
-from bamengine.core import relationship
-from bamengine.typing import Bool1D, Float1D, Idx1D, Int1D
-
-
-@dataclass(slots=True)
-class Economy:
-    """
-    Pure *state* container for economy-wide parameters and transient lists.
-    """
-
-    # ── policy / structural scalars ──────────────────────────────────────
-    avg_mkt_price: float
-    min_wage: float
-    min_wage_rev_period: int
-    r_bar: float  # base interest-rate
-    v: float  # capital-adequacy coefficient
-
-    # ── time-series ──────────────────────────────────────────────────────
-    avg_mkt_price_history: Float1D  # shape  (t+1,)
-    unemp_rate_history: Float1D  # shape  (t+1,)
-    inflation_history: Float1D  # shape  (t+1,)
-
-    # ── transient exit lists (flushed each Entry event) ──────────────────
-    exiting_firms: Idx1D = field(default_factory=lambda: np.empty(0, np.intp))
-    exiting_banks: Idx1D = field(default_factory=lambda: np.empty(0, np.intp))
-
-    # Termination flag
-    destroyed: bool = False
-
-
-# Avoid circular imports by importing roles here (after Economy definition)
-# This allows LoanBook to reference Borrower and Lender types
-def _get_borrower_role() -> type:
-    """Lazy import to avoid circular dependency."""
-    from bamengine.roles.borrower import Borrower
-
-    return Borrower
-
-
-def _get_lender_role() -> type:
-    """Lazy import to avoid circular dependency."""
-    from bamengine.roles.lender import Lender
-
-    return Lender
+from bamengine.core import relationship, get_role
+from bamengine.typing import Float1D, Idx1D, Int1D, Bool1D
 
 
 # Use @relationship decorator to define LoanBook as a Relationship between
 # Borrower (source) and Lender (target) roles
 # Note: We use lazy imports above to avoid circular import issues
-@relationship(  # type: ignore[operator]
-    source=_get_borrower_role(),
-    target=_get_lender_role(),
+@relationship(
+    source=get_role("Borrower"),
+    target=get_role("Lender"),
     cardinality="many-to-many",
     name="LoanBook",
 )

@@ -23,7 +23,7 @@ class Role(ABC):
     - All state variables should be NumPy arrays (Float1D, Int1D, Bool1D)
     - Scratch buffers (optional fields) can be added for performance
     - Avoid methods that mutate state; use system functions instead
-    - Inherit from Role and add @dataclass(slots=True) decorator
+    - Use @role decorator to define and register new roles
 
     Notes
     -----
