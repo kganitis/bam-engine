@@ -30,7 +30,7 @@ def run_example_simulation(n_firms=100, seed=0):
         n_periods=params["periods"],
         savings_init=params["savings_init"],
         equity_base_init=params["equity_base_init"],
-        seed=params["seed"],
+        seed=0,
     )
     collector = DataCollector()
 

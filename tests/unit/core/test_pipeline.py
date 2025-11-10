@@ -1,4 +1,5 @@
 """Unit tests for Pipeline class."""
+
 from typing import cast
 
 import numpy as np

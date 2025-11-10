@@ -74,7 +74,7 @@ class ConfigValidator:
             "max_Z",
             "theta",
             "min_wage_rev_period",
-            "seed",
+            "seed",  # TODO should also accept np.random.Generator
             "cap_factor",
         ]
 

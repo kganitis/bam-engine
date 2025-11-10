@@ -78,7 +78,6 @@ def adjust_minimum_wage(ec: Economy) -> None:
         log.debug("  Skipping: not a revision period.")
         return
 
-    # TODO: Make sure inflation history is up to date
     inflation = float(ec.inflation_history[-1])
     old_min_wage = ec.min_wage
     ec.min_wage = float(ec.min_wage) * (1.0 + inflation)
