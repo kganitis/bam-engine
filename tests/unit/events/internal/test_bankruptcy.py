@@ -1,10 +1,9 @@
-# test/unit/systems/test_bankruptcy.py
 from __future__ import annotations
 
 import numpy as np
 
 from bamengine import make_rng
-from bamengine.systems.bankruptcy import (
+from bamengine.events._internal.bankruptcy import (
     firms_update_net_worth,
     mark_bankrupt_banks,
     mark_bankrupt_firms,

@@ -2,7 +2,7 @@
 
 These tests verify that goods market events can execute without crashing
 
-Internal logic is tested in tests/unit/systems/test_goods_market.py.
+Internal logic is tested in tests/unit/events/internal/test_goods_market.py.
 Event registration is verified implicitly by successful execution.
 """
 

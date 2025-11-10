@@ -19,7 +19,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from bamengine.simulation import Simulation
-from bamengine.systems.credit_market import (
+from bamengine.events._internal.credit_market import (
     banks_decide_credit_supply,
     banks_decide_interest_rate,
     banks_provide_loans,

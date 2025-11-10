@@ -32,7 +32,7 @@ class FirmsDecideDesiredProduction:
     # TODO Address warning: Method 'execute' may be 'static'
     #  across all events in this package
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.planning import firms_decide_desired_production
+        from bamengine.events._internal.planning import firms_decide_desired_production
 
         firms_decide_desired_production(
             sim.prod,
@@ -59,7 +59,7 @@ class FirmsCalcBreakevenPrice:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.planning import firms_calc_breakeven_price
+        from bamengine.events._internal.planning import firms_calc_breakeven_price
 
         firms_calc_breakeven_price(
             prod=sim.prod,
@@ -88,7 +88,7 @@ class FirmsAdjustPrice:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.planning import firms_adjust_price
+        from bamengine.events._internal.planning import firms_adjust_price
 
         firms_adjust_price(
             sim.prod,
@@ -111,7 +111,7 @@ class FirmsDecideDesiredLabor:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.planning import firms_decide_desired_labor
+        from bamengine.events._internal.planning import firms_decide_desired_labor
 
         firms_decide_desired_labor(sim.prod, sim.emp)
 
@@ -129,6 +129,6 @@ class FirmsDecideVacancies:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.planning import firms_decide_vacancies
+        from bamengine.events._internal.planning import firms_decide_vacancies
 
         firms_decide_vacancies(sim.emp)

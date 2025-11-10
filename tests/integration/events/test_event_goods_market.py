@@ -17,7 +17,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from bamengine.simulation import Simulation
-from bamengine.systems.goods_market import (  # systems under test
+from bamengine.events._internal.goods_market import (  # systems under test
     consumers_calc_propensity,
     consumers_decide_firms_to_visit,
     consumers_decide_income_to_spend,

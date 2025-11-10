@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 
 from bamengine.simulation import Simulation
-from bamengine.systems.labor_market import (
+from bamengine.events._internal.labor_market import (
     adjust_minimum_wage,
     calc_annual_inflation_rate,
     firms_decide_wage_offer,
@@ -23,7 +23,7 @@ from bamengine.systems.labor_market import (
 
 
 def _run_planning(sch: Simulation) -> None:
-    from bamengine.systems.planning import (
+    from bamengine.events._internal.planning import (
         firms_decide_desired_labor,
         firms_decide_desired_production,
         firms_decide_vacancies,

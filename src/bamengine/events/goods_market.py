@@ -32,7 +32,7 @@ class ConsumersCalcPropensity:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.goods_market import consumers_calc_propensity
+        from bamengine.events._internal.goods_market import consumers_calc_propensity
 
         _avg_sav = float(sim.con.savings.mean())
         consumers_calc_propensity(sim.con, avg_sav=_avg_sav, beta=sim.config.beta)
@@ -55,7 +55,7 @@ class ConsumersDecideIncomeToSpend:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.goods_market import consumers_decide_income_to_spend
+        from bamengine.events._internal.goods_market import consumers_decide_income_to_spend
 
         consumers_decide_income_to_spend(sim.con)
 
@@ -76,7 +76,7 @@ class ConsumersDecideFirmsToVisit:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.goods_market import consumers_decide_firms_to_visit
+        from bamengine.events._internal.goods_market import consumers_decide_firms_to_visit
 
         consumers_decide_firms_to_visit(
             sim.con,
@@ -106,7 +106,7 @@ class ConsumersShopOneRound:
 
     def execute(self, sim: Simulation) -> None:
         """Execute one shopping round."""
-        from bamengine.systems.goods_market import consumers_shop_one_round
+        from bamengine.events._internal.goods_market import consumers_shop_one_round
 
         consumers_shop_one_round(sim.con, sim.prod, rng=sim.rng)
 
@@ -126,6 +126,6 @@ class ConsumersFinalizePurchases:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.goods_market import consumers_finalize_purchases
+        from bamengine.events._internal.goods_market import consumers_finalize_purchases
 
         consumers_finalize_purchases(sim.con)

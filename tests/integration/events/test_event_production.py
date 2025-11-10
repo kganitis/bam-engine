@@ -125,7 +125,7 @@ from __future__ import annotations
 #     sch.wrk.wage[:] = 1.25
 #     firms_calc_wage_bill(sch.emp)  # sync wage-bill with roster
 #
-#     # Run Event-4 systems (with expirations enabled)
+#     # Run production systems (with expirations enabled)
 #     _run_production_event(sch, with_expiration=True)
 #
 #     # Post-event invariants

@@ -1,5 +1,5 @@
 """
-Goods-market systems unit tests.
+Goods-market events internal implementation unit tests.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from hypothesis import strategies as st
 
 from bamengine import Rng, make_rng
 from bamengine.roles import Consumer, Producer
-from bamengine.systems.goods_market import (
+from bamengine.events._internal.goods_market import (
     consumers_calc_propensity,
     consumers_decide_firms_to_visit,
     consumers_decide_income_to_spend,

@@ -2,7 +2,7 @@
 
 These tests verify that planning events can execute without crashing.
 
-Internal logic is tested in tests/unit/systems/test_planning.py.
+Internal logic is tested in tests/unit/events/internal/test_planning.py.
 Event registration is verified implicitly by successful execution.
 """
 

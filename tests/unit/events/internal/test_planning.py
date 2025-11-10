@@ -1,4 +1,3 @@
-# tests/unit/systems/test_planning.py
 """
 Planning-system unit tests.
 """
@@ -11,7 +10,7 @@ from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
 from bamengine import make_rng
-from bamengine.systems.planning import (
+from bamengine.events._internal.planning import (
     _EPS,
     firms_adjust_price,
     firms_calc_breakeven_price,

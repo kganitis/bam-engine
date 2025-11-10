@@ -1,6 +1,5 @@
-# tests/unit/systems/test_labor_market.py
 """
-Labor-market systems unit tests.
+Labor-market events internal implementation unit tests.
 """
 
 from __future__ import annotations
@@ -15,7 +14,7 @@ from numpy.typing import NDArray
 
 from bamengine import Rng, make_rng
 from bamengine.roles import Employer, Worker
-from bamengine.systems.labor_market import (
+from bamengine.events._internal.labor_market import (
     adjust_minimum_wage,
     calc_annual_inflation_rate,
     firms_decide_wage_offer,
@@ -69,7 +68,7 @@ def _mini_state(
 
 
 def test_calc_annual_inflation_rate_min_history() -> None:
-    from bamengine.systems.labor_market import calc_annual_inflation_rate
+    from bamengine.events._internal.labor_market import calc_annual_inflation_rate
 
     ec = mock_economy(avg_mkt_price_history=np.array([1.0, 1.1, 1.2, 1.3]))
     calc_annual_inflation_rate(ec)
@@ -77,7 +76,7 @@ def test_calc_annual_inflation_rate_min_history() -> None:
 
 
 def test_calc_annual_inflation_rate_prev_nonpositive() -> None:
-    from bamengine.systems.labor_market import calc_annual_inflation_rate
+    from bamengine.events._internal.labor_market import calc_annual_inflation_rate
 
     # t = 4 (len=5); p_{t-4} is index 0 -> set to 0.0 to trigger branch
     ec = mock_economy(avg_mkt_price_history=np.array([0.0, 1.0, 1.1, 1.2, 1.3]))
@@ -814,7 +813,7 @@ def test_full_round() -> None:
 
 
 def test_firms_calc_wage_bill_basic() -> None:
-    from bamengine.systems.labor_market import firms_calc_wage_bill
+    from bamengine.events._internal.labor_market import firms_calc_wage_bill
 
     emp = mock_employer(n=3)
     wrk = mock_worker(n=5)

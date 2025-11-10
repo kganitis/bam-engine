@@ -2,7 +2,7 @@
 
 These tests verify that economy stats events can execute without crashing
 
-Internal logic is tested in tests/unit/systems/test_production.py.
+Internal logic is tested in tests/unit/events/internal/test_production.py.
 Event registration is verified implicitly by successful execution.
 """
 

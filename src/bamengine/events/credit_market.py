@@ -27,7 +27,7 @@ class BanksDecideCreditSupply:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.credit_market import banks_decide_credit_supply
+        from bamengine.events._internal.credit_market import banks_decide_credit_supply
 
         banks_decide_credit_supply(sim.lend, v=sim.ec.v)
 
@@ -46,7 +46,7 @@ class BanksDecideInterestRate:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.credit_market import banks_decide_interest_rate
+        from bamengine.events._internal.credit_market import banks_decide_interest_rate
 
         banks_decide_interest_rate(
             sim.lend,
@@ -69,7 +69,7 @@ class FirmsDecideCreditDemand:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.credit_market import firms_decide_credit_demand
+        from bamengine.events._internal.credit_market import firms_decide_credit_demand
 
         firms_decide_credit_demand(sim.bor)
 
@@ -88,7 +88,7 @@ class FirmsCalcCreditMetrics:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.credit_market import firms_calc_credit_metrics
+        from bamengine.events._internal.credit_market import firms_calc_credit_metrics
 
         firms_calc_credit_metrics(sim.bor)
 
@@ -103,7 +103,7 @@ class FirmsPrepareLoanApplications:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.credit_market import firms_prepare_loan_applications
+        from bamengine.events._internal.credit_market import firms_prepare_loan_applications
 
         firms_prepare_loan_applications(
             sim.bor,
@@ -126,7 +126,7 @@ class FirmsSendOneLoanApp:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.credit_market import firms_send_one_loan_app
+        from bamengine.events._internal.credit_market import firms_send_one_loan_app
 
         firms_send_one_loan_app(sim.bor, sim.lend, rng=sim.rng)
 
@@ -144,7 +144,7 @@ class BanksProvideLoans:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.credit_market import banks_provide_loans
+        from bamengine.events._internal.credit_market import banks_provide_loans
 
         banks_provide_loans(
             sim.bor,
@@ -165,6 +165,6 @@ class FirmsFireWorkers:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.credit_market import firms_fire_workers
+        from bamengine.events._internal.credit_market import firms_fire_workers
 
         firms_fire_workers(sim.emp, sim.wrk, rng=sim.rng)

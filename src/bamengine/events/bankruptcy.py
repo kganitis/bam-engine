@@ -28,7 +28,7 @@ class FirmsUpdateNetWorth:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.bankruptcy import firms_update_net_worth
+        from bamengine.events._internal.bankruptcy import firms_update_net_worth
 
         firms_update_net_worth(sim.bor)
 
@@ -50,7 +50,7 @@ class MarkBankruptFirms:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.bankruptcy import mark_bankrupt_firms
+        from bamengine.events._internal.bankruptcy import mark_bankrupt_firms
 
         mark_bankrupt_firms(
             sim.ec,
@@ -77,7 +77,7 @@ class MarkBankruptBanks:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.bankruptcy import mark_bankrupt_banks
+        from bamengine.events._internal.bankruptcy import mark_bankrupt_banks
 
         mark_bankrupt_banks(sim.ec, sim.lend, sim.lb)
 
@@ -94,7 +94,7 @@ class SpawnReplacementFirms:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.bankruptcy import spawn_replacement_firms
+        from bamengine.events._internal.bankruptcy import spawn_replacement_firms
 
         spawn_replacement_firms(
             sim.ec,
@@ -117,7 +117,7 @@ class SpawnReplacementBanks:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.bankruptcy import spawn_replacement_banks
+        from bamengine.events._internal.bankruptcy import spawn_replacement_banks
 
         spawn_replacement_banks(
             sim.ec,

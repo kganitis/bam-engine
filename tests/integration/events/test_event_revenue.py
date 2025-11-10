@@ -8,7 +8,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from bamengine.simulation import Simulation
-from bamengine.systems.revenue import (
+from bamengine.events._internal import (
     firms_collect_revenue,
     firms_pay_dividends,
     firms_validate_debt_commitments,

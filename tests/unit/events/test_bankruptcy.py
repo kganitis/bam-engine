@@ -2,7 +2,7 @@
 
 These tests verify that bankruptcy events can execute without crashing
 
-Internal logic is tested in tests/unit/systems/test_bankruptcy.py.
+Internal logic is tested in tests/unit/events/internal/test_bankruptcy.py.
 Event registration is verified implicitly by successful execution.
 """
 
