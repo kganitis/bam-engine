@@ -72,8 +72,6 @@ class Event(ABC):
 
         # Use custom name if provided, otherwise preserve existing name
         # or use cls name converted to snake_case
-        # This handles the case where @dataclass(slots=True) creates a new class
-        # and triggers __init_subclass__ a second time without the custom name
         if name != "":
             cls.name = name
         elif cls.name == "":
@@ -122,15 +120,6 @@ class Event(ABC):
         -------
         None
             All mutations are in-place.
-
-        Notes
-        -----
-        Use self.get_logger() to get a logger with per-event log level:
-
-        logger = self.get_logger()
-        logger.info("Starting execution")
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug("Expensive debug info: %s", compute_stats())
         """
         pass
 

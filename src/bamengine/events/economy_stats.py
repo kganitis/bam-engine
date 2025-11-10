@@ -1,14 +1,14 @@
-"""Economy statistics events for aggregate metrics calculation.
-
-This module contains Event classes that calculate economy-wide statistics
-such as average market price and unemployment rate.
-"""
+"""Economy statistics events for aggregate metrics calculation."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import numpy as np
+
+from bamengine import logging
 from bamengine.core.decorators import event
+from bamengine.utils import trimmed_weighted_mean
 
 if TYPE_CHECKING:
     from bamengine.simulation import Simulation
@@ -17,38 +17,74 @@ if TYPE_CHECKING:
 @event
 class UpdateAvgMktPrice:
     """
-    Update average market price based on firm prices.
-
-    Calculates economy-wide average price:
-        P̄ = mean(p_i) for all firms
-
-    This is used for inflation calculations and firm price adjustments.
-
-    This event wraps `bamengine.systems.production.update_avg_mkt_price`.
+    Update exponentially smoothed average market price and update economy state.
     """
 
     def execute(self, sim: Simulation) -> None:
         """Execute average market price update."""
-        from bamengine.systems.production import update_avg_mkt_price
+        log = self.get_logger()
+        ec = sim.ec
+        prod = sim.prod
+        alpha = 1.0
+        trim_pct = 0.0
 
-        update_avg_mkt_price(sim.ec, sim.prod)
+        log.info("--- Updating Average Market Price ---")
+
+        if not (0.0 <= alpha <= 1.0):
+            raise ValueError(f"alpha must be in [0, 1], got {alpha}")
+
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug(
+                f"  Price update parameters: alpha={alpha:.3f}, "
+                f"trim_pct={trim_pct:.3f}"
+            )
+
+        # calculate trimmed weighted mean
+        p_avg_trimmed = trimmed_weighted_mean(prod.price, trim_pct=trim_pct)
+        previous_price = ec.avg_mkt_price
+
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug(
+                f"  Price calculation: trimmed_mean={p_avg_trimmed:.4f}, "
+                f"previous_avg={previous_price:.4f}"
+            )
+
+        # update economy state
+        ec.avg_mkt_price = alpha * p_avg_trimmed + (1.0 - alpha) * ec.avg_mkt_price
+        ec.avg_mkt_price_history = np.append(ec.avg_mkt_price_history, ec.avg_mkt_price)
+
+        log.info(f"  Average market price updated: {ec.avg_mkt_price:.4f}")
+        log.info("--- Average Market Price Update complete ---")
 
 
+# TODO Not unit tested yet
 @event
 class CalcUnemploymentRate:
     """
-    Calculate unemployment rate at end of period.
-
-    Unemployment rate is:
-        u = (N_unemployed / N_total) · 100
-
-    where N_unemployed counts workers with expired or no contracts.
-
-    This event wraps `bamengine.systems.production.calc_unemployment_rate`.
+    Calculate unemployment rate and update economy history.
     """
 
     def execute(self, sim: Simulation) -> None:
         """Execute unemployment rate calculation."""
-        from bamengine.systems.production import calc_unemployment_rate
+        log = self.get_logger()
+        ec = sim.ec
+        wrk = sim.wrk
 
-        calc_unemployment_rate(sim.ec, sim.wrk)
+        log.info("--- Calculating Unemployment Rate ---")
+
+        n_workers = wrk.employed.size
+        unemployed_count = n_workers - wrk.employed.sum()
+        rate = unemployed_count / n_workers
+
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug(
+                f"  Unemployment calculation: {unemployed_count} unemployed "
+                f"out of {n_workers} total workers"
+            )
+
+        log.info(f"  Current unemployment rate: {rate * 100:.2f}%")
+
+        # update economy state
+        ec.unemp_rate_history = np.append(ec.unemp_rate_history, rate)
+
+        log.info("--- Unemployment Rate Calculation complete ---")
