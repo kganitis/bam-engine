@@ -2,7 +2,6 @@
 Labour‑market events internal implementation.
 """
 
-# TODO This module has multiple duplicated code fragments
 from __future__ import annotations
 
 from typing import cast
@@ -107,7 +106,7 @@ def firms_decide_wage_offer(
 
     t: Current Period, w: Offered Wage, ŵ: Minimum Wage, h_ξ: Max Wage Growth
     """
-    # TODO Observe how many firm offers are near the minimum wage
+    # TODO Observe and log how many firm offers are near the minimum wage
     log.info("--- Firms Deciding Wage Offers ---")
     log.info(
         f"  Inputs: Min Wage (w_min)={w_min:.3f} | Max Wage Shock (h_ξ)={h_xi:.3f}"
@@ -212,7 +211,6 @@ def workers_decide_firms_to_apply(
         )
 
     # loyalty rule
-    # TODO Move loyalty logic to a separate system
     loyal_mask = (
         (wrk.contract_expired[unemp] == 1)
         & (wrk.fired[unemp] == 0)

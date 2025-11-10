@@ -92,7 +92,6 @@ def firms_decide_desired_production(
             f"{np.array2string(prod.expected_demand, precision=2)}"
         )
 
-    # TODO Separate desired production system
     prod.desired_production[:] = prod.expected_demand
     log.info(
         f"  Total Desired Production for economy: "
@@ -120,12 +119,6 @@ def firms_calc_breakeven_price(
         Logic has been moved to FirmsCalcBreakevenPrice event class.
         This function is maintained for backward compatibility only.
     """
-    # TODO Decide when to calc breakeven price
-    #    - Case 1: During planning (use values from last period)
-    #              - Use wage bill after firing or after contracts expiring?
-    #              - Use interest before or after debt repayment?
-    #    - Case 2: After credit market (where labor and interest are finalized)
-    #              - Use projected production based on updated labor
     log.info("--- Firms Calculating Breakeven Price ---")
     log.info(f"  Inputs: Breakeven Cap Factor={cap_factor if cap_factor else 'None'}")
     log.info(
@@ -190,11 +183,6 @@ def firms_adjust_price(
         Logic has been moved to FirmsAdjustPrice event class.
         This function is maintained for backward compatibility only.
     """
-    # TODO Decide on whether to cap P to Pl or not
-    #      As implemented, the new price is `max(shocked_price, breakeven_price)`.
-    #      This can lead to prices jumping to the breakeven floor, which may be
-    #      higher than the old price, even in a price-cutting scenario.
-    #      Warn for extreme jumps.
     log.info("--- Firms Adjusting Prices ---")
     log.info(
         f"  Inputs: Avg Market Price (p_avg)={p_avg:.3f}  |  "
