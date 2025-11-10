@@ -24,14 +24,14 @@ from bamengine.roles import (
     Producer,
     Worker,
 )
-from bamengine.systems.bankruptcy import (
+from bamengine.events._internal.bankruptcy import (
     firms_update_net_worth,
     mark_bankrupt_banks,
     mark_bankrupt_firms,
     spawn_replacement_banks,
     spawn_replacement_firms,
 )
-from bamengine.systems.credit_market import (
+from bamengine.events._internal.credit_market import (
     banks_decide_credit_supply,
     banks_decide_interest_rate,
     banks_provide_loans,
@@ -41,14 +41,14 @@ from bamengine.systems.credit_market import (
     firms_prepare_loan_applications,
     firms_send_one_loan_app,
 )
-from bamengine.systems.goods_market import (
+from bamengine.events._internal.goods_market import (
     consumers_calc_propensity,
     consumers_decide_firms_to_visit,
     consumers_decide_income_to_spend,
     consumers_finalize_purchases,
     consumers_shop_one_round,
 )
-from bamengine.systems.labor_market import (
+from bamengine.events._internal.labor_market import (
     adjust_minimum_wage,
     calc_annual_inflation_rate,
     firms_calc_wage_bill,
@@ -57,14 +57,14 @@ from bamengine.systems.labor_market import (
     workers_decide_firms_to_apply,
     workers_send_one_round,
 )
-from bamengine.systems.planning import (
+from bamengine.events._internal.planning import (
     firms_adjust_price,
     firms_calc_breakeven_price,
     firms_decide_desired_labor,
     firms_decide_desired_production,
     firms_decide_vacancies,
 )
-from bamengine.systems.production import (
+from bamengine.events._internal.production import (
     calc_unemployment_rate,
     firms_pay_wages,
     firms_run_production,
@@ -72,7 +72,7 @@ from bamengine.systems.production import (
     workers_receive_wage,
     workers_update_contracts,
 )
-from bamengine.systems.revenue import (
+from bamengine.events._internal import (
     firms_collect_revenue,
     firms_pay_dividends,
     firms_validate_debt_commitments,

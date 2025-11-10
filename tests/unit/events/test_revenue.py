@@ -2,7 +2,7 @@
 
 These tests verify that revenue events can execute without crashing
 
-Internal logic is tested in tests/unit/systems/test_revenue.py.
+Internal logic is tested in tests/unit/events/internal/test_revenue.py.
 Event registration is verified implicitly by successful execution.
 """
 

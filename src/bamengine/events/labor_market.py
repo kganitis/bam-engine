@@ -27,7 +27,7 @@ class CalcAnnualInflationRate:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.labor_market import calc_annual_inflation_rate
+        from bamengine.events._internal.labor_market import calc_annual_inflation_rate
 
         calc_annual_inflation_rate(sim.ec)
 
@@ -45,7 +45,7 @@ class AdjustMinimumWage:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.labor_market import adjust_minimum_wage
+        from bamengine.events._internal.labor_market import adjust_minimum_wage
 
         adjust_minimum_wage(sim.ec)
 
@@ -64,7 +64,7 @@ class FirmsDecideWageOffer:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.labor_market import firms_decide_wage_offer
+        from bamengine.events._internal.labor_market import firms_decide_wage_offer
 
         firms_decide_wage_offer(
             sim.emp,
@@ -82,7 +82,7 @@ class WorkersDecideFirmsToApply:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.labor_market import workers_decide_firms_to_apply
+        from bamengine.events._internal.labor_market import workers_decide_firms_to_apply
 
         workers_decide_firms_to_apply(
             wrk=sim.wrk,
@@ -106,7 +106,7 @@ class WorkersSendOneRound:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.labor_market import workers_send_one_round
+        from bamengine.events._internal.labor_market import workers_send_one_round
 
         workers_send_one_round(sim.wrk, sim.emp, rng=sim.rng)
 
@@ -125,7 +125,7 @@ class FirmsHireWorkers:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.labor_market import firms_hire_workers
+        from bamengine.events._internal.labor_market import firms_hire_workers
 
         firms_hire_workers(
             wrk=sim.wrk,
@@ -148,6 +148,6 @@ class FirmsCalcWageBill:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.labor_market import firms_calc_wage_bill
+        from bamengine.events._internal.labor_market import firms_calc_wage_bill
 
         firms_calc_wage_bill(sim.emp, sim.wrk)

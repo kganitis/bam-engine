@@ -20,7 +20,7 @@ from typing import Any
 import numpy as np
 
 from bamengine.simulation import Simulation
-from bamengine.systems.bankruptcy import (  # systems under test
+from bamengine.events._internal.bankruptcy import (  # systems under test
     firms_update_net_worth,
     mark_bankrupt_banks,
     mark_bankrupt_firms,

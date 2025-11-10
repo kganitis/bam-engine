@@ -29,7 +29,7 @@ class FirmsCollectRevenue:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.revenue import firms_collect_revenue
+        from bamengine.events._internal import firms_collect_revenue
 
         firms_collect_revenue(sim.prod, sim.bor)
 
@@ -46,7 +46,7 @@ class FirmsValidateDebtCommitments:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.revenue import firms_validate_debt_commitments
+        from bamengine.events._internal import firms_validate_debt_commitments
 
         firms_validate_debt_commitments(sim.bor, sim.lend, sim.lb)
 
@@ -71,6 +71,6 @@ class FirmsPayDividends:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.revenue import firms_pay_dividends
+        from bamengine.events._internal import firms_pay_dividends
 
         firms_pay_dividends(sim.bor, delta=sim.config.delta)

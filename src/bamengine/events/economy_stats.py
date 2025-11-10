@@ -17,7 +17,7 @@ class UpdateAvgMktPrice:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.production import update_avg_mkt_price
+        from bamengine.events._internal.production import update_avg_mkt_price
 
         update_avg_mkt_price(sim.ec, sim.prod)
 
@@ -29,6 +29,6 @@ class CalcUnemploymentRate:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.production import calc_unemployment_rate
+        from bamengine.events._internal.production import calc_unemployment_rate
 
         calc_unemployment_rate(sim.ec, sim.wrk)

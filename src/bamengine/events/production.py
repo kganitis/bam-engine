@@ -21,7 +21,7 @@ class FirmsPayWages:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.production import firms_pay_wages
+        from bamengine.events._internal.production import firms_pay_wages
 
         firms_pay_wages(sim.emp)
 
@@ -38,7 +38,7 @@ class WorkersReceiveWage:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.production import workers_receive_wage
+        from bamengine.events._internal.production import workers_receive_wage
 
         workers_receive_wage(sim.con, sim.wrk)
 
@@ -57,7 +57,7 @@ class FirmsRunProduction:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.production import firms_run_production
+        from bamengine.events._internal.production import firms_run_production
 
         firms_run_production(sim.prod, sim.emp)
 
@@ -78,6 +78,6 @@ class WorkersUpdateContracts:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.systems.production import workers_update_contracts
+        from bamengine.events._internal.production import workers_update_contracts
 
         workers_update_contracts(sim.wrk, sim.emp)

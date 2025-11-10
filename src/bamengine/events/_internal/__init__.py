@@ -1,5 +1,6 @@
 """
 BAM Events internal implementations.
+Correspond to ECS system functions.
 """
 
 from .credit_market import (

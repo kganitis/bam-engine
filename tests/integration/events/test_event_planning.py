@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 
 from bamengine.simulation import Simulation
-from bamengine.systems.planning import (
+from bamengine.events._internal.planning import (
     firms_decide_desired_labor,
     firms_decide_desired_production,
     firms_decide_vacancies,
@@ -17,7 +17,7 @@ def test_event_planning(tiny_sched: Simulation) -> None:
     prev_Y_mean = sch.prod.production.mean()
     p_avg = float(sch.prod.price.mean())
 
-    # Run Event-1 systems manually
+    # Run planning systems manually
     firms_decide_desired_production(sch.prod, p_avg=p_avg, h_rho=sch.h_rho, rng=sch.rng)
     firms_decide_desired_labor(sch.prod, sch.emp)
     firms_decide_vacancies(sch.emp)

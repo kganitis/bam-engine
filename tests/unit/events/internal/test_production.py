@@ -1,13 +1,12 @@
-# tests/unit/systems/test_production.py
 """
-Unit tests for production systems.
+Unit tests for production events internal implementation.
 """
 from __future__ import annotations
 
 import numpy as np
 
 from bamengine.roles import Employer, Worker
-from bamengine.systems.production import (
+from bamengine.events._internal.production import (
     # firms_decide_price,
     firms_pay_wages,
     firms_run_production,

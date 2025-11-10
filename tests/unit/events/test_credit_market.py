@@ -2,7 +2,7 @@
 
 These tests verify that credit market events can execute without crashing.
 
-Internal logic is tested in tests/unit/systems/test_credit_market.py.
+Internal logic is tested in tests/unit/events/internal/test_credit_market.py.
 Event registration is verified implicitly by successful execution.
 """
 
