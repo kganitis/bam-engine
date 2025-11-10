@@ -103,7 +103,9 @@ class FirmsPrepareLoanApplications:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.events._internal.credit_market import firms_prepare_loan_applications
+        from bamengine.events._internal.credit_market import (
+            firms_prepare_loan_applications,
+        )
 
         firms_prepare_loan_applications(
             sim.bor,

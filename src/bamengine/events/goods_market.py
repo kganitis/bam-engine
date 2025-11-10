@@ -55,7 +55,9 @@ class ConsumersDecideIncomeToSpend:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.events._internal.goods_market import consumers_decide_income_to_spend
+        from bamengine.events._internal.goods_market import (
+            consumers_decide_income_to_spend,
+        )
 
         consumers_decide_income_to_spend(sim.con)
 
@@ -76,7 +78,9 @@ class ConsumersDecideFirmsToVisit:
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.events._internal.goods_market import consumers_decide_firms_to_visit
+        from bamengine.events._internal.goods_market import (
+            consumers_decide_firms_to_visit,
+        )
 
         consumers_decide_firms_to_visit(
             sim.con,
