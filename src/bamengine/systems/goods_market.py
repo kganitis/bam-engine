@@ -1,7 +1,7 @@
-# src/bamengine/systems/goods_market.py
 """
-Event-5 – Goods-market systems
+Goods-market events internal implementation.
 """
+
 from __future__ import annotations
 
 import numpy as np

@@ -1,7 +1,7 @@
-# src/bamengine/systems/revenue.py
 """
-Event-6 – Revenue, debt-service & dividends
+Revenue events internal implementation.
 """
+
 from __future__ import annotations
 
 import numpy as np

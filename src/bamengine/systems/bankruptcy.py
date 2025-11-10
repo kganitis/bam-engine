@@ -1,8 +1,7 @@
-# src/bamengine/systems/bankruptcy.py
 """
-Event-7  ─  Bankruptcy (mark exits, fire workers, purge loans)
-Event-8  ─  Entry (spawn replacements for those exits)
+Bankrupty events internal implementation.
 """
+
 from __future__ import annotations
 
 import numpy as np
