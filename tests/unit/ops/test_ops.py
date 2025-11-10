@@ -1,4 +1,3 @@
-# tests/unit/test_ops.py
 """Unit tests for bamengine.ops module."""
 
 import numpy as np

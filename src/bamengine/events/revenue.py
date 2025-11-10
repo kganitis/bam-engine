@@ -1,4 +1,5 @@
-"""Revenue events for collection, debt repayment, and dividends.
+"""
+Revenue events for collection, debt repayment, and dividends.
 
 Each event encapsulates revenue collection, debt validation and repayment,
 and dividend distribution.

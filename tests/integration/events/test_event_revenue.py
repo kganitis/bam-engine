@@ -1,4 +1,3 @@
-# tests/integration/events/test_event_revenue.py
 """
 Event-6 integration tests  ⸺  revenue, debt-service & dividends
 """

@@ -1,4 +1,3 @@
-# tests/conftest.py
 """Pytest configuration and fixtures for bamengine tests."""
 
 import pytest

@@ -1,4 +1,3 @@
-# src/bamengine/core/decorators.py
 """
 Decorators for simplified Role and Event definition.
 

@@ -1,4 +1,3 @@
-# src/bamengine/typing.py
 """
 Type aliases for BAM Engine.
 

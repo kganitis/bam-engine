@@ -1,4 +1,3 @@
-# tests/helpers/invariants.py
 """
 High-level invariants that must hold after *every* ``Simulation.step``.
 They deliberately stay coarse-grained so they remain valid even when the

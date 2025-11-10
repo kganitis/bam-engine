@@ -1,4 +1,3 @@
-# src/bamengine/roles/employer.py
 from dataclasses import field
 from typing import Optional
 

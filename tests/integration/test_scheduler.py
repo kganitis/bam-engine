@@ -1,4 +1,3 @@
-# tests/integration/simulation/test_scheduler.py
 """
 Simulation smoke-tests.
 """

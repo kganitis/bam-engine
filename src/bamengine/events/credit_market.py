@@ -1,4 +1,5 @@
-"""Credit market events for credit supply, demand, and loan provision.
+"""
+Credit market events for credit supply, demand, and loan provision.
 
 Each event encapsulates credit decisions, loan applications, and related
 credit market operations.

@@ -1,4 +1,3 @@
-# tests/unit/test_ops_validation.py
 """
 Validation tests for bamengine.ops module.
 

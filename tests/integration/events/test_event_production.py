@@ -1,4 +1,3 @@
-# tests/integration/events/test_event_production.py
 """
 Event-4 integration tests (production)
 

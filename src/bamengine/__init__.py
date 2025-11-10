@@ -1,4 +1,3 @@
-# src/bamengine/__init__.py
 """
 BAM Engine – an agent‑based macro framework
 ==========================================

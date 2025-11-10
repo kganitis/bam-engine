@@ -1,4 +1,3 @@
-# tests/integration/events/test_event_goods_market.py
 """
 Event-5 integration tests  ⸺  goods-market round
 =================================================

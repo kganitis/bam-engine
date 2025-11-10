@@ -1,4 +1,3 @@
-# tests/integration/events/test_event_planning.py
 import numpy as np
 import pytest
 
