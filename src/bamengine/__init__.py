@@ -36,7 +36,7 @@ Rng: TypeAlias = np.random.Generator
 # ============================================================================
 # User-facing utilities (must be before Simulation import)
 # ============================================================================
-from . import logging, ops
+from . import logging, ops  # noqa: E402 (circular‑safe)
 
 
 def make_rng(seed: int | None = None) -> Rng:
@@ -79,40 +79,30 @@ from .simulation import Simulation  # noqa: E402  (circular‑safe)
 # ============================================================================
 # ECS extensibility components
 # ============================================================================
-from .core import (
-    Agent,
-    AgentType,
-    Event,
-    Role,
-    event,
-    get_event,
-    get_role,
-    list_events,
-    list_roles,
-    relationship,
-    role,
-)
-from .economy import Economy
+from .core import *  # noqa: E402 (circular‑safe)
+from .economy import Economy  # noqa: E402 (circular‑safe)
 
 # ============================================================================
 # Public API exports
 # ============================================================================
-__all__: list[str] = [
-    # Core
+__all__ = [
     "Simulation",
     "__version__",
-    # ECS components
+    # Core ECS components
     "Agent",
     "AgentType",
     "Role",
     "Economy",
     "Event",
+    "Relationship",
     "event",
     "role",
     "get_event",
     "get_role",
+    "get_relationship",
     "list_events",
     "list_roles",
+    "list_relationships",
     "relationship",
     # Type system
     "Float",

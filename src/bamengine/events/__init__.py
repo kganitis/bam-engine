@@ -3,16 +3,6 @@
 This module contains Event classes that wrap existing system functions.
 Events are auto-registered via __init_subclass__ hook and can be
 composed into a Pipeline for execution.
-
-Each event module corresponds to a system module:
-- planning.py → wraps _internal/planning.py
-- labor_market.py → wraps _internal/labor_market.py
-- credit_market.py → wraps _internal/credit_market.py
-- production.py → wraps _internal/production.py
-- goods_market.py → wraps _internal/goods_market.py
-- revenue.py → wraps _internal/revenue.py
-- bankruptcy.py → wraps _internal/bankruptcy.py
-- economy_stats.py → wraps economy-wide statistics
 """
 
 # Import all events to trigger auto-registration

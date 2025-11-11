@@ -9,8 +9,7 @@ import numpy as np
 from bamengine import logging
 from bamengine.roles import Borrower, Lender, Producer
 from bamengine.relationships import LoanBook
-
-_EPS = 1.0e-9
+from bamengine.utils import EPS
 
 log = logging.getLogger(__name__)
 
@@ -111,8 +110,8 @@ def firms_validate_debt_commitments(
         )
 
     # classify firms by repayment ability
-    repay_mask = bor.total_funds - total_debt >= -_EPS
-    unable_mask = ~repay_mask & (total_debt > _EPS)
+    repay_mask = bor.total_funds - total_debt >= -EPS
+    unable_mask = ~repay_mask & (total_debt > EPS)
 
     num_can_repay = repay_mask.sum()
     num_unable_repay = unable_mask.sum()
@@ -123,7 +122,7 @@ def firms_validate_debt_commitments(
     )
 
     # process full repayments
-    repay_firms = np.where(repay_mask & (total_debt > _EPS))[0]
+    repay_firms = np.where(repay_mask & (total_debt > EPS))[0]
     if repay_firms.size > 0:
         log.info(
             f"  Processing full repayments for {repay_firms.size} firms, "
@@ -198,7 +197,7 @@ def firms_validate_debt_commitments(
         )
 
     # process bad-debt write-offs
-    bad_firms = np.where(unable_mask & (total_debt > _EPS))[0]
+    bad_firms = np.where(unable_mask & (total_debt > EPS))[0]
     if bad_firms.size > 0:
         log.info(
             f"  Processing bad-debt write-offs for {bad_firms.size} defaulting firms."
@@ -241,7 +240,7 @@ def firms_validate_debt_commitments(
             # This determines the proportion of the equity-based loss
             # this bank absorbs for this loan.
             d_tot_map = total_debt[borrowers_from_lb[bad_rows_in_lb_mask]]
-            frac = lb.debt[: lb.size][bad_rows_in_lb_mask] / np.maximum(d_tot_map, _EPS)
+            frac = lb.debt[: lb.size][bad_rows_in_lb_mask] / np.maximum(d_tot_map, EPS)
 
             # Calculate the bad debt amount for this loan.
             # This is the bank's `frac` multiplied by the firm's net worth.

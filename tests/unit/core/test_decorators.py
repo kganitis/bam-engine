@@ -7,7 +7,11 @@ from bamengine.core import Event, Role, event, role, get_relationship, Relations
 from bamengine.core.registry import get_event, get_role
 from bamengine.typing import Float1D
 
+# TODO Resolve ALL "Expected type 'type[Role] | None', got 'type[SourceRole]' instead"
+#  and "Expected type 'type[Role] | None', got 'type[TargetRole]' instead" in the file
 
+
+# noinspection PyUnresolvedReferences
 class TestRoleDecorator:
     """Test the @role decorator."""
 
@@ -149,6 +153,7 @@ class TestRoleDecorator:
         assert np.array_equal(instance.value, arr)
 
 
+# noinspection PyUnresolvedReferences
 class TestEventDecorator:
     """Test the @event decorator."""
 
@@ -317,6 +322,7 @@ class TargetRole:
     value: Float1D
 
 
+# noinspection PyUnresolvedReferences
 class TestRelationshipDecorator:
     """Test the @relationship decorator."""
 

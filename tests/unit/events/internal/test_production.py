@@ -205,7 +205,7 @@ def test_contracts_already_zero_are_handled() -> None:
 
     workers_update_contracts(wrk, emp)
 
-    assert wrk.employed[0] == False  # should be unemployed after contract expiration
+    assert wrk.employed[0] == 0  # should be unemployed after contract expiration
     assert emp.current_labor[0] == 0
 
 

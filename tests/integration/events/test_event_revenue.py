@@ -12,8 +12,7 @@ from bamengine.events._internal import (
     firms_pay_dividends,
     firms_validate_debt_commitments,
 )
-
-_EPS = 1e-9
+from bamengine.utils import EPS
 
 
 def _run_revenue_event(
@@ -103,7 +102,7 @@ def test_event_revenue_basic(tiny_sched: Simulation) -> None:
     revenue = sch.prod.price * sold
 
     debt_before = snap["debt_tot_before"]
-    repay_mask = snap["funds_after_revenue"] >= debt_before - _EPS
+    repay_mask = snap["funds_after_revenue"] >= debt_before - EPS
     debt_paid = np.where(repay_mask, debt_before, 0.0)
     interest_paid = np.where(repay_mask, snap["interest_tot"], 0.0)
     bad_debt = np.where(~repay_mask, snap["net_w_before"], 0.0)
@@ -115,13 +114,13 @@ def test_event_revenue_basic(tiny_sched: Simulation) -> None:
         - debt_paid
         - np.where(sch.bor.net_profit > 0.0, sch.bor.net_profit * delta, 0.0)
     )
-    np.testing.assert_allclose(sch.bor.total_funds, cash_expected, rtol=_EPS)
+    np.testing.assert_allclose(sch.bor.total_funds, cash_expected, rtol=EPS)
 
     # lender equity
     equity_expected = snap["equity_before"].copy()
     equity_expected[0] += interest_paid.sum() - bad_debt.sum()
 
-    np.testing.assert_allclose(sch.lend.equity_base, equity_expected, rtol=_EPS)
+    np.testing.assert_allclose(sch.lend.equity_base, equity_expected, rtol=EPS)
 
     # ledger size & rows
     assert 0 not in sch.lb.borrower[: sch.lb.size]  # firm-0 repaid
@@ -158,13 +157,13 @@ def test_revenue_post_state_consistency(tiny_sched: Simulation) -> None:
     np.testing.assert_allclose(
         sch.bor.retained_profit,
         expected_retained_profit,
-        rtol=_EPS,
+        rtol=EPS,
     )
 
     # Lender equity non-negative & within cap
-    assert (sch.lend.equity_base >= -_EPS).all()
+    assert (sch.lend.equity_base >= -EPS).all()
     cap = sch.lend.equity_base * sch.ec.v
-    assert (sch.lend.credit_supply <= cap + _EPS).all()
+    assert (sch.lend.credit_supply <= cap + EPS).all()
 
     # LoanBook structural guards
     assert sch.lb.size <= sch.lb.capacity

@@ -53,8 +53,7 @@ class InnovationEvent:  # ← No (Event) inheritance needed!
     def execute(self, sim: Simulation) -> None:
         """Execute innovation logic."""
         # Access custom role (would need to be added to simulation first)
-        # TODO Unresolved attribute reference 'name' for class 'InnovationEvent'
-        print(f"Executing {self.name}")
+        print(f"Executing {self.name}")  # TODO Unresolved attribute reference 'name' for class 'InnovationEvent'
         # Custom logic here...
 
 
@@ -65,7 +64,7 @@ class InnovationEventV2:  # ← No (Event) inheritance needed!
 
     def execute(self, sim: Simulation) -> None:
         """Execute innovation logic."""
-        print(f"Executing {self.name}")
+        print(f"Executing {self.name}")  # TODO Unresolved attribute reference 'name' for class 'InnovationEventV2'
 
 
 # ============================================================================
@@ -106,6 +105,6 @@ if __name__ == "__main__":
     print("\nInstantiating InnovationEvent:")
     event = InnovationEvent()
     print(f"  {event}")
-    print(f"  Event name: {event.name}")
+    print(f"  Event name: {event.name}")  # TODO Unresolved attribute reference 'name' for class 'InnovationEvent'
 
     print("\n✅ All examples completed successfully!")

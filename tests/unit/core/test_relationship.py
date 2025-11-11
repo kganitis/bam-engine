@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from bamengine.core import role, relationship
+from bamengine.core import relationship
 from bamengine.typing import Float1D
 
 

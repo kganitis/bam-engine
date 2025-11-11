@@ -13,6 +13,9 @@ from bamengine.core.registry import (clear_registry,
 from bamengine.typing import Float1D
 
 
+# TODO Resolve all "Unresolved attribute reference '__dataclass_fields__'..." in file
+
+
 @pytest.fixture
 def clean_registry():
     """

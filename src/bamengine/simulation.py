@@ -404,7 +404,6 @@ class Simulation:
         # Wrap into components
         # -----------------------------------------------------------------
         ec = Economy(
-            # TODO move theta, beta and delta in here
             avg_mkt_price=avg_mkt_price,
             min_wage=p["min_wage"],
             min_wage_rev_period=p["min_wage_rev_period"],
@@ -641,24 +640,64 @@ class Simulation:
             f"Available (first 5): {available}..."
         )
 
-    def get(self, name: str) -> Any:
+    def get_relationship(self, name: str) -> Any:
         """
-        Get role or event by name (searches roles first, then events).
+        Get relationship instance by name.
 
         Parameters
         ----------
         name : str
-            Role or event name.
+            Relationship name (case-insensitive): 'LoanBook'.
 
         Returns
         -------
-        Role | Event
-            Role or event instance from simulation.
+        Relationship
+            Relationship instance from simulation.
 
         Raises
         ------
         ValueError
-            If name not found in roles or events.
+            If relationship name not found.
+
+        Examples
+        --------
+        >>> sim = Simulation.init()
+        >>> lb = sim.get_relationship("LoanBook")
+        >>> assert lb is sim.lb
+        """
+        relationship_map = {
+            "loanbook": self.lb,
+        }
+
+        name_lower = name.lower()
+        if name_lower not in relationship_map:
+            available = list(relationship_map.keys())
+            raise ValueError(f"Relationship '{name}' not found. Available relationships: {available}")
+
+        return relationship_map[name_lower]
+
+    def get(self, name: str) -> Any:
+        """
+        Get role, event or relationship by name.
+
+        Parameters
+        ----------
+        name : str
+            Role, event or relationship name.
+
+        Returns
+        -------
+        Role | Event | Relationship
+            Role, event or relationship instance from simulation.
+
+        Raises
+        ------
+        ValueError
+            If name not found in simulation.
+
+        Note
+        ----
+        Searches roles first, then events, then relationships.
 
         Examples
         --------
@@ -676,10 +715,7 @@ class Simulation:
         except KeyError:
             pass
 
-        raise ValueError(
-            f"'{name}' not found in roles or events. "
-            "Use get_role() or get_event() for more specific error messages."
-        )
+        raise ValueError(f"'{name}' not found in simulation.")
 
     def _step_legacy(self) -> None:
         """
