@@ -41,9 +41,9 @@ def _run_credit_event(sch: Simulation) -> NDArray[np.float64]:
     if sch.lb.borrower.size == 0:
         sch.lb.capacity = 0  # forces a resize on the first _ensure_capacity()
 
-    banks_decide_credit_supply(sch.lend, v=sch.ec.v)
+    banks_decide_credit_supply(sch.lend, v=sch.v)
     banks_decide_interest_rate(
-        sch.lend, r_bar=sch.ec.r_bar, h_phi=sch.h_phi, rng=sch.rng
+        sch.lend, r_bar=sch.r_bar, h_phi=sch.h_phi, rng=sch.rng
     )
 
     # demand + fragility
@@ -56,7 +56,7 @@ def _run_credit_event(sch: Simulation) -> NDArray[np.float64]:
     for _ in range(sch.max_H):
         firms_send_one_loan_app(sch.bor, sch.lend)
         banks_provide_loans(
-            sch.bor, sch.lb, sch.lend, r_bar=sch.ec.r_bar, h_phi=sch.h_phi
+            sch.bor, sch.lb, sch.lend, r_bar=sch.r_bar, h_phi=sch.h_phi
         )
 
     # layoffs triggered by unmet wage bill
@@ -100,14 +100,14 @@ def test_event_credit_market_basic(tiny_sched: Simulation) -> None:
     )
 
     # pots were reset inside the event: C_k0 = equity_base / v
-    pot_at_start = sch.lend.equity_base / sch.ec.v  # what each bank could lend
+    pot_at_start = sch.lend.equity_base / sch.v  # what each bank could lend
     supply_drop = pot_at_start - sch.lend.credit_supply
     np.testing.assert_allclose(dec_by_lender, supply_drop, atol=1e-9)
 
     # remaining demand is non-negative
     assert (sch.bor.credit_demand >= -1e-9).all()
     # regulatory lending-cap holds at the *end* of the event
-    cap = sch.lend.equity_base / sch.ec.v
+    cap = sch.lend.equity_base / sch.v
     assert (sch.lend.credit_supply <= cap + 1e-9).all()
     # exhausted banks cannot have negative supply
     assert (sch.lend.credit_supply >= -1e-9).all()

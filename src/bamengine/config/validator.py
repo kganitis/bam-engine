@@ -76,7 +76,6 @@ class ConfigValidator:
             "max_Z",
             "theta",
             "min_wage_rev_period",
-            "cap_factor",
         ]
 
         # Float parameters
@@ -116,6 +115,15 @@ class ConfigValidator:
             if not isinstance(val, (int, float)):
                 raise ValueError(
                     f"Config parameter '{key}' must be float, got {type(val).__name__}"
+                )
+
+        # Check optional float `cap_factor`
+        if "cap_factor" in cfg:
+            val = cfg["cap_factor"]
+            if val is not None and not isinstance(val, (int, float)):
+                raise ValueError(
+                    f"Config parameter 'cap_factor' must be float or None, "
+                    f"got {type(val).__name__}"
                 )
 
         # Check pipeline_path (str or None)
@@ -170,14 +178,16 @@ class ConfigValidator:
             "max_Z": (1, None),
             # Contract length (positive)
             "theta": (1, None),
-            # Consumption propensity exponent (positive, typically < 10)
-            "beta": (0.0, 10.0),
+            # Consumption propensity exponent (positive)
+            "beta": (0.0, None),
             # Dividend payout ratio (0 to 1)
             "delta": (0.0, 1.0),
             # Bank capital requirement (positive, typically < 1)
             "v": (0.0, 1.0),
             # Interest rate (typically small positive)
             "r_bar": (0.0, 1.0),
+            # Cap factor (at least 1.0 if specified)
+            "cap_factor": (1.0, None),
             # Minimum wage (positive)
             "min_wage": (0.0, None),
             # Minimum wage revision period (positive)

@@ -110,7 +110,7 @@ def firms_calc_breakeven_price(
     emp: Employer,
     lb: LoanBook,
     *,
-    cap_factor: int | None = None,
+    cap_factor: float | None = None,
 ) -> None:
     """
     Calculate breakeven price based on expected costs.

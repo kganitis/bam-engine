@@ -35,7 +35,7 @@ class Config:
         Propensity to consume exponent
     delta : float
         Dividend payout ratio (DPR)
-    cap_factor : int | None
+    cap_factor : float | None
         Cap factor for breakeven price calculation (optional)
     """
 
@@ -54,6 +54,8 @@ class Config:
     theta: int
     beta: float
     delta: float
+    r_bar: float
+    v: float
 
     # Optional parameters
-    cap_factor: int | None = None
+    cap_factor: float | None = None

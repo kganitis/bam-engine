@@ -65,7 +65,7 @@ class FirmsCalcBreakevenPrice:
             prod=sim.prod,
             emp=sim.emp,
             lb=sim.lb,
-            cap_factor=sim.config.cap_factor,
+            cap_factor=sim.cap_factor,
         )
 
 

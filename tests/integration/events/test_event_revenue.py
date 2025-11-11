@@ -162,7 +162,7 @@ def test_revenue_post_state_consistency(tiny_sched: Simulation) -> None:
 
     # Lender equity non-negative & within cap
     assert (sch.lend.equity_base >= -EPS).all()
-    cap = sch.lend.equity_base * sch.ec.v
+    cap = sch.lend.equity_base * sch.v
     assert (sch.lend.credit_supply <= cap + EPS).all()
 
     # LoanBook structural guards
