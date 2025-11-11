@@ -252,7 +252,6 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
     log.debug(
         f"      Updating state for {num_newly_expired} workers with expired contracts."
     )
-    wrk.employed[expired_mask] = 0
     wrk.employer[expired_mask] = -1
     wrk.employer_prev[expired_mask] = firms_losing_workers
     wrk.wage[expired_mask] = 0.0

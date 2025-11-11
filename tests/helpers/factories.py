@@ -76,7 +76,6 @@ def _employer_defaults(n: int, *, queue_m: int) -> dict[str, Any]:
 
 def _worker_defaults(n: int, *, queue_m: int) -> dict[str, Any]:
     return dict(
-        employed=np.zeros(n, dtype=np.bool_),
         employer=np.full(n, -1, dtype=np.intp),
         employer_prev=np.full(n, -1, dtype=np.intp),
         wage=np.zeros(n, dtype=np.float64),
