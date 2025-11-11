@@ -329,7 +329,9 @@ def test_prepare_applications_no_hiring_but_unemployed() -> None:
     emp = mock_employer(
         n=3, wage_offer=np.array([1.0, 1.5, 1.2]), n_vacancies=np.array([0, 0, 0])
     )
-    wrk = mock_worker(n=4, queue_m=2, employer=np.array([-1, -1, 0, -1], dtype=np.intp))  # worker 2 employed, others unemployed
+    wrk = mock_worker(
+        n=4, queue_m=2, employer=np.array([-1, -1, 0, -1], dtype=np.intp)
+    )  # worker 2 employed, others unemployed
     workers_decide_firms_to_apply(wrk, emp, max_M=2, rng=make_rng(0))
     unemp = np.where(wrk.employed == 0)[0]
     assert np.all(wrk.job_apps_head[unemp] == -1)

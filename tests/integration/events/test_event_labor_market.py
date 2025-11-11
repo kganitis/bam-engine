@@ -5,6 +5,7 @@ The first test reproduces the original regression checks.
 The second test adds deeper cross-component consistency assertions that
 unit tests cannot see in isolation.
 """
+
 from __future__ import annotations
 
 import numpy as np

@@ -3,13 +3,21 @@
 from typing import Any, Callable, TypeVar
 
 from bamengine.core.agent import Agent, AgentType
-from bamengine.core.decorators import event as event_decorator, \
-    relationship as relationship_decorator
+from bamengine.core.decorators import (
+    event as event_decorator,
+    relationship as relationship_decorator,
+)
 from bamengine.core.decorators import role as role_decorator
 from bamengine.core.event import Event
 from bamengine.core.pipeline import Pipeline
-from bamengine.core.registry import get_event, get_role, list_events, list_roles, \
-    get_relationship, list_relationships
+from bamengine.core.registry import (
+    get_event,
+    get_role,
+    list_events,
+    list_roles,
+    get_relationship,
+    list_relationships,
+)
 from bamengine.core.relationship import Relationship
 from bamengine.core.role import Role
 

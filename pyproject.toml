@@ -41,6 +41,12 @@ max-line-length = 88  # But keep code at 88
 python_version = "3.12"
 strict = true
 
+[[tool.mypy.overrides]]
+module = "bamengine.simulation"
+# Ignore false positive name clashes with multiprocessing builtins
+# (Producer, Worker, Consumer, Employer, Borrower, Lender)
+disable_error_code = ["call-arg"]
+
 [tool.black]
 line-length = 88
 

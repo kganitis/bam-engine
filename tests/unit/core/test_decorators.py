@@ -7,9 +7,6 @@ from bamengine.core import Event, Role, event, role, get_relationship, Relations
 from bamengine.core.registry import get_event, get_role
 from bamengine.typing import Float1D
 
-# TODO Resolve ALL "Expected type 'type[Role] | None', got 'type[SourceRole]' instead"
-#  and "Expected type 'type[Role] | None', got 'type[TargetRole]' instead" in the file
-
 
 # noinspection PyUnresolvedReferences
 class TestRoleDecorator:
@@ -391,7 +388,7 @@ class TestRelationshipDecorator:
         assert TestRelationship3.name == "CustomRelationshipName"
 
     def test_relationship_decorator_with_dataclass_kwargs(self):
-        """Test @relationship with additional dataclass kwargs (repr, no inheritance)."""
+        """Test @relationship with extra dataclass kwargs (no inheritance)."""
 
         @relationship(source=SourceRole, target=TargetRole, repr=False)
         class TestRelationship4:  # ← No (Relationship) inheritance
@@ -406,7 +403,7 @@ class TestRelationshipDecorator:
             target_ids=np.array([3, 4, 5]),
             size=3,
             capacity=128,
-            weight=arr
+            weight=arr,
         )
 
         # repr should not contain field values
@@ -432,7 +429,7 @@ class TestRelationshipDecorator:
             target_ids=np.array([1]),
             size=1,
             capacity=128,
-            weight=arr
+            weight=arr,
         )
         assert not hasattr(instance, "__dict__")
 
@@ -452,7 +449,7 @@ class TestRelationshipDecorator:
             target_ids=np.array([1]),
             size=1,
             capacity=128,
-            weight=arr
+            weight=arr,
         )
         assert hasattr(instance, "__dict__")
 
@@ -485,7 +482,7 @@ class TestRelationshipDecorator:
             target_ids=np.array([3, 4, 5]),
             size=3,
             capacity=128,
-            weight=arr
+            weight=arr,
         )
         assert np.array_equal(instance.weight, arr)
 
@@ -532,7 +529,7 @@ class TestRelationshipDecorator:
         assert retrieved is TestRelation
 
     def test_relationship_decorator_auto_inheritance(self):
-        """Test that @relationship decorator automatically adds Relationship inheritance."""
+        """Test @relationship decorator adds Relationship inheritance."""
 
         @relationship(source=SourceRole, target=TargetRole)
         class AutoInherited:
@@ -651,14 +648,14 @@ class TestDecoratorComparison:
             target_ids=np.array([3, 4, 5]),
             size=3,
             capacity=128,
-            weight=arr
+            weight=arr,
         )
         manual_instance = ManualRelationship(
             source_ids=np.array([0, 1, 2]),
             target_ids=np.array([3, 4, 5]),
             size=3,
             capacity=128,
-            weight=arr
+            weight=arr,
         )
 
         # Both should inherit from Relationship

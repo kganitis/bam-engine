@@ -33,9 +33,7 @@ class TestProductionSystemValidation:
         sim_ops.step()
 
         # Save original state
-        # TODO Local variable 'original_production_numpy' value is not used
         original_production_numpy = sim_numpy.prod.desired_production.copy()
-        # TODO Local variable 'original_production_ops' value is not used
         original_production_ops = sim_ops.prod.desired_production.copy()
 
         # NumPy implementation (from original system function)

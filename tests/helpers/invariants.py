@@ -3,6 +3,7 @@ High-level invariants that must hold after *every* ``Simulation.step``.
 They deliberately stay coarse-grained so they remain valid even when the
 micro-rules evolve.
 """
+
 from __future__ import annotations
 
 import numpy as np

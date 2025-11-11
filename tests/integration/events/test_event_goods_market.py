@@ -10,6 +10,7 @@ Two test-cases run the *entire* goods-market sequence on a tiny `Simulation`.
 2. test_goods_market_post_state_consistency
    Deeper invariants that need a full-system lens.
 """
+
 from __future__ import annotations
 
 import numpy as np

@@ -39,7 +39,7 @@ class FixedRNG:
             return np.empty(0, dtype=np.int64)
         if self._cursor + n > self._buffer.size:
             raise RuntimeError("FixedRNG exhausted – enlarge the seed vector")
-        out = self._buffer[self._cursor: self._cursor + n]
+        out = self._buffer[self._cursor : self._cursor + n]
         self._cursor += n
         return out
 

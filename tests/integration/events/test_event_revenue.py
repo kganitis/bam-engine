@@ -1,6 +1,7 @@
 """
 Event-6 integration tests  ⸺  revenue, debt-service & dividends
 """
+
 from __future__ import annotations
 
 import numpy as np

@@ -42,9 +42,7 @@ def _run_credit_event(sch: Simulation) -> NDArray[np.float64]:
         sch.lb.capacity = 0  # forces a resize on the first _ensure_capacity()
 
     banks_decide_credit_supply(sch.lend, v=sch.v)
-    banks_decide_interest_rate(
-        sch.lend, r_bar=sch.r_bar, h_phi=sch.h_phi, rng=sch.rng
-    )
+    banks_decide_interest_rate(sch.lend, r_bar=sch.r_bar, h_phi=sch.h_phi, rng=sch.rng)
 
     # demand + fragility
     firms_decide_credit_demand(sch.bor)
@@ -55,9 +53,7 @@ def _run_credit_event(sch: Simulation) -> NDArray[np.float64]:
     firms_prepare_loan_applications(sch.bor, sch.lend, max_H=sch.max_H, rng=sch.rng)
     for _ in range(sch.max_H):
         firms_send_one_loan_app(sch.bor, sch.lend)
-        banks_provide_loans(
-            sch.bor, sch.lb, sch.lend, r_bar=sch.r_bar, h_phi=sch.h_phi
-        )
+        banks_provide_loans(sch.bor, sch.lb, sch.lend, r_bar=sch.r_bar, h_phi=sch.h_phi)
 
     # layoffs triggered by unmet wage bill
     firms_fire_workers(sch.emp, sch.wrk, rng=sch.rng)
