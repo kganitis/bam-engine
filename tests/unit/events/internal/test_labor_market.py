@@ -58,7 +58,7 @@ def _mini_state(
     wrk = mock_worker(
         n=n_workers,
         queue_m=M,
-        employed=np.array([False, False, False, True, False, True]),
+        employer=np.array([-1, -1, -1, 0, -1, 1], dtype=np.intp),
         employer_prev=np.full(n_workers, -1, dtype=np.intp),
         contract_expired=np.zeros(n_workers, dtype=np.bool_),
         fired=np.zeros(n_workers, dtype=np.bool_),
@@ -217,7 +217,7 @@ def test_prepare_applications_no_unemployed() -> None:
         wage_offer=np.array([1.0, 1.5, 1.2]),
         n_vacancies=np.array([0, 0, 0]),
     )
-    wrk = mock_worker(n=3, employed=np.ones(3, dtype=np.bool_))
+    wrk = mock_worker(n=3, employer=np.array([0, 1, 2], dtype=np.intp))  # all employed
     workers_decide_firms_to_apply(wrk, emp, max_M=2, rng=make_rng(0))
     assert np.all((wrk.job_apps_head == -1))
 
@@ -256,7 +256,7 @@ def test_prepare_applications_loyalty_swap_branch() -> None:
     wrk = mock_worker(
         n=1,
         queue_m=2,
-        employed=np.array([False]),
+        employer=np.array([-1], dtype=np.intp),  # unemployed
         contract_expired=np.array([True]),
         fired=np.array([False]),
         employer_prev=np.array([0]),  # loyalty to firm-0
@@ -285,7 +285,7 @@ def test_prepare_applications_loyalty_noop_when_already_first() -> None:
     wrk = mock_worker(
         n=1,
         queue_m=2,
-        employed=np.array([False]),
+        employer=np.array([-1], dtype=np.intp),  # unemployed
         contract_expired=np.array([True]),
         fired=np.array([False]),
         employer_prev=np.array([0]),
@@ -329,7 +329,7 @@ def test_prepare_applications_no_hiring_but_unemployed() -> None:
     emp = mock_employer(
         n=3, wage_offer=np.array([1.0, 1.5, 1.2]), n_vacancies=np.array([0, 0, 0])
     )
-    wrk = mock_worker(n=4, queue_m=2, employed=np.array([False, False, True, False]))
+    wrk = mock_worker(n=4, queue_m=2, employer=np.array([-1, -1, 0, -1], dtype=np.intp))  # worker 2 employed, others unemployed
     workers_decide_firms_to_apply(wrk, emp, max_M=2, rng=make_rng(0))
     unemp = np.where(wrk.employed == 0)[0]
     assert np.all(wrk.job_apps_head[unemp] == -1)
@@ -442,7 +442,7 @@ def test_workers_send_one_round_exhausted_target() -> None:
     wrk = mock_worker(
         n=1,
         queue_m=M,
-        employed=np.array([False]),
+        employer=np.array([-1], dtype=np.intp),  # unemployed
         job_apps_head=np.array([0]),  # points to first cell
         job_apps_targets=np.array([[-1]], dtype=np.intp),  # *already* exhausted
     )
@@ -468,7 +468,7 @@ def test_workers_send_one_round_drops_due_to_no_vacancy() -> None:
     wrk = mock_worker(
         n=1,
         queue_m=M,
-        employed=np.array([False]),
+        employer=np.array([-1], dtype=np.intp),  # unemployed
         job_apps_head=np.array([0]),
         job_apps_targets=np.array([[0]], dtype=np.intp),
     )
@@ -498,7 +498,7 @@ def test_send_one_job_app_head_negative_after_shuffle_branch() -> None:
     wrk = mock_worker(
         n=1,
         queue_m=M,
-        employed=np.array([False]),
+        employer=np.array([-1], dtype=np.intp),  # unemployed
         job_apps_head=np.array([0]),  # would otherwise proceed
         job_apps_targets=np.array([[0]], dtype=np.intp),  # firm 0
     )
@@ -539,7 +539,7 @@ def test_send_one_job_app_exhausted_then_cleanup_next_round() -> None:
     wrk = mock_worker(
         n=1,
         queue_m=M,
-        employed=np.array([False]),
+        employer=np.array([-1], dtype=np.intp),  # unemployed
         job_apps_head=np.array([0]),  # start at first cell
         job_apps_targets=np.array([[0, 0]], dtype=np.intp),  # same firm twice is fine
     )

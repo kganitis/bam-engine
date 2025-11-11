@@ -568,7 +568,6 @@ def firms_hire_workers(
 
         # worker‑side updates
         log.debug(f"      Updating state for {final_hires.size} newly hired workers.")
-        wrk.employed[final_hires] = 1
         wrk.employer[final_hires] = i
         wrk.wage[final_hires] = emp.wage_offer[i]
         wrk.periods_left[final_hires] = theta + rng.poisson(10)

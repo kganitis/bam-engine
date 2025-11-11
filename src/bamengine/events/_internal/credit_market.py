@@ -703,7 +703,6 @@ def firms_fire_workers(
 
         # worker‑side updates
         log.debug(f"      Updating state for {victims.size} fired workers.")
-        wrk.employed[victims] = 0
         wrk.employer[victims] = -1
         wrk.employer_prev[victims] = i
         wrk.wage[victims] = 0.0

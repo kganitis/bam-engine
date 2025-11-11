@@ -105,7 +105,8 @@ def test_firms_pay_wages_debits_cash() -> None:
 def test_consumers_receive_wage_credits_income() -> None:
     wrk = mock_worker(
         n=2,
-        employed=np.array([1, 0], dtype=np.bool_),
+        # first employed, second unemployed
+        employer=np.array([0, -1], dtype=np.intp),
         wage=np.array([4.0, 3.0]),
     )
     con = mock_consumer(n=2, income=np.array([1.0, 5.0]))
@@ -142,8 +143,7 @@ def _mini_state() -> tuple[Employer, Worker]:
     )
     wrk = mock_worker(
         n=3,
-        employed=np.array([1, 1, 1], dtype=np.bool_),
-        employer=np.array([0, 0, 1]),
+        employer=np.array([0, 0, 1], dtype=np.intp),  # all employed
         periods_left=np.array([2, 1, 1]),
         wage=np.array([1.0, 1.0, 1.5]),
     )
@@ -198,15 +198,14 @@ def test_contracts_already_zero_are_handled() -> None:
     )
     wrk = mock_worker(
         n=1,
-        employed=np.array([1]),
-        employer=np.array([0]),
+        employer=np.array([0], dtype=np.intp),  # employed
         periods_left=np.array([0]),
         wage=np.array([2.0]),
     )
 
     workers_update_contracts(wrk, emp)
 
-    assert wrk.employed[0] == 0
+    assert wrk.employed[0] == False  # should be unemployed after contract expiration
     assert emp.current_labor[0] == 0
 
 
@@ -221,7 +220,7 @@ def test_contracts_no_employed_is_noop() -> None:
     )
     wrk = mock_worker(
         n=3,
-        employed=np.zeros(3, dtype=np.bool_),  # nobody employed
+        employer=np.full(3, -1, dtype=np.intp),  # nobody employed
         periods_left=np.array([5, 5, 5]),
     )
 

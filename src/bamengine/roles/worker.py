@@ -10,7 +10,6 @@ class Worker:
     Represents and entity that is able to provide labor for an offered wage.
     """
 
-    employed: Bool1D
     employer: Idx1D
     employer_prev: Idx1D
     wage: Float1D
@@ -21,3 +20,13 @@ class Worker:
     # Scratch queues
     job_apps_head: Idx1D
     job_apps_targets: Idx2D  # shape (n_households, M)
+
+    @property
+    def employed(self) -> Bool1D:
+        """
+        Compute employment status from employer ID.
+
+        Returns true for workers with employer >= 0, false otherwise.
+        This is a computed property derived from the employer array.
+        """
+        return self.employer >= 0

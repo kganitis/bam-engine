@@ -361,13 +361,11 @@ class Simulation:
         recv_job_apps = np.full((p["n_firms"], p["n_households"]), -1, dtype=np.int64)
 
         # worker
-        employed = np.zeros(p["n_households"], dtype=np.bool_)
         employer = np.full(p["n_households"], -1, dtype=np.int64)
         employer_prev = np.full_like(employer, -1)
         periods_left = np.zeros(p["n_households"], dtype=np.int64)
-        contract_expired = np.zeros_like(employed)
-        # noinspection DuplicatedCode
-        fired = np.zeros_like(employed)
+        contract_expired = np.zeros(p["n_households"], dtype=np.bool_)
+        fired = np.zeros(p["n_households"], dtype=np.bool_)
         wage = np.zeros(p["n_households"])
         job_apps_head = np.full(p["n_households"], -1, dtype=np.int64)
         job_apps_targets = np.full((p["n_households"], p["max_M"]), -1, dtype=np.int64)
@@ -426,7 +424,6 @@ class Simulation:
             breakeven_price=breakeven_price,
         )
         wrk = Worker(
-            employed=employed,
             employer=employer,
             employer_prev=employer_prev,
             wage=wage,

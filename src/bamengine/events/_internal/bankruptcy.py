@@ -115,7 +115,6 @@ def mark_bankrupt_firms(
     num_fired = np.sum(workers_to_fire_mask)
     if num_fired > 0:
         log.info(f"  Firing {num_fired} worker(s) from bankrupt firms.")
-        wrk.employed[workers_to_fire_mask] = 0
         wrk.employer_prev[workers_to_fire_mask] = -1
         wrk.employer[workers_to_fire_mask] = -1
         wrk.wage[workers_to_fire_mask] = 0.0
