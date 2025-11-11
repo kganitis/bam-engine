@@ -139,6 +139,19 @@ def firms_decide_wage_offer(
         f"  Min wage: {w_min:.3f}. "
         f"Average offer from hiring firms: {avg_offer_hiring:.3f}"
     )
+
+    # Log firms with offers near minimum wage (within x% threshold)
+    if num_hiring_firms > 0 and log.isEnabledFor(logging.DEBUG):
+        threshold = 0.05  # 5%
+        near_min_threshold = w_min * (1.0 + threshold)
+        near_min_mask = hiring_firms_mask & (emp.wage_offer <= near_min_threshold)
+        num_near_min = np.sum(near_min_mask)
+        pct_near_min = (
+                num_near_min / num_hiring_firms * 100) if num_hiring_firms > 0 else 0.0  # TODO Cannot find reference '/' in '_ScalarT'
+        log.debug(
+            f"  {num_near_min} ({pct_near_min:.1f}%) hiring firms "
+            f"offering wages within {threshold}% of minimum ({near_min_threshold:.3f})"
+        )
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"  Wage offers (first 10 firms): "
