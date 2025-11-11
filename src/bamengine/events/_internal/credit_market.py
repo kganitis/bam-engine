@@ -381,13 +381,32 @@ def firms_send_one_loan_app(bor: Borrower, lend: Lender, rng: Rng = make_rng()) 
 
 
 def _clean_queue(
-    slice_: Idx1D, bor: Borrower, bank_idx_for_log: int
+    slice_: Idx1D,
+    bor: Borrower,
+    bank_idx_for_log: int,
+    *,
+    sort_by_net_worth: bool = True,
 ) -> Idx1D:  # pragma: no cover
-    # TODO Make sorting optional
     """
     Return a queue (Idx1D) of *unique* borrower ids that still demand credit
-    from the raw queue slice (may contain -1 sentinels and duplicates),
-    sorted by their net worth.
+    from the raw queue slice (may contain -1 sentinels and duplicates).
+
+    Parameters
+    ----------
+    slice_ : Idx1D
+        Raw queue slice (may contain -1 sentinels and duplicates)
+    bor : Borrower
+        Borrower role with credit_demand and net_worth
+    bank_idx_for_log : int
+        Bank index for logging purposes
+    sort_by_net_worth : bool, default True
+        If True, sort queue by borrower net worth (descending).
+        If False, preserve application order (first-come-first-served).
+
+    Returns
+    -------
+    Idx1D
+        Cleaned queue of unique borrower ids with positive credit demand
     """
     if log.isEnabledFor(logging.DEEP_DEBUG):
         log.deep(
@@ -431,16 +450,24 @@ def _clean_queue(
             )
         return filtered_queue
 
-    # Sort by net worth (descending)
-    sort_idx = np.argsort(-bor.net_worth[filtered_queue])
-    ordered_queue = filtered_queue[sort_idx]
-    if log.isEnabledFor(logging.DEEP_DEBUG):
-        log.deep(
-            f"    Bank {bank_idx_for_log}: "
-            f"Final cleaned queue (net_worth-desc): {ordered_queue}"
-        )
-
-    return ordered_queue
+    # Optionally sort by net worth (descending)
+    if sort_by_net_worth:
+        sort_idx = np.argsort(-bor.net_worth[filtered_queue])
+        ordered_queue = filtered_queue[sort_idx]
+        if log.isEnabledFor(logging.DEEP_DEBUG):
+            log.deep(
+                f"    Bank {bank_idx_for_log}: "
+                f"Final cleaned queue (net_worth-desc): {ordered_queue}"
+            )
+        return ordered_queue
+    else:
+        # Preserve application order (first-come-first-served)
+        if log.isEnabledFor(logging.DEEP_DEBUG):
+            log.deep(
+                f"    Bank {bank_idx_for_log}: "
+                f"Final cleaned queue (FCFS order): {filtered_queue}"
+            )
+        return filtered_queue
 
 
 def banks_provide_loans(
