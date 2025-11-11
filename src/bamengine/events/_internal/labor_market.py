@@ -1,5 +1,5 @@
 """
-Labour‑market events internal implementation.
+Labor market events internal implementation.
 """
 
 from __future__ import annotations

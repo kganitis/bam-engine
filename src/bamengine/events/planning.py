@@ -106,7 +106,7 @@ class FirmsDecideDesiredLabor:
     ----
         Ld = ceil(Yd / a)
 
-    Ld: Desired Labour, Yd: Desired Production, a: Labour Productivity
+    Ld: Desired Labor, Yd: Desired Production, a: Labor Productivity
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -124,7 +124,7 @@ class FirmsDecideVacancies:
     ----
         V = max( Ld – L , 0 )
 
-    V: Number of Open Vacancies, Ld: Desired Labour, L: Actual Labour
+    V: Number of Open Vacancies, Ld: Desired Labor, L: Actual Labor
     """
 
     def execute(self, sim: Simulation) -> None:

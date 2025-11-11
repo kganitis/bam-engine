@@ -54,7 +54,7 @@ class FirmsRunProduction:
         Y  =  a · L
         S  ←  Y
 
-    Y: Actual Production Output, a: Labour Productivity, L: Actual Labour, S: Inventory
+    Y: Actual Production Output, a: Labor Productivity, L: Actual Labor, S: Inventory
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -68,14 +68,14 @@ class WorkersUpdateContracts:
     """
     Decrease `periods_left` for every employed worker and let contracts that
     reach 0 expire. All worker-side flags are updated and the corresponding
-    firm's labour and wage-bill are brought back in sync.
+    firm's labor and wage-bill are brought back in sync.
 
     Rule
     ----
         L_i = Σ {worker employed & employer == i}
         W   = L · w
 
-    L: Actual Labour, W: Wage Bill, w: Individual Wage
+    L: Actual Labor, W: Wage Bill, w: Individual Wage
     """
 
     def execute(self, sim: Simulation) -> None:

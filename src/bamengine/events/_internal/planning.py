@@ -295,7 +295,7 @@ def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
     ----
         Ld = ceil(Yd / a)
 
-    Ld: Desired Labour, Yd: Desired Production, a: Labour Productivity
+    Ld: Desired Labor, Yd: Desired Production, a: Labor Productivity
     """
     log.info("--- Firms Deciding Desired Labor ---")
     if log.isEnabledFor(logging.DEBUG):
@@ -340,7 +340,7 @@ def firms_decide_vacancies(emp: Employer) -> None:
     ----
         V = max( Ld – L , 0 )
 
-    V: Number of Open Vacancies, Ld: Desired Labour, L: Actual Labour
+    V: Number of Open Vacancies, Ld: Desired Labor, L: Actual Labor
     """
     log.info("--- Firms Deciding Vacancies ---")
     log.info(
