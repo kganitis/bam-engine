@@ -5,6 +5,8 @@ from __future__ import annotations
 import warnings
 from typing import Any
 
+import numpy as np
+
 
 class ConfigValidator:
     """
@@ -63,7 +65,7 @@ class ConfigValidator:
         ValueError
             If any parameter has incorrect type.
         """
-        # Integer parameters
+        # Integer parameters (seed handled separately)
         int_params = [
             "n_firms",
             "n_households",
@@ -74,7 +76,6 @@ class ConfigValidator:
             "max_Z",
             "theta",
             "min_wage_rev_period",
-            "seed",  # TODO should also accept np.random.Generator
             "cap_factor",
         ]
 
@@ -123,6 +124,15 @@ class ConfigValidator:
             if val is not None and not isinstance(val, str):
                 raise ValueError(
                     f"Config parameter 'pipeline_path' must be str or None, "
+                    f"got {type(val).__name__}"
+                )
+
+        # Check seed (int or np.random.Generator)
+        if "seed" in cfg:
+            val = cfg["seed"]
+            if val is not None and not isinstance(val, (int, np.random.Generator)):
+                raise ValueError(
+                    f"Config parameter 'seed' must be int or np.random.Generator, "
                     f"got {type(val).__name__}"
                 )
 

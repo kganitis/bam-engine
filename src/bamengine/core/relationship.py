@@ -64,9 +64,10 @@ class Relationship(ABC):
     name: ClassVar[str | None] = None
     source_role: ClassVar[type[Role] | None] = None
     target_role: ClassVar[type[Role] | None] = None
+    # noinspection PyClassVar
     cardinality: ClassVar[Literal["many-to-many", "one-to-many", "many-to-one"]] = (
         "many-to-many"
-    )  # TODO Expected type 'Literal["many-to-many", "one-to-many", "many-to-one"]', got 'str' instead
+    )
 
     # COO format arrays (always present)
     source_ids: Idx1D  # Source entity IDs

@@ -244,7 +244,7 @@ def test_repeated_event_executes_multiple_times():
 
     # Create repeated event
     event = FirmsDecideDesiredProduction()
-    repeated = RepeatedEvent(event, n_repeats=3)  # TODO Expected type 'Event', got 'FirmsDecideDesiredProduction' instead
+    repeated = RepeatedEvent(event, n_repeats=3)  # type: ignore[arg-type]
 
     # Execute
     repeated.execute(sim)
@@ -258,7 +258,7 @@ def test_repeated_event_name_property():
     from bamengine.core.pipeline import RepeatedEvent
 
     event = FirmsDecideDesiredProduction()
-    repeated = RepeatedEvent(event, n_repeats=5)  # TODO Expected type 'Event', got 'FirmsDecideDesiredProduction' instead
+    repeated = RepeatedEvent(event, n_repeats=5)  # type: ignore[arg-type]
 
     assert repeated.name == "firms_decide_desired_production"
 
