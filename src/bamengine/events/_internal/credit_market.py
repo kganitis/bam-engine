@@ -10,11 +10,9 @@ from bamengine import logging, Rng, make_rng
 from bamengine.roles import Borrower, Employer, Lender, Worker
 from bamengine.relationships import LoanBook
 from bamengine.typing import Idx1D
-from bamengine.utils import select_top_k_indices_sorted
+from bamengine.utils import select_top_k_indices_sorted, EPS
 
 log = logging.getLogger(__name__)
-
-_EPS = 1e-6
 
 
 def banks_decide_credit_supply(lend: Lender, *, v: float) -> None:
@@ -158,7 +156,7 @@ def firms_calc_credit_metrics(bor: Borrower) -> None:
     np.divide(bor.credit_demand, bor.net_worth, out=frag, where=bor.net_worth > 0.0)
 
     # Cap fragility for borrowers with zero or negative net worth at amount B
-    zero_nw_mask = bor.net_worth <= _EPS
+    zero_nw_mask = bor.net_worth <= EPS
     if np.any(zero_nw_mask):
         num_zero_nw = np.sum(zero_nw_mask)
         log.warning(
@@ -226,7 +224,6 @@ def firms_prepare_loan_applications(
     # Sample H random lending banks per borrower
     H_eff = min(max_H, lenders.size)
     log.info(f"  Effective applications per borrower (H_eff): {H_eff}")
-    # TODO Optimize loop
     sample = np.array(
         [rng.choice(lenders, size=H_eff, replace=False) for _ in range(borrowers.size)]
     )
@@ -520,7 +517,7 @@ def banks_provide_loans(
                     f"Adjusting loan amounts."
                 )
             max_grant[first_exceed] -= cumsum[first_exceed] - lend.credit_supply[k]
-            max_grant[first_exceed + 1 :] = 0.0
+            max_grant[first_exceed + 1:] = 0.0
 
         mask = max_grant > 0.0
         # check if any loans were granted, should never trigger
@@ -556,7 +553,7 @@ def banks_provide_loans(
         # borrower‑side updates
         bor.total_funds[final_borrowers] += final_amounts
         bor.credit_demand[final_borrowers] -= final_amounts
-        assert (bor.credit_demand >= -_EPS).all(), "negative credit_demand"
+        assert (bor.credit_demand >= -EPS).all(), "negative credit_demand"
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
                 "      Borrower state updated: "
@@ -731,7 +728,7 @@ def firms_fire_workers(
     )
     if log.isEnabledFor(logging.DEBUG):
         remaining_gaps = emp.wage_bill - emp.total_funds
-        firms_with_gaps = np.flatnonzero(remaining_gaps > _EPS)
+        firms_with_gaps = np.flatnonzero(remaining_gaps > EPS)
         if firms_with_gaps.size > 0:
             log.warning(
                 f"[REMAINING GAPS] {firms_with_gaps.size} firms still have "

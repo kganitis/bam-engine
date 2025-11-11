@@ -18,6 +18,7 @@ class Economy:
     avg_mkt_price: float
     min_wage: float
     min_wage_rev_period: int
+    # TODO move r_bar and v out of the economy component and move to the simulation level
     r_bar: float  # base interest-rate
     v: float  # capital-adequacy coefficient
 

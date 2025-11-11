@@ -13,7 +13,6 @@ Focus on the most frequently accessed derived arrays:
 """
 
 import time
-from typing import Callable
 
 import numpy as np
 

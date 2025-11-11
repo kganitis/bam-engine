@@ -9,10 +9,9 @@ import numpy as np
 from bamengine import logging, Rng, make_rng
 from bamengine.roles import Employer, Producer
 from bamengine.relationships import LoanBook
+from bamengine.utils import EPS
 
 log = logging.getLogger(__name__)
-
-_EPS = 1.0e-9
 
 
 def firms_decide_desired_production(
@@ -129,7 +128,7 @@ def firms_calc_breakeven_price(
 
     # Breakeven calculation
     interest = lb.interest_per_borrower(prod.production.size)
-    breakeven = (emp.wage_bill + interest) / np.maximum(prod.production, _EPS)
+    breakeven = (emp.wage_bill + interest) / np.maximum(prod.production, EPS)
     log.info(
         f"  Total Wage Bill for calc: {emp.wage_bill.sum():,.2f}. "
         f"Total Interest for calc: {interest.sum():,.2f}"
@@ -307,7 +306,7 @@ def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
 
     # validation
     invalid_mask = np.logical_or(
-        ~np.isfinite(prod.labor_productivity), prod.labor_productivity <= _EPS
+        ~np.isfinite(prod.labor_productivity), prod.labor_productivity <= EPS
     )
     if invalid_mask.any():
         n_invalid = np.sum(invalid_mask)
@@ -315,7 +314,7 @@ def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
             f"  Found and clamped {n_invalid} firms "
             f"with invalid labor productivity."
         )
-        prod.labor_productivity[invalid_mask] = _EPS
+        prod.labor_productivity[invalid_mask] = EPS
 
     # core rule
     desired_labor_frac = prod.desired_production / prod.labor_productivity

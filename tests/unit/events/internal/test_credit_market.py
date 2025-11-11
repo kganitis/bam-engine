@@ -164,7 +164,7 @@ def test_calc_credit_metrics_allocates_buffer() -> None:
     assert bor.projected_fragility.flags.writeable
 
 
-# TODO move to loanbook tests
+# TODO move to loanbook tests after resolving the todo regarding writing LoanBook tests
 def test_topk_lowest_rate_partial_sort() -> None:
     vals = np.array([0.09, 0.07, 0.12, 0.08])
     k = 2

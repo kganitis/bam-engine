@@ -16,11 +16,9 @@ from bamengine.roles import (
     Worker,
 )
 from bamengine.relationships import LoanBook
-from bamengine.utils import trim_mean
+from bamengine.utils import trim_mean, EPS
 
 log = logging.getLogger(__name__)
-
-_EPS = 1.0e-9
 
 
 def firms_update_net_worth(bor: Borrower) -> None:
@@ -84,7 +82,7 @@ def mark_bankrupt_firms(
     log.info("--- Marking Bankrupt Firms ---")
 
     # detect bankruptcies
-    bankrupt_mask = (bor.net_worth < _EPS) | (prod.production <= _EPS)
+    bankrupt_mask = (bor.net_worth < EPS) | (prod.production <= EPS)
     bankrupt_indices = np.where(bankrupt_mask)[0]
 
     ec.exiting_firms = bankrupt_indices.astype(np.int64)
@@ -99,7 +97,7 @@ def mark_bankrupt_firms(
         f"{bankrupt_indices.tolist()}"
     )
     if log.isEnabledFor(logging.DEBUG):  # pragma: no cover
-        nw_bankrupt = np.where(bor.net_worth < _EPS)[0]
+        nw_bankrupt = np.where(bor.net_worth < EPS)[0]
         prod_bankrupt = np.where(prod.production <= 0)[0]
         log.debug(
             f"    Bankrupt due to Net Worth < 0: "
@@ -151,7 +149,7 @@ def mark_bankrupt_banks(ec: Economy, lend: Lender, lb: LoanBook) -> None:
     log.info("--- Marking Bankrupt Banks ---")
 
     # detect bankruptcies
-    bankrupt_indices = np.where(lend.equity_base < _EPS)[0]
+    bankrupt_indices = np.where(lend.equity_base < EPS)[0]
     ec.exiting_banks = bankrupt_indices.astype(np.int64)
 
     if bankrupt_indices.size == 0:
@@ -193,7 +191,7 @@ def spawn_replacement_firms(
     log.info(f"  Spawning {num_exiting} new firm(s) to replace bankrupt ones.")
 
     # handle full market collapse
-    if num_exiting == bor.net_worth.size:  # TODO: Uncovered branch
+    if num_exiting == bor.net_worth.size:  # TODO: Branch uncovered by tests
         log.critical("!!! ALL FIRMS ARE BANKRUPT !!! SIMULATION ENDING.")
         ec.destroyed = True
         return

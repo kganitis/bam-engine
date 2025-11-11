@@ -52,7 +52,7 @@ def test_pipeline_insert_after():
         ]
     )
 
-    pipeline.insert_after("firms_decide_desired_production", FirmsCalcBreakevenPrice())
+    pipeline.insert_after("firms_decide_desired_production", FirmsCalcBreakevenPrice)
 
     assert len(pipeline) == 3
     assert pipeline.events[1].name == "firms_calc_breakeven_price"
@@ -80,7 +80,7 @@ def test_pipeline_insert_after_not_found():
     pipeline = Pipeline.from_event_list(["firms_decide_desired_production"])
 
     with pytest.raises(ValueError, match="not found in pipeline"):
-        pipeline.insert_after("nonexistent_event", FirmsAdjustPrice())
+        pipeline.insert_after("nonexistent_event", FirmsAdjustPrice)
 
 
 def test_pipeline_remove():
@@ -116,7 +116,7 @@ def test_pipeline_replace():
         ]
     )
 
-    pipeline.replace("firms_calc_breakeven_price", FirmsAdjustPrice())
+    pipeline.replace("firms_calc_breakeven_price", FirmsAdjustPrice)
 
     assert len(pipeline) == 2
     assert pipeline.events[1].name == "firms_adjust_price"
@@ -142,7 +142,7 @@ def test_pipeline_replace_not_found():
     pipeline = Pipeline.from_event_list(["firms_decide_desired_production"])
 
     with pytest.raises(ValueError, match="not found in pipeline"):
-        pipeline.replace("nonexistent_event", FirmsAdjustPrice())
+        pipeline.replace("nonexistent_event", FirmsAdjustPrice)
 
 
 def test_pipeline_execute():
@@ -244,7 +244,7 @@ def test_repeated_event_executes_multiple_times():
 
     # Create repeated event
     event = FirmsDecideDesiredProduction()
-    repeated = RepeatedEvent(event, n_repeats=3)
+    repeated = RepeatedEvent(event, n_repeats=3)  # TODO Expected type 'Event', got 'FirmsDecideDesiredProduction' instead
 
     # Execute
     repeated.execute(sim)
@@ -258,7 +258,7 @@ def test_repeated_event_name_property():
     from bamengine.core.pipeline import RepeatedEvent
 
     event = FirmsDecideDesiredProduction()
-    repeated = RepeatedEvent(event, n_repeats=5)
+    repeated = RepeatedEvent(event, n_repeats=5)  # TODO Expected type 'Event', got 'FirmsDecideDesiredProduction' instead
 
     assert repeated.name == "firms_decide_desired_production"
 

@@ -17,7 +17,7 @@ from bamengine.typing import Float1D, Idx1D, Int1D, Bool1D
     cardinality="many-to-many",
     name="LoanBook",
 )
-class LoanBook:
+class LoanBook:  # TODO Write tests for LoanBook
     # noinspection PyUnresolvedReferences
     """
     Edge-list ledger for storing and managing *active* loans.

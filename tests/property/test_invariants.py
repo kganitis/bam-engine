@@ -171,7 +171,7 @@ class TestProductionInvariants:
         """Inventory should follow conservation law."""
         sim = Simulation.init(n_firms=n_firms, seed=seed)
 
-        # TODO: Local variable 'initial_inventory' value is not used
+        # TODO: Local variable 'initial_inventory' value is not used, why?
         initial_inventory = sim.prod.inventory.copy()
 
         sim.step()

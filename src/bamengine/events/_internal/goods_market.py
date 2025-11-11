@@ -8,10 +8,9 @@ import numpy as np
 
 from bamengine import logging, Rng, make_rng
 from bamengine.roles import Consumer, Producer
+from bamengine.utils import EPS
 
 log = logging.getLogger(__name__)
-
-_EPS = 1e-9
 
 
 def consumers_calc_propensity(
@@ -38,7 +37,7 @@ def consumers_calc_propensity(
     log.info(f"  Inputs: Average Savings={avg_sav:.3f} | β={beta:.3f}")
 
     # Defensive operations to ensure valid calculations
-    initial_negative_savings = np.sum(con.savings < _EPS)
+    initial_negative_savings = np.sum(con.savings < EPS)
     if initial_negative_savings > 0:
         log.warning(
             f"  Found {initial_negative_savings} consumers with negative savings. "
@@ -46,7 +45,7 @@ def consumers_calc_propensity(
         )
 
     np.maximum(con.savings, 0.0, out=con.savings)  # defensive clamp
-    avg_sav = max(avg_sav, _EPS)  # avoid division by zero
+    avg_sav = max(avg_sav, EPS)  # avoid division by zero
 
     # Core calculation
     savings_ratio = con.savings / avg_sav
@@ -116,7 +115,7 @@ def consumers_decide_income_to_spend(con: Consumer) -> None:
     # Post-calculation statistics
     total_spending_budget = con.income_to_spend.sum()
     total_final_savings = con.savings.sum()
-    consumers_with_budget = np.sum(con.income_to_spend > _EPS)
+    consumers_with_budget = np.sum(con.income_to_spend > EPS)
 
     log.info(f"  Spending decisions made for {con.income_to_spend.size:,} consumers.")
     log.info(f"  Total spending budget allocated: {total_spending_budget:,.2f}")
@@ -141,7 +140,7 @@ def consumers_decide_income_to_spend(con: Consumer) -> None:
 
         # Sanity check: wealth should be conserved
         wealth_check = total_spending_budget + total_final_savings
-        if abs(wealth_check - total_wealth) > _EPS:
+        if abs(wealth_check - total_wealth) > EPS:
             log.error(
                 f"  WEALTH CONSERVATION ERROR: "
                 f"Expected {total_wealth:.2f}, Got {wealth_check:.2f}"
@@ -172,8 +171,8 @@ def consumers_decide_firms_to_visit(
     log.info("--- Consumers Deciding Firms to Visit ---")
 
     stride = max_Z
-    avail = np.where(prod.inventory > _EPS)[0]
-    consumers_with_budget = np.sum(con.income_to_spend > _EPS)
+    avail = np.where(prod.inventory > EPS)[0]
+    consumers_with_budget = np.sum(con.income_to_spend > EPS)
 
     log.info(
         f"  {consumers_with_budget:,} consumers with spending budget will select"
@@ -202,7 +201,7 @@ def consumers_decide_firms_to_visit(
     log.info("  Processing firm selection for each consumer...")
 
     for h in range(con.income_to_spend.size):
-        if con.income_to_spend[h] <= _EPS:
+        if con.income_to_spend[h] <= EPS:
             continue  # Skip consumers with no spending budget
 
         consumers_processed += 1
@@ -228,7 +227,7 @@ def consumers_decide_firms_to_visit(
                 sample = rng.choice(choices, size=n_draw, replace=False)
                 # Sort by price (cheapest first) for optimal shopping order
                 order = np.argsort(prod.price[sample])
-                row[filled : filled + n_draw] = sample[order]
+                row[filled: filled + n_draw] = sample[order]
                 filled += n_draw
 
                 if log.isEnabledFor(logging.DEEP_DEBUG):
@@ -317,7 +316,7 @@ def consumers_shop_one_round(
     log.info("--- Consumers Shopping One Round ---")
 
     stride = con.shop_visits_targets.shape[1]
-    buyers_indices = np.where(con.income_to_spend > _EPS)[0]
+    buyers_indices = np.where(con.income_to_spend > EPS)[0]
 
     if buyers_indices.size == 0:
         log.info(
@@ -330,7 +329,7 @@ def consumers_shop_one_round(
     total_budget_before = con.income_to_spend.sum()
     total_inventory_before = prod.inventory.sum()
 
-    if total_inventory_before <= _EPS:
+    if total_inventory_before <= EPS:
         log.info("  No firms with remaining inventory. Shopping round skipped.")
         log.info("--- Shopping Round complete ---")
         return
@@ -370,7 +369,7 @@ def consumers_shop_one_round(
             continue
 
         # Check if firm still has inventory
-        if prod.inventory[firm_idx] <= _EPS:
+        if prod.inventory[firm_idx] <= EPS:
             # Firm sold out - skip but advance pointer
             con.shop_visits_head[h] = ptr + 1
             con.shop_visits_targets[row, col] = -1
@@ -390,7 +389,7 @@ def consumers_shop_one_round(
         con.income_to_spend[h] -= spent
 
         # Track if firm sold out
-        if prod.inventory[firm_idx] <= _EPS:
+        if prod.inventory[firm_idx] <= EPS:
             firms_sold_out += 1
 
         # Update loyalty tracking
@@ -415,7 +414,7 @@ def consumers_shop_one_round(
         con.shop_visits_targets[row, col] = -1
 
         # Check if consumer exhausted budget
-        if con.income_to_spend[h] <= _EPS:  # Effectively zero
+        if con.income_to_spend[h] <= EPS:  # Effectively zero
             consumers_exhausted_budget += 1
             con.shop_visits_head[h] = -1  # Stop shopping
             if log.isEnabledFor(logging.DEEP_DEBUG):
@@ -453,12 +452,12 @@ def consumers_shop_one_round(
         )
 
         # Validation check
-        if abs(budget_spent - total_revenue) > _EPS:
+        if abs(budget_spent - total_revenue) > EPS:
             log.error(
                 f"  ACCOUNTING ERROR: Budget spent ({budget_spent:.2f}) != "
                 f"Revenue generated ({total_revenue:.2f})"
             )
-        if abs(inventory_sold - total_quantity_sold) > _EPS:
+        if abs(inventory_sold - total_quantity_sold) > EPS:
             log.error(
                 f"  INVENTORY ERROR: Inventory sold ({inventory_sold:.2f}) != "
                 f"Quantity purchased ({total_quantity_sold:.2f})"
@@ -484,7 +483,7 @@ def consumers_finalize_purchases(con: Consumer) -> None:
     # Pre-finalization statistics
     total_unspent = con.income_to_spend.sum()
     total_savings_before = con.savings.sum()
-    consumers_with_unspent = np.sum(con.income_to_spend > _EPS)
+    consumers_with_unspent = np.sum(con.income_to_spend > EPS)
 
     log.info(
         f"  {consumers_with_unspent:,} consumers have unspent budget "
@@ -518,7 +517,7 @@ def consumers_finalize_purchases(con: Consumer) -> None:
         log.debug(f"  Consumers with positive savings: {consumers_with_savings:,}")
 
         # Wealth conservation check
-        if abs(savings_increase - total_unspent) > _EPS:
+        if abs(savings_increase - total_unspent) > EPS:
             log.error(
                 f"  WEALTH CONSERVATION ERROR: Expected savings increase of "
                 f"{total_unspent:.2f}, got {savings_increase:.2f}"

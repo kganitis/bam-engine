@@ -107,7 +107,7 @@ def firms_decide_wage_offer(
 
     t: Current Period, w: Offered Wage, ŵ: Minimum Wage, h_ξ: Max Wage Growth
     """
-    # TODO Observe and log how many firm offers are near the minimum wage
+    # TODO Log how many firm offers are near the minimum wage
     log.info("--- Firms Deciding Wage Offers ---")
     log.info(
         f"  Inputs: Min Wage (w_min)={w_min:.3f} | Max Wage Shock (h_ξ)={h_xi:.3f}"
@@ -251,7 +251,7 @@ def workers_decide_firms_to_apply(
                 if num_applications > 0:
                     if num_applications > 1:
                         application_row[1:num_applications] = application_row[
-                            0 : num_applications - 1
+                            0: num_applications - 1
                         ]
                     application_row[0] = prev_employer_id
 

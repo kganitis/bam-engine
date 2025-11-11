@@ -14,7 +14,7 @@ from bamengine.utils import trimmed_weighted_mean
 log = logging.getLogger(__name__)
 
 
-# TODO Not unit tested yet
+# TODO function not unit tested yet
 def calc_unemployment_rate(
     ec: Economy,
     wrk: Worker,

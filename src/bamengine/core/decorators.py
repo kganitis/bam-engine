@@ -42,6 +42,9 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, Literal
 
 if TYPE_CHECKING:
+    from bamengine.core import Role
+
+if TYPE_CHECKING:
     pass
 
 T = TypeVar("T")

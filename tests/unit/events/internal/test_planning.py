@@ -11,7 +11,7 @@ from hypothesis import strategies as st
 
 from bamengine import make_rng
 from bamengine.events._internal.planning import (
-    _EPS,
+    EPS,
     firms_adjust_price,
     firms_calc_breakeven_price,
     firms_decide_desired_labor,
@@ -139,7 +139,7 @@ def test_zero_productivity_guard() -> None:
     prod = mock_producer(labor_productivity=np.array([0.0]))
     emp = mock_employer()
     firms_decide_desired_labor(prod, emp)
-    np.testing.assert_array_equal(prod.labor_productivity, [_EPS])
+    np.testing.assert_array_equal(prod.labor_productivity, [EPS])
 
 
 def test_decide_vacancies_vector() -> None:
@@ -197,7 +197,7 @@ def test_labor_and_vacancy_properties(data) -> None:  # type: ignore[no-untyped-
     firms_decide_vacancies(emp)
 
     # reproduce the algorithm in pure NumPy
-    a_eff = np.where(a_raw > _EPS, a_raw, _EPS)
+    a_eff = np.where(a_raw > EPS, a_raw, EPS)
     desired_labor_expected = np.ceil(yd_raw / a_eff)
     desired_labor_expected = np.clip(
         desired_labor_expected, 0, np.iinfo(np.int64).max
@@ -234,7 +234,7 @@ def test_breakeven_no_cap_equals_raw() -> None:
     firms_calc_breakeven_price(prod, emp, lb, cap_factor=None)
 
     expected = (emp.wage_bill + np.array([1.0, 0.0, 1.0])) / np.maximum(
-        prod.production, _EPS
+        prod.production, EPS
     )
     np.testing.assert_allclose(prod.breakeven_price, expected, rtol=1e-12, atol=0.0)
 
@@ -261,7 +261,7 @@ def test_breakeven_capped_by_price_times_factor() -> None:
     # noinspection PyTypeChecker
     firms_calc_breakeven_price(prod, emp, lb, cap_factor=2)
 
-    raw = (emp.wage_bill + 0.0) / np.maximum(prod.production, _EPS)
+    raw = (emp.wage_bill + 0.0) / np.maximum(prod.production, EPS)
     cap = prod.price * 2
     expected = np.minimum(raw, cap)
 

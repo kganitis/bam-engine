@@ -39,11 +39,12 @@ class FixedRNG:
             return np.empty(0, dtype=np.int64)
         if self._cursor + n > self._buffer.size:
             raise RuntimeError("FixedRNG exhausted – enlarge the seed vector")
-        out = self._buffer[self._cursor : self._cursor + n]
+        out = self._buffer[self._cursor: self._cursor + n]
         self._cursor += n
         return out
 
     # public API subset
+    # noinspection PyTypeHints
     def integers(  # noqa: D401  (matching numpy.signature)
         self,
         low: int | np.int64,

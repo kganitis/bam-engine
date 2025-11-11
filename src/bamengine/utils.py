@@ -6,6 +6,9 @@ from numpy.random import Generator, default_rng
 from bamengine.typing import Float1D, Idx1D
 
 
+EPS = 1.0e-9
+
+
 def trim_mean(values: Float1D, trim_pct: float = 0.05) -> float:
     """Return the ``p`` % two-sided trimmed mean ( SciPy-style )."""
     if values.size == 0:
@@ -14,7 +17,7 @@ def trim_mean(values: Float1D, trim_pct: float = 0.05) -> float:
     if k == 0:
         return float(values.mean())
     idx = np.argpartition(values, (k, values.size - k - 1))
-    core = values[idx[k : values.size - k]]
+    core = values[idx[k: values.size - k]]
     return float(core.mean())
 
 
@@ -38,11 +41,11 @@ def trimmed_weighted_mean(
             return float(values.mean())
         # Trimming only, unweighted
         k = int(round(trim_pct * values.size))
-        if k == 0 or values.size == 0:  # TODO Not covered by unit tests
+        if k == 0 or values.size == 0:  # TODO Branch uncovered by tests
             return float(values.mean())
         idx = np.argsort(values)
-        trimmed = values[idx][k : values.size - k]
-        if trimmed.size == 0:  # TODO Not covered by unit tests
+        trimmed = values[idx][k: values.size - k]
+        if trimmed.size == 0:  # TODO Branch uncovered by tests
             return 0.0
         return float(trimmed.mean())
 
@@ -64,8 +67,8 @@ def trimmed_weighted_mean(
         # Standard weighted mean
         return float(np.average(values, weights=weights))
     # Apply trim
-    values_trimmed = values[k : values.size - k]
-    weights_trimmed = weights[k : weights.size - k]
+    values_trimmed = values[k: values.size - k]
+    weights_trimmed = weights[k: weights.size - k]
     if weights_trimmed.sum() == 0:
         return (
             float(values_trimmed.mean()) if values_trimmed.size else 0.0
@@ -201,11 +204,11 @@ def select_top_k_indices_sorted(
       shaped empty index arrays.
     """
     # Ensure input is a NumPy array.
-    if not isinstance(values, np.ndarray):  # TODO Not covered by unit tests
+    if not isinstance(values, np.ndarray):  # TODO Branch uncovered by tests
         values = np.array(values, dtype=float)
 
     # Ensure values is at least 1D for consistent axis=-1 operations.
-    if values.ndim == 0:  # TODO Not covered by unit tests
+    if values.ndim == 0:  # TODO Branch uncovered by tests
         values = np.atleast_1d(values)
 
     # If k is non-positive, return an empty array with appropriate shape.
