@@ -143,7 +143,7 @@ def firms_run_production(prod: Producer, emp: Employer) -> None:
         Y  =  a · L
         S  ←  Y
 
-    Y: Actual Production Output, a: Labour Productivity, L: Actual Labour, S: Inventory
+    Y: Actual Production Output, a: Labor Productivity, L: Actual Labor, S: Inventory
     """
     log.info("--- Firms Running Production ---")
 
@@ -176,14 +176,14 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
     """
     Decrease `periods_left` for every employed worker and let contracts that
     reach 0 expire. All worker-side flags are updated and the corresponding
-    firm’s labour and wage-bill are brought back in sync.
+    firm's labor and wage-bill are brought back in sync.
 
     Rule
     ----
         L_i = Σ {worker employed & employer == i}
         W   = L · w
 
-    L: Actual Labour, W: Wage Bill, w: Individual Wage
+    L: Actual Labor, W: Wage Bill, w: Individual Wage
     """
     log.info("--- Updating Worker Contracts ---")
 
@@ -279,7 +279,7 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
     max_idx_to_update = min(delta_labor.size, emp.current_labor.size)
     emp.current_labor[:max_idx_to_update] -= delta_labor[:max_idx_to_update]
 
-    assert (emp.current_labor >= 0).all(), "negative labour after expirations"
+    assert (emp.current_labor >= 0).all(), "negative labor after expirations"
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"      Firm labor counts updated: {emp.current_labor}")
