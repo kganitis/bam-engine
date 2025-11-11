@@ -1,4 +1,61 @@
-"""Registry system for roles, events and relationships."""
+"""
+Registry system for roles, events and relationships.
+
+Provides global lookup for all registered roles, events, and relationships
+in the BAM Engine. Registration happens automatically via __init_subclass__
+hooks, eliminating manual registration boilerplate.
+
+Design Notes
+------------
+- Thread-safe read-only access (registries populated at import time)
+- No dynamic registration after initialization
+- Clear error messages with suggestions for misspellings
+- List functions for discovery (list_roles, list_events, list_relationships)
+
+Usage Pattern
+-------------
+Automatic registration (happens at import):
+
+>>> from dataclasses import dataclass
+>>> from bamengine.core import Role
+>>> from bamengine import Float
+>>>
+>>> @dataclass(slots=True)
+... class MyRole(Role):
+...     field: Float
+>>> # MyRole is now automatically registered!
+
+Retrieval:
+
+>>> from bamengine.core.registry import get_role
+>>> role_cls = get_role("MyRole")
+>>> import numpy as np
+>>> instance = role_cls(field=np.array([1.0, 2.0, 3.0]))
+
+Discovery:
+
+>>> from bamengine.core.registry import list_roles
+>>> all_roles = list_roles()
+>>> print(all_roles)
+['Borrower', 'Consumer', 'Employer', 'Lender', 'MyRole', 'Producer', 'Worker']
+
+Error Handling
+--------------
+If a role/event is not found, registry functions raise KeyError with
+helpful message listing all available options:
+
+>>> get_role("Producter")  # Typo in name
+Traceback (most recent call last):
+    ...
+KeyError: Role 'Producter' not found in registry.
+Available roles: Borrower, Consumer, Employer, Lender, Producer, Worker
+
+See Also
+--------
+Role : Base class with __init_subclass__ registration
+Event : Base class with __init_subclass__ registration
+Relationship : Base class with __init_subclass__ registration
+"""
 
 from __future__ import annotations
 
@@ -27,7 +84,7 @@ def get_role(name: str) -> type[Role]:
     Parameters
     ----------
     name : str
-        Name of the role to retrieve.
+        Name of the role to retrieve (case-sensitive).
 
     Returns
     -------
@@ -37,7 +94,42 @@ def get_role(name: str) -> type[Role]:
     Raises
     ------
     KeyError
-        If the role name is not found in the registry.
+        If the role name is not found in the registry. Error message
+        includes list of all available roles.
+
+    Examples
+    --------
+    Retrieve a role class and create instance:
+
+    >>> from bamengine.core.registry import get_role
+    >>> import numpy as np
+    >>> Producer = get_role("Producer")
+    >>> prod = Producer(
+    ...     price=np.array([1.0, 1.2]),
+    ...     production=np.array([100.0, 120.0]),
+    ...     inventory=np.array([0.0, 10.0]),
+    ...     labor_productivity=np.array([2.0, 2.0])
+    ... )
+
+    Use in simulation:
+
+    >>> import bamengine as be
+    >>> sim = be.Simulation.init(n_firms=100, seed=42)
+    >>> Producer = get_role("Producer")
+    >>> assert isinstance(sim.prod, Producer)
+
+    Handle missing role:
+
+    >>> try:
+    ...     get_role("NonExistent")
+    ... except KeyError as e:
+    ...     print(e)
+    Role 'NonExistent' not found in registry. Available roles: ...
+
+    See Also
+    --------
+    list_roles : Get list of all registered role names
+    get_event : Retrieve event class from registry
     """
     if name not in _ROLE_REGISTRY:
         available = ", ".join(sorted(_ROLE_REGISTRY.keys()))
@@ -54,7 +146,7 @@ def get_event(name: str) -> type[Event]:
     Parameters
     ----------
     name : str
-        Name of the event to retrieve.
+        Name of the event to retrieve (snake_case, case-sensitive).
 
     Returns
     -------
@@ -64,7 +156,30 @@ def get_event(name: str) -> type[Event]:
     Raises
     ------
     KeyError
-        If the event name is not found in the registry.
+        If the event name is not found in the registry. Error message
+        includes list of all available events.
+
+    Examples
+    --------
+    Retrieve and execute an event:
+
+    >>> from bamengine.core.registry import get_event
+    >>> import bamengine as be
+    >>> sim = be.Simulation.init(n_firms=100, seed=42)
+    >>> FirmsAdjustPrice = get_event("firms_adjust_price")
+    >>> event_instance = FirmsAdjustPrice()
+    >>> event_instance.execute(sim)
+
+    Check event availability:
+
+    >>> from bamengine.core.registry import list_events
+    >>> 'firms_adjust_price' in list_events()
+    True
+
+    See Also
+    --------
+    list_events : Get list of all registered event names
+    get_role : Retrieve role class from registry
     """
     if name not in _EVENT_REGISTRY:
         available = ", ".join(sorted(_EVENT_REGISTRY.keys()))
@@ -103,17 +218,63 @@ def get_relationship(name: str) -> type[Relationship]:
 
 
 def list_roles() -> list[str]:
-    """Return sorted list of all registered role names."""
+    """
+    Return sorted list of all registered role names.
+
+    Returns
+    -------
+    list[str]
+        Sorted list of role names.
+
+    Examples
+    --------
+    >>> from bamengine.core.registry import list_roles
+    >>> roles = list_roles()
+    >>> 'Producer' in roles
+    True
+    >>> 'Worker' in roles
+    True
+    """
     return sorted(_ROLE_REGISTRY.keys())
 
 
 def list_events() -> list[str]:
-    """Return sorted list of all registered event names."""
+    """
+    Return sorted list of all registered event names.
+
+    Returns
+    -------
+    list[str]
+        Sorted list of event names in snake_case.
+
+    Examples
+    --------
+    >>> from bamengine.core.registry import list_events
+    >>> events = list_events()
+    >>> len(events)  # Should be 39 BAM events + any custom
+    39
+    >>> 'firms_adjust_price' in events
+    True
+    """
     return sorted(_EVENT_REGISTRY.keys())
 
 
 def list_relationships() -> list[str]:
-    """Return sorted list of all registered relationship names."""
+    """
+    Return sorted list of all registered relationship names.
+
+    Returns
+    -------
+    list[str]
+        Sorted list of relationship names.
+
+    Examples
+    --------
+    >>> from bamengine.core.registry import list_relationships
+    >>> rels = list_relationships()
+    >>> 'LoanBook' in rels
+    True
+    """
     return sorted(_RELATIONSHIP_REGISTRY.keys())
 
 

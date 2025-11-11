@@ -1,4 +1,55 @@
-"""Centralized configuration validation for BAM Engine."""
+"""
+Centralized configuration validation for BAM Engine.
+
+This module provides the ConfigValidator class, which performs all validation
+once at Simulation.init() to ensure fail-fast behavior with clear error messages.
+
+Validation Layers
+-----------------
+1. **Type Checking**: Ensures all parameters have correct types (int, float, str, etc.)
+2. **Range Validation**: Ensures parameters are within valid ranges (e.g., 0 <= h_rho <= 1)
+3. **Relationship Constraints**: Validates cross-parameter dependencies (e.g., warns if n_households < n_firms)
+4. **Pipeline Validation**: Validates custom pipeline YAML files (structure, event names, parameter substitution)
+5. **Logging Validation**: Validates log levels and event names
+
+Benefits
+--------
+- **Fail-fast**: Invalid configurations rejected immediately with clear error messages
+- **Single location**: All validation logic in one place (no scattered checks)
+- **No runtime overhead**: Validation happens once at initialization, not during simulation
+- **Clear errors**: Error messages include parameter name, expected range, and actual value
+
+Examples
+--------
+Type errors are caught immediately:
+
+>>> from bamengine.config import ConfigValidator
+>>> cfg = {"n_firms": "100"}
+>>> ConfigValidator._validate_types(cfg)  # doctest: +SKIP
+ValueError: Config parameter 'n_firms' must be int, got str
+
+Range errors provide clear feedback:
+
+>>> cfg = {"h_rho": 1.5}
+>>> ConfigValidator._validate_ranges(cfg)  # doctest: +SKIP
+ValueError: Config parameter 'h_rho' must be <= 1.0, got 1.5
+
+Cross-parameter warnings help avoid common mistakes:
+
+>>> cfg = {"n_firms": 100, "n_households": 50}
+>>> ConfigValidator._validate_relationships(cfg)  # doctest: +SKIP
+UserWarning: n_households (50) < n_firms (100). This may lead to high unemployment...
+
+Pipeline validation catches unknown events:
+
+>>> ConfigValidator.validate_pipeline_yaml("custom.yml")  # doctest: +SKIP
+ValueError: Event 'nonexistent_event' not found in registry...
+
+See Also
+--------
+Config : Immutable configuration dataclass
+bamengine.simulation.Simulation.init : Uses ConfigValidator before initialization
+"""
 
 from __future__ import annotations
 
@@ -13,10 +64,56 @@ class ConfigValidator:
     Centralized validation for simulation configuration.
 
     All validation happens once at Simulation.init() to ensure:
+
     - Type correctness
     - Valid parameter ranges
     - Relationship constraints between parameters
     - Clear error messages with actionable feedback
+
+    This class is stateless and uses only static methods. All validation
+    logic is centralized here rather than scattered across the codebase.
+
+    Examples
+    --------
+    Validate a complete configuration:
+
+    >>> from bamengine.config import ConfigValidator
+    >>> cfg = {
+    ...     "n_firms": 100,
+    ...     "n_households": 500,
+    ...     "h_rho": 0.1,
+    ...     "beta": 2.5,
+    ... }
+    >>> ConfigValidator.validate_config(cfg)  # No exception = valid
+
+    Validate only types:
+
+    >>> cfg = {"n_firms": 100, "h_rho": 0.1}
+    >>> ConfigValidator._validate_types(cfg)  # Valid
+
+    >>> cfg = {"n_firms": "100"}
+    >>> ConfigValidator._validate_types(cfg)  # doctest: +SKIP
+    ValueError: Config parameter 'n_firms' must be int, got str
+
+    Validate only ranges:
+
+    >>> cfg = {"h_rho": 0.5}
+    >>> ConfigValidator._validate_ranges(cfg)  # Valid
+
+    >>> cfg = {"h_rho": 1.5}
+    >>> ConfigValidator._validate_ranges(cfg)  # doctest: +SKIP
+    ValueError: Config parameter 'h_rho' must be <= 1.0, got 1.5
+
+    Notes
+    -----
+    The ConfigValidator ensures validation happens once, upfront, rather than
+    during simulation execution. This provides better error messages and
+    avoids runtime overhead.
+
+    See Also
+    --------
+    Config : Configuration dataclass validated by this class
+    bamengine.simulation.Simulation.init : Entry point that triggers validation
     """
 
     # Valid log levels for logging configuration
@@ -27,15 +124,52 @@ class ConfigValidator:
         """
         Validate all configuration parameters.
 
+        This is the main entry point for configuration validation. It runs all
+        validation checks in sequence: types, ranges, relationships, and logging.
+
         Parameters
         ----------
         cfg : dict
-            Configuration dictionary to validate.
+            Configuration dictionary to validate. Should contain simulation
+            parameters like n_firms, n_households, h_rho, etc.
 
         Raises
         ------
         ValueError
-            If any validation check fails.
+            If any validation check fails (type error, out of range, invalid
+            pipeline/logging config).
+
+        Examples
+        --------
+        Valid configuration passes silently:
+
+        >>> from bamengine.config import ConfigValidator
+        >>> cfg = {"n_firms": 100, "h_rho": 0.1, "beta": 2.5}
+        >>> ConfigValidator.validate_config(cfg)  # No exception
+
+        Invalid type raises ValueError:
+
+        >>> cfg = {"n_firms": "100"}
+        >>> ConfigValidator.validate_config(cfg)  # doctest: +SKIP
+        ValueError: Config parameter 'n_firms' must be int, got str
+
+        Out of range raises ValueError:
+
+        >>> cfg = {"h_rho": 1.5}
+        >>> ConfigValidator.validate_config(cfg)  # doctest: +SKIP
+        ValueError: Config parameter 'h_rho' must be <= 1.0, got 1.5
+
+        Notes
+        -----
+        This method is called by Simulation.init() before any initialization
+        occurs, ensuring fail-fast behavior with clear error messages.
+
+        See Also
+        --------
+        _validate_types : Type checking for configuration parameters
+        _validate_ranges : Range validation for configuration parameters
+        _validate_relationships : Cross-parameter constraint validation
+        _validate_logging : Logging configuration validation
         """
         # Type checking
         ConfigValidator._validate_types(cfg)
@@ -55,6 +189,9 @@ class ConfigValidator:
         """
         Ensure correct types for configuration parameters.
 
+        Validates that all present configuration parameters have the correct
+        types: int for counts, float for rates/shocks, str for paths, etc.
+
         Parameters
         ----------
         cfg : dict
@@ -63,7 +200,36 @@ class ConfigValidator:
         Raises
         ------
         ValueError
-            If any parameter has incorrect type.
+            If any parameter has incorrect type. Error message includes
+            parameter name, expected type, and actual type.
+
+        Examples
+        --------
+        Valid types pass silently:
+
+        >>> from bamengine.config import ConfigValidator
+        >>> cfg = {"n_firms": 100, "h_rho": 0.1}
+        >>> ConfigValidator._validate_types(cfg)
+
+        Invalid integer type raises ValueError:
+
+        >>> cfg = {"n_firms": "100"}
+        >>> ConfigValidator._validate_types(cfg)  # doctest: +SKIP
+        ValueError: Config parameter 'n_firms' must be int, got str
+
+        Float parameters accept int or float:
+
+        >>> cfg = {"h_rho": 1, "beta": 2.5}
+        >>> ConfigValidator._validate_types(cfg)
+
+        Notes
+        -----
+        Missing parameters are allowed (validation only checks present keys).
+        Default values are handled by Simulation.init() before validation.
+
+        See Also
+        --------
+        validate_config : Main validation entry point
         """
         # Integer parameters (seed handled separately)
         int_params = [
@@ -149,6 +315,9 @@ class ConfigValidator:
         """
         Ensure parameters are in valid ranges.
 
+        Validates that all present configuration parameters fall within
+        their valid ranges (e.g., 0 <= h_rho <= 1, n_firms >= 1).
+
         Parameters
         ----------
         cfg : dict
@@ -157,7 +326,37 @@ class ConfigValidator:
         Raises
         ------
         ValueError
-            If any parameter is out of valid range.
+            If any parameter is out of valid range. Error message includes
+            parameter name, valid range, and actual value.
+
+        Examples
+        --------
+        Valid ranges pass silently:
+
+        >>> from bamengine.config import ConfigValidator
+        >>> cfg = {"n_firms": 100, "h_rho": 0.5}
+        >>> ConfigValidator._validate_ranges(cfg)
+
+        Value below minimum raises ValueError:
+
+        >>> cfg = {"n_firms": 0}
+        >>> ConfigValidator._validate_ranges(cfg)  # doctest: +SKIP
+        ValueError: Config parameter 'n_firms' must be >= 1, got 0
+
+        Value above maximum raises ValueError:
+
+        >>> cfg = {"h_rho": 1.5}
+        >>> ConfigValidator._validate_ranges(cfg)  # doctest: +SKIP
+        ValueError: Config parameter 'h_rho' must be <= 1.0, got 1.5
+
+        Notes
+        -----
+        Constraints are defined internally as (min_val, max_val) tuples.
+        None means unbounded in that direction.
+
+        See Also
+        --------
+        validate_config : Main validation entry point
         """
         # Define constraints as (min_val, max_val) tuples
         # None means unbounded
@@ -228,10 +427,48 @@ class ConfigValidator:
         """
         Validate cross-parameter constraints.
 
+        Checks for unusual parameter combinations that may lead to issues,
+        issuing warnings (not errors) to help users avoid common mistakes.
+
         Parameters
         ----------
         cfg : dict
             Configuration dictionary to validate.
+
+        Warns
+        -----
+        UserWarning
+            If n_households < n_firms (may lead to high unemployment).
+            If min_wage >= wage_offer_init (firms may not be able to hire).
+
+        Examples
+        --------
+        Unusual configurations trigger warnings:
+
+        >>> from bamengine.config import ConfigValidator
+        >>> import warnings
+        >>> cfg = {"n_firms": 100, "n_households": 50}
+        >>> with warnings.catch_warnings(record=True) as w:
+        ...     warnings.simplefilter("always")
+        ...     ConfigValidator._validate_relationships(cfg)
+        ...     assert len(w) == 1
+        ...     assert "high unemployment" in str(w[0].message)
+
+        >>> cfg = {"min_wage": 10.0, "wage_offer_init": 5.0}
+        >>> with warnings.catch_warnings(record=True) as w:
+        ...     warnings.simplefilter("always")
+        ...     ConfigValidator._validate_relationships(cfg)
+        ...     assert len(w) == 1
+        ...     assert "may not be able to hire" in str(w[0].message)
+
+        Notes
+        -----
+        These checks issue warnings, not errors, because the configurations
+        may be intentional for specific experiments or edge case testing.
+
+        See Also
+        --------
+        validate_config : Main validation entry point
         """
         # Warn if more firms than households (unusual configuration)
         n_firms = cfg.get("n_firms", 0)
@@ -262,17 +499,53 @@ class ConfigValidator:
         """
         Validate logging configuration.
 
+        Checks that log levels are valid and event names exist in the registry.
+
         Parameters
         ----------
         log_config : dict
             Logging configuration dictionary with keys:
-            - default_level: str (e.g., 'INFO', 'DEBUG')
-            - events: dict[str, str] (per-event overrides)
+
+            - default_level : str, optional
+                Default log level (e.g., 'INFO', 'DEBUG')
+            - events : dict[str, str], optional
+                Per-event log level overrides (event_name -> level)
 
         Raises
         ------
         ValueError
-            If logging configuration is invalid.
+            If default_level or any event level is invalid.
+            If any parameter has wrong type (not str or dict).
+
+        Examples
+        --------
+        Valid logging config passes silently:
+
+        >>> from bamengine.config import ConfigValidator
+        >>> log_cfg = {"default_level": "INFO"}
+        >>> ConfigValidator._validate_logging(log_cfg)
+
+        >>> log_cfg = {
+        ...     "default_level": "DEBUG",
+        ...     "events": {"workers_send_one_round": "WARNING"}
+        ... }
+        >>> ConfigValidator._validate_logging(log_cfg)
+
+        Invalid log level raises ValueError:
+
+        >>> log_cfg = {"default_level": "INVALID"}
+        >>> ConfigValidator._validate_logging(log_cfg)  # doctest: +SKIP
+        ValueError: Invalid log level 'INVALID'. Must be one of ...
+
+        Notes
+        -----
+        Valid log levels: DEEP_DEBUG, DEBUG, INFO, WARNING, ERROR, CRITICAL.
+        Case-insensitive comparison (INFO == info == Info).
+
+        See Also
+        --------
+        validate_config : Main validation entry point
+        bamengine.logging : Custom logging with DEEP_DEBUG level
         """
         # Check default_level
         if "default_level" in log_config:
@@ -321,6 +594,9 @@ class ConfigValidator:
         """
         Validate pipeline path exists and is readable.
 
+        Checks that the given path points to an existing, readable file.
+        Issues warning if file doesn't have .yml or .yaml extension.
+
         Parameters
         ----------
         pipeline_path : str
@@ -329,7 +605,39 @@ class ConfigValidator:
         Raises
         ------
         ValueError
-            If path does not exist or is not readable.
+            If path does not exist or is not a file.
+
+        Warns
+        -----
+        UserWarning
+            If file doesn't have .yml or .yaml extension.
+
+        Examples
+        --------
+        Valid path passes silently:
+
+        >>> from bamengine.config import ConfigValidator
+        >>> import tempfile
+        >>> from pathlib import Path
+        >>> with tempfile.NamedTemporaryFile(suffix=".yml", delete=False) as f:
+        ...     f.write(b"events: []")
+        ...     path = f.name
+        >>> ConfigValidator.validate_pipeline_path(path)
+        >>> Path(path).unlink()  # cleanup
+
+        Non-existent path raises ValueError:
+
+        >>> ConfigValidator.validate_pipeline_path("/nonexistent.yml")  # doctest: +SKIP
+        ValueError: Pipeline path '/nonexistent.yml' does not exist
+
+        Notes
+        -----
+        This method only checks path validity, not YAML structure or event
+        names. Use validate_pipeline_yaml() for full validation.
+
+        See Also
+        --------
+        validate_pipeline_yaml : Validate pipeline YAML structure and events
         """
         from pathlib import Path
 
@@ -355,17 +663,68 @@ class ConfigValidator:
         """
         Validate pipeline YAML file structure and event references.
 
+        Checks that:
+
+        1. YAML is valid and has 'events' key
+        2. All event names exist in the registry
+        3. All parameter placeholders can be substituted
+        4. Event spec syntax is valid (repeat, interleave)
+
         Parameters
         ----------
         yaml_path : str
             Path to pipeline YAML file.
         params : dict[str, int], optional
             Parameters available for substitution (e.g., {"max_M": 4}).
+            If None, no parameter substitution is performed.
 
         Raises
         ------
         ValueError
-            If YAML structure is invalid or references unknown events.
+            If YAML structure is invalid, references unknown events,
+            or contains unsubstituted placeholders.
+
+        Examples
+        --------
+        Valid pipeline YAML passes silently:
+
+        >>> from bamengine.config import ConfigValidator
+        >>> import tempfile
+        >>> from pathlib import Path
+        >>> yaml_content = '''
+        ... events:
+        ...   - firms_decide_desired_production
+        ...   - workers_send_one_round x 4
+        ... '''
+        >>> with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
+        ...     f.write(yaml_content)
+        ...     path = f.name
+        >>> ConfigValidator.validate_pipeline_yaml(path)
+        >>> Path(path).unlink()  # cleanup
+
+        Unknown event raises ValueError:
+
+        >>> yaml_content = '''
+        ... events:
+        ...   - nonexistent_event
+        ... '''
+        >>> with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
+        ...     f.write(yaml_content)
+        ...     path = f.name
+        >>> ConfigValidator.validate_pipeline_yaml(path)  # doctest: +SKIP
+        ValueError: Event 'nonexistent_event' not found in registry...
+        >>> Path(path).unlink()  # cleanup
+
+        Notes
+        -----
+        This validation is called by Pipeline.from_yaml() after path validation.
+        It ensures all event names are registered before attempting to load
+        the pipeline.
+
+        See Also
+        --------
+        validate_pipeline_path : Validate path exists
+        bamengine.core.pipeline.Pipeline.from_yaml : Loads validated pipeline
         """
         import yaml
         from pathlib import Path
@@ -438,16 +797,49 @@ class ConfigValidator:
 
         This is a simplified parser that extracts event names without
         expanding repeats (we just need to check the names exist).
+        Handles three spec formats:
+
+        1. Single event: "event_name"
+        2. Repeated event: "event_name x N"
+        3. Interleaved events: "event1 <-> event2 x N"
 
         Parameters
         ----------
         spec : str
-            Event specification string.
+            Event specification string from pipeline YAML.
 
         Returns
         -------
         list[str]
             List of unique event names referenced in spec.
+
+        Examples
+        --------
+        Single event:
+
+        >>> from bamengine.config import ConfigValidator
+        >>> ConfigValidator._parse_event_spec_for_validation("my_event")
+        ['my_event']
+
+        Repeated event:
+
+        >>> ConfigValidator._parse_event_spec_for_validation("my_event x 4")
+        ['my_event']
+
+        Interleaved events:
+
+        >>> ConfigValidator._parse_event_spec_for_validation("event1 <-> event2 x 3")
+        ['event1', 'event2']
+
+        Notes
+        -----
+        This parser only extracts names for validation. The actual pipeline
+        expansion (repeating/interleaving) is done by Pipeline.from_yaml().
+
+        See Also
+        --------
+        validate_pipeline_yaml : Uses this parser to validate event names
+        bamengine.core.pipeline.Pipeline.from_yaml : Expands specs into full pipeline
         """
         import re
 

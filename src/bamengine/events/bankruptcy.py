@@ -1,8 +1,49 @@
 """
 Bankruptcy events for insolvency detection and agent replacement.
 
-Each event encapsulates net worth updates, bankruptcy detection, and
-spawning of replacement agents.
+This module defines the bankruptcy phase events that execute at the end of each
+period. Firms update net worth with retained earnings, insolvent agents are
+detected and removed, and replacement agents are spawned to maintain population.
+
+Event Sequence
+--------------
+The bankruptcy events execute in this order:
+
+1. FirmsUpdateNetWorth - Add retained profits/losses to net worth
+2. MarkBankruptFirms - Detect insolvent firms (A < 0 or Y = 0)
+3. MarkBankruptBanks - Detect insolvent banks (E < 0)
+4. SpawnReplacementFirms - Create new firms to replace bankrupt ones
+5. SpawnReplacementBanks - Create new banks to replace bankrupt ones
+
+Design Notes
+------------
+- Bankruptcy criteria: firms (A < 0 or Y = 0), banks (E < 0)
+- Bankrupt firms: fire all workers, purge loans
+- Bankrupt banks: purge all loans
+- Replacement firms: inherit trimmed mean of survivors × scale factor
+- Replacement banks: clone random surviving bank equity
+- Population constant: n_firms, n_banks unchanged
+
+Examples
+--------
+Execute bankruptcy events:
+
+>>> import bamengine as be
+>>> sim = be.Simulation.init(n_firms=100, n_banks=10, seed=42)
+>>> # Bankruptcy events run as part of default pipeline
+>>> sim.step()
+
+Check bankruptcies:
+
+>>> sim.ec.n_firm_failures  # doctest: +SKIP
+2
+>>> sim.ec.n_bank_failures  # doctest: +SKIP
+0
+
+See Also
+--------
+bamengine.events._internal.bankruptcy : System function implementations
+Economy : Tracks bankruptcy counts
 """
 
 from __future__ import annotations
@@ -18,14 +59,24 @@ if TYPE_CHECKING:
 @event
 class FirmsUpdateNetWorth:
     """
-    Update firm net worth with retained earnings from the current period.
+    Update firm net worth with retained profits/losses.
 
-    Rule
-    ----
-        A_t = A_{t-1} + retained_t
-        funds_t = max(0, A_t)
+    Net worth accumulates retained earnings from each period. Negative net worth
+    (insolvency) leads to bankruptcy in the next event.
 
-    t: Current Period, A: Net Worth,
+    Algorithm: A_i ← A_i + RP_i, then total_funds_i = max(0, A_i)
+
+    Examples
+    --------
+    >>> import bamengine as be
+    >>> sim = be.Simulation.init(n_firms=100, seed=42)
+    >>> event = sim.get_event("firms_update_net_worth")
+    >>> event.execute(sim)
+
+    See Also
+    --------
+    FirmsPayDividends : Calculates retained_profit
+    bamengine.events._internal.bankruptcy.firms_update_net_worth : Implementation
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -37,17 +88,24 @@ class FirmsUpdateNetWorth:
 @event
 class MarkBankruptFirms:
     """
-    Detect and process firm bankruptcies based on net worth or production.
+    Detect insolvent firms and remove them from the economy.
 
-    Rule
-    ----
-    A firm is marked as bankrupt if either:
-      • Net Worth (A) < 0
-      • Current Production (Y) <= 0
+    Firms are bankrupt if net_worth < 0 or production = 0. Bankrupt firms fire
+    all workers and have all loans purged from LoanBook.
 
-    Note
-    ----
-    For bankrupt firms, all workers are fired and loans are purged.
+    Examples
+    --------
+    >>> import bamengine as be
+    >>> sim = be.Simulation.init(n_firms=100, seed=42)
+    >>> event = sim.get_event("mark_bankrupt_firms")
+    >>> event.execute(sim)
+    >>> sim.ec.n_firm_failures  # doctest: +SKIP
+    2
+
+    See Also
+    --------
+    SpawnReplacementFirms : Creates replacements
+    bamengine.events._internal.bankruptcy.mark_bankrupt_firms : Implementation
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -66,15 +124,23 @@ class MarkBankruptFirms:
 @event
 class MarkBankruptBanks:
     """
-    Detect and process bank bankruptcies based on negative equity.
+    Detect insolvent banks and remove them from the economy.
 
-    Rule
-    ----
-        A bank is marked as bankrupt if equity (E) < 0.
+    Banks are bankrupt if equity_base < 0. Bankrupt banks have all loans purged.
 
-    Note
-    ----
-    For bankrupt banks, all associated loans are purged from the loan book.
+    Examples
+    --------
+    >>> import bamengine as be
+    >>> sim = be.Simulation.init(n_banks=10, seed=42)
+    >>> event = sim.get_event("mark_bankrupt_banks")
+    >>> event.execute(sim)
+    >>> sim.ec.n_bank_failures  # doctest: +SKIP
+    0
+
+    See Also
+    --------
+    SpawnReplacementBanks : Creates replacements
+    bamengine.events._internal.bankruptcy.mark_bankrupt_banks : Implementation
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -86,12 +152,22 @@ class MarkBankruptBanks:
 @event
 class SpawnReplacementFirms:
     """
-    Create one brand-new firm to replace each firm that went bankrupt.
+    Create new firms to replace bankrupt ones.
 
-    Rule
-    ----
-    New firms inherit attributes based on the trimmed mean of surviving firms,
-    scaled by a factor `s`.
+    Replacement firms inherit attributes (price, productivity, net worth) from
+    trimmed mean of survivors × scale factor (smaller than average).
+
+    Examples
+    --------
+    >>> import bamengine as be
+    >>> sim = be.Simulation.init(n_firms=100, seed=42)
+    >>> event = sim.get_event("spawn_replacement_firms")
+    >>> event.execute(sim)
+
+    See Also
+    --------
+    MarkBankruptFirms : Detects bankruptcies
+    bamengine.events._internal.bankruptcy.spawn_replacement_firms : Implementation
     """
 
     def execute(self, sim: Simulation) -> None:
@@ -109,12 +185,22 @@ class SpawnReplacementFirms:
 @event
 class SpawnReplacementBanks:
     """
-    Create one brand-new bank to replace each bank that went bankrupt.
+    Create new banks to replace bankrupt ones.
 
-    Rule
-    ----
-    New banks clone the equity of a random surviving peer. If no peers exist,
-    the simulation is terminated.
+    Replacement banks clone equity from random surviving bank. If no banks survive,
+    simulation terminates (systemic collapse).
+
+    Examples
+    --------
+    >>> import bamengine as be
+    >>> sim = be.Simulation.init(n_banks=10, seed=42)
+    >>> event = sim.get_event("spawn_replacement_banks")
+    >>> event.execute(sim)
+
+    See Also
+    --------
+    MarkBankruptBanks : Detects bankruptcies
+    bamengine.events._internal.bankruptcy.spawn_replacement_banks : Implementation
     """
 
     def execute(self, sim: Simulation) -> None:

@@ -1,5 +1,12 @@
 """
-Goods-market events internal implementation.
+System functions for goods market phase events.
+
+This module contains the internal implementation functions for goods market events.
+Event classes wrap these functions and provide the primary documentation.
+
+See Also
+--------
+bamengine.events.goods_market : Event classes (primary documentation source)
 """
 
 from __future__ import annotations
@@ -20,18 +27,11 @@ def consumers_calc_propensity(
     beta: float,
 ) -> None:
     """
-    Calculate household marginal propensity to consume
-    based on current savings relative to average.
+    Calculate marginal propensity to consume based on relative savings.
 
-    Rule
-    ----
-        c = 1 / (1 + tanh(SA / SA_avg) ** β)
-
-    Where:
-        c: Propensity to consume (0 to 1)
-        SA: Current consumer savings
-        SA_avg: Average savings across all consumers
-        β: Sensitivity parameter for consumption behavior
+    See Also
+    --------
+    bamengine.events.goods_market.ConsumersCalcPropensity : Full documentation
     """
     log.info("--- Calculating Consumer Spending Propensity ---")
     log.info(f"  Inputs: Average Savings={avg_sav:.3f} | β={beta:.3f}")
@@ -80,17 +80,11 @@ def consumers_calc_propensity(
 
 def consumers_decide_income_to_spend(con: Consumer) -> None:
     """
-    Determine how much of disposable wealth each consumer will spend this period.
+    Allocate wealth to spending budget based on propensity to consume.
 
-    Rule
-    ----
-        wealth = savings + income
-        income_to_spend = wealth × propensity
-        savings = wealth - income_to_spend
-        income = 0  (reset after allocation)
-
-    This function converts disposable income and existing savings into spending budget
-    and updated savings, based on the consumer's propensity to spend.
+    See Also
+    --------
+    bamengine.events.goods_market.ConsumersDecideIncomeToSpend : Full documentation
     """
     log.info("--- Consumers Deciding Income to Spend ---")
 
@@ -157,16 +151,11 @@ def consumers_decide_firms_to_visit(
     rng: Rng = make_rng(),
 ) -> None:
     """
-    Each consumer with spending budget selects up to max_Z firms to potentially visit.
+    Consumers select firms to visit, sorted by price.
 
-    Selection Strategy
-
-    1. Loyalty Rule:
-       Previous period's "largest producer visited" gets slot 0 iff still has inventory
-    2. Random Sampling:
-       Remaining slots filled by randomly sampling from available firms
-    3. Price Sorting:
-       Sampled firms sorted by price (cheapest first) for optimal shopping
+    See Also
+    --------
+    bamengine.events.goods_market.ConsumersDecideFirmsToVisit : Full documentation
     """
     log.info("--- Consumers Deciding Firms to Visit ---")
 
@@ -299,19 +288,11 @@ def consumers_shop_one_round(
     con: Consumer, prod: Producer, rng: Rng = make_rng()
 ) -> None:
     """
-    Execute one complete round of shopping across all consumers with spending budget.
+    Execute one shopping round where consumers purchase from one firm each.
 
-    Shopping Process
-
-    1. Identify all consumers with remaining spending budget
-    2. Randomize shopping order to ensure fairness
-    3. Each consumer attempts to purchase from their next queued firm
-    4. Update inventory, spending budget, and loyalty tracking
-    5. Advance shopping queue pointers
-
-    A consumer's shopping ends when they either:
-    - Exhaust their spending budget, or
-    - Visit all firms in their queue
+    See Also
+    --------
+    bamengine.events.goods_market.ConsumersShopOneRound : Full documentation
     """
     log.info("--- Consumers Shopping One Round ---")
 
@@ -468,15 +449,11 @@ def consumers_shop_one_round(
 
 def consumers_finalize_purchases(con: Consumer) -> None:
     """
-    Complete the shopping process by moving any unspent income back to savings.
+    Return unspent budget to savings after shopping rounds complete.
 
-    Rule
-    ----
-        savings = savings + income_to_spend
-        income_to_spend = 0
-
-    This ensures that any budget not spent during the shopping rounds is preserved
-    as savings for future periods, maintaining wealth conservation.
+    See Also
+    --------
+    bamengine.events.goods_market.ConsumersFinalizePurchases : Full documentation
     """
     log.info("--- Finalizing Consumer Purchases ---")
 

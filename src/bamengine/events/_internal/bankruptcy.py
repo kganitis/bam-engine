@@ -1,5 +1,12 @@
 """
-Bankrupty events internal implementation.
+System functions for bankruptcy phase events.
+
+This module contains the internal implementation functions for bankruptcy events.
+Event classes wrap these functions and provide the primary documentation.
+
+See Also
+--------
+bamengine.events.bankruptcy : Event classes (primary documentation source)
 """
 
 from __future__ import annotations
@@ -23,14 +30,11 @@ log = logging.getLogger(__name__)
 
 def firms_update_net_worth(bor: Borrower) -> None:
     """
-    Update firm net worth with retained earnings from the current period.
+    Update firm net worth with retained profits/losses.
 
-    Rule
-    ----
-        A_t = A_{t-1} + retained_t
-        funds_t = max(0, A_t)
-
-    t: Current Period, A: Net Worth,
+    See Also
+    --------
+    bamengine.events.bankruptcy.FirmsUpdateNetWorth : Full documentation
     """
     log.info("--- Firms Updating Net Worth ---")
 
@@ -69,16 +73,17 @@ def mark_bankrupt_firms(
     lb: LoanBook,
 ) -> None:
     """
-    Detect and process firm bankruptcies based on net worth or production.
+    Detect insolvent firms and remove them from the economy.
 
-    Rule
-    ----
-    A firm is marked as bankrupt if either:
-        • net-worth (A) < 0
-        • current production (Y) <= 0
-
-    For bankrupt firms, all workers are fired and loans are purged.
+    See Also
+    --------
+    bamengine.events.bankruptcy.MarkBankruptFirms : Full documentation
     """
+    # A firm is marked as bankrupt if either:
+    #     • net-worth (A) < 0
+    #     • current production (Y) <= 0
+    #
+    # For bankrupt firms, all workers are fired and loans are purged.
     log.info("--- Marking Bankrupt Firms ---")
 
     # detect bankruptcies
@@ -138,13 +143,11 @@ def mark_bankrupt_firms(
 
 def mark_bankrupt_banks(ec: Economy, lend: Lender, lb: LoanBook) -> None:
     """
-    Detect and process bank bankruptcies based on negative equity.
+    Detect insolvent banks and remove them from the economy.
 
-    Rule
-    ----
-        A bank is marked as bankrupt if equity (E) < 0.
-
-    For bankrupt banks, all associated loans are purged from the loan book.
+    See Also
+    --------
+    bamengine.events.bankruptcy.MarkBankruptBanks : Full documentation
     """
     log.info("--- Marking Bankrupt Banks ---")
 
@@ -173,12 +176,11 @@ def spawn_replacement_firms(
     ec: Economy, prod: Producer, emp: Employer, bor: Borrower, rng: Rng = make_rng()
 ) -> None:
     """
-    Create one brand-new firm to replace each firm that went bankrupt.
+    Create new firms to replace bankrupt ones.
 
-    Rule
-    ----
-    New firms inherit attributes based on the trimmed mean of surviving firms,
-    scaled by a factor `s`.
+    See Also
+    --------
+    bamengine.events.bankruptcy.SpawnReplacementFirms : Full documentation
     """
     log.info("--- Spawning Replacement Firms ---")
     exiting_indices = ec.exiting_firms
@@ -254,12 +256,11 @@ def spawn_replacement_banks(
     rng: Rng = make_rng(),
 ) -> None:
     """
-    Create one brand-new bank to replace each bank that went bankrupt.
+    Create new banks to replace bankrupt ones.
 
-    Rule
-    ----
-    New banks clone the equity of a random surviving peer. If no peers exist,
-    the simulation is terminated.
+    See Also
+    --------
+    bamengine.events.bankruptcy.SpawnReplacementBanks : Full documentation
     """
     log.info("--- Spawning Replacement Banks ---")
     exiting_indices = ec.exiting_banks

@@ -1,5 +1,12 @@
 """
-Planning events internal implementation.
+System functions for planning phase events.
+
+This module contains the internal implementation functions for planning events.
+Event classes wrap these functions and provide the primary documentation.
+
+See Also
+--------
+bamengine.events.planning : Event classes (primary documentation source)
 """
 
 from __future__ import annotations
@@ -18,20 +25,11 @@ def firms_decide_desired_production(
     prod: Producer, *, p_avg: float, h_rho: float, rng: Rng = make_rng()
 ) -> None:
     """
-    Calculate expected demand and update desired production.
+    Set production targets based on inventory levels and market position.
 
-    .. deprecated::
-        Logic has been moved to FirmsDecideDesiredProduction event class.
-        This function is maintained for backward compatibility only.
-
-    Rule
-    ----
-      shock ~ U(0, h_ρ)
-      if S == 0 and P ≥ P̄   → raise by (1 + shock)
-      if S  > 0 and P < P̄   → cut   by (1 − shock)
-      otherwise             → keep previous level
-
-    S: Inventory, P: Indivudual Price, P̄: Avg Market Price, h_ρ: Max Price Growth
+    See Also
+    --------
+    bamengine.events.planning.FirmsDecideDesiredProduction : Full documentation
     """
     log.info("--- Firms Deciding Desired Production ---")
     log.info(
@@ -113,11 +111,11 @@ def firms_calc_breakeven_price(
     cap_factor: float | None = None,
 ) -> None:
     """
-    Calculate breakeven price based on expected costs.
+    Calculate breakeven price from wage costs and interest payments.
 
-    .. deprecated::
-        Logic has been moved to FirmsCalcBreakevenPrice event class.
-        This function is maintained for backward compatibility only.
+    See Also
+    --------
+    bamengine.events.planning.FirmsCalcBreakevenPrice : Full documentation
     """
     log.info("--- Firms Calculating Breakeven Price ---")
     log.info(f"  Inputs: Breakeven Cap Factor={cap_factor if cap_factor else 'None'}")
@@ -177,11 +175,11 @@ def firms_adjust_price(
     prod: Producer, *, p_avg: float, h_eta: float, rng: Rng = make_rng()
 ) -> None:
     """
-    Nominal price-adjustment rule.
+    Adjust prices based on inventory and market position.
 
-    .. deprecated::
-        Logic has been moved to FirmsAdjustPrice event class.
-        This function is maintained for backward compatibility only.
+    See Also
+    --------
+    bamengine.events.planning.FirmsAdjustPrice : Full documentation
     """
     log.info("--- Firms Adjusting Prices ---")
     log.info(
@@ -285,17 +283,11 @@ def firms_adjust_price(
 
 def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
     """
-    Firms decide desired labor based on production targets and productivity.
+    Calculate desired labor from production targets and productivity.
 
-    .. deprecated::
-        Logic has been moved to FirmsDecideDesiredLabor event class.
-        This function is maintained for backward compatibility only.
-
-    Rule
-    ----
-        Ld = ceil(Yd / a)
-
-    Ld: Desired Labor, Yd: Desired Production, a: Labor Productivity
+    See Also
+    --------
+    bamengine.events.planning.FirmsDecideDesiredLabor : Full documentation
     """
     log.info("--- Firms Deciding Desired Labor ---")
     if log.isEnabledFor(logging.DEBUG):
@@ -330,17 +322,11 @@ def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
 
 def firms_decide_vacancies(emp: Employer) -> None:
     """
-    Firms decide how many job vacancies to post.
+    Calculate number of job vacancies from labor gap.
 
-    .. deprecated::
-        Logic has been moved to FirmsDecideVacancies event class.
-        This function is maintained for backward compatibility only.
-
-    Rule
-    ----
-        V = max( Ld – L , 0 )
-
-    V: Number of Open Vacancies, Ld: Desired Labor, L: Actual Labor
+    See Also
+    --------
+    bamengine.events.planning.FirmsDecideVacancies : Full documentation
     """
     log.info("--- Firms Deciding Vacancies ---")
     log.info(

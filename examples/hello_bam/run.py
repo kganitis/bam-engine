@@ -1,4 +1,3 @@
-# example/run.py
 import logging
 
 import numpy as np

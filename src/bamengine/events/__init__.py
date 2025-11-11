@@ -1,8 +1,63 @@
-"""Event classes for BAM Engine ECS architecture.
+"""
+Event classes for BAM Engine simulation.
 
-This module contains Event classes that wrap existing system functions.
-Events are auto-registered via __init_subclass__ hook and can be
-composed into a Pipeline for execution.
+This package contains 37 event classes organized into 8 modules representing
+different phases of the BAM economic model. Events are auto-registered via
+__init_subclass__ hook and composed into a Pipeline for execution.
+
+Event Organization
+------------------
+Events are organized by economic phase:
+
+1. **Planning** (5 events): Firms plan production targets, calculate costs, set prices
+2. **Labor Market** (7 events): Wage setting, job applications, hiring
+3. **Credit Market** (8 events): Credit supply/demand, loan applications, provision
+4. **Production** (4 events): Wage payments, production execution, contract updates
+5. **Goods Market** (5 events): Consumption decisions, shopping
+6. **Revenue** (3 events): Revenue collection, debt repayment, dividends
+7. **Bankruptcy** (5 events): Insolvency detection, agent replacement
+8. **Economy Stats** (2 events): Aggregate metrics (prices, unemployment)
+
+Total: 37 events across 8 modules
+
+Event Execution
+---------------
+Events execute in order specified by Pipeline (see default_pipeline.yml).
+Each event wraps a system function from events._internal/ modules.
+
+Key Design Patterns
+-------------------
+- **Auto-registration**: All events inherit from Event base class with __init_subclass__
+- **Event-System separation**: Event classes (public API) wrap system functions (internal)
+- **Pipeline composition**: Events composed via YAML configuration
+- **Stateless execution**: Events receive Simulation object, operate on roles/relationships
+- **Interleaved rounds**: Some events repeat (max_M, max_H, max_Z) for sequential matching
+
+Event Naming Convention
+-----------------------
+- Agent action: FirmsDecideWageOffer, WorkersReceiveWage
+- State update: UpdateAvgMktPrice, CalcUnemploymentRate
+- Process round: WorkersSendOneRound, ConsumersShopOneRound
+
+Examples
+--------
+Access event by name:
+
+>>> import bamengine as be
+>>> sim = be.Simulation.init(seed=42)
+>>> event = sim.get_event("firms_decide_desired_production")
+>>> event.execute(sim)
+
+Execute full pipeline:
+
+>>> sim.step()  # Executes all 37 events in default order
+
+See Also
+--------
+bamengine.core.event : Event base class
+bamengine.core.pipeline : Pipeline composition
+bamengine.default_pipeline.yml : Default event ordering
+bamengine.events._internal : System function implementations
 """
 
 # Import all events to trigger auto-registration

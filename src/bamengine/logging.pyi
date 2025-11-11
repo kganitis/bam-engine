@@ -1,3 +1,29 @@
+"""
+Type stubs for bamengine.logging module.
+
+This type stub file provides type hints for the custom logging module,
+enabling proper type checking and IDE autocomplete for BamLogger and
+the custom DEEP_DEBUG log level.
+
+Type Definitions
+----------------
+BamLogger : class
+    Custom logger with deep() method for DEEP_DEBUG level (5).
+getLogger : function
+    Factory function returning BamLogger instances.
+
+Constants
+---------
+CRITICAL, ERROR, WARNING, INFO, DEBUG : int
+    Standard Python logging levels (re-exported from logging module).
+DEEP_DEBUG : int
+    Custom log level (5) for very verbose debugging output.
+
+See Also
+--------
+bamengine.logging : Implementation module
+logging : Python standard library logging module
+"""
 import logging
 from typing import Any, Optional
 
@@ -11,6 +37,11 @@ from typing import Any, Optional
 DEEP_DEBUG: int
 
 class BamLogger(logging.Logger):
-    def deep(self, msg: str, *args: Any, **kwargs: Any) -> None: ...
+    """Custom logger with DEEP_DEBUG level support."""
+    def deep(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        """Log message at DEEP_DEBUG level (5)."""
+        ...
 
-def getLogger(name: Optional[str] = ...) -> BamLogger: ...
+def getLogger(name: Optional[str] = ...) -> BamLogger:
+    """Get a BamLogger instance with deep() method."""
+    ...

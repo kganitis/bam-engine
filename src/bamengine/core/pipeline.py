@@ -1,4 +1,63 @@
-"""Event Pipeline with explicit execution order."""
+"""
+Event Pipeline with explicit execution order.
+
+The Pipeline manages event execution in a fixed, user-defined order.
+Unlike traditional ECS systems with dependency-based topological sorting,
+BAM Engine uses explicit ordering to ensure deterministic, reproducible
+simulation behavior.
+
+Design Philosophy
+-----------------
+Explicit ordering over dependency resolution:
+
+- Users specify exact execution sequence via YAML
+- No automatic reordering or optimization
+- Guarantees pipeline matches legacy implementation
+- Makes execution trace obvious for debugging
+
+Pipeline YAML Format
+--------------------
+events:
+  - event_name                    # Single execution
+  - event_name x N                # Repeat N times
+  - event1 <-> event2 x N         # Interleave N times
+
+Parameter substitution:
+  - event_{i}                     # Substitute {i} with parameter value
+
+Examples
+--------
+Load and execute the default pipeline:
+
+>>> import bamengine as be
+>>> sim = be.Simulation.init(n_firms=100, seed=42)
+>>> pipeline = create_default_pipeline(max_M=5, max_H=3, max_Z=2)
+>>> pipeline.execute(sim)
+
+Load a custom pipeline from YAML:
+
+>>> from bamengine.core import Pipeline
+>>> pipeline = Pipeline.from_yaml("my_custom_pipeline.yml",
+...                                max_M=5, max_H=3, max_Z=2)
+
+Modify an existing pipeline:
+
+>>> # Insert custom event after standard event
+>>> pipeline.insert_after("firms_adjust_price", "my_custom_pricing")
+>>>
+>>> # Remove an event
+>>> pipeline.remove("workers_send_one_round_0")
+>>>
+>>> # Replace an event with custom implementation
+>>> pipeline.replace("firms_decide_desired_production",
+...                  "my_production_rule")
+
+See Also
+--------
+Event : Base class for all events
+create_default_pipeline : Factory for canonical BAM pipeline
+bamengine.config.validator.ConfigValidator.validate_pipeline_yaml : Pipeline validation
+"""
 
 from __future__ import annotations
 
@@ -24,7 +83,7 @@ class RepeatedEvent:
     Wrapper for events that execute multiple times per period.
 
     Used for market rounds where agents interact over multiple rounds
-    (e.g., job applications, loan applications, shopping).
+    (e.g., job applications, loan applications, shopping rounds).
 
     Attributes
     ----------
@@ -32,30 +91,64 @@ class RepeatedEvent:
         The event to repeat.
     n_repeats : int
         Number of times to execute the event.
+
+    Examples
+    --------
+    Wrap an event to repeat it multiple times:
+
+    >>> from bamengine.core.registry import get_event
+    >>> sim = Simulation.init(n_firms=100, seed=42)
+    >>> event_cls = get_event("workers_send_one_round")
+    >>> event = event_cls()
+    >>> repeated = RepeatedEvent(event, n_repeats=5)
+    >>> repeated.execute(sim)  # Executes 5 times
+
+    See Also
+    --------
+    Pipeline.from_event_list : Build pipeline with repeated events
     """
 
     event: Event
     n_repeats: int
 
     def execute(self, sim: Simulation) -> None:
-        """Execute the event n_repeats times."""
+        """
+        Execute the event n_repeats times.
+
+        Parameters
+        ----------
+        sim : Simulation
+            Simulation instance to operate on.
+
+        Returns
+        -------
+        None
+            All mutations are in-place.
+        """
         for _ in range(self.n_repeats):
             self.event.execute(sim)
 
     @property
     def name(self) -> str:
-        """Return the name of the underlying event."""
+        """
+        Return the name of the underlying event.
+
+        Returns
+        -------
+        str
+            Event name in snake_case.
+        """
         return self.event.name
 
 
 @dataclass(slots=True)
 class Pipeline:
     """
-    Dependency-aware, topologically sorted event execution pipeline.
+    Event execution pipeline with explicit ordering.
 
-    The Pipeline manages event execution order by resolving dependencies
-    declared in Event classes and additional before/after constraints
-    from configuration.
+    The Pipeline manages event execution in a fixed, user-defined order.
+    Events are executed sequentially in the exact order specified, with
+    no automatic dependency resolution or reordering.
 
     Attributes
     ----------
@@ -64,9 +157,41 @@ class Pipeline:
     _event_map : dict[str, Event]
         Internal mapping from event names to instances for quick lookup.
 
+    Examples
+    --------
+    Create pipeline from event list:
+
+    >>> from bamengine.core import Pipeline
+    >>> sim = Simulation.init(n_firms=100, seed=42)
+    >>> pipeline = Pipeline.from_event_list([
+    ...     "firms_decide_desired_production",
+    ...     "firms_adjust_price",
+    ...     "workers_send_one_round_0",
+    ... ])
+    >>> pipeline.execute(sim)
+
+    Load pipeline from YAML:
+
+    >>> pipeline = Pipeline.from_yaml("custom_pipeline.yml",
+    ...                                max_M=5, max_H=3, max_Z=2)
+
+    Modify pipeline after creation:
+
+    >>> pipeline.insert_after("firms_adjust_price", "my_custom_event")
+    >>> pipeline.remove("workers_send_one_round_0")
+    >>> pipeline.replace("firms_decide_desired_production",
+    ...                  "my_production_rule")
+
+    Notes
+    -----
+    The order of events is critical for correct simulation behavior.
+    Users are responsible for ensuring the order is logically correct.
+
     See Also
     --------
     Pipeline.from_event_list : Build pipeline from event name list
+    Pipeline.from_yaml : Build pipeline from YAML configuration
+    create_default_pipeline : Factory for canonical BAM pipeline
     """
 
     events: list[Event] = field(default_factory=list)
