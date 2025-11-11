@@ -98,14 +98,19 @@ class TestRangeValidation:
         with pytest.raises(ValueError, match="must be <= 1.0"):
             ConfigValidator._validate_ranges({"h_eta": 1.5})
 
-    def test_beta_in_range(self):
-        """Beta must be between 0 and 10."""
+    def test_theta_positive(self):
+        """Theta (job contract length) must be at least 1."""
+        # Valid
+        ConfigValidator._validate_ranges({"theta": 5})
+
+        # Too small
+        with pytest.raises(ValueError, match="must be >= 1"):
+            ConfigValidator._validate_ranges({"theta": 0})
+
+    def test_beta_positive(self):
+        """Beta must be positive."""
         # Valid
         ConfigValidator._validate_ranges({"beta": 2.5})
-
-        # Too large
-        with pytest.raises(ValueError, match="must be <= 10.0"):
-            ConfigValidator._validate_ranges({"beta": 15.0})
 
         # Too small
         with pytest.raises(ValueError, match="must be >= 0.0"):

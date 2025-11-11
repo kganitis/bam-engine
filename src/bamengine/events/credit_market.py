@@ -30,7 +30,7 @@ class BanksDecideCreditSupply:
     def execute(self, sim: Simulation) -> None:
         from bamengine.events._internal.credit_market import banks_decide_credit_supply
 
-        banks_decide_credit_supply(sim.lend, v=sim.ec.v)
+        banks_decide_credit_supply(sim.lend, v=sim.v)
 
 
 @event
@@ -51,7 +51,7 @@ class BanksDecideInterestRate:
 
         banks_decide_interest_rate(
             sim.lend,
-            r_bar=sim.ec.r_bar,
+            r_bar=sim.r_bar,
             h_phi=sim.config.h_phi,
             rng=sim.rng,
         )
@@ -153,7 +153,7 @@ class BanksProvideLoans:
             sim.bor,
             sim.lb,
             sim.lend,
-            r_bar=sim.ec.r_bar,
+            r_bar=sim.r_bar,
             h_phi=sim.config.h_phi,
         )
 

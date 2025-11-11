@@ -131,28 +131,31 @@ class Simulation:
 
     One call to `run` → *n* calls to `step`.
     """
-
-    # core state
-    rng: Rng
+    # Economy instance
     ec: Economy
+
+    # configuration
+    config: Config
+    rng: Rng
+
+    # population sizes
+    n_firms: int
+    n_households: int
+    n_banks: int
+
+    # roles
     prod: Producer
     wrk: Worker
     emp: Employer
     bor: Borrower
     lend: Lender
     con: Consumer
-    lb: LoanBook
-
-    # configuration
-    config: Config
 
     # event pipeline
     pipeline: Pipeline
 
-    # population sizes
-    n_firms: int
-    n_households: int
-    n_banks: int
+    # relationships
+    lb: LoanBook
 
     # periods
     n_periods: int  # run length
@@ -208,6 +211,21 @@ class Simulation:
     def delta(self) -> float:
         """Dividend payout ratio δ (DPR)."""
         return self.config.delta
+
+    @property
+    def r_bar(self) -> float:
+        """Baseline interest rate r̄."""
+        return self.config.r_bar
+
+    @property
+    def v(self) -> float:
+        """Bank capital requirement coefficient v."""
+        return self.config.v
+
+    @property
+    def cap_factor(self) -> Optional[float]:
+        """Breakeven price cap factor."""
+        return self.config.cap_factor
 
     # Constructor
     # ---------------------------------------------------------------------
@@ -407,8 +425,6 @@ class Simulation:
             avg_mkt_price=avg_mkt_price,
             min_wage=p["min_wage"],
             min_wage_rev_period=p["min_wage_rev_period"],
-            r_bar=p["r_bar"],
-            v=p["v"],
             avg_mkt_price_history=avg_mkt_price_history,
             unemp_rate_history=unemp_rate_history,
             inflation_history=inflation_history,
@@ -484,6 +500,8 @@ class Simulation:
             theta=p["theta"],
             beta=p["beta"],
             delta=p["delta"],
+            r_bar=p["r_bar"],
+            v=p["v"],
             cap_factor=p.get("cap_factor"),
         )
 
@@ -764,9 +782,9 @@ class Simulation:
 
         # *************** event 3 – credit-market ***************
 
-        banks_decide_credit_supply(self.lend, v=self.ec.v)
+        banks_decide_credit_supply(self.lend, v=self.v)
         banks_decide_interest_rate(
-            self.lend, r_bar=self.ec.r_bar, h_phi=self.h_phi, rng=self.rng
+            self.lend, r_bar=self.r_bar, h_phi=self.h_phi, rng=self.rng
         )
         firms_decide_credit_demand(self.bor)
         firms_calc_credit_metrics(self.bor)
