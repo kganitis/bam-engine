@@ -30,7 +30,6 @@ class FirmsDecideDesiredProduction:
     S: Inventory, P: Individual Price, P̄: Avg Market Price, h_ρ: Max Production Shock
     """
 
-    # TODO Address warning: Method 'execute' may be 'static' across all events in this package
     def execute(self, sim: Simulation) -> None:
         from bamengine.events._internal.planning import firms_decide_desired_production
 

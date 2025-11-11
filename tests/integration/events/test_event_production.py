@@ -10,6 +10,7 @@ The two tests below exercise the full production round on the *tiny* simulation:
    – deeper invariants that involve contract expiration and labour
      book-keeping across Worker ↔ Employer roles.
 """
+
 from __future__ import annotations
 
 

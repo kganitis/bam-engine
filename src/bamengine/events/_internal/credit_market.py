@@ -544,7 +544,7 @@ def banks_provide_loans(
                     f"Adjusting loan amounts."
                 )
             max_grant[first_exceed] -= cumsum[first_exceed] - lend.credit_supply[k]
-            max_grant[first_exceed + 1:] = 0.0
+            max_grant[first_exceed + 1 :] = 0.0
 
         mask = max_grant > 0.0
         # check if any loans were granted, should never trigger

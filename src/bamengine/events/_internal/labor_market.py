@@ -107,7 +107,6 @@ def firms_decide_wage_offer(
 
     t: Current Period, w: Offered Wage, ŵ: Minimum Wage, h_ξ: Max Wage Growth
     """
-    # TODO Log how many firm offers are near the minimum wage
     log.info("--- Firms Deciding Wage Offers ---")
     log.info(
         f"  Inputs: Min Wage (w_min)={w_min:.3f} | Max Wage Shock (h_ξ)={h_xi:.3f}"
@@ -145,12 +144,14 @@ def firms_decide_wage_offer(
         threshold = 0.05  # 5%
         near_min_threshold = w_min * (1.0 + threshold)
         near_min_mask = hiring_firms_mask & (emp.wage_offer <= near_min_threshold)
-        num_near_min = np.sum(near_min_mask)
+        num_near_min = int(np.sum(near_min_mask))
         pct_near_min = (
-                num_near_min / num_hiring_firms * 100) if num_hiring_firms > 0 else 0.0  # TODO Cannot find reference '/' in '_ScalarT'
+            (num_near_min / num_hiring_firms * 100.0) if num_hiring_firms > 0 else 0.0
+        )
         log.debug(
             f"  {num_near_min} ({pct_near_min:.1f}%) hiring firms "
-            f"offering wages within {threshold}% of minimum ({near_min_threshold:.3f})"
+            f"offering wages within {threshold * 100:.0f}% of minimum "
+            f"({near_min_threshold:.3f})"
         )
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
@@ -264,7 +265,7 @@ def workers_decide_firms_to_apply(
                 if num_applications > 0:
                     if num_applications > 1:
                         application_row[1:num_applications] = application_row[
-                            0: num_applications - 1
+                            0 : num_applications - 1
                         ]
                     application_row[0] = prev_employer_id
 

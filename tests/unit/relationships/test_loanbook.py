@@ -15,7 +15,6 @@ Tests cover:
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from bamengine.relationships import LoanBook
 from tests.helpers.factories import mock_loanbook
@@ -182,14 +181,19 @@ def test_append_loans_multiple_times() -> None:
     lb = LoanBook()
 
     # First append
-    lb.append_loans_for_lender(0, np.array([1, 2], dtype=np.int64),
-                                np.array([100.0, 200.0]), np.array([0.05, 0.06]))
+    lb.append_loans_for_lender(
+        0,
+        np.array([1, 2], dtype=np.int64),
+        np.array([100.0, 200.0]),
+        np.array([0.05, 0.06]),
+    )
 
     assert lb.size == 2
 
     # Second append
-    lb.append_loans_for_lender(1, np.array([3], dtype=np.int64),
-                                np.array([150.0]), np.array([0.07]))
+    lb.append_loans_for_lender(
+        1, np.array([3], dtype=np.int64), np.array([150.0]), np.array([0.07])
+    )
 
     assert lb.size == 3
 
@@ -216,8 +220,9 @@ def test_debt_per_borrower_empty() -> None:
 def test_debt_per_borrower_single_loan() -> None:
     """Test debt_per_borrower with single loan."""
     lb = LoanBook()
-    lb.append_loans_for_lender(0, np.array([2], dtype=np.int64),
-                                np.array([100.0]), np.array([0.05]))
+    lb.append_loans_for_lender(
+        0, np.array([2], dtype=np.int64), np.array([100.0]), np.array([0.05])
+    )
 
     result = lb.debt_per_borrower(n_borrowers=5)
 
@@ -230,10 +235,12 @@ def test_debt_per_borrower_multiple_loans_same_borrower() -> None:
     lb = LoanBook()
 
     # Borrower 1 has two loans from different lenders
-    lb.append_loans_for_lender(0, np.array([1], dtype=np.int64),
-                                np.array([100.0]), np.array([0.05]))
-    lb.append_loans_for_lender(1, np.array([1], dtype=np.int64),
-                                np.array([200.0]), np.array([0.06]))
+    lb.append_loans_for_lender(
+        0, np.array([1], dtype=np.int64), np.array([100.0]), np.array([0.05])
+    )
+    lb.append_loans_for_lender(
+        1, np.array([1], dtype=np.int64), np.array([200.0]), np.array([0.06])
+    )
 
     result = lb.debt_per_borrower(n_borrowers=3)
 
@@ -258,9 +265,12 @@ def test_interest_per_borrower_multiple_loans() -> None:
     # Borrower 0: 100 @ 5% = 5 interest
     # Borrower 1: 200 @ 6% = 12 interest
     # Borrower 2: 150 @ 4% = 6 interest
-    lb.append_loans_for_lender(0, np.array([0, 1, 2], dtype=np.int64),
-                                np.array([100.0, 200.0, 150.0]),
-                                np.array([0.05, 0.06, 0.04]))
+    lb.append_loans_for_lender(
+        0,
+        np.array([0, 1, 2], dtype=np.int64),
+        np.array([100.0, 200.0, 150.0]),
+        np.array([0.05, 0.06, 0.04]),
+    )
 
     result = lb.interest_per_borrower(n_borrowers=3)
 
@@ -276,9 +286,12 @@ def test_interest_per_borrower_multiple_loans() -> None:
 def test_purge_borrowers_empty_list() -> None:
     """Test purge_borrowers with empty list does nothing."""
     lb = LoanBook()
-    lb.append_loans_for_lender(0, np.array([1, 2, 3], dtype=np.int64),
-                                np.array([100.0, 200.0, 150.0]),
-                                np.array([0.05, 0.06, 0.04]))
+    lb.append_loans_for_lender(
+        0,
+        np.array([1, 2, 3], dtype=np.int64),
+        np.array([100.0, 200.0, 150.0]),
+        np.array([0.05, 0.06, 0.04]),
+    )
 
     removed = lb.purge_borrowers(np.array([], dtype=np.int64))
 
@@ -289,9 +302,12 @@ def test_purge_borrowers_empty_list() -> None:
 def test_purge_borrowers_single() -> None:
     """Test purging a single borrower."""
     lb = LoanBook()
-    lb.append_loans_for_lender(0, np.array([1, 2, 3], dtype=np.int64),
-                                np.array([100.0, 200.0, 150.0]),
-                                np.array([0.05, 0.06, 0.04]))
+    lb.append_loans_for_lender(
+        0,
+        np.array([1, 2, 3], dtype=np.int64),
+        np.array([100.0, 200.0, 150.0]),
+        np.array([0.05, 0.06, 0.04]),
+    )
 
     removed = lb.purge_borrowers(np.array([2], dtype=np.int64))
 
@@ -304,9 +320,12 @@ def test_purge_borrowers_single() -> None:
 def test_purge_borrowers_multiple() -> None:
     """Test purging multiple borrowers."""
     lb = LoanBook()
-    lb.append_loans_for_lender(0, np.array([1, 2, 3, 4, 5], dtype=np.int64),
-                                np.array([100.0, 200.0, 150.0, 175.0, 225.0]),
-                                np.array([0.05, 0.06, 0.04, 0.07, 0.05]))
+    lb.append_loans_for_lender(
+        0,
+        np.array([1, 2, 3, 4, 5], dtype=np.int64),
+        np.array([100.0, 200.0, 150.0, 175.0, 225.0]),
+        np.array([0.05, 0.06, 0.04, 0.07, 0.05]),
+    )
 
     removed = lb.purge_borrowers(np.array([2, 4], dtype=np.int64))
 
@@ -319,9 +338,12 @@ def test_purge_borrowers_multiple() -> None:
 def test_purge_borrowers_nonexistent() -> None:
     """Test purging borrowers that don't exist."""
     lb = LoanBook()
-    lb.append_loans_for_lender(0, np.array([1, 2, 3], dtype=np.int64),
-                                np.array([100.0, 200.0, 150.0]),
-                                np.array([0.05, 0.06, 0.04]))
+    lb.append_loans_for_lender(
+        0,
+        np.array([1, 2, 3], dtype=np.int64),
+        np.array([100.0, 200.0, 150.0]),
+        np.array([0.05, 0.06, 0.04]),
+    )
 
     removed = lb.purge_borrowers(np.array([99], dtype=np.int64))
 
@@ -333,11 +355,16 @@ def test_purge_lenders_single() -> None:
     """Test purging a single lender."""
     lb = LoanBook()
     # Lender 0: borrowers [1, 2]
-    lb.append_loans_for_lender(0, np.array([1, 2], dtype=np.int64),
-                                np.array([100.0, 200.0]), np.array([0.05, 0.06]))
+    lb.append_loans_for_lender(
+        0,
+        np.array([1, 2], dtype=np.int64),
+        np.array([100.0, 200.0]),
+        np.array([0.05, 0.06]),
+    )
     # Lender 1: borrowers [3]
-    lb.append_loans_for_lender(1, np.array([3], dtype=np.int64),
-                                np.array([150.0]), np.array([0.04]))
+    lb.append_loans_for_lender(
+        1, np.array([3], dtype=np.int64), np.array([150.0]), np.array([0.04])
+    )
 
     removed = lb.purge_lenders(np.array([0], dtype=np.int64))
 
@@ -351,12 +378,15 @@ def test_purge_lenders_single() -> None:
 def test_purge_lenders_multiple() -> None:
     """Test purging multiple lenders."""
     lb = LoanBook()
-    lb.append_loans_for_lender(0, np.array([1], dtype=np.int64),
-                                np.array([100.0]), np.array([0.05]))
-    lb.append_loans_for_lender(1, np.array([2], dtype=np.int64),
-                                np.array([200.0]), np.array([0.06]))
-    lb.append_loans_for_lender(2, np.array([3], dtype=np.int64),
-                                np.array([150.0]), np.array([0.04]))
+    lb.append_loans_for_lender(
+        0, np.array([1], dtype=np.int64), np.array([100.0]), np.array([0.05])
+    )
+    lb.append_loans_for_lender(
+        1, np.array([2], dtype=np.int64), np.array([200.0]), np.array([0.06])
+    )
+    lb.append_loans_for_lender(
+        2, np.array([3], dtype=np.int64), np.array([150.0]), np.array([0.04])
+    )
 
     removed = lb.purge_lenders(np.array([0, 2], dtype=np.int64))
 
@@ -374,9 +404,12 @@ def test_purge_lenders_multiple() -> None:
 def test_drop_rows_empty_mask() -> None:
     """Test drop_rows with all-False mask does nothing."""
     lb = LoanBook()
-    lb.append_loans_for_lender(0, np.array([1, 2, 3], dtype=np.int64),
-                                np.array([100.0, 200.0, 150.0]),
-                                np.array([0.05, 0.06, 0.04]))
+    lb.append_loans_for_lender(
+        0,
+        np.array([1, 2, 3], dtype=np.int64),
+        np.array([100.0, 200.0, 150.0]),
+        np.array([0.05, 0.06, 0.04]),
+    )
 
     mask = np.array([False, False, False])
     removed = lb.drop_rows(mask)
@@ -388,9 +421,12 @@ def test_drop_rows_empty_mask() -> None:
 def test_drop_rows_single() -> None:
     """Test dropping a single row."""
     lb = LoanBook()
-    lb.append_loans_for_lender(0, np.array([1, 2, 3], dtype=np.int64),
-                                np.array([100.0, 200.0, 150.0]),
-                                np.array([0.05, 0.06, 0.04]))
+    lb.append_loans_for_lender(
+        0,
+        np.array([1, 2, 3], dtype=np.int64),
+        np.array([100.0, 200.0, 150.0]),
+        np.array([0.05, 0.06, 0.04]),
+    )
 
     mask = np.array([False, True, False])  # Drop middle row
     removed = lb.drop_rows(mask)
@@ -405,9 +441,12 @@ def test_drop_rows_single() -> None:
 def test_drop_rows_multiple() -> None:
     """Test dropping multiple rows."""
     lb = LoanBook()
-    lb.append_loans_for_lender(0, np.array([1, 2, 3, 4, 5], dtype=np.int64),
-                                np.array([100.0, 200.0, 150.0, 175.0, 225.0]),
-                                np.array([0.05, 0.06, 0.04, 0.07, 0.05]))
+    lb.append_loans_for_lender(
+        0,
+        np.array([1, 2, 3, 4, 5], dtype=np.int64),
+        np.array([100.0, 200.0, 150.0, 175.0, 225.0]),
+        np.array([0.05, 0.06, 0.04, 0.07, 0.05]),
+    )
 
     mask = np.array([True, False, True, False, True])  # Drop rows 0, 2, 4
     removed = lb.drop_rows(mask)
@@ -421,9 +460,12 @@ def test_drop_rows_multiple() -> None:
 def test_drop_rows_all() -> None:
     """Test dropping all rows."""
     lb = LoanBook()
-    lb.append_loans_for_lender(0, np.array([1, 2, 3], dtype=np.int64),
-                                np.array([100.0, 200.0, 150.0]),
-                                np.array([0.05, 0.06, 0.04]))
+    lb.append_loans_for_lender(
+        0,
+        np.array([1, 2, 3], dtype=np.int64),
+        np.array([100.0, 200.0, 150.0]),
+        np.array([0.05, 0.06, 0.04]),
+    )
 
     mask = np.array([True, True, True])  # Drop all
     removed = lb.drop_rows(mask)
@@ -451,8 +493,9 @@ def test_drop_rows_on_empty_loanbook() -> None:
 def test_zero_interest_rate() -> None:
     """Test loan with zero interest rate."""
     lb = LoanBook()
-    lb.append_loans_for_lender(0, np.array([1], dtype=np.int64),
-                                np.array([100.0]), np.array([0.0]))
+    lb.append_loans_for_lender(
+        0, np.array([1], dtype=np.int64), np.array([100.0]), np.array([0.0])
+    )
 
     assert lb.interest[0] == 0.0
     assert lb.debt[0] == 100.0  # principal only
@@ -461,8 +504,9 @@ def test_zero_interest_rate() -> None:
 def test_very_high_interest_rate() -> None:
     """Test loan with very high interest rate."""
     lb = LoanBook()
-    lb.append_loans_for_lender(0, np.array([1], dtype=np.int64),
-                                np.array([100.0]), np.array([2.0]))  # 200% interest
+    lb.append_loans_for_lender(
+        0, np.array([1], dtype=np.int64), np.array([100.0]), np.array([2.0])
+    )  # 200% interest
 
     assert lb.interest[0] == 200.0
     assert lb.debt[0] == 300.0  # 100 * (1 + 2.0)
@@ -474,8 +518,9 @@ def test_many_loans_same_borrower_lender_pair() -> None:
 
     # Same borrower-lender pair, multiple loans
     for _ in range(3):
-        lb.append_loans_for_lender(0, np.array([1], dtype=np.int64),
-                                    np.array([100.0]), np.array([0.05]))
+        lb.append_loans_for_lender(
+            0, np.array([1], dtype=np.int64), np.array([100.0]), np.array([0.05])
+        )
 
     assert lb.size == 3
     # All three loans should coexist
@@ -492,9 +537,12 @@ def test_borrower_indices_out_of_order() -> None:
     lb = LoanBook()
 
     # Non-sequential borrower IDs
-    lb.append_loans_for_lender(0, np.array([10, 5, 100], dtype=np.int64),
-                                np.array([100.0, 200.0, 150.0]),
-                                np.array([0.05, 0.06, 0.04]))
+    lb.append_loans_for_lender(
+        0,
+        np.array([10, 5, 100], dtype=np.int64),
+        np.array([100.0, 200.0, 150.0]),
+        np.array([0.05, 0.06, 0.04]),
+    )
 
     assert lb.size == 3
     np.testing.assert_array_equal(lb.source_ids[:3], [10, 5, 100])
@@ -511,18 +559,24 @@ def test_mixed_purge_and_append() -> None:
     lb = LoanBook()
 
     # Initial loans
-    lb.append_loans_for_lender(0, np.array([1, 2, 3], dtype=np.int64),
-                                np.array([100.0, 200.0, 150.0]),
-                                np.array([0.05, 0.06, 0.04]))
+    lb.append_loans_for_lender(
+        0,
+        np.array([1, 2, 3], dtype=np.int64),
+        np.array([100.0, 200.0, 150.0]),
+        np.array([0.05, 0.06, 0.04]),
+    )
 
     # Purge borrower 2
     lb.purge_borrowers(np.array([2], dtype=np.int64))
     assert lb.size == 2
 
     # Add new loans
-    lb.append_loans_for_lender(1, np.array([4, 5], dtype=np.int64),
-                                np.array([175.0, 225.0]),
-                                np.array([0.07, 0.05]))
+    lb.append_loans_for_lender(
+        1,
+        np.array([4, 5], dtype=np.int64),
+        np.array([175.0, 225.0]),
+        np.array([0.07, 0.05]),
+    )
 
     assert lb.size == 4
     # Should have borrowers 1, 3, 4, 5

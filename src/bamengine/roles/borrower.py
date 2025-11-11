@@ -1,4 +1,3 @@
-
 from bamengine.core.decorators import role
 from bamengine.typing import Float1D, Idx1D, Idx2D
 

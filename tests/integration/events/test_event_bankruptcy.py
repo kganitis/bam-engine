@@ -12,6 +12,7 @@ Two test-cases drive the complete “exit-and-replace” sequence:
    – fuzzier run ensuring invariants hold for arbitrary mixes
      of bankrupt and healthy agents.
 """
+
 from __future__ import annotations
 
 from typing import Any

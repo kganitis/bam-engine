@@ -6,14 +6,21 @@ from dataclasses import dataclass
 import pytest
 
 from bamengine import relationship
-from bamengine.core import (Role, Event, Relationship,
-                            get_role, get_event, get_relationship)
-from bamengine.core.registry import (clear_registry,
-                                     list_events, list_roles, list_relationships)
+from bamengine.core import (
+    Role,
+    Event,
+    Relationship,
+    get_role,
+    get_event,
+    get_relationship,
+)
+from bamengine.core.registry import (
+    clear_registry,
+    list_events,
+    list_roles,
+    list_relationships,
+)
 from bamengine.typing import Float1D
-
-
-# TODO Resolve all "Unresolved attribute reference '__dataclass_fields__'..." in file
 
 
 @pytest.fixture

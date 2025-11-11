@@ -131,6 +131,7 @@ class Simulation:
 
     One call to `run` → *n* calls to `step`.
     """
+
     # Economy instance
     ec: Economy
 
@@ -690,7 +691,9 @@ class Simulation:
         name_lower = name.lower()
         if name_lower not in relationship_map:
             available = list(relationship_map.keys())
-            raise ValueError(f"Relationship '{name}' not found. Available relationships: {available}")
+            raise ValueError(
+                f"Relationship '{name}' not found. Available relationships: {available}"
+            )
 
         return relationship_map[name_lower]
 

@@ -81,7 +81,8 @@ class Relationship(ABC):
         source: type[Role] | None = None,
         target: type[Role] | None = None,
         cardinality: Literal[
-            "many-to-many", "one-to-many", "many-to-one"] = "many-to-many",
+            "many-to-many", "one-to-many", "many-to-one"
+        ] = "many-to-many",
         **kwargs: Any,
     ) -> None:
         """
@@ -179,12 +180,12 @@ class Relationship(ABC):
         return np.where(self.target_ids[: self.size] == target_id)[0]
 
     def aggregate_by_source(
-            self,
-            component: np.ndarray,
-            *,
-            func: Literal["sum", "mean", "count"] = "sum",
-            n_sources: int | None = None,
-            out: Optional[Float1D] = None,
+        self,
+        component: np.ndarray,
+        *,
+        func: Literal["sum", "mean", "count"] = "sum",
+        n_sources: int | None = None,
+        out: Optional[Float1D] = None,
     ) -> Float1D:
         """
         Aggregate component values grouped by source.
@@ -240,12 +241,12 @@ class Relationship(ABC):
         return out
 
     def aggregate_by_target(
-            self,
-            component: np.ndarray,
-            *,
-            func: Literal["sum", "mean", "count"] = "sum",
-            n_targets: int | None = None,
-            out: Optional[Float1D] = None,
+        self,
+        component: np.ndarray,
+        *,
+        func: Literal["sum", "mean", "count"] = "sum",
+        n_targets: int | None = None,
+        out: Optional[Float1D] = None,
     ) -> Float1D:
         """
         Aggregate component values grouped by target.
@@ -382,10 +383,10 @@ class Relationship(ABC):
         return self.drop_rows(drop_mask)
 
     def append_edges(
-            self,
-            source_ids: Idx1D,
-            target_ids: Idx1D,
-            **component_arrays: Any,
+        self,
+        source_ids: Idx1D,
+        target_ids: Idx1D,
+        **component_arrays: Any,
     ) -> None:
         """
         Append new edges with given source/target IDs and component values.

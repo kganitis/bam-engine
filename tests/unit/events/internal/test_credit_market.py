@@ -165,7 +165,6 @@ def test_calc_credit_metrics_allocates_buffer() -> None:
     assert bor.projected_fragility.flags.writeable
 
 
-# TODO move to loanbook tests after resolving the todo regarding writing LoanBook tests
 def test_topk_lowest_rate_partial_sort() -> None:
     vals = np.array([0.09, 0.07, 0.12, 0.08])
     k = 2
@@ -793,7 +792,7 @@ def test_clean_queue_sorts_by_net_worth_when_enabled() -> None:
 
 
 def test_clean_queue_preserves_order_when_disabled() -> None:
-    """Test that _clean_queue preserves application order when sort_by_net_worth=False."""
+    """Test _clean_queue preserves order when sort_by_net_worth=False."""
     bor = mock_borrower(
         n=5,
         net_worth=np.array([10.0, 50.0, 30.0, 20.0, 40.0]),
@@ -822,13 +821,17 @@ def test_clean_queue_filters_negative_sentinels() -> None:
     raw_queue = np.array([1, -1, 2, -1, 3], dtype=np.int64)
 
     # With sorting
-    result_sorted = _clean_queue(raw_queue, bor, bank_idx_for_log=0, sort_by_net_worth=True)
+    result_sorted = _clean_queue(
+        raw_queue, bor, bank_idx_for_log=0, sort_by_net_worth=True
+    )
     # Should be [3(30), 2(20), 1(10)] - no -1s
     assert -1 not in result_sorted
     assert result_sorted.size == 3
 
     # Without sorting
-    result_unsorted = _clean_queue(raw_queue, bor, bank_idx_for_log=0, sort_by_net_worth=False)
+    result_unsorted = _clean_queue(
+        raw_queue, bor, bank_idx_for_log=0, sort_by_net_worth=False
+    )
     # Should be [1, 2, 3] - no -1s, order preserved
     assert -1 not in result_unsorted
     np.testing.assert_array_equal(result_unsorted, [1, 2, 3])
@@ -839,7 +842,9 @@ def test_clean_queue_filters_zero_credit_demand() -> None:
     bor = mock_borrower(
         n=5,
         net_worth=np.array([10.0, 20.0, 30.0, 40.0, 50.0]),
-        credit_demand=np.array([100.0, 0.0, 150.0, 0.0, 180.0]),  # 1 and 3 have no demand
+        credit_demand=np.array(
+            [100.0, 0.0, 150.0, 0.0, 180.0]
+        ),  # 1 and 3 have no demand
     )
 
     raw_queue = np.array([0, 1, 2, 3, 4], dtype=np.int64)

@@ -17,7 +17,7 @@ def trim_mean(values: Float1D, trim_pct: float = 0.05) -> float:
     if k == 0:
         return float(values.mean())
     idx = np.argpartition(values, (k, values.size - k - 1))
-    core = values[idx[k: values.size - k]]
+    core = values[idx[k : values.size - k]]
     return float(core.mean())
 
 
@@ -44,7 +44,7 @@ def trimmed_weighted_mean(
         if k == 0 or values.size == 0:  # TODO Branch uncovered by tests
             return float(values.mean())
         idx = np.argsort(values)
-        trimmed = values[idx][k: values.size - k]
+        trimmed = values[idx][k : values.size - k]
         if trimmed.size == 0:  # TODO Branch uncovered by tests
             return 0.0
         return float(trimmed.mean())
@@ -67,8 +67,8 @@ def trimmed_weighted_mean(
         # Standard weighted mean
         return float(np.average(values, weights=weights))
     # Apply trim
-    values_trimmed = values[k: values.size - k]
-    weights_trimmed = weights[k: weights.size - k]
+    values_trimmed = values[k : values.size - k]
+    weights_trimmed = weights[k : weights.size - k]
     if weights_trimmed.sum() == 0:
         return (
             float(values_trimmed.mean()) if values_trimmed.size else 0.0

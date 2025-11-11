@@ -227,7 +227,7 @@ def consumers_decide_firms_to_visit(
                 sample = rng.choice(choices, size=n_draw, replace=False)
                 # Sort by price (cheapest first) for optimal shopping order
                 order = np.argsort(prod.price[sample])
-                row[filled: filled + n_draw] = sample[order]
+                row[filled : filled + n_draw] = sample[order]
                 filled += n_draw
 
                 if log.isEnabledFor(logging.DEEP_DEBUG):

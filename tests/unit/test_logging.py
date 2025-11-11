@@ -7,13 +7,6 @@ from pathlib import Path
 from bamengine import Simulation
 from bamengine.logging import DEEP_DEBUG, getLogger
 
-# TODO Local variable 'sim' value is not used
-#  This happens in multiple places where Simulation.init() is called
-#  but the sim variable is not used afterwards.
-#  Please make sure the tests are functioning as intended.
-#  If the sim variable is not needed, consider removing it
-#  to clean up the code and avoid confusion.
-
 
 class TestBamLogger:
     """Test custom BamLogger functionality."""
@@ -358,9 +351,7 @@ class TestStructuredLogging:
         record = caplog.records[0]
         assert hasattr(record, "n_agents")
         assert hasattr(record, "market")
-        # TODO Unresolved attribute reference 'n_agents' for class 'LogRecord'
         assert record.n_agents == 100
-        # TODO Unresolved attribute reference 'market' for class 'LogRecord'
         assert record.market == "labor"
 
     def test_deep_logging_with_extra(self, caplog):
@@ -374,7 +365,5 @@ class TestStructuredLogging:
         assert "Inner loop iteration" in caplog.text
         assert len(caplog.records) > 0
         record = caplog.records[0]
-        # TODO Unresolved attribute reference 'round' for class 'LogRecord'
         assert record.round == 5
-        # TODO Unresolved attribute reference 'agent_id' for class 'LogRecord'
         assert record.agent_id == 42
