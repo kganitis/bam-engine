@@ -9,6 +9,7 @@ import numpy as np
 from bamengine.roles import Employer, Worker
 from bamengine.events._internal.production import (
     # firms_decide_price,
+    calc_unemployment_rate,
     firms_pay_wages,
     firms_run_production,
     update_avg_mkt_price,
@@ -72,6 +73,88 @@ from tests.helpers.factories import (
 #     # firm-3 price ↓ to breakeven
 #     assert prod.price[3] <= 3.0
 #     assert prod.price[3] >= breakeven_capped[3] - 1.0e-12
+
+
+def test_calc_unemployment_rate_all_employed() -> None:
+    """Test unemployment rate when all workers are employed."""
+    ec = mock_economy()
+    wrk = mock_worker(
+        n=5,
+        employer=np.array([0, 0, 1, 1, 2], dtype=np.intp),  # all employed
+    )
+
+    hist_len_before = ec.unemp_rate_history.size
+    calc_unemployment_rate(ec, wrk)
+
+    # 0 unemployed out of 5 workers = 0% unemployment
+    assert ec.unemp_rate_history.size == hist_len_before + 1
+    assert ec.unemp_rate_history[-1] == 0.0
+
+
+def test_calc_unemployment_rate_all_unemployed() -> None:
+    """Test unemployment rate when all workers are unemployed."""
+    ec = mock_economy()
+    wrk = mock_worker(
+        n=5,
+        employer=np.full(5, -1, dtype=np.intp),  # all unemployed
+    )
+
+    hist_len_before = ec.unemp_rate_history.size
+    calc_unemployment_rate(ec, wrk)
+
+    # 5 unemployed out of 5 workers = 100% unemployment
+    assert ec.unemp_rate_history.size == hist_len_before + 1
+    assert ec.unemp_rate_history[-1] == 1.0
+
+
+def test_calc_unemployment_rate_partial_unemployment() -> None:
+    """Test unemployment rate with partial unemployment."""
+    ec = mock_economy()
+    wrk = mock_worker(
+        n=10,
+        employer=np.array([0, 1, 2, -1, -1, 3, 4, -1, 5, 6], dtype=np.intp),
+    )
+
+    hist_len_before = ec.unemp_rate_history.size
+    calc_unemployment_rate(ec, wrk)
+
+    # 3 unemployed out of 10 workers = 30% unemployment
+    expected_rate = 3.0 / 10.0
+    assert ec.unemp_rate_history.size == hist_len_before + 1
+    np.testing.assert_allclose(ec.unemp_rate_history[-1], expected_rate, rtol=1e-12)
+
+
+def test_calc_unemployment_rate_single_worker() -> None:
+    """Test unemployment rate with single worker edge case."""
+    ec = mock_economy()
+
+    # Test employed single worker
+    wrk_employed = mock_worker(n=1, employer=np.array([0], dtype=np.intp))
+    calc_unemployment_rate(ec, wrk_employed)
+    assert ec.unemp_rate_history[-1] == 0.0
+
+    # Test unemployed single worker
+    wrk_unemployed = mock_worker(n=1, employer=np.array([-1], dtype=np.intp))
+    calc_unemployment_rate(ec, wrk_unemployed)
+    assert ec.unemp_rate_history[-1] == 1.0
+
+
+def test_calc_unemployment_rate_appends_to_history() -> None:
+    """Test that unemployment rate is correctly appended to history."""
+    ec = mock_economy()
+    wrk = mock_worker(n=4, employer=np.array([0, -1, 1, -1], dtype=np.intp))
+
+    # Call multiple times to verify appending behavior
+    initial_len = ec.unemp_rate_history.size
+
+    calc_unemployment_rate(ec, wrk)
+    assert ec.unemp_rate_history.size == initial_len + 1
+
+    calc_unemployment_rate(ec, wrk)
+    assert ec.unemp_rate_history.size == initial_len + 2
+
+    # Both entries should be the same (2/4 = 0.5)
+    np.testing.assert_allclose(ec.unemp_rate_history[-2:], [0.5, 0.5], rtol=1e-12)
 
 
 def test_update_avg_mkt_price_appends_series() -> None:
