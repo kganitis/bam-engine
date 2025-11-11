@@ -1,3 +1,38 @@
+"""
+Utility functions for BAM Engine.
+
+This module provides common utility functions used throughout BAM Engine,
+including statistical operations (trimmed means), random sampling utilities,
+and efficient array operations.
+
+Constants
+---------
+EPS : float
+    Machine epsilon for numerical comparisons (1.0e-9). Used to avoid
+    division by zero and detect near-zero values.
+
+Functions
+---------
+trim_mean
+    Calculate two-sided trimmed mean (SciPy-style).
+trimmed_weighted_mean
+    Calculate weighted trimmed mean with optional weight filtering.
+sample_beta_with_mean
+    Draw samples from Beta distribution with specified mean.
+select_top_k_indices_sorted
+    Efficiently select and sort top-k elements using argpartition.
+
+See Also
+--------
+bamengine.typing : Type aliases used in this module
+scipy.stats.trim_mean : SciPy implementation of trimmed mean
+
+Notes
+-----
+- Trimmed means are robust statistics that exclude extreme values
+- Beta sampling is used for initialization with controlled variance
+- Top-k selection uses argpartition for O(n) performance vs O(n log n) for sort
+"""
 from typing import Optional
 
 import numpy as np
@@ -10,7 +45,53 @@ EPS = 1.0e-9
 
 
 def trim_mean(values: Float1D, trim_pct: float = 0.05) -> float:
-    """Return the ``p`` % two-sided trimmed mean ( SciPy-style )."""
+    """
+    Calculate two-sided trimmed mean (robust statistic).
+
+    Computes the mean after removing a percentage of the smallest and largest
+    values. This provides a robust estimate of central tendency that is less
+    sensitive to outliers than the arithmetic mean.
+
+    Parameters
+    ----------
+    values : Float1D
+        1D array of values to average.
+    trim_pct : float, optional
+        Proportion of values to trim from each tail (default: 0.05 = 5%).
+        For example, 0.05 removes the bottom 5% and top 5% of values.
+
+    Returns
+    -------
+    float
+        Trimmed mean of the values. Returns 0.0 if input array is empty.
+
+    Examples
+    --------
+    Calculate trimmed mean removing 10% from each tail:
+
+    >>> import numpy as np
+    >>> from bamengine.utils import trim_mean
+    >>> values = np.array([1, 2, 3, 4, 5, 100])  # 100 is an outlier
+    >>> trim_mean(values, trim_pct=0.10)
+    3.5
+
+    Default 5% trimming:
+
+    >>> values = np.arange(1, 101)  # 1 to 100
+    >>> mean = trim_mean(values)  # Removes bottom/top 5% (5 values each)
+
+    Notes
+    -----
+    - Uses `np.argpartition` for O(n) selection instead of O(n log n) sorting
+    - If trim_pct results in k=0, returns regular mean
+    - Compatible with scipy.stats.trim_mean behavior
+    - Widely used in BAM Engine for initializing new firms/banks from survivors
+
+    See Also
+    --------
+    trimmed_weighted_mean : Weighted version with optional weight filtering
+    scipy.stats.trim_mean : SciPy implementation
+    """
     if values.size == 0:
         return 0.0
     k = int(round(trim_pct * values.size))
@@ -28,10 +109,67 @@ def trimmed_weighted_mean(
     min_weight: float = 1e-3,
 ) -> float:
     """
-    Generic: compute trimmed, weighted mean.
-    - If weights is None, computes an unweighted mean.
-    - Trims `trim_pct` from both ends (by value).
-    - Excludes entries with weights < min_weight (ignored if weights is None).
+    Calculate trimmed weighted mean with optional weight filtering.
+
+    Computes a weighted mean after (1) filtering out entries with negligible
+    weights, and (2) trimming extreme values. If no weights are provided,
+    falls back to unweighted trimmed mean.
+
+    Parameters
+    ----------
+    values : Float1D
+        1D array of values to average.
+    weights : Float1D, optional
+        1D array of weights (same length as values). If None, computes
+        unweighted trimmed mean (ignores min_weight parameter).
+    trim_pct : float, optional
+        Proportion of values to trim from each tail (default: 0.05 = 5%).
+        Trimming is applied after weight filtering.
+    min_weight : float, optional
+        Minimum weight threshold (default: 1e-3). Entries with weights below
+        this are excluded before computing mean. Ignored if weights is None.
+
+    Returns
+    -------
+    float
+        Trimmed weighted mean. Returns 0.0 if no valid entries remain after
+        filtering and trimming.
+
+    Examples
+    --------
+    Weighted mean with weight filtering:
+
+    >>> import numpy as np
+    >>> from bamengine.utils import trimmed_weighted_mean
+    >>> values = np.array([10, 20, 30, 40])
+    >>> weights = np.array([0.5, 1.0, 1.5, 0.0001])  # Last weight too small
+    >>> trimmed_weighted_mean(values, weights, trim_pct=0.0, min_weight=0.01)
+    22.0  # Only first 3 values included
+
+    Trimmed weighted mean:
+
+    >>> values = np.array([1, 2, 3, 100])  # 100 is outlier
+    >>> weights = np.array([1, 1, 1, 1])
+    >>> trimmed_weighted_mean(values, weights, trim_pct=0.25)  # Trims 1 from each end
+    2.5  # Mean of [2, 3]
+
+    Unweighted mode (weights=None):
+
+    >>> values = np.array([1, 2, 3, 4, 5])
+    >>> trimmed_weighted_mean(values, weights=None, trim_pct=0.20)
+    3.0  # Regular trimmed mean
+
+    Notes
+    -----
+    - Weight filtering occurs before trimming
+    - Trimming is based on value ordering (not weight ordering)
+    - Falls back to unweighted mean if all weights are zero
+    - If weights is None, min_weight parameter is ignored
+
+    See Also
+    --------
+    trim_mean : Unweighted trimmed mean (faster if no weights needed)
+    numpy.average : NumPy weighted average (no trimming)
     """
     values = np.asarray(values)
 

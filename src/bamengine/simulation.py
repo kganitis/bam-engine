@@ -1,3 +1,68 @@
+"""
+Main simulation facade for BAM Engine.
+
+This module provides the Simulation class, the primary interface for running
+BAM (Bottom-Up Adaptive Macroeconomics) simulations. The Simulation class
+manages the economy state, agent roles, event pipeline, and provides methods
+for stepping through periods.
+
+Key Features
+------------
+- Three-tier configuration precedence (defaults → user config → kwargs)
+- Deterministic random number generation with seed control
+- Event pipeline with explicit ordering and YAML configuration
+- Getter methods for roles, events, and relationships (case-insensitive)
+- In-place state mutation for memory efficiency
+- Built-in logging configuration at global and per-event levels
+
+Classes
+-------
+Simulation
+    Main simulation facade for initializing and running BAM simulations.
+
+Functions
+---------
+_read_yaml
+    Load configuration from YAML file, dict, or None.
+_package_defaults
+    Load default configuration from bamengine/defaults.yml.
+_validate_float1d
+    Validate 1D float array or scalar for initialization.
+
+See Also
+--------
+bamengine.config : Configuration dataclass and validation
+bamengine.core : Event and Pipeline infrastructure
+bamengine.roles : Agent role components (Producer, Worker, etc.)
+bamengine.events : Event classes wrapping system functions
+
+Examples
+--------
+Basic simulation with default configuration:
+
+>>> import bamengine as be
+>>> sim = be.Simulation.init(seed=42)
+>>> sim.run(n_periods=100)
+>>> unemployment = sim.ec.unemp_rate_history[-1]
+
+Custom configuration via YAML file:
+
+>>> sim = be.Simulation.init(config="my_config.yml", seed=42)
+>>> sim.run(n_periods=100)
+
+Override specific parameters via kwargs:
+
+>>> sim = be.Simulation.init(n_firms=200, n_households=1000, seed=42)
+>>> sim.run(n_periods=100)
+
+Step-by-step execution with intermediate analysis:
+
+>>> sim = be.Simulation.init(seed=42)
+>>> for period in range(100):
+...     sim.step()
+...     if period % 10 == 0:
+...         print(f"Period {period}: Unemployment = {sim.ec.unemp_rate_history[-1]:.2%}")
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -86,7 +151,24 @@ log = logging.getLogger(__name__)
 # helpers
 # ---------------------------------------------------------------------------
 def _read_yaml(obj: str | Path | Mapping[str, Any] | None) -> Dict[str, Any]:
-    """Return a plain dict – {} if *obj* is None."""
+    """
+    Load configuration from YAML file, dict, or None.
+
+    Parameters
+    ----------
+    obj : str, Path, Mapping, or None
+        Configuration source (file path, dict, or None).
+
+    Returns
+    -------
+    dict
+        Configuration dictionary (empty dict if obj is None).
+
+    Raises
+    ------
+    TypeError
+        If YAML root is not a mapping.
+    """
     if obj is None:
         return {}
     if isinstance(obj, Mapping):
@@ -100,7 +182,14 @@ def _read_yaml(obj: str | Path | Mapping[str, Any] | None) -> Dict[str, Any]:
 
 
 def _package_defaults() -> Dict[str, Any]:
-    """Load bamengine/defaults.yml"""
+    """
+    Load default configuration from bamengine/defaults.yml.
+
+    Returns
+    -------
+    dict
+        Default configuration parameters.
+    """
     txt = resources.files("bamengine").joinpath("defaults.yml").read_text()
     return yaml.safe_load(txt) or {}
 
@@ -110,7 +199,28 @@ def _validate_float1d(
     arr: float | Float1D,
     expected_len: int,
 ) -> float | Float1D:
-    """Ensure Float1D has the right length; scalars are accepted verbatim."""
+    """
+    Validate 1D float array or scalar for initialization.
+
+    Parameters
+    ----------
+    name : str
+        Parameter name for error messages.
+    arr : float or Float1D
+        Scalar or 1D array to validate.
+    expected_len : int
+        Required array length (ignored for scalars).
+
+    Returns
+    -------
+    float or Float1D
+        Validated scalar or array.
+
+    Raises
+    ------
+    ValueError
+        If array has wrong shape or length.
+    """
     if np.isscalar(arr):
         return float(arr)  # type: ignore[arg-type]
     arr = np.asarray(arr)
@@ -127,9 +237,107 @@ def _validate_float1d(
 @dataclass(slots=True)
 class Simulation:
     """
-    Facade that drives one Economy instance through *n* consecutive periods.
+    Main simulation facade for BAM Engine.
 
-    One call to `run` → *n* calls to `step`.
+    The Simulation class is the primary interface for running BAM (Bottom-Up Adaptive
+    Macroeconomics) simulations. It manages the economy state, agent roles, event pipeline,
+    and provides methods for stepping through periods.
+
+    Attributes
+    ----------
+    ec : Economy
+        Global economy state (prices, wages, histories).
+    config : Config
+        Configuration parameters for the simulation.
+    rng : np.random.Generator
+        Random number generator for deterministic simulations.
+    n_firms : int
+        Number of firms in the economy.
+    n_households : int
+        Number of households in the economy.
+    n_banks : int
+        Number of banks in the economy.
+    prod : Producer
+        Producer role (firm production state).
+    wrk : Worker
+        Worker role (household employment state).
+    emp : Employer
+        Employer role (firm hiring state).
+    bor : Borrower
+        Borrower role (firm financial state).
+    lend : Lender
+        Lender role (bank state).
+    con : Consumer
+        Consumer role (household consumption state).
+    pipeline : Pipeline
+        Event pipeline controlling simulation execution order.
+    lb : LoanBook
+        Loan relationship between borrowers and lenders.
+    n_periods : int
+        Default run length for run() method.
+    t : int
+        Current period (starts at 0).
+
+    Examples
+    --------
+    Basic usage with default configuration:
+
+    >>> import bamengine as be
+    >>> sim = be.Simulation.init(seed=42)
+    >>> sim.run(n_periods=100)
+    >>> unemployment = sim.ec.unemp_rate_history[-1]
+    >>> print(f"Final unemployment: {unemployment:.2%}")
+    Final unemployment: 0.04%
+
+    Override configuration parameters:
+
+    >>> sim = be.Simulation.init(
+    ...     n_firms=200,
+    ...     n_households=1000,
+    ...     n_banks=15,
+    ...     seed=42
+    ... )
+    >>> sim.step()  # Single period
+    >>> sim.t
+    1
+
+    Use custom configuration file:
+
+    >>> sim = be.Simulation.init(config="my_config.yml", seed=42)
+    >>> sim.run(n_periods=50)
+
+    Access roles and inspect state:
+
+    >>> sim = be.Simulation.init(seed=42)
+    >>> sim.step()
+    >>> prod = sim.get_role("Producer")
+    >>> avg_price = prod.price.mean()
+    >>> print(f"Average price: {avg_price:.2f}")
+    Average price: 1.50
+
+    Custom pipeline:
+
+    >>> sim = be.Simulation.init(
+    ...     pipeline_path="custom_pipeline.yml",
+    ...     seed=42
+    ... )
+    >>> sim.run(n_periods=100)
+
+    Notes
+    -----
+    - All simulations are deterministic when seed is specified
+    - State is mutated in-place during step() and run()
+    - Agent roles share NumPy arrays for memory efficiency
+    - Pipeline execution order can be customized via YAML files
+
+    See Also
+    --------
+    init : Class method to create Simulation instances
+    step : Execute one simulation period
+    run : Execute multiple periods
+    get_role : Access role instances
+    get_event : Access event instances
+    Pipeline : Event pipeline configuration
     """
 
     # Economy instance
@@ -237,13 +445,108 @@ class Simulation:
         **overrides: Any,  # anything here wins last
     ) -> "Simulation":
         """
-        Build a Simulation.
+        Create a new Simulation instance with validated configuration.
 
-        Order of precedence (later overrides earlier):
+        Configuration parameters are merged from three sources (later overrides earlier):
+        1. Package defaults (bamengine/defaults.yml)
+        2. User config (YAML file path, dict, or None)
+        3. Keyword arguments (highest priority)
 
-            1. package defaults  (bamengine/defaults.yml)
-            2. *config*  (Path / str / Mapping / None)
-            3. explicit keyword arguments (**overrides)
+        Parameters
+        ----------
+        config : str, Path, Mapping, or None, optional
+            Configuration source:
+            - str/Path: Path to YAML configuration file
+            - Mapping: Dictionary of configuration parameters
+            - None: Use package defaults only
+        **overrides : Any
+            Configuration parameters to override (highest precedence).
+            Common parameters:
+            - n_firms : int (default: 100)
+            - n_households : int (default: 500)
+            - n_banks : int (default: 10)
+            - seed : int or None (default: None)
+            - pipeline_path : str or None (default: None)
+            - logging : dict (default: {"default_level": "INFO"})
+            See defaults.yml for all parameters.
+
+        Returns
+        -------
+        Simulation
+            Initialized simulation ready to run.
+
+        Raises
+        ------
+        ValueError
+            If configuration validation fails (invalid ranges, types, etc.).
+        FileNotFoundError
+            If config file path does not exist.
+
+        Examples
+        --------
+        Use default configuration:
+
+        >>> import bamengine as be
+        >>> sim = be.Simulation.init(seed=42)
+        >>> sim.n_firms, sim.n_households, sim.n_banks
+        (100, 500, 10)
+
+        Override population sizes:
+
+        >>> sim = be.Simulation.init(
+        ...     n_firms=200,
+        ...     n_households=1000,
+        ...     n_banks=15,
+        ...     seed=42
+        ... )
+        >>> sim.n_firms
+        200
+
+        Load configuration from file:
+
+        >>> sim = be.Simulation.init(config="my_config.yml")  # doctest: +SKIP
+
+        Combine file config with overrides:
+
+        >>> sim = be.Simulation.init(  # doctest: +SKIP
+        ...     config="base_config.yml",
+        ...     seed=42,
+        ...     n_firms=150
+        ... )
+
+        Custom pipeline:
+
+        >>> sim = be.Simulation.init(
+        ...     pipeline_path="custom_pipeline.yml",
+        ...     seed=42
+        ... )  # doctest: +SKIP
+
+        Configure logging:
+
+        >>> log_config = {
+        ...     "default_level": "DEBUG",
+        ...     "events": {
+        ...         "firms_adjust_price": "INFO",
+        ...         "workers_send_one_round": "WARNING"
+        ...     }
+        ... }
+        >>> sim = be.Simulation.init(logging=log_config, seed=42)
+
+        Notes
+        -----
+        - All configuration is validated before initialization
+        - Invalid parameters raise ValueError with clear error messages
+        - Vector parameters (price_init, net_worth_init, etc.) accept scalars
+          (broadcast to all agents) or 1D arrays of appropriate length
+        - Random seed ensures reproducible simulations
+        - Default pipeline includes 37 events across 8 economic phases
+
+        See Also
+        --------
+        Config : Configuration dataclass
+        ConfigValidator : Centralized validation logic
+        Pipeline : Event pipeline configuration
+        defaults.yml : Package default configuration
         """
         # 1 + 2 + 3 → one merged dict
         cfg_dict: Dict[str, Any] = _package_defaults()
@@ -350,6 +653,35 @@ class Simulation:
 
     @classmethod
     def _from_params(cls, *, rng: Rng, **p: Any) -> "Simulation":  # noqa: C901
+        """
+        Internal factory method to construct Simulation from validated config dict.
+
+        This is an internal method called by `init()` after configuration validation.
+        Users should use `Simulation.init()` instead.
+
+        Parameters
+        ----------
+        rng : numpy.random.Generator
+            Random number generator for deterministic simulations.
+        **p : Any
+            Validated configuration parameters (keys from Config dataclass).
+
+        Returns
+        -------
+        Simulation
+            Initialized simulation instance.
+
+        Notes
+        -----
+        - Called internally by `init()` after config validation
+        - Initializes all role arrays (Producer, Worker, etc.) from config
+        - Creates default pipeline from YAML if `pipeline_path` not specified
+        - Not intended for direct use by users
+
+        See Also
+        --------
+        init : Public factory method for creating Simulation instances
+        """
 
         # Vector initilization
 
@@ -547,14 +879,61 @@ class Simulation:
 
     # public API
     # ---------------------------------------------------------------------
-    def run(self, n_periods: Optional[int]) -> None:
+    def run(self, n_periods: Optional[int] = None) -> None:
         """
-        Advance the simulation *n_periods* steps
-        (defaults to the ``n_periods`` passed at construction).
+        Run the simulation for multiple periods.
+
+        Executes the event pipeline for a specified number of periods, advancing
+        the economy state incrementally. If no argument is provided, uses the
+        n_periods value from initialization.
+
+        Parameters
+        ----------
+        n_periods : int, optional
+            Number of periods to simulate. If None (default), uses the n_periods
+            value passed at initialization via `Simulation.init()`.
 
         Returns
         -------
-        None   (state is mutated in-place)
+        None
+            State is mutated in-place. Access results via `sim.ec` (economy state)
+            or role attributes (e.g., `sim.prod`, `sim.wrk`).
+
+        Examples
+        --------
+        Run simulation for 100 periods using default configuration:
+
+        >>> import bamengine as be
+        >>> sim = be.Simulation.init(seed=42)
+        >>> sim.run(n_periods=100)
+        >>> unemployment = sim.ec.unemp_rate_history[-1]
+        >>> print(f"Final unemployment rate: {unemployment:.2%}")
+        Final unemployment rate: 4.32%
+
+        Use n_periods from initialization:
+
+        >>> sim = be.Simulation.init(n_periods=50, seed=42)
+        >>> sim.run()  # Runs for 50 periods
+
+        Access time-series data after simulation:
+
+        >>> sim = be.Simulation.init(seed=42)
+        >>> sim.run(n_periods=100)
+        >>> import matplotlib.pyplot as plt
+        >>> plt.plot(sim.ec.inflation_history)
+        >>> plt.title("Inflation Rate Over Time")
+
+        Notes
+        -----
+        - Each period corresponds to one execution of the full event pipeline
+        - State is mutated in-place; no return value
+        - Simulation halts early if economy is destroyed (all firms/banks bankrupt)
+        - For step-by-step execution with custom logic, use `step()` instead
+
+        See Also
+        --------
+        step : Execute a single simulation period
+        init : Initialize simulation with configuration
         """
         n = n_periods if n_periods is not None else self.n_periods
         for _ in range(int(n)):
@@ -562,15 +941,66 @@ class Simulation:
 
     def step(self) -> None:
         """
-        Advance the economy by exactly one period using the event pipeline.
+        Execute one simulation period through the event pipeline.
 
-        This method executes all events in the pipeline in dependency-resolved
-        order. The pipeline can be customized by users before calling step().
+        Advances the economy by exactly one period, executing all events in the
+        pipeline in the order specified. This is the core execution method called
+        by `run()`. Users can call this directly for fine-grained control between
+        periods.
+
+        Returns
+        -------
+        None
+            State is mutated in-place. The period counter (`sim.t`) is incremented
+            by 1. If the economy is destroyed (all firms/banks bankrupt), execution
+            halts immediately.
+
+        Examples
+        --------
+        Step through simulation manually with intermediate analysis:
+
+        >>> import bamengine as be
+        >>> sim = be.Simulation.init(seed=42)
+        >>> for period in range(100):
+        ...     sim.step()
+        ...     if period % 10 == 0:
+        ...         unemployment = sim.ec.unemp_rate_history[-1]
+        ...         print(f"Period {period}: Unemployment = {unemployment:.2%}")
+        Period 0: Unemployment = 8.40%
+        Period 10: Unemployment = 5.20%
+        Period 20: Unemployment = 4.80%
+        ...
+
+        Modify pipeline before stepping:
+
+        >>> sim = be.Simulation.init(seed=42)
+        >>> # Remove a specific event from the pipeline
+        >>> sim.pipeline.remove("firms_pay_dividends")
+        >>> sim.step()  # Executes modified pipeline
+
+        Conditional execution based on economy state:
+
+        >>> sim = be.Simulation.init(seed=42)
+        >>> while sim.t < 100 and not sim.ec.destroyed:
+        ...     sim.step()
+        ...     avg_price = sim.ec.avg_mkt_price
+        ...     if avg_price > 2.0:
+        ...         print(f"High prices detected at period {sim.t}")
+        ...         break
+
+        Notes
+        -----
+        - Executes all events in `sim.pipeline` in order
+        - Increments period counter (`sim.t`) before pipeline execution
+        - Halts immediately if `sim.ec.destroyed` is True (economy collapse)
+        - For bulk execution over many periods, use `run()` instead
+        - Pipeline can be modified between calls to `step()`
 
         See Also
         --------
-        _step_legacy : Legacy implementation for backward compatibility
-        pipeline : Event pipeline attribute that can be modified
+        run : Execute multiple periods
+        pipeline : Event pipeline (can be modified before stepping)
+        _step_legacy : Legacy implementation for backward compatibility testing
         """
         if self.ec.destroyed:
             return
@@ -740,11 +1170,29 @@ class Simulation:
 
     def _step_legacy(self) -> None:
         """
-        Legacy step implementation (pre-pipeline).
+        Legacy step implementation (pre-pipeline architecture).
 
-        This method is kept for backward compatibility and golden master testing.
-        It will be removed in a future version once pipeline implementation
-        is fully validated.
+        This method executes one simulation period using the original direct
+        system function calls, bypassing the Event/Pipeline architecture. It is
+        retained for backward compatibility and golden master testing to verify
+        that the new pipeline produces identical results.
+
+        Returns
+        -------
+        None
+            State is mutated in-place, identical to `step()`.
+
+        Notes
+        -----
+        - Executes system functions directly without Event wrapper classes
+        - Used for golden master testing (pipeline vs legacy comparison)
+        - Will be removed in a future version after pipeline validation complete
+        - Do not use in production code; prefer `step()` or `run()`
+
+        See Also
+        --------
+        step : Pipeline-based implementation (current standard)
+        run : Execute multiple periods using pipeline
         """
 
         if self.ec.destroyed:

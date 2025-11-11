@@ -1,65 +1,169 @@
-# Default BAM Simulation Event Pipeline
+# ==============================================================================
+# BAM Engine Default Event Pipeline
+# ==============================================================================
 #
-# Events are executed in the exact order listed below.
+# This file defines the canonical event execution order for BAM simulations.
+# Events are executed in the exact order listed below, implementing the
+# sequential economic phases of the BAM model.
 #
-# Special syntax for market rounds:
-#   - 'event_name x N' - repeat event N times
-#   - 'event1 <-> event2 x N' - interleave two events N times (event1, event2, event1, event2, ...)
+# EXECUTION ORDER
+# ---------------
+# Events execute in EXPLICIT ORDER (no dependency-based topological sorting).
+# The order below matches the original BAM model specification and has been
+# validated against legacy implementation via golden master testing.
 #
-# Parameters {max_M}, {max_H}, {max_Z} are substituted at runtime.
+# SPECIAL SYNTAX
+# --------------
+# 1. Simple event:
+#      - event_name
+#    Executes event once per period.
+#
+# 2. Repeated event:
+#      - event_name x N
+#    Executes event N times (e.g., "consumers_shop_one_round x {max_Z}")
+#
+# 3. Interleaved events:
+#      - event1 <-> event2 x N
+#    Alternates between event1 and event2, N times total.
+#    Example: "workers_send_one_round <-> firms_hire_workers x {max_M}"
+#    Expands to: [send, hire, send, hire, ..., send, hire] (max_M pairs)
+#
+# PARAMETER SUBSTITUTION
+# ----------------------
+# The following parameters are substituted at pipeline load time:
+#   - {max_M} : Number of labor market matching rounds (default: 4)
+#   - {max_H} : Number of credit market matching rounds (default: 2)
+#   - {max_Z} : Number of goods market shopping rounds (default: 2)
+#
+# These values come from the simulation configuration (defaults.yml or overrides).
+#
+# CUSTOM PIPELINES
+# ----------------
+# To create a custom pipeline:
+#   1. Copy this file to a new location
+#   2. Modify the event order/structure as needed
+#   3. Pass the custom path to Simulation.init():
+#        sim = be.Simulation.init(pipeline_path="my_pipeline.yml")
+#
+# Custom pipelines can:
+#   - Reorder events (carefully! some orderings may break model logic)
+#   - Remove events (e.g., disable dividends or minimum wage adjustment)
+#   - Add custom events (must be registered in event registry)
+#
+# ECONOMIC PHASES
+# ---------------
+# The pipeline is organized into 8 sequential phases matching the BAM model:
+#
+#   1. Planning: Production targets, pricing, labor needs
+#   2. Labor Market: Wage setting, job search, hiring (max_M rounds)
+#   3. Credit Market: Loan supply/demand, matching (max_H rounds), firing
+#   4. Production: Wage payments, production execution, contract updates
+#   5. Goods Market: Consumption decisions, shopping (max_Z rounds)
+#   6. Revenue: Revenue collection, debt repayment, dividends
+#   7. Bankruptcy: Insolvency detection, firm/bank exit
+#   8. Entry: Replacement firm/bank spawning, statistics
+#
+# See Also
+# --------
+# - bamengine.core.pipeline.Pipeline : Pipeline parser and executor
+# - bamengine.events : All event class definitions
+# - notes/PLAN.md : ECS migration plan with pipeline architecture details
+# - tests/integration/test_pipeline_golden_master.py : Pipeline validation tests
+#
+# ==============================================================================
 
 events:
-  # Planning phase
-  - firms_decide_desired_production
-  - firms_calc_breakeven_price
-  - firms_adjust_price
-  - update_avg_mkt_price
-  - calc_annual_inflation_rate
-  - firms_decide_desired_labor
-  - firms_decide_vacancies
+  # ────────────────────────────────────────────────────────────────────────────
+  # PHASE 1: PLANNING (7 events)
+  # ────────────────────────────────────────────────────────────────────────────
+  # Firms decide production targets, calculate costs, adjust prices based on
+  # inventory and market conditions. Economy-wide statistics updated.
 
-  # Labor market phase
-  - adjust_minimum_wage
-  - firms_decide_wage_offer
-  - workers_decide_firms_to_apply
+  - firms_decide_desired_production    # Set production targets based on demand/inventory
+  - firms_calc_breakeven_price         # Calculate minimum profitable price
+  - firms_adjust_price                 # Adjust price based on inventory levels
+  - update_avg_mkt_price               # Update economy-wide average price
+  - calc_annual_inflation_rate         # Calculate annual inflation rate
+  - firms_decide_desired_labor         # Calculate labor needs from production targets
+  - firms_decide_vacancies             # Post vacancies for labor shortfalls
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # PHASE 2: LABOR MARKET (2 + 2×max_M + 1 = 11 events with default max_M=4)
+  # ────────────────────────────────────────────────────────────────────────────
+  # Minimum wage adjustment, firms set wages, unemployed workers search for jobs,
+  # sequential matching rounds (max_M), then wage bill calculation.
+
+  - adjust_minimum_wage                # Adjust min wage based on inflation
+  - firms_decide_wage_offer            # Firms set wage offers for vacancies
+  - workers_decide_firms_to_apply      # Unemployed workers select firms to apply to
   - workers_send_one_round <-> firms_hire_workers x {max_M}
-  - firms_calc_wage_bill
+                                       # Interleaved job application/hiring rounds
+                                       # Each worker sends ≤1 application per round
+                                       # Firms hire workers from application queue
+  - firms_calc_wage_bill               # Calculate total wage obligations
 
-  # Credit market phase
-  - banks_decide_credit_supply
-  - banks_decide_interest_rate
-  - firms_decide_credit_demand
-  - firms_calc_credit_metrics
-  - firms_prepare_loan_applications
+  # ────────────────────────────────────────────────────────────────────────────
+  # PHASE 3: CREDIT MARKET (5 + 2×max_H + 1 = 10 events with default max_H=2)
+  # ────────────────────────────────────────────────────────────────────────────
+  # Banks decide credit supply, firms calculate credit needs, sequential matching
+  # rounds (max_H), then firms fire workers if credit insufficient.
+
+  - banks_decide_credit_supply         # Banks determine lending capacity
+  - banks_decide_interest_rate         # Banks set interest rates
+  - firms_decide_credit_demand         # Firms calculate financing needs
+  - firms_calc_credit_metrics          # Calculate firm financial fragility metrics
+  - firms_prepare_loan_applications    # Firms prepare ranked bank applications
   - firms_send_one_loan_app <-> banks_provide_loans x {max_H}
-  - firms_fire_workers
+                                       # Interleaved loan application/provision rounds
+                                       # Firms send ≤1 application per round
+                                       # Banks process and approve/reject applications
+  - firms_fire_workers                 # Lay off workers if credit insufficient
 
-  # Production phase
-  - firms_pay_wages
-  - workers_receive_wage
-  - firms_run_production
-  - workers_update_contracts
+  # ────────────────────────────────────────────────────────────────────────────
+  # PHASE 4: PRODUCTION (4 events)
+  # ────────────────────────────────────────────────────────────────────────────
+  # Firms pay wages to workers, production occurs, contracts updated.
 
-  # Goods market phase
-  - consumers_calc_propensity
-  - consumers_decide_income_to_spend
-  - consumers_decide_firms_to_visit
-  - consumers_shop_one_round x {max_Z}
-  - consumers_finalize_purchases
+  - firms_pay_wages                    # Firms transfer wages to workers
+  - workers_receive_wage               # Workers receive wages into income
+  - firms_run_production               # Production execution (goods added to inventory)
+  - workers_update_contracts           # Decrement contract duration, handle expiration
 
-  # Revenue phase
-  - firms_collect_revenue
-  - firms_validate_debt_commitments
-  - firms_pay_dividends
+  # ────────────────────────────────────────────────────────────────────────────
+  # PHASE 5: GOODS MARKET (3 + max_Z + 1 = 6 events with default max_Z=2)
+  # ────────────────────────────────────────────────────────────────────────────
+  # Households decide spending based on income/savings, select firms to visit,
+  # sequential shopping rounds (max_Z), then finalize purchases.
 
-  # Bankruptcy phase
-  - firms_update_net_worth
-  - mark_bankrupt_firms
-  - mark_bankrupt_banks
+  - consumers_calc_propensity          # Calculate consumption propensity from savings
+  - consumers_decide_income_to_spend   # Allocate income for consumption
+  - consumers_decide_firms_to_visit    # Select firms to shop at (price-sorted)
+  - consumers_shop_one_round x {max_Z} # Shopping rounds (buy from one firm per round)
+  - consumers_finalize_purchases       # Update savings with unspent income
 
-  # Entry phase
-  - spawn_replacement_firms
-  - spawn_replacement_banks
+  # ────────────────────────────────────────────────────────────────────────────
+  # PHASE 6: REVENUE (3 events)
+  # ────────────────────────────────────────────────────────────────────────────
+  # Firms collect revenue from sales, repay debts, distribute dividends.
 
-  # End of period
-  - calc_unemployment_rate
+  - firms_collect_revenue              # Collect sales revenue, calculate gross profit
+  - firms_validate_debt_commitments    # Repay loans or default, calculate net profit
+  - firms_pay_dividends                # Distribute dividends from positive profits
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # PHASE 7: BANKRUPTCY (3 events)
+  # ────────────────────────────────────────────────────────────────────────────
+  # Detect insolvent firms/banks, mark for exit (workers fired, loans purged).
+
+  - firms_update_net_worth             # Add retained profits to firm net worth
+  - mark_bankrupt_firms                # Detect/remove bankrupt firms (net worth < 0)
+  - mark_bankrupt_banks                # Detect/remove bankrupt banks (equity < 0)
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # PHASE 8: ENTRY & STATISTICS (3 events)
+  # ────────────────────────────────────────────────────────────────────────────
+  # Replace bankrupt agents, calculate end-of-period unemployment rate.
+
+  - spawn_replacement_firms            # Create new firms to replace bankrupt ones
+  - spawn_replacement_banks            # Create new banks to replace bankrupt ones
+  - calc_unemployment_rate             # Calculate/record unemployment rate

@@ -1,5 +1,12 @@
 """
-Production events internal implementations.
+System functions for production phase events.
+
+This module contains the internal implementation functions for production events.
+Event classes wrap these functions and provide the primary documentation.
+
+See Also
+--------
+bamengine.events.production : Event classes (primary documentation source)
 """
 
 from __future__ import annotations
@@ -18,7 +25,13 @@ def calc_unemployment_rate(
     ec: Economy,
     wrk: Worker,
 ) -> None:
-    """Calculate unemployment rate and update economy history."""
+    """
+    Calculate unemployment rate from worker employment status.
+
+    See Also
+    --------
+    bamengine.events.economy_stats.CalcUnemploymentRate : Full documentation
+    """
     log.info("--- Calculating Unemployment Rate ---")
 
     n_workers = wrk.employed.size
@@ -46,7 +59,11 @@ def update_avg_mkt_price(
     trim_pct: float = 0.0,
 ) -> None:
     """
-    Update exponentially smoothed average market price and update economy state.
+    Update exponentially smoothed average market price.
+
+    See Also
+    --------
+    bamengine.events.economy_stats.UpdateAvgMktPrice : Full documentation
     """
     log.info("--- Updating Average Market Price ---")
 
@@ -77,7 +94,13 @@ def update_avg_mkt_price(
 
 
 def firms_pay_wages(emp: Employer) -> None:
-    """Debit firm cash accounts by wage bills and update employer state."""
+    """
+    Deduct wage bill from firm funds.
+
+    See Also
+    --------
+    bamengine.events.production.FirmsPayWages : Full documentation
+    """
     log.info("--- Firms Paying Wages ---")
 
     paying_firms = np.where(emp.wage_bill > 0.0)[0]
@@ -104,12 +127,11 @@ def firms_pay_wages(emp: Employer) -> None:
 
 def workers_receive_wage(con: Consumer, wrk: Worker) -> None:
     """
-    Credit household income with wages for employed workers
-    and update consumer state.
+    Add wages to worker income.
 
-    Rule
-    ----
-        income += wage · employed
+    See Also
+    --------
+    bamengine.events.production.WorkersReceiveWage : Full documentation
     """
     log.info("--- Workers Receiving Wages ---")
 
@@ -136,14 +158,11 @@ def workers_receive_wage(con: Consumer, wrk: Worker) -> None:
 
 def firms_run_production(prod: Producer, emp: Employer) -> None:
     """
-    Compute production output and update inventory state.
+    Generate production output from labor and productivity.
 
-    Rule
-    ----
-        Y  =  a · L
-        S  ←  Y
-
-    Y: Actual Production Output, a: Labor Productivity, L: Actual Labor, S: Inventory
+    See Also
+    --------
+    bamengine.events.production.FirmsRunProduction : Full documentation
     """
     log.info("--- Firms Running Production ---")
 
@@ -174,16 +193,11 @@ def firms_run_production(prod: Producer, emp: Employer) -> None:
 
 def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
     """
-    Decrease `periods_left` for every employed worker and let contracts that
-    reach 0 expire. All worker-side flags are updated and the corresponding
-    firm's labor and wage-bill are brought back in sync.
+    Decrement contract duration and handle contract expiration.
 
-    Rule
-    ----
-        L_i = Σ {worker employed & employer == i}
-        W   = L · w
-
-    L: Actual Labor, W: Wage Bill, w: Individual Wage
+    See Also
+    --------
+    bamengine.events.production.WorkersUpdateContracts : Full documentation
     """
     log.info("--- Updating Worker Contracts ---")
 

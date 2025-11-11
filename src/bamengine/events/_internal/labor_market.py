@@ -1,5 +1,12 @@
 """
-Labor market events internal implementation.
+System functions for labor market phase events.
+
+This module contains the internal implementation functions for labor market events.
+Event classes wrap these functions and provide the primary documentation.
+
+See Also
+--------
+bamengine.events.labor_market : Event classes (primary documentation source)
 """
 
 from __future__ import annotations
@@ -19,13 +26,11 @@ log = logging.getLogger(__name__)
 
 def calc_annual_inflation_rate(ec: Economy) -> None:
     """
-    Calculate and store the annual inflation rate for the current period.
+    Calculate year-over-year inflation from price history.
 
-    Rule
-    ----
-        π_t = (P̄_{t} - P̄_{t-4}) / P̄_{t-4}
-
-    t: Current Period, π: Annual Inflation Rate, P̄: Average Market Price
+    See Also
+    --------
+    bamengine.events.labor_market.CalcAnnualInflationRate : Full documentation
     """
     log.info("--- Calculating Annual Inflation Rate ---")
     hist = ec.avg_mkt_price_history
@@ -60,13 +65,11 @@ def calc_annual_inflation_rate(ec: Economy) -> None:
 
 def adjust_minimum_wage(ec: Economy) -> None:
     """
-    Every `min_wage_rev_period` periods update ŵ_t by realised inflation π.
+    Periodically index minimum wage to inflation.
 
-    Rule
-    ----
-        ŵ_t = ŵ_{t-1} · π_t
-
-    t: Current Period, ŵ: Minimum Wage, π: Annual Inflation Rate,
+    See Also
+    --------
+    bamengine.events.labor_market.AdjustMinimumWage : Full documentation
     """
     log.info("--- Adjusting Minimum Wage (based on history) ---")
     m = ec.min_wage_rev_period
@@ -98,14 +101,11 @@ def firms_decide_wage_offer(
     rng: Rng = make_rng(),
 ) -> None:
     """
-    Firms with vacancies post a wage offer as a markup over their previous offer.
+    Firms set wage offers with random markup.
 
-    Rule
-    ----
-        shock ~ U(0, h_ξ)
-        w_t = max( ŵ_t, w_{t-1} · (1 + shock) )
-
-    t: Current Period, w: Offered Wage, ŵ: Minimum Wage, h_ξ: Max Wage Growth
+    See Also
+    --------
+    bamengine.events.labor_market.FirmsDecideWageOffer : Full documentation
     """
     log.info("--- Firms Deciding Wage Offers ---")
     log.info(
@@ -169,8 +169,11 @@ def workers_decide_firms_to_apply(
     rng: Rng = make_rng(),
 ) -> None:
     """
-    Unemployed workers choose up to `max_M` firms to apply to, sorted by wage.
-    Workers remain loyal to their last employer if their contract has just expired.
+    Unemployed workers build job application queue sorted by wage.
+
+    See Also
+    --------
+    bamengine.events.labor_market.WorkersDecideFirmsToApply : Full documentation
     """
     log.info("--- Workers Deciding Firms to Apply ---")
     hiring = np.where(emp.n_vacancies > 0)[0]
@@ -301,7 +304,13 @@ def workers_decide_firms_to_apply(
 
 
 def workers_send_one_round(wrk: Worker, emp: Employer, rng: Rng = make_rng()) -> None:
-    """A single round of job applications being sent and received."""
+    """
+    Process one round of job applications from workers to firms.
+
+    See Also
+    --------
+    bamengine.events.labor_market.WorkersSendOneRound : Full documentation
+    """
     log.info("--- Workers Sending One Round of Applications ---")
     stride = wrk.job_apps_targets.shape[1]
     unemp_ids = np.where(wrk.employed == 0)[0]
@@ -513,7 +522,13 @@ def firms_hire_workers(
     theta: int,
     rng: Rng = make_rng(),
 ) -> None:
-    """Match firms with queued applicants and update all related state."""
+    """
+    Firms process applications and hire workers to fill vacancies.
+
+    See Also
+    --------
+    bamengine.events.labor_market.FirmsHireWorkers : Full documentation
+    """
     log.info("--- Firms Hiring Workers ---")
     hiring_ids = np.where(emp.n_vacancies > 0)[0]
     total_vacancies = emp.n_vacancies.sum()
@@ -631,11 +646,11 @@ def firms_hire_workers(
 
 def firms_calc_wage_bill(emp: Employer, wrk: Worker) -> None:
     """
-    Rule
-    ----
-        W_i = Σ w_j for all j employed by firm i
+    Calculate total wage bill per firm.
 
-    W: Wage Bill, w: (Individual) Wage
+    See Also
+    --------
+    bamengine.events.labor_market.FirmsCalcWageBill : Full documentation
     """
     log.info("--- Firms Calculating Wage Bill ---")
 

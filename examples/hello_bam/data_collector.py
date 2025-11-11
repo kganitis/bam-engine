@@ -1,4 +1,3 @@
-# example/data_collector.py
 from dataclasses import dataclass, field
 
 import numpy as np

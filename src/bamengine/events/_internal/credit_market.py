@@ -1,5 +1,12 @@
 """
-Credit‑market events internal implementation.
+System functions for credit market phase events.
+
+This module contains the internal implementation functions for credit market events.
+Event classes wrap these functions and provide the primary documentation.
+
+See Also
+--------
+bamengine.events.credit_market : Event classes (primary documentation source)
 """
 
 from __future__ import annotations
@@ -17,13 +24,11 @@ log = logging.getLogger(__name__)
 
 def banks_decide_credit_supply(lend: Lender, *, v: float) -> None:
     """
-    Banks determine their total credit supply based on their equity.
+    Calculate bank credit supply from equity base.
 
-    Rule
-    ----
-        C = E / v
-
-    `C: Credit Supply, E: Equity Base, v: Capital Requirement Coefficient`
+    See Also
+    --------
+    bamengine.events.credit_market.BanksDecideCreditSupply : Full documentation
     """
     log.info("--- Banks Deciding Credit Supply ---")
     log.info(f"  Inputs: Capital Requirement (v)={v:.3f} (Max Leverage={1 / v:.2f}x)")
@@ -55,14 +60,11 @@ def banks_decide_interest_rate(
     rng: Rng = make_rng(),
 ) -> None:
     """
-    Banks set their nominal interest rate as a markup over a base rate.
+    Set bank interest rates with random markup over base rate.
 
-    Rule
-    ----
-        r = r̄ · (1 + shock)
-        shock ~ U(0, h_φ)
-
-    `r : Nominal Rate, r̄ : Baseline (Policy) Rate, h_φ : Banks Max Opex Growth`
+    See Also
+    --------
+    bamengine.events.credit_market.BanksDecideInterestRate : Full documentation
     """
     log.info("--- Banks Deciding Interest Rate ---")
     log.info(
@@ -98,14 +100,11 @@ def banks_decide_interest_rate(
 
 def firms_decide_credit_demand(bor: Borrower) -> None:
     """
-    Borrowers determine their credit demand
-    as the gap between their wage bill and net worth.
+    Calculate firm credit demand from wage bill and net worth gap.
 
-    Rule
-    ----
-        B = max(W − A, 0)
-
-    `B: Credit Demand, W: Wage Bill, A: Net Worth`
+    See Also
+    --------
+    bamengine.events.credit_market.FirmsDecideCreditDemand : Full documentation
     """
     log.info("--- Borrowers Deciding Credit Demand ---")
     log.info(
@@ -134,14 +133,11 @@ def firms_decide_credit_demand(bor: Borrower) -> None:
 
 def firms_calc_credit_metrics(bor: Borrower) -> None:
     """
-    Borrowers calculate their projected fragility based on credit demand and net worth.
+    Calculate firm financial fragility metrics for loan applications.
 
-    Rule
-    ----
-        l = B / A
-        f = μ · l
-
-    f: Fragility, μ: R&D Intensity, l: Leverage, B: Credit Demand, A: Net Worth
+    See Also
+    --------
+    bamengine.events.credit_market.FirmsCalcCreditMetrics : Full documentation
     """
     log.info("--- Borrowers Calculating Credit Metrics ---")
     shape = bor.net_worth.shape
@@ -200,8 +196,11 @@ def firms_prepare_loan_applications(
     rng: Rng = make_rng(),
 ) -> None:
     """
-    Borrowers with credit demand choose up to `max_H` banks to apply to,
-    sorted by interest rate.
+    Firms build loan application queue sorted by interest rate.
+
+    See Also
+    --------
+    bamengine.events.credit_market.FirmsPrepareLoanApplications : Full documentation
     """
     log.info("--- Borrowers Preparing Loan Applications ---")
     lenders = np.where(lend.credit_supply > 0)[0]
@@ -264,8 +263,11 @@ def firms_prepare_loan_applications(
 
 def firms_send_one_loan_app(bor: Borrower, lend: Lender, rng: Rng = make_rng()) -> None:
     """
-    Borrowers with pending applications send one application each
-    to their targeted banks, if possible. Updates all related state in‑place.
+    Process one round of loan applications from firms to banks.
+
+    See Also
+    --------
+    bamengine.events.credit_market.FirmsSendOneLoanApp : Full documentation
     """
     log.info("--- Borrowers Sending One Round of Applications ---")
     stride = bor.loan_apps_targets.shape[1]  # max_H
@@ -478,7 +480,13 @@ def banks_provide_loans(
     r_bar: float,
     h_phi: float,
 ) -> None:
-    """Process queued applications and update all related state in‑place."""
+    """
+    Banks process applications and provide loans ranked by net worth.
+
+    See Also
+    --------
+    bamengine.events.credit_market.BanksProvideLoans : Full documentation
+    """
     log.info("--- Banks Providing Loans ---")
     bank_ids = np.where(lend.credit_supply > 0.0)[0]
     total_credit_supply = lend.credit_supply.sum()
@@ -615,7 +623,13 @@ def firms_fire_workers(
     method: str = "random",
     rng: Rng = make_rng(),
 ) -> None:
-    """Fire workers to close financing gaps and update all related state."""
+    """
+    Firms lay off workers when credit is insufficient for wage bill.
+
+    See Also
+    --------
+    bamengine.events.credit_market.FirmsFireWorkers : Full documentation
+    """
     log.info("--- Firms Firing Workers ---")
 
     # Find firms with financing gaps

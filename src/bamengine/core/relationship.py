@@ -1,7 +1,58 @@
 """
 Relationship system for managing many-to-many relationships between roles.
 
-This module provides a base class for defining relationships between roles.
+This module provides a base class for defining relationships between roles,
+storing edges (connections) between agents with edge-specific data. Uses
+COO (Coordinate List) sparse format for efficient storage and querying.
+
+Design Notes
+------------
+- Relationships store edges between source and target roles
+- Edge data stored in parallel NumPy arrays (COO format)
+- Supports many-to-many, one-to-many, and many-to-one cardinality
+- Auto-registration via __init_subclass__ hook
+- Query methods use vectorized NumPy operations
+
+Examples
+--------
+Define a loan relationship using @relationship decorator:
+
+>>> from bamengine import relationship, get_role, Float
+>>>
+>>> @relationship(source=get_role("Borrower"), target=get_role("Lender"))
+... class LoanBook:
+...     principal: Float
+...     rate: Float
+...     debt: Float
+
+Access relationship in simulation:
+
+>>> import bamengine as be
+>>> sim = be.Simulation.init(n_firms=100, n_banks=10, seed=42)
+>>> loans = sim.get_relationship("LoanBook")
+>>> # Query loans from specific borrower
+>>> borrower_id = 5
+>>> mask = loans.source_ids[:loans.size] == borrower_id
+>>> borrower_loans = loans.principal[:loans.size][mask]
+
+Traditional syntax:
+
+>>> from dataclasses import dataclass
+>>> from bamengine.core import Relationship
+>>> from bamengine.typing import Float, Int
+>>>
+>>> @dataclass(slots=True)
+... class Employment(Relationship):
+...     source_role = get_role("Borrower")
+...     target_role = get_role("Lender")
+...     wage: Float
+...     contract_duration: Int
+
+See Also
+--------
+Role : Base class for component state
+bamengine.decorators.relationship : Simplified @relationship decorator
+LoanBook : Concrete relationship between Borrower and Lender
 """
 
 from __future__ import annotations

@@ -1,38 +1,103 @@
 """
 Array operations for custom events.
 
-This module provides helper functions that wrap NumPy operations,
-allowing users to write custom events without importing NumPy directly.
+This module provides NumPy-free operations for writing custom events,
+allowing economics researchers to work with BAM Engine without deep
+Python/NumPy knowledge.
 
+Design Notes
+------------
 The operations mirror NumPy's functionality but with:
-- Safe defaults (e.g., division by zero prevention)
-- Consistent naming (verb-based: multiply, divide, etc.)
-- Clear documentation with examples
-- Type hints for better IDE support
+
+- **Safe defaults**: Division by zero prevention (eps=1e-10)
+- **Consistent naming**: Verb-based (multiply, divide vs * and /)
+- **In-place operations**: Support `out=` parameter for performance
+- **Type hints**: Better IDE support with Float, Int, Bool types
+
+Operation Categories
+--------------------
+- **Arithmetic**: add, subtract, multiply, divide
+- **Comparisons**: equal, less, greater, etc.
+- **Logical**: logical_and, logical_or, logical_not
+- **Conditional**: where (if-then-else), select (switch-case)
+- **Element-wise**: maximum, minimum, clip
+- **Aggregation**: sum, mean, any, all
+- **Array creation**: zeros, ones, full, empty
+- **Utilities**: unique, bincount, isin, argsort, sort
+- **Random**: uniform (requires RNG)
+- **Assignment**: assign (in-place array modification)
 
 Examples
 --------
-Create a custom event using operations:
+Basic arithmetic operations:
 
->>> from bamengine import Event, ops
+>>> from bamengine import ops
+>>> import numpy as np
+>>> a = np.array([1.0, 2.0, 3.0])
+>>> b = np.array([4.0, 5.0, 6.0])
+>>> ops.add(a, b)
+array([5., 7., 9.])
+>>> ops.multiply(a, 2.0)
+array([2., 4., 6.])
+
+Safe division (handles zeros):
+
+>>> wages = np.array([10.0, 12.0, 11.0])
+>>> productivity = np.array([2.0, 3.0, 0.0])  # One zero!
+>>> unit_cost = ops.divide(wages, productivity)  # No error
+>>> unit_cost[2] > 1e9  # Zero productivity handled
+True
+
+In-place operations for performance:
+
+>>> out = np.zeros(3)
+>>> result = ops.add(a, b, out=out)
+>>> result is out  # Same object
+True
+
+Conditional logic without NumPy:
+
+>>> has_inventory = ops.greater(inventory, 0)
+>>> new_price = ops.where(has_inventory, price * 0.95, price * 1.05)
+
+Create a custom pricing event:
+
+>>> from bamengine import event, ops
 >>>
->>> class MarkupPricing(Event, name="markup_pricing"):
-...     markup: float = 1.2
-...
+>>> @event
+... class MarkupPricing:
 ...     def execute(self, sim):
-...         prod = sim.prod
-...         emp = sim.emp
-...
+...         prod = sim.get_role("Producer")
+...         emp = sim.get_role("Employer")
 ...         # Calculate unit cost (safe division)
-...         unit_cost = ops.divide(emp.wage_bill, prod.production)
-...
-...         # Set new prices
-...         new_price = ops.multiply(unit_cost, self.markup)
-...         ops.assign(prod.price, new_price)
+...         unit_cost = ops.divide(emp.wage_offered, prod.labor_productivity)
+...         # Apply 20% markup
+...         new_prices = ops.multiply(unit_cost, 1.2)
+...         ops.assign(prod.price, new_prices)
+
+Advanced Usage
+--------------
+For users comfortable with NumPy, direct NumPy operations can be mixed
+with bamengine.ops for flexibility:
+
+>>> import numpy as np
+>>> # Mix ops and NumPy as needed
+>>> from bamengine import event, ops
+>>> @event
+... class CustomEvent:
+...     def execute(self, sim):
+...         # Use ops for safety
+...         unit_cost = ops.divide(wages, productivity)
+...         # Use NumPy directly for complex operations
+...         log_prices = np.log(prices)
+...         weighted_avg = np.average(prices, weights=market_share)
+```
 
 See Also
 --------
-bamengine.typing : Type aliases for defining custom roles
+bamengine.typing : Type aliases (Float, Int, Bool, Agent)
+tests.unit.ops.test_ops : Comprehensive operation tests
+numpy : Underlying array library
 """
 
 from __future__ import annotations

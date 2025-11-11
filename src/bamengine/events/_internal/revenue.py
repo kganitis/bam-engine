@@ -1,5 +1,12 @@
 """
-Revenue events internal implementation.
+System functions for revenue phase events.
+
+This module contains the internal implementation functions for revenue events.
+Event classes wrap these functions and provide the primary documentation.
+
+See Also
+--------
+bamengine.events.revenue : Event classes (primary documentation source)
 """
 
 from __future__ import annotations
@@ -16,15 +23,11 @@ log = logging.getLogger(__name__)
 
 def firms_collect_revenue(prod: Producer, bor: Borrower) -> None:
     """
-    Collect revenue from sales and calculate gross profit for firms.
+    Collect revenue from sales and calculate gross profit.
 
-    Rule
-    ----
-        R            = P · (Y − S)
-        gross_profit = R − W
-        funds        += R
-
-    R: Revenue, P: Individual Price, Y: Actual Production, S: Inventory, W: Wage Bill
+    See Also
+    --------
+    bamengine.events.revenue.FirmsCollectRevenue : Full documentation
     """
     log.info("--- Firms Collecting Revenue & Calculating Gross Profit ---")
 
@@ -79,12 +82,11 @@ def firms_validate_debt_commitments(
     lb: LoanBook,
 ) -> None:
     """
-    Validate debt commitments and process repayments or write-offs.
+    Repay debts or write off if insufficient funds.
 
-    Rule
-    ----
-        If total_funds ≥ total_debt  →  full repayment (principal+interest).
-        Else: proportional write-off up to net-worth
+    See Also
+    --------
+    bamengine.events.revenue.FirmsValidateDebtCommitments : Full documentation
     """
     log.info("--- Firms Validating Debt Commitments ---")
 
@@ -332,20 +334,11 @@ def firms_validate_debt_commitments(
 
 def firms_pay_dividends(bor: Borrower, *, delta: float) -> None:
     """
-    Calculate dividends and retained earnings, then update firm funds accounts.
+    Distribute dividends from positive profits and retain remainder.
 
-    Rule
-    ----
-        retained = π           ( ≤ 0 case)
-                 = π · (1-δ)   ( > 0 case)
-        Div      = π · δ       ( > 0 case)
-
-    π: Net Profit, Div: Dividends, δ: Dividend Payout Ratio
-
-    Notes
-    -----
-    • Cash decreases by dividends paid
-    • Net-worth is **not** updated here
+    See Also
+    --------
+    bamengine.events.revenue.FirmsPayDividends : Full documentation
     """
     log.info(
         f"--- Firms Paying Dividends (Payout Ratio δ for profits = {delta:.2f}) ---"

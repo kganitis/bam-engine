@@ -1,39 +1,73 @@
 """
-Decorators for simplified Role, Event and Relationships definition.
+Decorators for simplified Role, Event and Relationship definition.
 
 This module provides decorators that simplify the syntax for defining
 Roles, Events and Relationships. They automatically apply @dataclass(slots=True),
 handle inheritance from Role/Event/Relationship, and manage registration.
 
-Usage
------
-Instead of:
-    from dataclasses import dataclass
-    from bamengine import Role, Float
+Design Notes
+------------
+The decorators handle three key tasks:
 
-    @dataclass(slots=True)
-    class Producer(Role):
-        price: Float
-        production: Float
+1. Making the class a dataclass with slots
+2. Making it inherit from Role/Event/Relationship (if not already)
+3. Auto-registration via __init_subclass__
 
-You can write:
-    from bamengine import role, Float
+Examples
+--------
+Role decorator (simplest syntax):
 
-    @role
-    class Producer:
-        price: Float
-        production: Float
+>>> from bamengine import role, Float
+>>>
+>>> @role
+... class Producer:
+...     price: Float
+...     production: Float
+>>> # Automatically inherits from Role, is a dataclass, and is registered!
 
-Or with custom name:
-    @role(name="MyProducer")
-    class Producer:
-        price: Float
-        production: Float
+Role with custom name:
 
-The decorator handles:
-- Making the class a dataclass with slots
-- Making it inherit from Role/Event (if not already)
-- Auto-registration via __init_subclass__
+>>> @role(name="MyProducer")
+... class Producer:
+...     price: Float
+...     production: Float
+
+Event decorator:
+
+>>> from bamengine import event
+>>>
+>>> @event
+... class CustomPricingEvent:
+...     def execute(self, sim):
+...         prod = sim.get_role("Producer")
+...         # Apply custom pricing logic
+
+Relationship decorator:
+
+>>> from bamengine import relationship, get_role, Float
+>>>
+>>> @relationship(source=get_role("Borrower"), target=get_role("Lender"))
+... class LoanBook:
+...     principal: Float
+...     rate: Float
+...     debt: Float
+
+Traditional syntax (still works):
+
+>>> from dataclasses import dataclass
+>>> from bamengine.core import Role
+>>> from bamengine import Float
+>>>
+>>> @dataclass(slots=True)
+... class Producer(Role):
+...     price: Float
+...     production: Float
+
+See Also
+--------
+Role : Base class for roles (components)
+Event : Base class for events (systems)
+Relationship : Base class for relationships
 """
 
 from __future__ import annotations
@@ -56,7 +90,8 @@ def role(
     name: str | None = None,
     **dataclass_kwargs: Any,
 ) -> type[T] | Callable[[type[T]], type[T]]:
-    """Decorator to define a Role with automatic inheritance and dataclass.
+    """
+    Decorator to define a Role with automatic inheritance and dataclass.
 
     This decorator dramatically simplifies Role definition by:
     1. Making the class inherit from Role (if not already)
@@ -81,16 +116,18 @@ def role(
     Examples
     --------
     Simplest usage (no inheritance needed):
-        @role
-        class Producer:
-            price: Float
-            production: Float
+    >>> from bamengine.typing import Float
+    >>>
+    >>> @role
+    >>> class Producer:
+    ...    price: Float
+    ...    production: Float
 
     With custom name:
-        @role(name="MyProducer")
-        class Producer:
-            price: Float
-            production: Float
+    >>> @role(name="MyProducer")
+    >>> class Producer:
+    ...     price: Float
+    ...     production: Float
     """
     # Import here to avoid circular imports
     from bamengine.core.role import Role
@@ -141,7 +178,8 @@ def event(
     name: str | None = None,
     **dataclass_kwargs: Any,
 ) -> type[T] | Callable[[type[T]], type[T]]:
-    """Decorator to define an Event with automatic inheritance and dataclass.
+    """
+    Decorator to define an Event with automatic inheritance and dataclass.
 
     This decorator dramatically simplifies Event definition by:
     1. Making the class inherit from Event (if not already)
@@ -166,16 +204,18 @@ def event(
     Examples
     --------
     Simplest usage (no inheritance needed):
-        @event
-        class Planning:
-            def execute(self, sim: Simulation) -> None:
-                # implementation
+    >>> from bamengine import Simulation
+    >>>
+    >>> @event
+    >>> class Planning:
+    ...    def execute(self, sim: Simulation) -> None:
+    ...         # implementation
 
     With custom name:
-        @event(name="my_planning")
-        class Planning:
-            def execute(self, sim: Simulation) -> None:
-                # implementation
+    >>> @event(name="my_planning")
+    >>> class Planning:
+    ...    def execute(self, sim: Simulation) -> None:
+    ...         # implementation
     """
     # Import here to avoid circular imports
     from bamengine.core.event import Event
@@ -264,26 +304,27 @@ def relationship(
     --------
     Simplest usage::
 
-        from bamengine import get_role
-
-        @relationship(source=get_role("Borrower"), target=get_role("Lender"))
-        class LoanBook:
-            principal: Float1D
-            rate: Float1D
-            interest: Float1D
-            debt: Float1D
+    >>> from bamengine import get_role
+    >>> from bamengine.typing import Float, Int
+    >>>
+    >>> @relationship(source=get_role("Borrower"), target=get_role("Lender"))
+    >>> class LoanBook:
+    ...     principal: Float
+    ...     rate: Float
+    ...     interest: Float
+    ...     debt: Float
 
     With custom name and cardinality::
 
-        @relationship(
-            source=get_role("Worker"),
-            target=get_role("Employer"),
-            cardinality="many-to-many",
-            name="MultiJobEmployment"
-        )
-        class Employment:
-            wage: Float1D
-            contract_duration: Int1D
+    >>> @relationship(
+    ...     source=get_role("Worker"),
+    ...     target=get_role("Employer"),
+    ...     cardinality="many-to-many",
+    ...     name="MultiJobEmployment"
+    ... )
+    >>> class Employment:
+    ...     wage: Float
+    ...     contract_duration: Int
     """
     # Import here to avoid circular imports
     from bamengine.core import Relationship

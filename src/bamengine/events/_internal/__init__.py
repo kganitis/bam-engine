@@ -1,6 +1,30 @@
 """
-BAM Events internal implementations.
-Correspond to ECS system functions.
+System functions for BAM Engine events.
+
+This package contains the internal implementation functions for all event phases.
+Event classes (in bamengine.events) wrap these functions and provide the primary
+documentation. System functions are organized by economic phase.
+
+Modules
+-------
+planning : Production targets, costs, prices, labor needs, vacancies (5 functions)
+labor_market : Wage setting, job applications, hiring, wage bills (7 functions)
+credit_market : Credit supply/demand, loan matching, layoffs (8 functions)
+production : Wage payments, production execution, contracts (4 functions + 2 stats)
+goods_market : Consumption decisions, shopping rounds (5 functions)
+revenue : Revenue collection, debt repayment, dividends (3 functions)
+bankruptcy : Insolvency detection, agent replacement (5 functions)
+
+Design Pattern
+--------------
+System functions follow the event-system separation pattern:
+- Event classes = public API with full documentation
+- System functions = internal implementation with minimal documentation
+- Each system function references its corresponding event class for details
+
+See Also
+--------
+bamengine.events : Event classes (primary documentation source)
 """
 
 from .credit_market import (
