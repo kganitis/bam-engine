@@ -14,6 +14,7 @@ from bamengine import Rng, make_rng
 from bamengine.roles import Borrower, Lender
 from bamengine.relationships import LoanBook
 from bamengine.events._internal.credit_market import (
+    _clean_queue,
     banks_decide_credit_supply,
     banks_decide_interest_rate,
     banks_provide_loans,
@@ -766,3 +767,119 @@ def test_banks_provide_loans_sets_contract_rate_formula() -> None:
     # Exactly one loan row must exist and rate must match the formula.
     assert ledger.size == 1
     np.testing.assert_allclose(ledger.rate[0], expected_rate, atol=1e-12)
+
+
+# ============================================================================
+# _clean_queue tests
+# ============================================================================
+
+
+def test_clean_queue_sorts_by_net_worth_when_enabled() -> None:
+    """Test that _clean_queue sorts by net worth when sort_by_net_worth=True."""
+    bor = mock_borrower(
+        n=5,
+        net_worth=np.array([10.0, 50.0, 30.0, 20.0, 40.0]),
+        credit_demand=np.array([100.0, 200.0, 150.0, 120.0, 180.0]),
+    )
+
+    # Queue with borrowers [1, 2, 3, 4] (exclude 0)
+    raw_queue = np.array([1, 2, 3, 4], dtype=np.int64)
+
+    result = _clean_queue(raw_queue, bor, bank_idx_for_log=0, sort_by_net_worth=True)
+
+    # Should be sorted by net worth descending: [1(50), 4(40), 2(30), 3(20)]
+    expected = np.array([1, 4, 2, 3], dtype=np.int64)
+    np.testing.assert_array_equal(result, expected)
+
+
+def test_clean_queue_preserves_order_when_disabled() -> None:
+    """Test that _clean_queue preserves application order when sort_by_net_worth=False."""
+    bor = mock_borrower(
+        n=5,
+        net_worth=np.array([10.0, 50.0, 30.0, 20.0, 40.0]),
+        credit_demand=np.array([100.0, 200.0, 150.0, 120.0, 180.0]),
+    )
+
+    # Queue with borrowers [1, 2, 3, 4] (exclude 0)
+    raw_queue = np.array([1, 2, 3, 4], dtype=np.int64)
+
+    result = _clean_queue(raw_queue, bor, bank_idx_for_log=0, sort_by_net_worth=False)
+
+    # Should preserve order: [1, 2, 3, 4]
+    expected = np.array([1, 2, 3, 4], dtype=np.int64)
+    np.testing.assert_array_equal(result, expected)
+
+
+def test_clean_queue_filters_negative_sentinels() -> None:
+    """Test that _clean_queue removes -1 sentinels regardless of sorting."""
+    bor = mock_borrower(
+        n=4,
+        net_worth=np.array([10.0, 20.0, 30.0, 40.0]),
+        credit_demand=np.array([100.0, 200.0, 150.0, 180.0]),
+    )
+
+    # Queue with sentinels
+    raw_queue = np.array([1, -1, 2, -1, 3], dtype=np.int64)
+
+    # With sorting
+    result_sorted = _clean_queue(raw_queue, bor, bank_idx_for_log=0, sort_by_net_worth=True)
+    # Should be [3(30), 2(20), 1(10)] - no -1s
+    assert -1 not in result_sorted
+    assert result_sorted.size == 3
+
+    # Without sorting
+    result_unsorted = _clean_queue(raw_queue, bor, bank_idx_for_log=0, sort_by_net_worth=False)
+    # Should be [1, 2, 3] - no -1s, order preserved
+    assert -1 not in result_unsorted
+    np.testing.assert_array_equal(result_unsorted, [1, 2, 3])
+
+
+def test_clean_queue_filters_zero_credit_demand() -> None:
+    """Test that _clean_queue removes borrowers with zero credit demand."""
+    bor = mock_borrower(
+        n=5,
+        net_worth=np.array([10.0, 20.0, 30.0, 40.0, 50.0]),
+        credit_demand=np.array([100.0, 0.0, 150.0, 0.0, 180.0]),  # 1 and 3 have no demand
+    )
+
+    raw_queue = np.array([0, 1, 2, 3, 4], dtype=np.int64)
+
+    result = _clean_queue(raw_queue, bor, bank_idx_for_log=0, sort_by_net_worth=False)
+
+    # Should only include borrowers with positive demand: [0, 2, 4]
+    expected = np.array([0, 2, 4], dtype=np.int64)
+    np.testing.assert_array_equal(result, expected)
+
+
+def test_clean_queue_removes_duplicates() -> None:
+    """Test that _clean_queue removes duplicate borrower IDs."""
+    bor = mock_borrower(
+        n=4,
+        net_worth=np.array([10.0, 20.0, 30.0, 40.0]),
+        credit_demand=np.array([100.0, 200.0, 150.0, 180.0]),
+    )
+
+    # Queue with duplicates
+    raw_queue = np.array([1, 2, 1, 3, 2], dtype=np.int64)
+
+    result = _clean_queue(raw_queue, bor, bank_idx_for_log=0, sort_by_net_worth=False)
+
+    # Should keep only first occurrence of each: [1, 2, 3]
+    expected = np.array([1, 2, 3], dtype=np.int64)
+    np.testing.assert_array_equal(result, expected)
+
+
+def test_clean_queue_empty_after_filtering() -> None:
+    """Test that _clean_queue handles empty queue after filtering."""
+    bor = mock_borrower(
+        n=3,
+        net_worth=np.array([10.0, 20.0, 30.0]),
+        credit_demand=np.array([0.0, 0.0, 0.0]),  # All zero demand
+    )
+
+    raw_queue = np.array([0, 1, 2], dtype=np.int64)
+
+    result = _clean_queue(raw_queue, bor, bank_idx_for_log=0, sort_by_net_worth=True)
+
+    # Should be empty
+    assert result.size == 0
