@@ -61,7 +61,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, TypeVar
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from bamengine.core.event import Event
     from bamengine.core.relationship import Relationship
     from bamengine.core.role import Role

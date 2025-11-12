@@ -33,6 +33,14 @@ class TestArithmetic:
         result = ops.subtract(a, b)
         np.testing.assert_array_equal(result, [4.0, 5.0, 6.0])
 
+    def test_subtract_with_out(self):
+        a = np.array([5.0, 7.0, 9.0])
+        b = np.array([1.0, 2.0, 3.0])
+        out = np.zeros(3)
+        result = ops.subtract(a, b, out=out)
+        assert result is out
+        np.testing.assert_array_equal(out, [4.0, 5.0, 6.0])
+
     def test_multiply_arrays(self):
         a = np.array([2.0, 3.0, 4.0])
         b = np.array([5.0, 6.0, 7.0])
@@ -62,6 +70,14 @@ class TestArithmetic:
         result = ops.divide(a, 0.0)
         # Should not raise
         assert np.all(np.isfinite(result))
+
+    def test_divide_with_out(self):
+        a = np.array([10.0, 20.0, 30.0])
+        b = np.array([2.0, 4.0, 5.0])
+        out = np.zeros(3)
+        result = ops.divide(a, b, out=out)
+        assert result is out
+        np.testing.assert_array_equal(out, [5.0, 5.0, 6.0])
 
 
 class TestAssignment:
@@ -233,6 +249,14 @@ class TestAggregation:
         a = np.array([[1.0, 2.0], [3.0, 4.0]])
         result = ops.mean(a, axis=0)
         np.testing.assert_array_equal(result, [2.0, 3.0])
+
+    def test_mean_with_where(self):
+        """Test mean with where clause to filter elements."""
+        values = np.array([1.0, 2.0, 100.0, 3.0])
+        mask = np.array([True, True, False, True])
+        result = ops.mean(values, where=mask)
+        # Should exclude 100.0
+        assert result == 2.0
 
     def test_any_true(self):
         a = np.array([False, False, True, False])

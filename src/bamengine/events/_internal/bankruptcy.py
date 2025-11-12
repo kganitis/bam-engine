@@ -187,7 +187,7 @@ def spawn_replacement_firms(
     log.info(f"  Spawning {num_exiting} new firm(s) to replace bankrupt ones.")
 
     # handle full market collapse
-    if num_exiting == bor.net_worth.size:  # TODO: Branch uncovered by tests
+    if num_exiting == bor.net_worth.size:  # pragma: no cover - catastrophic edge case
         log.critical("!!! ALL FIRMS ARE BANKRUPT !!! SIMULATION ENDING.")
         ec.destroyed = True
         return

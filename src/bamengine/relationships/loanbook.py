@@ -602,7 +602,7 @@ class LoanBook:
             self.size = new_size
             return removed
 
-        return 0
+        return 0  # pragma: no cover - edge case: no loans to purge
 
     def purge_borrowers(self, borrower_ids: Idx1D) -> int:
         """

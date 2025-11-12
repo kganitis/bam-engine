@@ -61,7 +61,7 @@ from typing import TYPE_CHECKING
 
 from bamengine.core.decorators import event
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from bamengine.simulation import Simulation
 
 

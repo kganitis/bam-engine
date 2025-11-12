@@ -4,6 +4,8 @@ import logging
 import tempfile
 from pathlib import Path
 
+import pytest
+
 import bamengine.events  # noqa: F401 - register events
 from bamengine.simulation import Simulation
 
@@ -294,5 +296,40 @@ logging:
         # Kwargs override YAML
         logger = logging.getLogger("bamengine")
         assert logger.level == logging.DEBUG
+    finally:
+        Path(yaml_path).unlink()
+
+
+def test_config_dict_passed_directly():
+    """Config can be passed as dict directly (not just YAML path)."""
+    config_dict = {
+        "n_firms": 75,
+        "n_households": 400,
+        "h_rho": 0.15,
+    }
+
+    sim = Simulation.init(config=config_dict, seed=42)
+
+    # Dict config applied
+    assert sim.n_firms == 75
+    assert sim.n_households == 400
+    assert sim.config.h_rho == 0.15
+
+
+def test_config_yaml_non_mapping_root():
+    """Reject YAML file with non-mapping root."""
+    yaml_content = """
+- item1
+- item2
+- item3
+"""
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write(yaml_content)
+        yaml_path = f.name
+
+    try:
+        with pytest.raises(TypeError, match="config root must be mapping"):
+            Simulation.init(config=yaml_path, seed=42)
     finally:
         Path(yaml_path).unlink()
