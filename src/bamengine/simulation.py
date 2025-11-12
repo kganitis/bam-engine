@@ -71,7 +71,6 @@ from pathlib import Path
 from typing import Any, Dict, Mapping, Optional
 
 import numpy as np
-
 import yaml
 
 import bamengine.events  # noqa: F401 - needed to register events
@@ -87,60 +86,7 @@ from bamengine.roles import (
     Worker,
 )
 from bamengine.economy import Economy
-from bamengine.relationships import LoanBook
-from bamengine.events._internal.bankruptcy import (
-    firms_update_net_worth,
-    mark_bankrupt_banks,
-    mark_bankrupt_firms,
-    spawn_replacement_banks,
-    spawn_replacement_firms,
-)
-from bamengine.events._internal.credit_market import (
-    banks_decide_credit_supply,
-    banks_decide_interest_rate,
-    banks_provide_loans,
-    firms_calc_credit_metrics,
-    firms_decide_credit_demand,
-    firms_fire_workers,
-    firms_prepare_loan_applications,
-    firms_send_one_loan_app,
-)
-from bamengine.events._internal.goods_market import (
-    consumers_calc_propensity,
-    consumers_decide_firms_to_visit,
-    consumers_decide_income_to_spend,
-    consumers_finalize_purchases,
-    consumers_shop_one_round,
-)
-from bamengine.events._internal.labor_market import (
-    adjust_minimum_wage,
-    calc_annual_inflation_rate,
-    firms_calc_wage_bill,
-    firms_decide_wage_offer,
-    firms_hire_workers,
-    workers_decide_firms_to_apply,
-    workers_send_one_round,
-)
-from bamengine.events._internal.planning import (
-    firms_adjust_price,
-    firms_calc_breakeven_price,
-    firms_decide_desired_labor,
-    firms_decide_desired_production,
-    firms_decide_vacancies,
-)
-from bamengine.events._internal.production import (
-    calc_unemployment_rate,
-    firms_pay_wages,
-    firms_run_production,
-    update_avg_mkt_price,
-    workers_receive_wage,
-    workers_update_contracts,
-)
-from bamengine.events._internal import (
-    firms_collect_revenue,
-    firms_pay_dividends,
-    firms_validate_debt_commitments,
-)
+from bamengine.relationships import LoanBook  # import relationships after roles
 from bamengine.typing import Float1D
 
 __all__ = ["Simulation"]
@@ -1000,7 +946,6 @@ class Simulation:
         --------
         run : Execute multiple periods
         pipeline : Event pipeline (can be modified before stepping)
-        _step_legacy : Legacy implementation for backward compatibility testing
         """
         if self.ec.destroyed:
             return
@@ -1167,125 +1112,3 @@ class Simulation:
             pass
 
         raise ValueError(f"'{name}' not found in simulation.")
-
-    def _step_legacy(self) -> None:
-        """
-        Legacy step implementation (pre-pipeline architecture).
-
-        This method executes one simulation period using the original direct
-        system function calls, bypassing the Event/Pipeline architecture. It is
-        retained for backward compatibility and golden master testing to verify
-        that the new pipeline produces identical results.
-
-        Returns
-        -------
-        None
-            State is mutated in-place, identical to `step()`.
-
-        Notes
-        -----
-        - Executes system functions directly without Event wrapper classes
-        - Used for golden master testing (pipeline vs legacy comparison)
-        - Will be removed in a future version after pipeline validation complete
-        - Do not use in production code; prefer `step()` or `run()`
-
-        See Also
-        --------
-        step : Pipeline-based implementation (current standard)
-        run : Execute multiple periods using pipeline
-        """
-
-        if self.ec.destroyed:
-            return
-
-        self.t += 1
-
-        # *************** event 1 – planning ***************
-
-        firms_decide_desired_production(
-            self.prod, p_avg=self.ec.avg_mkt_price, h_rho=self.h_rho, rng=self.rng
-        )
-        firms_calc_breakeven_price(self.prod, self.emp, self.lb)
-        firms_adjust_price(
-            self.prod,
-            p_avg=self.ec.avg_mkt_price,
-            h_eta=self.h_eta,
-            rng=self.rng,
-        )
-        update_avg_mkt_price(self.ec, self.prod)
-        calc_annual_inflation_rate(self.ec)
-        firms_decide_desired_labor(self.prod, self.emp)
-        firms_decide_vacancies(self.emp)
-
-        # *************** event 2 – labor-market ***************
-
-        adjust_minimum_wage(self.ec)
-        firms_decide_wage_offer(
-            self.emp, w_min=self.ec.min_wage, h_xi=self.h_xi, rng=self.rng
-        )
-        workers_decide_firms_to_apply(
-            self.wrk, self.emp, max_M=self.max_M, rng=self.rng
-        )
-        for _ in range(self.max_M):
-            workers_send_one_round(self.wrk, self.emp, rng=self.rng)
-            firms_hire_workers(self.wrk, self.emp, theta=self.theta, rng=self.rng)
-        firms_calc_wage_bill(self.emp, self.wrk)
-
-        # *************** event 3 – credit-market ***************
-
-        banks_decide_credit_supply(self.lend, v=self.v)
-        banks_decide_interest_rate(
-            self.lend, r_bar=self.r_bar, h_phi=self.h_phi, rng=self.rng
-        )
-        firms_decide_credit_demand(self.bor)
-        firms_calc_credit_metrics(self.bor)
-        firms_prepare_loan_applications(
-            self.bor, self.lend, max_H=self.max_H, rng=self.rng
-        )
-        for _ in range(self.max_H):
-            firms_send_one_loan_app(self.bor, self.lend, rng=self.rng)
-            banks_provide_loans(self.bor, self.lb, self.lend, r_bar=0.02, h_phi=0.10)
-        firms_fire_workers(self.emp, self.wrk, rng=self.rng)
-
-        # *************** event 4 – production ***************
-
-        firms_pay_wages(self.emp)
-        workers_receive_wage(self.con, self.wrk)
-        firms_run_production(self.prod, self.emp)
-        workers_update_contracts(self.wrk, self.emp)
-
-        # *************** event 5 – goods-market ***************
-
-        _avg_sav = float(self.con.savings.mean())
-        consumers_calc_propensity(self.con, avg_sav=_avg_sav, beta=self.beta)
-        consumers_decide_income_to_spend(self.con)
-        consumers_decide_firms_to_visit(
-            self.con, self.prod, max_Z=self.max_Z, rng=self.rng
-        )
-        for _ in range(self.max_Z):
-            consumers_shop_one_round(self.con, self.prod, rng=self.rng)
-        consumers_finalize_purchases(self.con)
-
-        # *************** event 6 – revenue ***************
-
-        firms_collect_revenue(self.prod, self.bor)
-        firms_validate_debt_commitments(self.bor, self.lend, self.lb)
-        firms_pay_dividends(self.bor, delta=self.delta)
-
-        # *************** event 7 – bankruptcy ***************
-
-        firms_update_net_worth(self.bor)
-        mark_bankrupt_firms(self.ec, self.emp, self.bor, self.prod, self.wrk, self.lb)
-        mark_bankrupt_banks(self.ec, self.lend, self.lb)
-
-        # *************** event 8 – entry ***************
-
-        spawn_replacement_firms(self.ec, self.prod, self.emp, self.bor, rng=self.rng)
-        spawn_replacement_banks(self.ec, self.lend, rng=self.rng)
-
-        # *************** end of period ***************
-
-        calc_unemployment_rate(self.ec, self.wrk)
-
-        if self.ec.destroyed:
-            log.info("SIMULATION TERMINATED")
