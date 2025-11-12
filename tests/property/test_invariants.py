@@ -6,7 +6,8 @@ hold across a wide range of parameter combinations.
 
 import numpy as np
 import pytest
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from bamengine import Simulation
 
@@ -171,7 +172,7 @@ class TestProductionInvariants:
         """Inventory should follow conservation law."""
         sim = Simulation.init(n_firms=n_firms, seed=seed)
 
-        initial_inventory = sim.prod.inventory.copy()
+        sim.prod.inventory.copy()
 
         sim.step()
 

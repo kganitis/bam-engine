@@ -1,12 +1,12 @@
 import numpy as np
 import pytest
 
-from bamengine.simulation import Simulation
 from bamengine.events._internal.planning import (
     firms_decide_desired_labor,
     firms_decide_desired_production,
     firms_decide_vacancies,
 )
+from bamengine.simulation import Simulation
 
 
 def test_event_planning(tiny_sched: Simulation) -> None:

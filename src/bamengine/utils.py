@@ -33,13 +33,13 @@ Notes
 - Beta sampling is used for initialization with controlled variance
 - Top-k selection uses argpartition for O(n) performance vs O(n log n) for sort
 """
+
 from typing import Optional
 
 import numpy as np
 from numpy.random import Generator, default_rng
 
 from bamengine.typing import Float1D, Idx1D
-
 
 EPS = 1.0e-9
 

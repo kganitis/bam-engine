@@ -7,18 +7,18 @@ import pytest
 
 from bamengine import relationship
 from bamengine.core import (
-    Role,
     Event,
     Relationship,
-    get_role,
+    Role,
     get_event,
     get_relationship,
+    get_role,
 )
 from bamengine.core.registry import (
     clear_registry,
     list_events,
-    list_roles,
     list_relationships,
+    list_roles,
 )
 from bamengine.typing import Float1D
 
@@ -36,7 +36,7 @@ def clean_registry():
     that rely on real components being registered.
     """
     # noinspection PyProtectedMember
-    from bamengine.core.registry import _ROLE_REGISTRY, _EVENT_REGISTRY
+    from bamengine.core.registry import _EVENT_REGISTRY, _ROLE_REGISTRY
 
     # Save current state
     saved_roles = dict(_ROLE_REGISTRY)

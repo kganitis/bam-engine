@@ -3,8 +3,7 @@
 import numpy as np
 
 from bamengine.core import Role
-from bamengine.core.registry import list_roles, get_role
-
+from bamengine.core.registry import get_role, list_roles
 
 # Note: These tests require real BAM components to be in the registry.
 # If unit tests run first and clear the registry, components won't
@@ -21,14 +20,7 @@ from bamengine.core.registry import list_roles, get_role
 def test_all_roles_registered():
     """Verify all BAM roles are in registry."""
     # Import all roles to ensure they're loaded
-    from bamengine.roles import (
-        Producer,
-        Employer,
-        Borrower,
-        Worker,
-        Consumer,
-        Lender,
-    )
+    from bamengine.roles import Borrower, Consumer, Employer, Lender, Producer, Worker
 
     roles = list_roles()
 
@@ -116,14 +108,7 @@ def test_role_is_dataclass():
 
 def test_role_inheritance():
     """Verify all roles inherit from Role."""
-    from bamengine.roles import (
-        Producer,
-        Worker,
-        Lender,
-        Borrower,
-        Consumer,
-        Employer,
-    )
+    from bamengine.roles import Borrower, Consumer, Employer, Lender, Producer, Worker
 
     assert issubclass(Producer, Role)
     assert issubclass(Worker, Role)

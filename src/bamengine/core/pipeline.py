@@ -65,8 +65,7 @@ import re
 from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
-from typing import TYPE_CHECKING
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import yaml
 

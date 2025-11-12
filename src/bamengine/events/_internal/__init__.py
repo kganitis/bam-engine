@@ -27,6 +27,13 @@ See Also
 bamengine.events : Event classes (primary documentation source)
 """
 
+from .bankruptcy import (
+    firms_update_net_worth,
+    mark_bankrupt_banks,
+    mark_bankrupt_firms,
+    spawn_replacement_banks,
+    spawn_replacement_firms,
+)
 from .credit_market import (
     banks_decide_credit_supply,
     banks_decide_interest_rate,
@@ -71,13 +78,6 @@ from .revenue import (
     firms_collect_revenue,
     firms_pay_dividends,
     firms_validate_debt_commitments,
-)
-from .bankruptcy import (
-    firms_update_net_worth,
-    mark_bankrupt_firms,
-    mark_bankrupt_banks,
-    spawn_replacement_firms,
-    spawn_replacement_banks,
 )
 
 __all__: list[str] = [

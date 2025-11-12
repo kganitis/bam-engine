@@ -19,7 +19,6 @@ from typing import Any
 
 import numpy as np
 
-from bamengine.simulation import Simulation
 from bamengine.events._internal.bankruptcy import (  # systems under test
     firms_update_net_worth,
     mark_bankrupt_banks,
@@ -27,6 +26,7 @@ from bamengine.events._internal.bankruptcy import (  # systems under test
     spawn_replacement_banks,
     spawn_replacement_firms,
 )
+from bamengine.simulation import Simulation
 
 
 def _run_bankruptcy_entry_event(sch: Simulation) -> dict[str, Any]:

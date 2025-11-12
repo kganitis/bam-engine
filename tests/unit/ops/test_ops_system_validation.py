@@ -11,7 +11,7 @@ in user-facing code.
 
 import numpy as np
 
-from bamengine import Simulation, ops, make_rng
+from bamengine import Simulation, make_rng, ops
 
 
 class TestProductionSystemValidation:
@@ -33,8 +33,8 @@ class TestProductionSystemValidation:
         sim_ops.step()
 
         # Save original state
-        original_production_numpy = sim_numpy.prod.desired_production.copy()
-        original_production_ops = sim_ops.prod.desired_production.copy()
+        sim_numpy.prod.desired_production.copy()
+        sim_ops.prod.desired_production.copy()
 
         # NumPy implementation (from original system function)
         prod_np = sim_numpy.prod

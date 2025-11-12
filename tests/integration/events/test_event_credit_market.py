@@ -18,7 +18,6 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
-from bamengine.simulation import Simulation
 from bamengine.events._internal.credit_market import (
     banks_decide_credit_supply,
     banks_decide_interest_rate,
@@ -29,6 +28,7 @@ from bamengine.events._internal.credit_market import (
     firms_prepare_loan_applications,
     firms_send_one_loan_app,
 )
+from bamengine.simulation import Simulation
 
 
 def _run_credit_event(sch: Simulation) -> NDArray[np.float64]:

@@ -59,7 +59,7 @@ from __future__ import annotations
 
 from abc import ABC
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeVar, Optional
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, Optional, TypeVar
 
 import numpy as np
 

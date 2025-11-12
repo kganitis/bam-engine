@@ -13,9 +13,9 @@ from __future__ import annotations
 
 import numpy as np
 
-from bamengine import logging, Rng, make_rng
-from bamengine.roles import Employer, Producer
+from bamengine import Rng, logging, make_rng
 from bamengine.relationships import LoanBook
+from bamengine.roles import Employer, Producer
 from bamengine.utils import EPS
 
 log = logging.getLogger(__name__)

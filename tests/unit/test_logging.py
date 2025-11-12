@@ -60,7 +60,7 @@ class TestLoggingConfiguration:
 
     def test_default_log_level(self):
         """Default log level should be INFO."""
-        sim = Simulation.init(n_firms=10, n_households=10, n_banks=2, seed=42)
+        Simulation.init(n_firms=10, n_households=10, n_banks=2, seed=42)
 
         # Check default level
         logger = logging.getLogger("bamengine")
@@ -69,7 +69,7 @@ class TestLoggingConfiguration:
     def test_set_default_level_debug(self):
         """Can set default level to DEBUG via kwargs."""
         log_config = {"default_level": "DEBUG", "events": {}}
-        sim = Simulation.init(
+        Simulation.init(
             n_firms=10, n_households=10, n_banks=2, logging=log_config, seed=42
         )
 
@@ -79,7 +79,7 @@ class TestLoggingConfiguration:
     def test_set_default_level_warning(self):
         """Can set default level to WARNING via kwargs."""
         log_config = {"default_level": "WARNING", "events": {}}
-        sim = Simulation.init(
+        Simulation.init(
             n_firms=10, n_households=10, n_banks=2, logging=log_config, seed=42
         )
 
@@ -89,7 +89,7 @@ class TestLoggingConfiguration:
     def test_set_default_level_deep_debug(self):
         """Can set default level to DEEP_DEBUG via kwargs."""
         log_config = {"default_level": "DEEP_DEBUG", "events": {}}
-        sim = Simulation.init(
+        Simulation.init(
             n_firms=10, n_households=10, n_banks=2, logging=log_config, seed=42
         )
 
@@ -105,7 +105,7 @@ class TestLoggingConfiguration:
                 "workers_send_one_round": "WARNING",
             },
         }
-        sim = Simulation.init(
+        Simulation.init(
             n_firms=10, n_households=10, n_banks=2, logging=log_config, seed=42
         )
 
@@ -125,7 +125,7 @@ class TestLoggingConfiguration:
                 "firms_hire_workers": "DEEP_DEBUG",
             },
         }
-        sim = Simulation.init(
+        Simulation.init(
             n_firms=10, n_households=10, n_banks=2, logging=log_config, seed=42
         )
 
@@ -154,7 +154,7 @@ logging:
             yaml_path = f.name
 
         try:
-            sim = Simulation.init(config=yaml_path, seed=42)
+            Simulation.init(config=yaml_path, seed=42)
 
             # Check default level
             logger = logging.getLogger("bamengine")
@@ -191,7 +191,7 @@ logging:
                 "default_level": "DEBUG",
                 "events": {"firms_adjust_price": "WARNING"},
             }
-            sim = Simulation.init(config=yaml_path, logging=log_config, seed=42)
+            Simulation.init(config=yaml_path, logging=log_config, seed=42)
 
             # Kwargs should win
             logger = logging.getLogger("bamengine")

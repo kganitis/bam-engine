@@ -14,8 +14,8 @@ from __future__ import annotations
 import numpy as np
 
 from bamengine import logging
-from bamengine.roles import Borrower, Lender, Producer
 from bamengine.relationships import LoanBook
+from bamengine.roles import Borrower, Lender, Producer
 from bamengine.utils import EPS
 
 log = logging.getLogger(__name__)

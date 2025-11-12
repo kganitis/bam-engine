@@ -13,11 +13,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from bamengine import logging, Rng, make_rng
-from bamengine.roles import Borrower, Employer, Lender, Worker
+from bamengine import Rng, logging, make_rng
 from bamengine.relationships import LoanBook
+from bamengine.roles import Borrower, Employer, Lender, Worker
 from bamengine.typing import Idx1D
-from bamengine.utils import select_top_k_indices_sorted, EPS
+from bamengine.utils import EPS, select_top_k_indices_sorted
 
 log = logging.getLogger(__name__)
 
