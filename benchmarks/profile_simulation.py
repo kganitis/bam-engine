@@ -6,6 +6,7 @@ Identifies performance bottlenecks by profiling function-level execution times.
 import cProfile
 import pstats
 import logging
+from pathlib import Path
 from bamengine import Simulation
 
 # Disable logging for profiling
@@ -14,13 +15,14 @@ logging.getLogger('bamengine').setLevel(logging.ERROR)
 
 def profile_full_simulation():
     """Profile a full simulation run."""
+    # Using 1000 periods as recommended in original BAM paper
     sim = Simulation.init(n_firms=100, n_households=500, seed=42)
-    sim.run(100)
+    sim.run(1000)
 
 
 if __name__ == "__main__":
     print("Profiling BAM Engine simulation...")
-    print("Configuration: 100 firms, 500 households, 100 periods")
+    print("Configuration: 100 firms, 500 households, 1000 periods")
     print()
 
     profiler = cProfile.Profile()
@@ -45,8 +47,10 @@ if __name__ == "__main__":
     stats.sort_stats('tottime')
     stats.print_stats(30)
 
-    # Save for later analysis
-    stats.dump_stats('simulation_profile.prof')
+    # Save for later analysis in benchmarks directory
+    output_dir = Path(__file__).parent
+    output_path = output_dir / "simulation_profile.prof"
+    stats.dump_stats(str(output_path))
     print()
-    print("Profile saved to: simulation_profile.prof")
-    print("Analyze with: snakeviz simulation_profile.prof")
+    print(f"Profile saved to: {output_path}")
+    print(f"Analyze with: snakeviz {output_path}")

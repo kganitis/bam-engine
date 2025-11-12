@@ -16,12 +16,12 @@ from bamengine import Simulation
 logging.getLogger("bamengine").setLevel(logging.ERROR)
 
 
-# Performance baselines (seconds) - established November 9, 2025
+# Performance baselines (seconds) - established November 12, 2025
 # Note: These include pytest framework overhead (~20-25% slower than pure benchmark)
 # Update these after confirming performance improvements
-BASELINE_SMALL = 0.72  # 100 firms, 500 households, 100 periods
-BASELINE_MEDIUM = 1.20  # 200 firms, 1000 households, 100 periods
-BASELINE_LARGE = 2.80  # 500 firms, 2500 households, 100 periods
+BASELINE_SMALL = 7.2  # 100 firms, 500 households, 1000 periods
+BASELINE_MEDIUM = 13.0  # 200 firms, 1000 households, 1000 periods
+BASELINE_LARGE = 30.7  # 500 firms, 2500 households, 1000 periods
 
 # Allowed regression threshold (15% slower than baseline)
 # More relaxed than pure benchmarks due to test framework overhead variability
@@ -60,7 +60,7 @@ def benchmark_configuration(n_firms, n_households, n_periods, seed=42):
 @pytest.mark.regression
 def test_no_performance_regression_small():
     """Ensure performance hasn't regressed for small configuration."""
-    elapsed = benchmark_configuration(100, 500, 100)
+    elapsed = benchmark_configuration(100, 500, 1000)
 
     threshold = BASELINE_SMALL * REGRESSION_THRESHOLD
 
@@ -82,7 +82,7 @@ def test_no_performance_regression_small():
 @pytest.mark.regression
 def test_no_performance_regression_medium():
     """Ensure performance hasn't regressed for medium configuration."""
-    elapsed = benchmark_configuration(200, 1000, 100)
+    elapsed = benchmark_configuration(200, 1000, 1000)
 
     threshold = BASELINE_MEDIUM * REGRESSION_THRESHOLD
 
@@ -104,7 +104,7 @@ def test_no_performance_regression_medium():
 @pytest.mark.regression
 def test_no_performance_regression_large():
     """Ensure performance hasn't regressed for large configuration."""
-    elapsed = benchmark_configuration(500, 2500, 100)
+    elapsed = benchmark_configuration(500, 2500, 1000)
 
     threshold = BASELINE_LARGE * REGRESSION_THRESHOLD
 

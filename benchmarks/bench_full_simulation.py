@@ -69,10 +69,11 @@ def run_all_benchmarks():
     print()
 
     # Benchmark configurations
+    # Note: Using 1000 periods as recommended in original BAM paper
     configs = [
-        ("Small", 100, 500, 100),
-        ("Medium", 200, 1000, 100),
-        ("Large", 500, 2500, 100),
+        ("Small", 100, 500, 1000),
+        ("Medium", 200, 1000, 1000),
+        ("Large", 500, 2500, 1000),
     ]
 
     results = {}
