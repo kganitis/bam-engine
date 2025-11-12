@@ -1,0 +1,71 @@
+# When you use BAM Engine in your research, please cite both:
+#   1. This software (citation below)
+#   2. Macroeconomics from the Bottom-up (Delli Gatti et al., 2011)
+
+cff-version: 1.2.0
+message: 'If you use this software, please cite both the software and the original book "Macroeconomics from the Bottom-up" (Delli Gatti et al., 2011).'
+title: "BAM Engine: Modular Python Framework for the BAM Macroeconomic Model"
+type: software
+authors:
+  - family-names: Ganitis
+    given-names: Konstantinos
+    email: ganitiskostas@gmail.com
+    affiliation: University of Piraeus, Greece
+version: 0.1.0
+date-released: 2025-11-12
+repository-code: "https://github.com/kganitis/bam-engine"
+url: "https://kganitis.github.io/bam-engine/"
+license: MIT
+
+abstract: |
+  BAM Engine is a high-performance Python implementation of the BAM (Bottom-Up
+  Adaptive Macroeconomics) model, an agent-based macroeconomic simulation framework
+  from the CATS (Complex Adaptive Trivial Systems) family. The model simulates
+  interactions between three types of agents (households, firms, and banks) across
+  three markets (labor, credit, and consumption goods). The implementation uses
+  vectorized NumPy operations for performance and follows an Entity-Component-System
+  (ECS) architecture for modularity and extensibility. BAM Engine is designed for
+  economics researchers studying macroeconomic dynamics, financial stability, and
+  policy interventions in heterogeneous agent economies.
+
+keywords:
+  - agent-based modeling
+  - macroeconomics
+  - computational economics
+  - complex adaptive systems
+  - emergent behavior
+  - heterogeneous agents
+  - agent-oriented programming
+  - BAM model
+  - CATS models
+  - Python
+  - NumPy
+  - ECS
+  - entity component system
+
+contact:
+  - family-names: Ganitis
+    given-names: Konstantinos
+    email: ganitiskostas@gmail.com
+    affiliation: University of Piraeus, Greece
+
+references:
+  - type: book
+    title: "Macroeconomics from the Bottom-up"
+    authors:
+      - family-names: Delli Gatti
+        given-names: Domenico
+      - family-names: Desiderio
+        given-names: Saul
+      - family-names: Gaffeo
+        given-names: Edoardo
+      - family-names: Cirillo
+        given-names: Pasquale
+      - family-names: Gallegati
+        given-names: Mauro
+    year: 2011
+    publisher:
+      name: Springer Milano
+    collection-title: New Economic Windows
+    doi: 10.1007/978-88-470-1971-3
+    isbn: 978-88-470-1971-3
