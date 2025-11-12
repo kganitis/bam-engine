@@ -16,7 +16,6 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
-from bamengine.simulation import Simulation
 from bamengine.events._internal.goods_market import (  # systems under test
     consumers_calc_propensity,
     consumers_decide_firms_to_visit,
@@ -24,6 +23,7 @@ from bamengine.events._internal.goods_market import (  # systems under test
     consumers_finalize_purchases,
     consumers_shop_one_round,
 )
+from bamengine.simulation import Simulation
 
 
 def _run_goods_event(sch: Simulation) -> dict[str, NDArray[np.float64]]:

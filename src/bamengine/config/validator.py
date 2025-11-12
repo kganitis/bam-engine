@@ -6,18 +6,26 @@ once at Simulation.init() to ensure fail-fast behavior with clear error messages
 
 Validation Layers
 -----------------
-1. **Type Checking**: Ensures all parameters have correct types (int, float, str, etc.)
-2. **Range Validation**: Ensures parameters are within valid ranges (e.g., 0 <= h_rho <= 1)
-3. **Relationship Constraints**: Validates cross-parameter dependencies (e.g., warns if n_households < n_firms)
-4. **Pipeline Validation**: Validates custom pipeline YAML files (structure, event names, parameter substitution)
+1. **Type Checking**: Ensures all parameters have correct types
+   (int, float, str, etc.)
+2. **Range Validation**: Ensures parameters are within valid ranges
+   (e.g., 0 <= h_rho <= 1)
+3. **Relationship Constraints**: Validates cross-parameter dependencies
+   (e.g., warns if n_households < n_firms)
+4. **Pipeline Validation**: Validates custom pipeline YAML files
+   (structure, event names, parameter substitution)
 5. **Logging Validation**: Validates log levels and event names
 
 Benefits
 --------
-- **Fail-fast**: Invalid configurations rejected immediately with clear error messages
-- **Single location**: All validation logic in one place (no scattered checks)
-- **No runtime overhead**: Validation happens once at initialization, not during simulation
-- **Clear errors**: Error messages include parameter name, expected range, and actual value
+- **Fail-fast**: Invalid configurations rejected immediately
+  with clear error messages
+- **Single location**: All validation logic in one place
+  (no scattered checks)
+- **No runtime overhead**: Validation happens once at initialization,
+  not during simulation
+- **Clear errors**: Error messages include parameter name, expected range,
+  and actual value
 
 Examples
 --------
@@ -726,8 +734,10 @@ class ConfigValidator:
         validate_pipeline_path : Validate path exists
         bamengine.core.pipeline.Pipeline.from_yaml : Loads validated pipeline
         """
-        import yaml
         from pathlib import Path
+
+        import yaml
+
         from bamengine.core.registry import list_events
 
         params = params or {}

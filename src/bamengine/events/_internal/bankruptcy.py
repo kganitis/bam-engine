@@ -13,17 +13,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from bamengine import logging, Rng, make_rng
+from bamengine import Rng, logging, make_rng
 from bamengine.economy import Economy
-from bamengine.roles import (
-    Borrower,
-    Employer,
-    Lender,
-    Producer,
-    Worker,
-)
 from bamengine.relationships import LoanBook
-from bamengine.utils import trim_mean, EPS
+from bamengine.roles import Borrower, Employer, Lender, Producer, Worker
+from bamengine.utils import EPS, trim_mean
 
 log = logging.getLogger(__name__)
 

@@ -11,7 +11,6 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from bamengine.simulation import Simulation
 from bamengine.events._internal.labor_market import (
     adjust_minimum_wage,
     calc_annual_inflation_rate,
@@ -20,6 +19,7 @@ from bamengine.events._internal.labor_market import (
     workers_decide_firms_to_apply,
     workers_send_one_round,
 )
+from bamengine.simulation import Simulation
 
 
 def _run_planning(sch: Simulation) -> None:

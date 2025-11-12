@@ -7,13 +7,13 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from bamengine.roles import Borrower, Lender
-from bamengine.relationships import LoanBook
 from bamengine.events._internal import (
     firms_collect_revenue,
     firms_pay_dividends,
     firms_validate_debt_commitments,
 )
+from bamengine.relationships import LoanBook
+from bamengine.roles import Borrower, Lender
 from tests.helpers.factories import (
     mock_borrower,
     mock_lender,

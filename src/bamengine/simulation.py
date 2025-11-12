@@ -63,6 +63,7 @@ Step-by-step execution with intermediate analysis:
 ...     if period % 10 == 0:
 ...         print(f"Period {period}: Unemployment = {sim.ec.unemp_rate_history[-1]:.2%}")
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -74,19 +75,18 @@ import numpy as np
 import yaml
 
 import bamengine.events  # noqa: F401 - needed to register events
-from bamengine import logging, Rng, make_rng
+from bamengine import Rng, logging, make_rng
 from bamengine.config import Config
 from bamengine.core.pipeline import Pipeline, create_default_pipeline
-from bamengine.roles import (
-    Borrower,
-    Consumer,
-    Employer,
-    Lender,
-    Producer,
-    Worker,
-)
 from bamengine.economy import Economy
-from bamengine.relationships import LoanBook  # import relationships after roles
+
+# Import roles BEFORE relationships (LoanBook needs roles to be registered first)
+from bamengine.roles import Borrower, Consumer, Employer, Lender, Producer, Worker
+
+# isort: off
+from bamengine.relationships import LoanBook  # Must import after roles
+
+# isort: on
 from bamengine.typing import Float1D
 
 __all__ = ["Simulation"]

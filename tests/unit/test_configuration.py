@@ -158,7 +158,7 @@ def test_logging_default_level():
         "events": {},
     }
 
-    sim = Simulation.init(
+    Simulation.init(
         n_firms=10,
         n_households=50,
         logging=log_config,
@@ -180,7 +180,7 @@ def test_logging_per_event_overrides():
         },
     }
 
-    sim = Simulation.init(
+    Simulation.init(
         n_firms=10,
         n_households=50,
         logging=log_config,
@@ -215,7 +215,7 @@ logging:
         yaml_path = f.name
 
     try:
-        sim = Simulation.init(config=yaml_path, seed=42)
+        Simulation.init(config=yaml_path, seed=42)
 
         # Check logging configuration was applied
         logger = logging.getLogger("bamengine")
@@ -283,7 +283,7 @@ logging:
             "events": {},
         }
 
-        sim = Simulation.init(
+        Simulation.init(
             config=yaml_path,
             n_firms=10,
             n_households=50,

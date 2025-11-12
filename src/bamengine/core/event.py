@@ -33,11 +33,12 @@ bamengine.decorators.event : Simplified decorator for defining events
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from bamengine import logging
 import re
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, ClassVar, Any
+from typing import TYPE_CHECKING, Any, ClassVar
+
+from bamengine import logging
 
 if TYPE_CHECKING:
     from bamengine.simulation import Simulation

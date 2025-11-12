@@ -78,8 +78,8 @@ from dataclasses import field
 
 import numpy as np
 
-from bamengine.core import relationship, get_role
-from bamengine.typing import Float1D, Idx1D, Int1D, Bool1D
+from bamengine.core import get_role, relationship
+from bamengine.typing import Bool1D, Float1D, Idx1D, Int1D
 
 
 # Use @relationship decorator to define LoanBook as a Relationship between

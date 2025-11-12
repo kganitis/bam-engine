@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from bamengine import logging, Rng, make_rng
+from bamengine import Rng, logging, make_rng
 from bamengine.roles import Consumer, Producer
 from bamengine.utils import EPS
 

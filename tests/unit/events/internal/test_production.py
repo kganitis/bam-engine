@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import numpy as np
 
-from bamengine.roles import Employer, Worker
 from bamengine.events._internal.production import (
     # firms_decide_price,
     calc_unemployment_rate,
@@ -16,6 +15,7 @@ from bamengine.events._internal.production import (
     workers_receive_wage,
     workers_update_contracts,
 )
+from bamengine.roles import Employer, Worker
 from tests.helpers.factories import (
     mock_consumer,
     mock_economy,
@@ -23,7 +23,6 @@ from tests.helpers.factories import (
     mock_producer,
     mock_worker,
 )
-
 
 # def test_firms_decide_price_obeys_break_even_and_shocks() -> None:
 #     rng = make_rng(0)

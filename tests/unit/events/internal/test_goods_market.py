@@ -10,7 +10,6 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from bamengine import Rng, make_rng
-from bamengine.roles import Consumer, Producer
 from bamengine.events._internal.goods_market import (
     consumers_calc_propensity,
     consumers_decide_firms_to_visit,
@@ -18,6 +17,7 @@ from bamengine.events._internal.goods_market import (
     consumers_finalize_purchases,
     consumers_shop_one_round,
 )
+from bamengine.roles import Consumer, Producer
 from tests.helpers.factories import mock_consumer, mock_producer
 
 
@@ -169,7 +169,7 @@ def test_one_round_skip_sold_out() -> None:
     by one and not crash.
     """
     con, prod, rng, Z = _mini_state()
-    stride = con.shop_visits_targets.shape[1]
+    con.shop_visits_targets.shape[1]
 
     # Ensure consumer 0 has budget
     consumers_calc_propensity(con, avg_sav=1.0, beta=0.9)

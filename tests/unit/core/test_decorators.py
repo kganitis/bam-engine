@@ -3,7 +3,7 @@
 import numpy as np
 
 from bamengine import relationship
-from bamengine.core import Event, Role, event, role, get_relationship, Relationship
+from bamengine.core import Event, Relationship, Role, event, get_relationship, role
 from bamengine.core.registry import get_event, get_role
 from bamengine.typing import Float1D
 

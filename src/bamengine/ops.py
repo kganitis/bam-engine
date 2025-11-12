@@ -102,11 +102,11 @@ numpy : Underlying array library
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union, Optional
+from typing import TYPE_CHECKING, Optional, Union
 
 import numpy as np
 
-from bamengine.typing import Float, Int, Bool, Agent
+from bamengine.typing import Agent, Bool, Float, Int
 
 if TYPE_CHECKING:
     from numpy.random import Generator

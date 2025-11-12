@@ -13,7 +13,6 @@ from hypothesis import strategies as st
 from numpy.typing import NDArray
 
 from bamengine import Rng, make_rng
-from bamengine.roles import Employer, Worker
 from bamengine.events._internal.labor_market import (
     adjust_minimum_wage,
     calc_annual_inflation_rate,
@@ -22,11 +21,8 @@ from bamengine.events._internal.labor_market import (
     workers_decide_firms_to_apply,
     workers_send_one_round,
 )
-from tests.helpers.factories import (
-    mock_economy,
-    mock_employer,
-    mock_worker,
-)
+from bamengine.roles import Employer, Worker
+from tests.helpers.factories import mock_economy, mock_employer, mock_worker
 from tests.helpers.fixed_rng import FixedRNG
 
 

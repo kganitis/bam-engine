@@ -63,8 +63,8 @@ from typing import TYPE_CHECKING, TypeVar
 
 if TYPE_CHECKING:
     from bamengine.core.event import Event
-    from bamengine.core.role import Role
     from bamengine.core.relationship import Relationship
+    from bamengine.core.role import Role
 
 # Type variables for generic decorator typing
 R = TypeVar("R", bound="Role")

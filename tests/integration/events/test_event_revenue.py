@@ -7,12 +7,12 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
-from bamengine.simulation import Simulation
 from bamengine.events._internal import (
     firms_collect_revenue,
     firms_pay_dividends,
     firms_validate_debt_commitments,
 )
+from bamengine.simulation import Simulation
 from bamengine.utils import EPS
 
 

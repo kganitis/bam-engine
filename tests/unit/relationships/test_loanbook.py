@@ -19,7 +19,6 @@ import numpy as np
 from bamengine.relationships import LoanBook
 from tests.helpers.factories import mock_loanbook
 
-
 # ============================================================================
 # Initialization and Properties
 # ============================================================================

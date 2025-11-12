@@ -9,7 +9,7 @@ Strategy: Create parallel implementations using ops, run both, compare results.
 
 import numpy as np
 
-from bamengine import Simulation, ops, make_rng
+from bamengine import Simulation, make_rng, ops
 
 
 def test_getter_methods_work():

@@ -11,8 +11,6 @@ from hypothesis import strategies as st
 from numpy.typing import NDArray
 
 from bamengine import Rng, make_rng
-from bamengine.roles import Borrower, Lender
-from bamengine.relationships import LoanBook
 from bamengine.events._internal.credit_market import (
     _clean_queue,
     banks_decide_credit_supply,
@@ -24,6 +22,8 @@ from bamengine.events._internal.credit_market import (
     firms_prepare_loan_applications,
     firms_send_one_loan_app,
 )
+from bamengine.relationships import LoanBook
+from bamengine.roles import Borrower, Lender
 from bamengine.utils import select_top_k_indices_sorted
 from tests.helpers.factories import (
     mock_borrower,

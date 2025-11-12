@@ -14,8 +14,8 @@ from __future__ import annotations
 import numpy as np
 
 from bamengine import logging
-from bamengine.roles import Consumer, Employer, Producer, Worker
 from bamengine.economy import Economy
+from bamengine.roles import Consumer, Employer, Producer, Worker
 from bamengine.utils import trimmed_weighted_mean
 
 log = logging.getLogger(__name__)

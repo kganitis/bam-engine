@@ -137,7 +137,8 @@ Module Organization
   - `bamengine.role`, `bamengine.event`, `bamengine.relationship` : Decorators
   - `bamengine.ops` : NumPy-free operations
   - `bamengine.logging` : Custom logging
-  - `bamengine.Float`, `bamengine.Int`, `bamengine.Bool`, `bamengine.AgentId` : Type aliases
+  - `bamengine.Float`, `bamengine.Int`, `bamengine.Bool`,
+    `bamengine.AgentId` : Type aliases
 
 **Internal Modules** (implementation details, subject to change):
   - `bamengine.roles` : Built-in role implementations (Producer, Worker, etc.)
@@ -232,13 +233,27 @@ def make_rng(seed: int | None = None) -> Rng:
 # ============================================================================
 # Core simulation facade (imports after dependencies)
 # ============================================================================
-from .simulation import Simulation  # noqa: E402  (circular‑safe)
-
 # ============================================================================
 # ECS extensibility components
 # ============================================================================
-from .core import *  # noqa: E402 (circular‑safe)
+from .core import (  # noqa: E402 (circular‑safe)
+    Agent,
+    AgentType,
+    Event,
+    Relationship,
+    Role,
+    event,
+    get_event,
+    get_relationship,
+    get_role,
+    list_events,
+    list_relationships,
+    list_roles,
+    relationship,
+    role,
+)
 from .economy import Economy  # noqa: E402 (circular‑safe)
+from .simulation import Simulation  # noqa: E402  (circular‑safe)
 
 # ============================================================================
 # Public API exports

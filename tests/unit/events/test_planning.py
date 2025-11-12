@@ -10,7 +10,6 @@ import bamengine.events  # noqa: F401 - register all events for Simulation.init(
 from bamengine.core import get_event
 from bamengine.simulation import Simulation
 
-
 # ============================================================================
 # Execution Tests
 # ============================================================================

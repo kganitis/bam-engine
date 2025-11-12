@@ -73,7 +73,7 @@ Relationship : Base class for relationships
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, TypeVar, Literal
+from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
 
 if TYPE_CHECKING:
     from bamengine.core import Role

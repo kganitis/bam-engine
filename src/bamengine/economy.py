@@ -21,6 +21,7 @@ Notes
 Economy is not a Role - it does not inherit from the Role base class because
 it represents economy-wide state rather than per-agent arrays.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

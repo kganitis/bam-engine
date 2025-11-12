@@ -24,6 +24,7 @@ See Also
 bamengine.logging : Implementation module
 logging : Python standard library logging module
 """
+
 import logging
 from typing import Any, Optional
 
@@ -38,6 +39,7 @@ DEEP_DEBUG: int
 
 class BamLogger(logging.Logger):
     """Custom logger with DEEP_DEBUG level support."""
+
     def deep(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log message at DEEP_DEBUG level (5)."""
         ...

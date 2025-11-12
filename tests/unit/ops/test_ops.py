@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from bamengine import ops, make_rng
+from bamengine import make_rng, ops
 
 
 class TestArithmetic:
