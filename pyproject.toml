@@ -1,28 +1,102 @@
-# pyproject.toml
+# Build System Configuration
+
 [build-system]
 requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
+# Project Metadata
+
 [project]
 name = "bamengine"
-version = "0.0.0"
-requires-python = ">=3.10"
+dynamic = ["version"]
+description = "High-performance agent-based framework for the BAM macroeconomic model"
+readme = "README.md"
+authors = [
+    {name = "Kostas Ganitis", email = "ganitiskostas@gmail.com"}
+]
+maintainers = [
+    {name = "Kostas Ganitis", email = "ganitiskostas@gmail.com"}
+]
 dependencies = [
     "numpy>=1.26",
-    "numba<=0.62.1",
     "PyYAML>=6.0.2",
+]
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = [
+    "agent-based-modeling",
+    "macroeconomics",
+    "economic-simulation",
+    "computational-economics",
+    "complex-adaptive-systems",
+    "heterogeneous-agents",
+    "entity-component-system",
+    "simulation",
+    "scientific-computing",
+    "bam-model",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Education",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Office/Business :: Financial",
+    "Typing :: Typed",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "black>=24.1",
-    "ruff>=0.4",
-    "mypy>=1.9",
+    "bamengine[test,lint,docs]",
+]
+test = [
     "pytest>=8.3",
     "pytest-cov>=5.0",
     "hypothesis>=6.131.9",
-    "matplotlib>=3.10.3",
+    "pytest-benchmark>=4.0.0",
+    "snakeviz>=2.2.0",
 ]
+lint = [
+    "black>=24.1",
+    "ruff>=0.4",
+    "mypy>=1.9",
+]
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings[python]>=0.24.0",
+    "mkdocs-autorefs>=0.5.0",
+]
+
+[project.urls]
+homepage = "https://kganitis.github.io/bam-engine/"
+source = "https://github.com/kganitis/bam-engine"
+tracker = "https://github.com/kganitis/bam-engine/issues"
+changelog = "https://github.com/kganitis/bam-engine/blob/main/CHANGELOG.md"
+
+# Package Configuration
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+bamengine = ["*.yml", "*.yaml", "py.typed"]
+
+[tool.setuptools.dynamic]
+version = {attr = "bamengine.__version__"}
+
+# Tool Configuration
 
 [tool.ruff]
 fix = true
@@ -30,21 +104,40 @@ line-length = 88
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "NPY"]
-extend-select = ["E501"]  # Enforce line-length violations
-ignore = []
+ignore = ["E501"]  # Black handles line length
+
+[tool.ruff.lint.isort]
+# Prevent reordering that breaks import dependencies (LoanBook after roles)
+split-on-trailing-comma = false
+force-sort-within-sections = false
 
 [tool.ruff.lint.pycodestyle]
-max-doc-length = 120  # Allow longer lines in docstrings (120 chars)
-max-line-length = 88  # But keep code at 88
+max-doc-length = 120
+max-line-length = 88
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+docstring-code-format = true
 
 [tool.mypy]
 python_version = "3.12"
 strict = true
+warn_return_any = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = false  # Allow @event, @role decorators
+no_implicit_optional = true
 
+# Fix false positives from multiprocessing name clashes
 [[tool.mypy.overrides]]
 module = "bamengine.simulation"
-# Ignore false positive name clashes with multiprocessing builtins
-# (Producer, Worker, Consumer, Employer, Borrower, Lender)
 disable_error_code = ["call-arg"]
 
 [tool.black]
@@ -58,23 +151,38 @@ markers = [
     "invariants: marks invariant validation tests (deselect with '-m \"not invariants\"')",
     "integration: marks integration tests (deselect with '-m \"not integration\"')",
 ]
-# Coverage disabled during ECS migration - re-enable after completion
-# addopts = """
-# --cov=bamengine
-# --cov-report=term-missing
-# --cov-fail-under=95
-# """
+addopts = """
+--cov=bamengine
+--cov-report=term-missing
+--cov-report=html
+--cov-report=json
+--cov-fail-under=95
+-m "not regression"
+"""
 
 [tool.coverage.run]
-omit = [
-    "*/main.py",
-    "*/_testing/*",
-    "*/_logging_ext*",
-]
+data_file = ".coverage_cache/.coverage"
 
 [tool.coverage.report]
 exclude_lines = [
     "pragma: no cover",
     "log\\.",
-    "ValueError"
+    "ValueError",
+    "KeyError",
 ]
+
+[tool.coverage.json]
+output = ".coverage_cache/coverage.json"
+
+[tool.coverage.xml]
+output = ".coverage_cache/coverage.xml"
+
+[tool.coverage.html]
+directory = ".coverage_cache/htmlcov"
+
+[tool.hypothesis]
+database_file = ".hypothesis_cache/examples.db"
+
+[tool.bandit]
+exclude_dirs = ["tests", "benchmarks", ".venv", "build"]
+skips = ["B101"]  # Allow asserts in tests
