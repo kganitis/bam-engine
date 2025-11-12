@@ -64,9 +64,10 @@ Thumbs.db
 *.swp
 *.tmp
 
-# Markdown files (except README.md in root)
+# Markdown files (except README.md in root and docs/)
 *.md
 !/README.md
+!/docs/*.md
 
 # Claude AI files
 .claude/
