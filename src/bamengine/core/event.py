@@ -40,7 +40,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from bamengine import logging
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from bamengine.simulation import Simulation
 
 
@@ -293,7 +293,7 @@ class Event(ABC):
         - RNG: sim.rng
         - Economy state: sim.ec
         """
-        pass
+        pass  # pragma: no cover - abstract method, overridden by subclasses
 
     def __repr__(self) -> str:
         """

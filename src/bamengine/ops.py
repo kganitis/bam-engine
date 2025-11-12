@@ -108,7 +108,7 @@ import numpy as np
 
 from bamengine.typing import Agent, Bool, Float, Int
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from numpy.random import Generator
 
 __all__ = [

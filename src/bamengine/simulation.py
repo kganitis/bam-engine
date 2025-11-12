@@ -335,7 +335,9 @@ class Simulation:
     @property
     def h_eta(self) -> float:
         """Max price-growth shock."""
-        return self.config.h_eta
+        return (
+            self.config.h_eta
+        )  # pragma: no cover - convenience accessor, tested via config
 
     @property
     def max_M(self) -> int:
@@ -365,7 +367,9 @@ class Simulation:
     @property
     def delta(self) -> float:
         """Dividend payout ratio δ (DPR)."""
-        return self.config.delta
+        return (
+            self.config.delta
+        )  # pragma: no cover - convenience accessor, tested via config
 
     @property
     def r_bar(self) -> float:

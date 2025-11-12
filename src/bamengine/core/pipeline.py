@@ -72,7 +72,7 @@ import yaml
 from bamengine.core.event import Event
 from bamengine.core.registry import get_event
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from bamengine.simulation import Simulation
 
 
@@ -502,7 +502,9 @@ def create_default_pipeline(max_M: int, max_H: int, max_Z: int) -> Pipeline:
                 max_H=max_H,
                 max_Z=max_Z,
             )
-    except AttributeError:
+    except (
+        AttributeError
+    ):  # pragma: no cover - Python 3.8 fallback, not tested on 3.13+
         # Fallback for Python 3.8 where resources.files() is unavailable.
         import bamengine
 

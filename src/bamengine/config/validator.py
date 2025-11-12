@@ -252,7 +252,7 @@ class ConfigValidator:
             "min_wage_rev_period",
         ]
 
-        # Float parameters
+        # Float parameters (scalars only)
         float_params = [
             "h_rho",
             "h_xi",
@@ -263,6 +263,10 @@ class ConfigValidator:
             "v",
             "r_bar",
             "min_wage",
+        ]
+
+        # Vector parameters (can be scalar or 1D array)
+        vector_params = [
             "net_worth_init",
             "production_init",
             "price_init",
@@ -290,6 +294,21 @@ class ConfigValidator:
                 raise ValueError(
                     f"Config parameter '{key}' must be float, got {type(val).__name__}"
                 )
+
+        # Check vector parameters (accept int, float, or array-like)
+        for key in vector_params:
+            if key not in cfg:
+                continue
+            val = cfg[key]
+            # Accept scalars or anything np.asarray can handle
+            if not isinstance(val, (int, float)):
+                try:
+                    np.asarray(val)  # Verify it's array-like
+                except (ValueError, TypeError):
+                    raise ValueError(
+                        f"Config parameter '{key}' must be float or array-like, "
+                        f"got {type(val).__name__}"
+                    )
 
         # Check optional float `cap_factor`
         if "cap_factor" in cfg:
@@ -408,6 +427,16 @@ class ConfigValidator:
             "equity_base_init": (0.0, None),
         }
 
+        # Vector parameters (validated separately by _validate_float1d)
+        vector_params = {
+            "net_worth_init",
+            "production_init",
+            "price_init",
+            "savings_init",
+            "wage_offer_init",
+            "equity_base_init",
+        }
+
         for key, (min_val, max_val) in constraints.items():
             if key not in cfg:
                 continue
@@ -416,6 +445,10 @@ class ConfigValidator:
 
             # Skip None values for optional parameters
             if val is None:
+                continue
+
+            # Skip vector parameters (arrays) - validated later by _validate_float1d
+            if key in vector_params and not isinstance(val, (int, float)):
                 continue
 
             # Check minimum

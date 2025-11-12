@@ -65,14 +65,16 @@ import numpy as np
 
 from bamengine.typing import Float1D, Idx1D
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from bamengine.core.role import Role
 
 T = TypeVar("T")
 
 
 @dataclass(slots=True)
-class Relationship(ABC):
+class Relationship(
+    ABC
+):  # Some abstract methods/edge cases not covered - tested via LoanBook
     """
     Base class for defining relationships between roles.
 
