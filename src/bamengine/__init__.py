@@ -174,7 +174,7 @@ Current version: 0.0.0 (development)
 
 from __future__ import annotations
 
-__version__: str = "0.0.0"
+__version__: str = "0.1.0"
 
 # ============================================================================
 # Standard library imports
