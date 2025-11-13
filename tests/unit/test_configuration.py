@@ -11,27 +11,27 @@ from bamengine.simulation import Simulation
 
 
 def test_defaults_yml_loads():
-    """Package defaults.yml can be loaded."""
+    """Package config/defaults.yml can be loaded."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
 
     # Check population sizes (stored on Simulation, not Config)
     assert sim.n_firms == 10  # Overridden by kwargs
     assert sim.n_households == 50  # Overridden by kwargs
-    assert sim.n_banks == 10  # From defaults.yml
+    assert sim.n_banks == 10  # From config/defaults.yml
 
     # Check hyperparameters (stored in Config)
-    assert sim.config.h_rho == 0.10  # From defaults.yml
-    assert sim.config.max_M == 4  # From defaults.yml
+    assert sim.config.h_rho == 0.10  # From config/defaults.yml
+    assert sim.config.max_M == 4  # From config/defaults.yml
 
 
 def test_user_yaml_overrides_defaults():
     """User YAML file overrides defaults.yml."""
     yaml_content = """
-n_firms: 200
-n_households: 1000
-h_rho: 0.15
-max_M: 5
-"""
+        n_firms: 200
+        n_households: 1000
+        h_rho: 0.15
+        max_M: 5
+        """
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
         f.write(yaml_content)
@@ -47,8 +47,8 @@ max_M: 5
         assert sim.config.max_M == 5
 
         # Defaults still apply for unspecified values
-        assert sim.n_banks == 10  # From defaults.yml
-        assert sim.config.theta == 8  # From defaults.yml
+        assert sim.n_banks == 10  # From config/defaults.yml
+        assert sim.config.theta == 8  # From config/defaults.yml
     finally:
         Path(yaml_path).unlink()
 
@@ -56,10 +56,10 @@ max_M: 5
 def test_kwargs_override_yaml():
     """Keyword arguments have highest precedence."""
     yaml_content = """
-n_firms: 200
-n_households: 1000
-h_rho: 0.15
-"""
+        n_firms: 200
+        n_households: 1000
+        h_rho: 0.15
+        """
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
         f.write(yaml_content)

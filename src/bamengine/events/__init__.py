@@ -22,7 +22,7 @@ Total: 37 events across 8 modules
 
 Event Execution
 ---------------
-Events execute in order specified by Pipeline (see default_pipeline.yml).
+Events execute in order specified by Pipeline (see config/default_pipeline.yml).
 Each event wraps a system function from events._internal/ modules.
 
 Key Design Patterns
@@ -56,7 +56,7 @@ See Also
 --------
 bamengine.core.event : Event base class
 bamengine.core.pipeline : Pipeline composition
-bamengine.default_pipeline.yml : Default event ordering
+bamengine.config.default_pipeline.yml : Default event ordering
 bamengine.events._internal : System function implementations
 """
 

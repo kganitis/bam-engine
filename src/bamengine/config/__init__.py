@@ -4,7 +4,7 @@ Configuration system for BAM Engine.
 This package provides a three-tier configuration system with centralized
 validation:
 
-1. **Package defaults** (`src/bamengine/defaults.yml`)
+1. **Package defaults** (`src/bamengine/config/defaults.yml`)
 2. **User config file** (YAML path or dict)
 3. **Keyword arguments** (highest priority)
 

@@ -35,7 +35,7 @@
 #   - {max_H} : Number of credit market matching rounds (default: 2)
 #   - {max_Z} : Number of goods market shopping rounds (default: 2)
 #
-# These values come from the simulation configuration (defaults.yml or overrides).
+# These values come from the simulation configuration (config/defaults.yml or overrides).
 #
 # CUSTOM PIPELINES
 # ----------------

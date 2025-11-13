@@ -157,14 +157,14 @@ See Also
 --------
 bamengine.simulation : Main simulation facade
 bamengine.ops : User-friendly operations
-defaults.yml : Default configuration parameters
-default_pipeline.yml : Default event execution order
+config/defaults.yml : Default configuration parameters
+config/default_pipeline.yml : Default event execution order
 
 Notes
 -----
 - Time scale: 1 period = 1 quarter (4 periods = 1 year)
 - All simulations are deterministic when seed is specified
-- Configuration precedence: defaults.yml → user config → kwargs
+- Configuration precedence: config/defaults.yml → user config → kwargs
 - Pipeline events execute in explicit order (no automatic dependency resolution)
 
 Version
