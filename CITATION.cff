@@ -1,6 +1,6 @@
 # When you use BAM Engine in your research, please cite both:
 #   1. This software (citation below)
-#   2. Macroeconomics from the Bottom-up (Delli Gatti et al., 2011)
+#   2. Macroeconomics from the Bottom-up (Delli Gatti et al., 2011) (citation in references)
 
 cff-version: 1.2.0
 message: 'If you use this software, please cite both the software and the original book "Macroeconomics from the Bottom-up" (Delli Gatti et al., 2011).'
@@ -11,7 +11,7 @@ authors:
     given-names: Konstantinos
     email: ganitiskostas@gmail.com
     affiliation: University of Piraeus, Greece
-version: 0.1.0
+version: 0.1.0-alpha
 date-released: 2025-11-12
 repository-code: "https://github.com/kganitis/bam-engine"
 url: "https://kganitis.github.io/bam-engine/"
@@ -52,6 +52,7 @@ contact:
 references:
   - type: book
     title: "Macroeconomics from the Bottom-up"
+    section: "The BAM model at work"
     authors:
       - family-names: Delli Gatti
         given-names: Domenico
