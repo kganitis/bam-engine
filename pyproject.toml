@@ -91,7 +91,7 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-bamengine = ["*.yml", "*.yaml", "py.typed"]
+bamengine = ["config/*.yml", "config/*.yaml", "py.typed"]
 
 [tool.setuptools.dynamic]
 version = {attr = "bamengine.__version__"}
