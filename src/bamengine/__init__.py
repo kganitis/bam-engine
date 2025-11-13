@@ -133,32 +133,31 @@ Module Organization
 -------------------
 **Public API** (stable, documented, recommended for users):
   - `bamengine.Simulation` : Main simulation class
-  - `bamengine.Role`, `bamengine.Event`, `bamengine.Relationship` : Base classes
   - `bamengine.role`, `bamengine.event`, `bamengine.relationship` : Decorators
   - `bamengine.ops` : NumPy-free operations
   - `bamengine.logging` : Custom logging
-  - `bamengine.Float`, `bamengine.Int`, `bamengine.Bool`,
-    `bamengine.AgentId` : Type aliases
+  - `bamengine.typing` : Type system definitions
 
 **Internal Modules** (implementation details, subject to change):
+  -  bamengine.simulation : Simulation implementation
+  - `bamengine.core` : ECS infrastructure (registry, pipeline)
   - `bamengine.roles` : Built-in role implementations (Producer, Worker, etc.)
   - `bamengine.events` : Built-in event implementations (37 events)
   - `bamengine.relationships` : Built-in relationships (LoanBook)
+  - `bamengine.economy` : Economy-wide state, scalars and time-series
   - `bamengine.config` : Configuration and validation
-  - `bamengine.core` : ECS infrastructure (registry, pipeline)
   - `bamengine.utils` : Internal utilities
 
 References
 ----------
 Delli Gatti, D., Desiderio, S., Gaffeo, E., Cirillo, P., & Gallegati, M. (2011).
-    Macroeconomics from the Bottom-up (Vol. 1). Springer Science & Business Media.
+Macroeconomics from the Bottom-up. Springer Milano. 
+https://doi.org/10.1007/978-88-470-1971-3.
 
 See Also
 --------
-bamengine.simulation : Main simulation facade
-bamengine.ops : User-friendly operations
-config/defaults.yml : Default configuration parameters
-config/default_pipeline.yml : Default event execution order
+defaults.yml : Default configuration parameters
+default_pipeline.yml : Default event execution order
 
 Notes
 -----
@@ -166,10 +165,6 @@ Notes
 - All simulations are deterministic when seed is specified
 - Configuration precedence: config/defaults.yml → user config → kwargs
 - Pipeline events execute in explicit order (no automatic dependency resolution)
-
-Version
--------
-Current version: 0.0.0 (development)
 """
 
 from __future__ import annotations
@@ -230,9 +225,6 @@ def make_rng(seed: int | None = None) -> Rng:
     return np.random.default_rng(seed)
 
 
-# ============================================================================
-# Core simulation facade (imports after dependencies)
-# ============================================================================
 # ============================================================================
 # ECS extensibility components
 # ============================================================================
