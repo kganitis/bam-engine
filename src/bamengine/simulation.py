@@ -569,19 +569,19 @@ class Simulation:
         ----------
         log_config : dict
             Logging configuration with keys:
-            - default_level: str (e.g., 'INFO', 'DEBUG', 'DEEP_DEBUG')
+            - default_level: str (e.g., 'INFO', 'DEBUG', 'TRACE')
             - events: dict[str, str] (per-event overrides)
 
         Notes
         -----
         Supports standard Python logging levels (DEBUG, INFO, WARNING, ERROR,
-        CRITICAL) plus custom DEEP_DEBUG level (5) for fine-grained debugging.
+        CRITICAL) plus custom TRACE level (5) for fine-grained debugging.
         """
 
         # Map level names to numeric values
-        # Include standard levels + custom DEEP_DEBUG
+        # Include standard levels + custom TRACE
         level_map = {
-            "DEEP_DEBUG": logging.DEEP_DEBUG,
+            "TRACE": logging.TRACE,
             "DEBUG": logging.DEBUG,
             "INFO": logging.INFO,
             "WARNING": logging.WARNING,

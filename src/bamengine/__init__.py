@@ -85,7 +85,7 @@ Rng
 ops
     NumPy-free operations for writing custom events (add, multiply, divide, etc.).
 logging
-    Custom logging with DEEP_DEBUG level and per-event log configuration.
+    Custom logging with TRACE level and per-event log configuration.
 
 **Registry Functions**
 

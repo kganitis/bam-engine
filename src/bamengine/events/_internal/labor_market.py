@@ -206,8 +206,8 @@ def workers_decide_firms_to_apply(
     sample = np.empty((unemp.size, M_eff), dtype=np.int64)
     for row, j in enumerate(unemp):
         sample[row] = rng.choice(hiring, size=M_eff, replace=False)
-        if log.isEnabledFor(logging.DEEP_DEBUG):
-            log.deep(
+        if log.isEnabledFor(logging.TRACE):
+            log.trace(
                 f"  Worker {j}: initial sample={sample[row]}, "
                 f"previous: {wrk.employer_prev[j]}, "
                 f"contract_expired: {wrk.contract_expired[j]}, "
@@ -246,13 +246,13 @@ def workers_decide_firms_to_apply(
             application_row = sorted_sample[row]
             num_applications = application_row.shape[0]
 
-            if log.isEnabledFor(logging.DEEP_DEBUG):
-                log.deep(
+            if log.isEnabledFor(logging.TRACE):
+                log.trace(
                     f"      Adjusting for loyalty: "
                     f"Worker ID {actual_worker_id} (row {row}), "
                     f"Prev Emp: {prev_employer_id}"
                 )
-                log.deep(f"      Application row BEFORE: {application_row.copy()}")
+                log.trace(f"      Application row BEFORE: {application_row.copy()}")
 
             try:
                 current_pos_of_prev_emp = (
@@ -272,8 +272,8 @@ def workers_decide_firms_to_apply(
                         ]
                     application_row[0] = prev_employer_id
 
-            if log.isEnabledFor(logging.DEEP_DEBUG):
-                log.deep(f"      Application row AFTER:  {application_row}")
+            if log.isEnabledFor(logging.TRACE):
+                log.trace(f"      Application row AFTER:  {application_row}")
 
         if log.isEnabledFor(logging.DEBUG) and loyal_mask.any():
             log.debug(
@@ -437,8 +437,8 @@ def _check_labor_consistency(tag: str, i: int, wrk: Worker, emp: Employer) -> bo
             f"Δ={true_headcount - recorded:+d}"
         )
         return False
-    elif log.isEnabledFor(logging.DEEP_DEBUG):
-        log.deep(
+    elif log.isEnabledFor(logging.TRACE):
+        log.trace(
             f"[{tag:^10s}] Labor consistent for firm {i:3d}: {recorded:3d} workers."
         )
     return True
@@ -472,8 +472,8 @@ def _clean_queue(slice_: Idx1D, wrk: Worker, firm_idx_for_log: int) -> Idx1D:
     from the raw queue slice (may contain -1 sentinels and duplicates),
     preserving the original order of first appearance.
     """
-    if log.isEnabledFor(logging.DEEP_DEBUG):
-        log.deep(
+    if log.isEnabledFor(logging.TRACE):
+        log.trace(
             f"    Firm {firm_idx_for_log}: "
             f"Cleaning queue. Initial raw slice: {slice_}"
         )
@@ -481,15 +481,15 @@ def _clean_queue(slice_: Idx1D, wrk: Worker, firm_idx_for_log: int) -> Idx1D:
     # Drop -1 sentinels
     cleaned_slice = slice_[slice_ >= 0]
     if cleaned_slice.size == 0:
-        if log.isEnabledFor(logging.DEEP_DEBUG):
-            log.deep(
+        if log.isEnabledFor(logging.TRACE):
+            log.trace(
                 f"    Firm {firm_idx_for_log}: "
                 f"Queue empty after dropping sentinels."
             )
         return cleaned_slice.astype(np.intp)
 
-    if log.isEnabledFor(logging.DEEP_DEBUG):
-        log.deep(
+    if log.isEnabledFor(logging.TRACE):
+        log.trace(
             f"    Firm {firm_idx_for_log}: "
             f"Queue after dropping sentinels: {cleaned_slice}"
         )
@@ -497,8 +497,8 @@ def _clean_queue(slice_: Idx1D, wrk: Worker, firm_idx_for_log: int) -> Idx1D:
     # Unique *without* sorting
     first_idx = np.unique(cleaned_slice, return_index=True)[1]
     unique_slice = cleaned_slice[np.sort(first_idx)]
-    if log.isEnabledFor(logging.DEEP_DEBUG):
-        log.deep(
+    if log.isEnabledFor(logging.TRACE):
+        log.trace(
             f"    Firm {firm_idx_for_log}: "
             f"Queue after unique (order kept): {unique_slice}"
         )
@@ -506,8 +506,8 @@ def _clean_queue(slice_: Idx1D, wrk: Worker, firm_idx_for_log: int) -> Idx1D:
     # Keep only unemployed workers
     unemployed_mask = wrk.employed[unique_slice] == 0
     final_queue = unique_slice[unemployed_mask]
-    if log.isEnabledFor(logging.DEEP_DEBUG):
-        log.deep(
+    if log.isEnabledFor(logging.TRACE):
+        log.trace(
             f"    Firm {firm_idx_for_log}: "
             f"Final cleaned queue (unique, unemployed): {final_queue}"
         )

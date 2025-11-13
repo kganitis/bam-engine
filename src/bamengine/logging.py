@@ -1,7 +1,7 @@
 """
 Custom logging configuration for BAM Engine.
 
-Extends Python's standard logging with a custom DEEP_DEBUG level (5)
+Extends Python's standard logging with a custom TRACE level (5)
 for very verbose debugging output. Provides BamLogger class with
 per-event log level configuration support.
 
@@ -12,7 +12,7 @@ Log Levels
 - WARNING (30): Warnings
 - INFO (20): Informational messages (default)
 - DEBUG (10): Debug messages
-- DEEP_DEBUG (5): Very verbose debug messages
+- TRACE (5): Very verbose debug messages
 
 Examples
 --------
@@ -22,7 +22,7 @@ Use logger in events:
 >>> logger = getLogger("bamengine.events.my_event")
 >>> logger.info("Event executing")
 >>> logger.debug("Detailed debug info")
->>> logger.deep("Very verbose output")
+>>> logger.trace("Very verbose output")
 
 Configure per-event log levels:
 
@@ -58,31 +58,31 @@ from typing import Any
     logging.INFO,
     logging.DEBUG,
 )
-DEEP_DEBUG = 5
-logging.addLevelName(DEEP_DEBUG, "DEEP")
+TRACE = 5
+logging.addLevelName(TRACE, "TRACE")
 
 
 class BamLogger(logging.Logger):
     """
-    Custom logger with DEEP_DEBUG level support.
+    Custom logger with TRACE level support.
 
-    Extends Python's Logger to add the `deep()` method for very verbose
+    Extends Python's Logger to add the `trace()` method for very verbose
     debugging output (level 5).
 
     Examples
     --------
     >>> logger = BamLogger("test")
-    >>> logger.setLevel(5)  # DEEP_DEBUG
-    >>> logger.deep("Very verbose message")
+    >>> logger.setLevel(5)  # TRACE
+    >>> logger.trace("Very verbose message")
 
     See Also
     --------
     getLogger : Factory function for obtaining BamLogger instances
     """
 
-    def deep(self, msg: str, *args: Any, **kwargs: Any) -> None:
+    def trace(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """
-        Log message at DEEP_DEBUG level (5).
+        Log message at TRACE level (5).
 
         Parameters
         ----------
@@ -93,8 +93,8 @@ class BamLogger(logging.Logger):
         **kwargs : Any
             Additional logging kwargs.
         """
-        if self.isEnabledFor(DEEP_DEBUG):
-            self._log(DEEP_DEBUG, msg, args, **kwargs)
+        if self.isEnabledFor(TRACE):
+            self._log(TRACE, msg, args, **kwargs)
 
 
 # Make the logging module hand out our subclass from now on
@@ -112,7 +112,7 @@ def getLogger(name: str | None = None) -> BamLogger:
     Get a BamLogger instance.
 
     Convenience wrapper around logging.getLogger() that returns
-    a BamLogger instance with DEEP_DEBUG support.
+    a BamLogger instance with TRACE support.
 
     Parameters
     ----------
@@ -122,14 +122,14 @@ def getLogger(name: str | None = None) -> BamLogger:
     Returns
     -------
     BamLogger
-        Logger instance with deep() method.
+        Logger instance with trace() method.
 
     Examples
     --------
     >>> from bamengine import logging
     >>> logger = logging.getLogger("bamengine.events.my_event")
     >>> logger.info("Message")
-    >>> logger.deep("Very verbose")
+    >>> logger.trace("Very verbose")
 
     See Also
     --------
