@@ -237,7 +237,7 @@ class Event(ABC):
         Notes
         -----
         Logger name format: 'bamengine.events.{event_name}'
-        Per-event log levels can be configured via defaults.yml or kwargs.
+        Per-event log levels can be configured via config/defaults.yml or kwargs.
         Use isEnabledFor() to avoid expensive computations when logging
         is disabled.
         """

@@ -464,7 +464,7 @@ def create_default_pipeline(max_M: int, max_H: int, max_Z: int) -> Pipeline:
     """
     Create default BAM simulation event pipeline.
 
-    Loads the pipeline from default_pipeline.yml and substitutes
+    Loads the pipeline from config/default_pipeline.yml and substitutes
     market round parameters (max_M, max_H, max_Z).
 
     Parameters
@@ -494,7 +494,7 @@ def create_default_pipeline(max_M: int, max_H: int, max_Z: int) -> Pipeline:
     try:
         # Python 3.9+: importlib.resources.files() returns a Traversable.
         # Use as_file() to obtain a real filesystem Path (mypy-compatible).
-        traversable = resources.files("bamengine") / "default_pipeline.yml"
+        traversable = resources.files("bamengine") / "config" / "default_pipeline.yml"
         with resources.as_file(traversable) as yaml_fs_path:
             return Pipeline.from_yaml(
                 Path(yaml_fs_path),
@@ -508,5 +508,5 @@ def create_default_pipeline(max_M: int, max_H: int, max_Z: int) -> Pipeline:
         # Fallback for Python 3.8 where resources.files() is unavailable.
         import bamengine
 
-        yaml_path = Path(bamengine.__file__).parent / "default_pipeline.yml"
+        yaml_path = Path(bamengine.__file__).parent / "config" / "default_pipeline.yml"
         return Pipeline.from_yaml(yaml_path, max_M=max_M, max_H=max_H, max_Z=max_Z)

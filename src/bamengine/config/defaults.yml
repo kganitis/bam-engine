@@ -91,9 +91,9 @@ equity_base_init:     5.0        # Bank equity at t=0 (money units)
 seed:               12345        # RNG seed (null = random seed)
 
 # ── PIPELINE CONFIGURATION ────────────────────────────────────────────────────
-# Path to custom event pipeline YAML. If null, uses default_pipeline.yml.
+# Path to custom event pipeline YAML. If null, uses config/default_pipeline.yml.
 # Custom pipelines allow reordering events, removing events, or adding custom
-# events. See default_pipeline.yml for syntax.
+# events. See config/default_pipeline.yml for syntax.
 
 pipeline_path:      null         # Custom pipeline path (null = use default)
 

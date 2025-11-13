@@ -25,7 +25,7 @@ Functions
 _read_yaml
     Load configuration from YAML file, dict, or None.
 _package_defaults
-    Load default configuration from bamengine/defaults.yml.
+    Load default configuration from bamengine/config/defaults.yml.
 _validate_float1d
     Validate 1D float array or scalar for initialization.
 
@@ -129,14 +129,14 @@ def _read_yaml(obj: str | Path | Mapping[str, Any] | None) -> Dict[str, Any]:
 
 def _package_defaults() -> Dict[str, Any]:
     """
-    Load default configuration from bamengine/defaults.yml.
+    Load default configuration from bamengine/config/defaults.yml.
 
     Returns
     -------
     dict
         Default configuration parameters.
     """
-    txt = resources.files("bamengine").joinpath("defaults.yml").read_text()
+    txt = resources.files("bamengine").joinpath("config/defaults.yml").read_text()
     return yaml.safe_load(txt) or {}
 
 
@@ -398,7 +398,7 @@ class Simulation:
         Create a new Simulation instance with validated configuration.
 
         Configuration parameters are merged from three sources (later overrides earlier):
-        1. Package defaults (bamengine/defaults.yml)
+        1. Package defaults (bamengine/config/defaults.yml)
         2. User config (YAML file path, dict, or None)
         3. Keyword arguments (highest priority)
 
@@ -418,7 +418,7 @@ class Simulation:
             - seed : int or None (default: None)
             - pipeline_path : str or None (default: None)
             - logging : dict (default: {"default_level": "INFO"})
-            See defaults.yml for all parameters.
+            See config/defaults.yml for all parameters.
 
         Returns
         -------
@@ -496,7 +496,7 @@ class Simulation:
         Config : Configuration dataclass
         ConfigValidator : Centralized validation logic
         Pipeline : Event pipeline configuration
-        defaults.yml : Package default configuration
+        config/defaults.yml : Package default configuration
         """
         # 1 + 2 + 3 → one merged dict
         cfg_dict: Dict[str, Any] = _package_defaults()
