@@ -38,8 +38,8 @@ class Consumer:
     --------
     Access from simulation:
 
-    >>> import bamengine as be
-    >>> sim = be.Simulation.init(n_households=500, seed=42)
+    >>> import bamengine as bam
+    >>> sim = bam.Simulation.init(n_households=500, seed=42)
     >>> con = sim.con
     >>> con.income.shape
     (500,)

@@ -39,8 +39,8 @@ class Lender:
     --------
     Access from simulation:
 
-    >>> import bamengine as be
-    >>> sim = be.Simulation.init(n_banks=10, seed=42)
+    >>> import bamengine as bam
+    >>> sim = bam.Simulation.init(n_banks=10, seed=42)
     >>> lend = sim.lend
     >>> lend.credit_supply.shape
     (10,)

@@ -113,8 +113,8 @@ def get_role(name: str) -> type[Role]:
 
     Use in simulation:
 
-    >>> import bamengine as be
-    >>> sim = be.Simulation.init(n_firms=100, seed=42)
+    >>> import bamengine as bam
+    >>> sim = bam.Simulation.init(n_firms=100, seed=42)
     >>> Producer = get_role("Producer")
     >>> assert isinstance(sim.prod, Producer)
 
@@ -164,8 +164,8 @@ def get_event(name: str) -> type[Event]:
     Retrieve and execute an event:
 
     >>> from bamengine.core.registry import get_event
-    >>> import bamengine as be
-    >>> sim = be.Simulation.init(n_firms=100, seed=42)
+    >>> import bamengine as bam
+    >>> sim = bam.Simulation.init(n_firms=100, seed=42)
     >>> FirmsAdjustPrice = get_event("firms_adjust_price")
     >>> event_instance = FirmsAdjustPrice()
     >>> event_instance.execute(sim)

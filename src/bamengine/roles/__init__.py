@@ -42,8 +42,8 @@ Examples
 --------
 Access roles from simulation:
 
->>> import bamengine as be
->>> sim = be.Simulation.init(n_firms=100, n_households=500, seed=42)
+>>> import bamengine as bam
+>>> sim = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
 >>> prod = sim.prod  # Producer role (100 firms)
 >>> wrk = sim.wrk    # Worker role (500 households)
 >>> prod.price.shape

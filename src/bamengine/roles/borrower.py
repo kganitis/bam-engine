@@ -46,8 +46,8 @@ class Borrower:
     --------
     Access from simulation:
 
-    >>> import bamengine as be
-    >>> sim = be.Simulation.init(n_firms=100, seed=42)
+    >>> import bamengine as bam
+    >>> sim = bam.Simulation.init(n_firms=100, seed=42)
     >>> bor = sim.bor
     >>> bor.net_worth.shape
     (100,)
