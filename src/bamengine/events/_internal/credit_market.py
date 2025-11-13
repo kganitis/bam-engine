@@ -252,8 +252,8 @@ def firms_prepare_loan_applications(
             bor.loan_apps_targets[f_id, H_eff:max_H] = -1
         bor.loan_apps_head[f_id] = f_id * stride
 
-        if log.isEnabledFor(logging.DEEP_DEBUG) and i < 10:
-            log.deep(
+        if log.isEnabledFor(logging.TRACE) and i < 10:
+            log.trace(
                 f"    Borrower {f_id}: targets={bor.loan_apps_targets[f_id]}, "
                 f"head_ptr={bor.loan_apps_head[f_id]}"
             )
@@ -410,8 +410,8 @@ def _clean_queue(
     Idx1D
         Cleaned queue of unique borrower ids with positive credit demand
     """
-    if log.isEnabledFor(logging.DEEP_DEBUG):
-        log.deep(
+    if log.isEnabledFor(logging.TRACE):
+        log.trace(
             f"    Bank {bank_idx_for_log}: Cleaning queue. "
             f"Initial raw slice: {slice_}"
         )
@@ -419,15 +419,15 @@ def _clean_queue(
     # Drop -1 sentinels
     cleaned_slice = slice_[slice_ >= 0]
     if cleaned_slice.size == 0:
-        if log.isEnabledFor(logging.DEEP_DEBUG):
-            log.deep(
+        if log.isEnabledFor(logging.TRACE):
+            log.trace(
                 f"    Bank {bank_idx_for_log}: "
                 f"Queue empty after dropping sentinels."
             )
         return cleaned_slice.astype(np.intp)
 
-    if log.isEnabledFor(logging.DEEP_DEBUG):
-        log.deep(
+    if log.isEnabledFor(logging.TRACE):
+        log.trace(
             f"    Bank {bank_idx_for_log}: "
             f"Queue after dropping sentinels: {cleaned_slice}"
         )
@@ -435,8 +435,8 @@ def _clean_queue(
     # Unique *without* sorting
     first_idx = np.unique(cleaned_slice, return_index=True)[1]
     unique_slice = cleaned_slice[np.sort(first_idx)]
-    if log.isEnabledFor(logging.DEEP_DEBUG):
-        log.deep(
+    if log.isEnabledFor(logging.TRACE):
+        log.trace(
             f"    Bank {bank_idx_for_log}: "
             f"Queue after unique (order kept): {unique_slice}"
         )
@@ -445,8 +445,8 @@ def _clean_queue(
     cd_mask = bor.credit_demand[unique_slice] > 0
     filtered_queue = unique_slice[cd_mask]
     if filtered_queue.size == 0:
-        if log.isEnabledFor(logging.DEEP_DEBUG):
-            log.deep(
+        if log.isEnabledFor(logging.TRACE):
+            log.trace(
                 f"    Bank {bank_idx_for_log}: "
                 f"No borrowers left after credit-demand filter."
             )
@@ -456,16 +456,16 @@ def _clean_queue(
     if sort_by_net_worth:
         sort_idx = np.argsort(-bor.net_worth[filtered_queue])
         ordered_queue = filtered_queue[sort_idx]
-        if log.isEnabledFor(logging.DEEP_DEBUG):
-            log.deep(
+        if log.isEnabledFor(logging.TRACE):
+            log.trace(
                 f"    Bank {bank_idx_for_log}: "
                 f"Final cleaned queue (net_worth-desc): {ordered_queue}"
             )
         return ordered_queue
     else:
         # Preserve application order (first-come-first-served)
-        if log.isEnabledFor(logging.DEEP_DEBUG):
-            log.deep(
+        if log.isEnabledFor(logging.TRACE):
+            log.trace(
                 f"    Bank {bank_idx_for_log}: "
                 f"Final cleaned queue (FCFS order): {filtered_queue}"
             )

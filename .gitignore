@@ -24,6 +24,7 @@ dist/
 .tox/
 .coverage
 .coverage_cache/
+coverage.json
 
 # Benchmarking outputs
 *.prof

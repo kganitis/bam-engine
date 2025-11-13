@@ -99,7 +99,7 @@ pipeline_path:      null         # Custom pipeline path (null = use default)
 
 # ── LOGGING CONFIGURATION ─────────────────────────────────────────────────────
 # Control log output verbosity globally and per-event.
-# Levels: DEEP_DEBUG (5), DEBUG (10), INFO (20), WARNING (30), ERROR (40), CRITICAL (50)
+# Levels: TRACE (5), DEBUG (10), INFO (20), WARNING (30), ERROR (40), CRITICAL (50)
 
 logging:
   default_level:    INFO         # Default log level for all events
@@ -107,4 +107,4 @@ logging:
                                  # Example:
                                  #   workers_send_one_round: WARNING
                                  #   firms_hire_workers: DEBUG
-                                 #   firms_adjust_price: DEEP_DEBUG
+                                 #   firms_adjust_price: TRACE

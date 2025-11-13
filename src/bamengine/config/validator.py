@@ -125,7 +125,7 @@ class ConfigValidator:
     """
 
     # Valid log levels for logging configuration
-    VALID_LOG_LEVELS = {"DEEP_DEBUG", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+    VALID_LOG_LEVELS = {"TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 
     @staticmethod
     def validate_config(cfg: dict[str, Any]) -> None:
@@ -580,13 +580,13 @@ class ConfigValidator:
 
         Notes
         -----
-        Valid log levels: DEEP_DEBUG, DEBUG, INFO, WARNING, ERROR, CRITICAL.
+        Valid log levels: TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL.
         Case-insensitive comparison (INFO == info == Info).
 
         See Also
         --------
         validate_config : Main validation entry point
-        bamengine.logging : Custom logging with DEEP_DEBUG level
+        bamengine.logging : Custom logging with TRACE level
         """
         # Check default_level
         if "default_level" in log_config:

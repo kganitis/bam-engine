@@ -5,54 +5,54 @@ import tempfile
 from pathlib import Path
 
 from bamengine import Simulation
-from bamengine.logging import DEEP_DEBUG, getLogger
+from bamengine.logging import TRACE, getLogger
 
 
 class TestBamLogger:
     """Test custom BamLogger functionality."""
 
-    def test_bamlogger_has_deep_method(self):
-        """BamLogger should have a deep() method."""
+    def test_bamlogger_has_trace_method(self):
+        """BamLogger should have a trace() method."""
         logger = getLogger("test")
-        assert hasattr(logger, "deep")
-        assert callable(logger.deep)
+        assert hasattr(logger, "trace")
+        assert callable(logger.trace)
 
-    def test_deep_level_exists(self):
-        """DEEP_DEBUG level should be registered."""
-        assert DEEP_DEBUG == 5
-        assert logging.getLevelName(DEEP_DEBUG) == "DEEP"
+    def test_trace_level_exists(self):
+        """TRACE level should be registered."""
+        assert TRACE == 5
+        assert logging.getLevelName(TRACE) == "TRACE"
 
-    def test_deep_logging_when_enabled(self, caplog):
-        """deep() should log when level is DEEP_DEBUG."""
-        logger = getLogger("test.deep")
-        logger.setLevel(DEEP_DEBUG)
+    def test_trace_logging_when_enabled(self, caplog):
+        """trace() should log when level is TRACE."""
+        logger = getLogger("test.")
+        logger.setLevel(TRACE)
 
-        with caplog.at_level(DEEP_DEBUG, logger="test.deep"):
-            logger.deep("Deep debug message")
+        with caplog.at_level(TRACE, logger="test."):
+            logger.trace("Trace message")
 
-        assert "Deep debug message" in caplog.text
+        assert "Trace message" in caplog.text
 
-    def test_deep_logging_when_disabled(self, caplog):
-        """deep() should not log when level is INFO."""
-        logger = getLogger("test.deep_disabled")
+    def test_trace_logging_when_disabled(self, caplog):
+        """() should not log when level is INFO."""
+        logger = getLogger("test.trace_disabled")
         logger.setLevel(logging.INFO)
 
-        with caplog.at_level(logging.INFO, logger="test.deep_disabled"):
-            logger.deep("Should not appear")
+        with caplog.at_level(logging.INFO, logger="test.trace_disabled"):
+            logger.trace("Should not appear")
 
         assert "Should not appear" not in caplog.text
 
-    def test_is_enabled_for_deep(self):
-        """isEnabledFor(DEEP_DEBUG) should work correctly."""
+    def test_is_enabled_for_trace(self):
+        """isEnabledFor(TRACE) should work correctly."""
         logger = getLogger("test.enabled")
 
         # Should be disabled at INFO level
         logger.setLevel(logging.INFO)
-        assert not logger.isEnabledFor(DEEP_DEBUG)
+        assert not logger.isEnabledFor(TRACE)
 
-        # Should be enabled at DEEP_DEBUG level
-        logger.setLevel(DEEP_DEBUG)
-        assert logger.isEnabledFor(DEEP_DEBUG)
+        # Should be enabled at TRACE level
+        logger.setLevel(TRACE)
+        assert logger.isEnabledFor(TRACE)
 
 
 class TestLoggingConfiguration:
@@ -86,15 +86,15 @@ class TestLoggingConfiguration:
         logger = logging.getLogger("bamengine")
         assert logger.level == logging.WARNING
 
-    def test_set_default_level_deep_debug(self):
-        """Can set default level to DEEP_DEBUG via kwargs."""
-        log_config = {"default_level": "DEEP_DEBUG", "events": {}}
+    def test_set_default_level_trace_debug(self):
+        """Can set default level to TRACE via kwargs."""
+        log_config = {"default_level": "TRACE", "events": {}}
         Simulation.init(
             n_firms=10, n_households=10, n_banks=2, logging=log_config, seed=42
         )
 
         logger = logging.getLogger("bamengine")
-        assert logger.level == DEEP_DEBUG
+        assert logger.level == TRACE
 
     def test_per_event_log_level_override(self):
         """Can override log level for specific events."""
@@ -116,38 +116,38 @@ class TestLoggingConfiguration:
         worker_logger = logging.getLogger("bamengine.events.workers_send_one_round")
         assert worker_logger.level == logging.WARNING
 
-    def test_per_event_deep_debug_level(self):
-        """Can set DEEP_DEBUG level for specific events."""
+    def test_per_event_trace_level(self):
+        """Can set TRACE level for specific events."""
         log_config = {
             "default_level": "INFO",
             "events": {
-                "workers_send_one_round": "DEEP_DEBUG",
-                "firms_hire_workers": "DEEP_DEBUG",
+                "workers_send_one_round": "TRACE",
+                "firms_hire_workers": "TRACE",
             },
         }
         Simulation.init(
             n_firms=10, n_households=10, n_banks=2, logging=log_config, seed=42
         )
 
-        # Check event-specific loggers have DEEP_DEBUG level
+        # Check event-specific loggers have TRACE level
         worker_logger = logging.getLogger("bamengine.events.workers_send_one_round")
-        assert worker_logger.level == DEEP_DEBUG
+        assert worker_logger.level == TRACE
 
         hiring_logger = logging.getLogger("bamengine.events.firms_hire_workers")
-        assert hiring_logger.level == DEEP_DEBUG
+        assert hiring_logger.level == TRACE
 
     def test_logging_from_yaml_config(self):
         """Can configure logging via YAML file."""
         yaml_content = """
-n_firms: 10
-n_households: 10
-n_banks: 2
-logging:
-  default_level: DEBUG
-  events:
-    firms_adjust_price: WARNING
-    workers_send_one_round: DEBUG
-"""
+            n_firms: 10
+            n_households: 10
+            n_banks: 2
+            logging:
+              default_level: DEBUG
+              events:
+                firms_adjust_price: WARNING
+                workers_send_one_round: DEBUG
+            """
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
             f.write(yaml_content)
             f.flush()
@@ -269,7 +269,7 @@ class TestIsEnabledForGuards:
         assert logger.isEnabledFor(logging.INFO)
         assert logger.isEnabledFor(logging.WARNING)
         assert not logger.isEnabledFor(logging.DEBUG)
-        assert not logger.isEnabledFor(DEEP_DEBUG)
+        assert not logger.isEnabledFor(TRACE)
 
     def test_is_enabled_for_with_debug_level(self):
         """isEnabledFor() should return True for DEBUG when level is DEBUG."""
@@ -278,14 +278,14 @@ class TestIsEnabledForGuards:
 
         assert logger.isEnabledFor(logging.DEBUG)
         assert logger.isEnabledFor(logging.INFO)
-        assert not logger.isEnabledFor(DEEP_DEBUG)
+        assert not logger.isEnabledFor(TRACE)
 
-    def test_is_enabled_for_with_deep_level(self):
-        """isEnabledFor() should return True for all levels when level is DEEP."""
-        logger = getLogger("test.guards_deep")
-        logger.setLevel(DEEP_DEBUG)
+    def test_is_enabled_for_with_trace_level(self):
+        """isEnabledFor() should return True for all levels when level is TRACE."""
+        logger = getLogger("test.guards_trace")
+        logger.setLevel(TRACE)
 
-        assert logger.isEnabledFor(DEEP_DEBUG)
+        assert logger.isEnabledFor(TRACE)
         assert logger.isEnabledFor(logging.DEBUG)
         assert logger.isEnabledFor(logging.INFO)
 
@@ -354,13 +354,13 @@ class TestStructuredLogging:
         assert record.n_agents == 100
         assert record.market == "labor"
 
-    def test_deep_logging_with_extra(self, caplog):
-        """DEEP level logging should work with extra dict."""
-        logger = getLogger("test.deep_structured")
-        logger.setLevel(DEEP_DEBUG)
+    def test_trace_logging_with_extra(self, caplog):
+        """TRACE level logging should work with extra dict."""
+        logger = getLogger("test.trace_structured")
+        logger.setLevel(TRACE)
 
-        with caplog.at_level(DEEP_DEBUG, logger="test.deep_structured"):
-            logger.deep("Inner loop iteration", extra={"round": 5, "agent_id": 42})
+        with caplog.at_level(TRACE, logger="test.trace_structured"):
+            logger.trace("Inner loop iteration", extra={"round": 5, "agent_id": 42})
 
         assert "Inner loop iteration" in caplog.text
         assert len(caplog.records) > 0
