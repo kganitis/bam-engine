@@ -65,7 +65,7 @@ class FirmsDecideDesiredProduction:
 
     Firms adjust their production targets adaptively based on whether they
     have unsold inventory and how their prices compare to market average.
-    This implements the adaptive production rule from Delli Gatti et al. (2008).
+    This implements the adaptive production rule from Delli Gatti et al. (2011).
 
     Algorithm
     ---------
@@ -129,11 +129,6 @@ class FirmsDecideDesiredProduction:
 
     The production shock introduces randomness that prevents firms from
     settling into static equilibria.
-
-    References
-    ----------
-    Delli Gatti, D., et al. (2008). "Firm Size Distributions and
-    Financial Fragility." Journal of Economic Behavior & Organization.
 
     See Also
     --------
