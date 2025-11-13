@@ -66,8 +66,8 @@ class Economy:
     --------
     Access economy state in simulation:
 
-    >>> import bamengine as be
-    >>> sim = be.Simulation.init(n_firms=100, seed=42)
+    >>> import bamengine as bam
+    >>> sim = bam.Simulation.init(n_firms=100, seed=42)
     >>> sim.ec.avg_mkt_price
     1.0
     >>> sim.ec.min_wage

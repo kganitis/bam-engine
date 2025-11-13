@@ -40,8 +40,8 @@ class Worker:
     --------
     Access from simulation:
 
-    >>> import bamengine as be
-    >>> sim = be.Simulation.init(n_households=500, seed=42)
+    >>> import bamengine as bam
+    >>> sim = bam.Simulation.init(n_households=500, seed=42)
     >>> wrk = sim.wrk
     >>> wrk.wage.shape
     (500,)
@@ -116,8 +116,8 @@ class Worker:
 
         Examples
         --------
-        >>> import bamengine as be
-        >>> sim = be.Simulation.init(n_households=500, seed=42)
+        >>> import bamengine as bam
+        >>> sim = bam.Simulation.init(n_households=500, seed=42)
         >>> wrk = sim.wrk
         >>> employed_count = wrk.employed.sum()
         >>> employed_count  # doctest: +SKIP

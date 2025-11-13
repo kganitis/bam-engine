@@ -49,8 +49,8 @@ class Producer:
     --------
     Access from simulation:
 
-    >>> import bamengine as be
-    >>> sim = be.Simulation.init(n_firms=100, seed=42)
+    >>> import bamengine as bam
+    >>> sim = bam.Simulation.init(n_firms=100, seed=42)
     >>> prod = sim.prod
     >>> prod.price.shape
     (100,)

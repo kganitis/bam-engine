@@ -11,15 +11,15 @@ Quick Start
 -----------
 Basic simulation with default configuration:
 
->>> import bamengine as be
->>> sim = be.Simulation.init(seed=42)
+>>> import bamengine as bam
+>>> sim = bam.Simulation.init(seed=42)
 >>> sim.run(n_periods=100)
 >>> unemployment = sim.ec.unemp_rate_history[-1]
 >>> print(f"Final unemployment: {unemployment:.2%}")
 
 Custom configuration via kwargs:
 
->>> sim = be.Simulation.init(
+>>> sim = bam.Simulation.init(
 ...     n_firms=200,
 ...     n_households=1000,
 ...     n_banks=20,
@@ -29,7 +29,7 @@ Custom configuration via kwargs:
 
 Custom configuration via YAML file:
 
->>> sim = be.Simulation.init(config="my_config.yml", seed=42)
+>>> sim = bam.Simulation.init(config="my_config.yml", seed=42)
 >>> sim.run(n_periods=100)
 
 Key Concepts
@@ -98,7 +98,7 @@ Examples
 --------
 Access time-series data after simulation:
 
->>> sim = be.Simulation.init(seed=42)
+>>> sim = bam.Simulation.init(seed=42)
 >>> sim.run(n_periods=100)
 >>> import matplotlib.pyplot as plt
 >>> plt.plot(sim.ec.inflation_history)
@@ -106,23 +106,23 @@ Access time-series data after simulation:
 
 Define a custom role:
 
->>> @be.role
+>>> @bam.role
 ... class Inventory:
-...     goods_on_hand: be.Float
-...     reorder_point: be.Float
-...     supplier_id: be.AgentId
+...     goods_on_hand: bam.Float
+...     reorder_point: bam.Float
+...     supplier_id: bam.AgentId
 
 Define a custom event:
 
->>> @be.event
+>>> @bam.event
 ... class CustomPricing:
 ...     def execute(self, sim):
 ...         prod = sim.get_role("Producer")
-...         be.ops.multiply(prod.price, 1.1, out=prod.price)
+...         bam.ops.multiply(prod.price, 1.1, out=prod.price)
 
 Step through simulation manually:
 
->>> sim = be.Simulation.init(seed=42)
+>>> sim = bam.Simulation.init(seed=42)
 >>> for period in range(10):
 ...     sim.step()
 ...     if period % 5 == 0:
@@ -213,10 +213,10 @@ def make_rng(seed: int | None = None) -> Rng:
 
     Examples
     --------
-    >>> import bamengine as be
-    >>> rng = be.make_rng(42)  # Reproducible
+    >>> import bamengine as bam
+    >>> rng = bam.make_rng(42)  # Reproducible
     >>> rng.normal(0, 1, size=10)  # Use standard NumPy methods
-    >>> rng2 = be.make_rng()  # Random seed
+    >>> rng2 = bam.make_rng()  # Random seed
 
     See Also
     --------

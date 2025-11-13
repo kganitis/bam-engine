@@ -40,24 +40,24 @@ Examples
 --------
 Basic simulation with default configuration:
 
->>> import bamengine as be
->>> sim = be.Simulation.init(seed=42)
+>>> import bamengine as bam
+>>> sim = bam.Simulation.init(seed=42)
 >>> sim.run(n_periods=100)
 >>> unemployment = sim.ec.unemp_rate_history[-1]
 
 Custom configuration via YAML file:
 
->>> sim = be.Simulation.init(config="my_config.yml", seed=42)
+>>> sim = bam.Simulation.init(config="my_config.yml", seed=42)
 >>> sim.run(n_periods=100)
 
 Override specific parameters via kwargs:
 
->>> sim = be.Simulation.init(n_firms=200, n_households=1000, seed=42)
+>>> sim = bam.Simulation.init(n_firms=200, n_households=1000, seed=42)
 >>> sim.run(n_periods=100)
 
 Step-by-step execution with intermediate analysis:
 
->>> sim = be.Simulation.init(seed=42)
+>>> sim = bam.Simulation.init(seed=42)
 >>> for period in range(100):
 ...     sim.step()
 ...     if period % 10 == 0:
@@ -228,8 +228,8 @@ class Simulation:
     --------
     Basic usage with default configuration:
 
-    >>> import bamengine as be
-    >>> sim = be.Simulation.init(seed=42)
+    >>> import bamengine as bam
+    >>> sim = bam.Simulation.init(seed=42)
     >>> sim.run(n_periods=100)
     >>> unemployment = sim.ec.unemp_rate_history[-1]
     >>> print(f"Final unemployment: {unemployment:.2%}")
@@ -237,7 +237,7 @@ class Simulation:
 
     Override configuration parameters:
 
-    >>> sim = be.Simulation.init(
+    >>> sim = bam.Simulation.init(
     ...     n_firms=200,
     ...     n_households=1000,
     ...     n_banks=15,
@@ -249,12 +249,12 @@ class Simulation:
 
     Use custom configuration file:
 
-    >>> sim = be.Simulation.init(config="my_config.yml", seed=42)
+    >>> sim = bam.Simulation.init(config="my_config.yml", seed=42)
     >>> sim.run(n_periods=50)
 
     Access roles and inspect state:
 
-    >>> sim = be.Simulation.init(seed=42)
+    >>> sim = bam.Simulation.init(seed=42)
     >>> sim.step()
     >>> prod = sim.get_role("Producer")
     >>> avg_price = prod.price.mean()
@@ -263,7 +263,7 @@ class Simulation:
 
     Custom pipeline:
 
-    >>> sim = be.Simulation.init(
+    >>> sim = bam.Simulation.init(
     ...     pipeline_path="custom_pipeline.yml",
     ...     seed=42
     ... )
@@ -436,14 +436,14 @@ class Simulation:
         --------
         Use default configuration:
 
-        >>> import bamengine as be
-        >>> sim = be.Simulation.init(seed=42)
+        >>> import bamengine as bam
+        >>> sim = bam.Simulation.init(seed=42)
         >>> sim.n_firms, sim.n_households, sim.n_banks
         (100, 500, 10)
 
         Override population sizes:
 
-        >>> sim = be.Simulation.init(
+        >>> sim = bam.Simulation.init(
         ...     n_firms=200,
         ...     n_households=1000,
         ...     n_banks=15,
@@ -454,11 +454,11 @@ class Simulation:
 
         Load configuration from file:
 
-        >>> sim = be.Simulation.init(config="my_config.yml")  # doctest: +SKIP
+        >>> sim = bam.Simulation.init(config="my_config.yml")  # doctest: +SKIP
 
         Combine file config with overrides:
 
-        >>> sim = be.Simulation.init(  # doctest: +SKIP
+        >>> sim = bam.Simulation.init(  # doctest: +SKIP
         ...     config="base_config.yml",
         ...     seed=42,
         ...     n_firms=150

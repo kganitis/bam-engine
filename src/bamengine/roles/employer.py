@@ -45,8 +45,8 @@ class Employer:
     --------
     Access from simulation:
 
-    >>> import bamengine as be
-    >>> sim = be.Simulation.init(n_firms=100, seed=42)
+    >>> import bamengine as bam
+    >>> sim = bam.Simulation.init(n_firms=100, seed=42)
     >>> emp = sim.emp
     >>> emp.wage_offer.shape
     (100,)

@@ -43,7 +43,7 @@ Examples
 --------
 Access event by name:
 
->>> import bamengine as be
+>>> import bamengine as bam
 >>> sim = be.Simulation.init(seed=42)
 >>> event = sim.get_event("firms_decide_desired_production")
 >>> event.execute(sim)
