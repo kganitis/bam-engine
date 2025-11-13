@@ -282,9 +282,9 @@ Not yet available. Coming soon!
 
 ## Project Status
 
-**Version**: 0.1.0-alpha
+**Version**: 0.1.0
 
-⚠️ **Alpha Status**: This release is feature-complete for the core BAM model but APIs may change in future releases. Designed for academic research and policy analysis experiments.
+This release is feature-complete for the core BAM model but APIs may change in future releases. Designed for academic research and policy analysis experiments.
 
 ## Citation
 
