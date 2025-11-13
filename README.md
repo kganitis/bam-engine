@@ -2,7 +2,8 @@
 
 **Bottom-Up Adaptive Macroeconomics Simulation Framework**
 
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
+[![PyPI version](https://img.shields.io/pypi/v/bamengine.svg)](https://pypi.org/project/bamengine/)
+[![Python](https://img.shields.io/pypi/pyversions/bamengine.svg)](https://pypi.org/project/bamengine/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 BAM Engine is a high-performance Python implementation of the BAM model from *Macroeconomics from the Bottom-up* (Delli Gatti et al., 2011, Chapter 3). It provides a modular, extensible agent-based macroeconomic simulation framework built on ECS (Entity-Component-System) architecture with fully vectorized NumPy operations.
