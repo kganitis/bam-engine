@@ -343,5 +343,5 @@ def firms_decide_vacancies(emp: Employer) -> None:
     # logging
     log.info(f"  Total open vacancies in the economy: {emp.n_vacancies.sum():,}")
     if log.isEnabledFor(logging.DEBUG):
-        log.debug(f"  Final Vacancies (V):\n{emp.n_vacancies}")
+        log.debug(f"  Final Vacancies:\n{emp.n_vacancies}")
     log.info("--- Vacancy Decision complete ---")
