@@ -32,4 +32,6 @@ def tiny_sched() -> Simulation:
 @pytest.fixture(autouse=True)
 def mute_bamengine_logs(caplog):
     # Show only ERROR+ from our library while tests run
+    # Set both caplog level (for capture) and actual logger level (to avoid processing overhead)
     caplog.set_level(logging.ERROR, logger="bamengine")
+    logging.getLogger("bamengine").setLevel(logging.ERROR)
