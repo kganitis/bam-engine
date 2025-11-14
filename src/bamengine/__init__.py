@@ -139,7 +139,7 @@ Module Organization
   - `bamengine.typing` : Type system definitions
 
 **Internal Modules** (implementation details, subject to change):
-  -  bamengine.simulation : Simulation implementation
+  - `bamengine.simulation` : Simulation implementation
   - `bamengine.core` : ECS infrastructure (registry, pipeline)
   - `bamengine.roles` : Built-in role implementations (Producer, Worker, etc.)
   - `bamengine.events` : Built-in event implementations (37 events)

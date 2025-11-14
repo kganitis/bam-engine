@@ -13,10 +13,10 @@ Design Notes
 
 Type Mapping
 ------------
-- Float → Float1D → NDArray[np.float64] (prices, quantities, rates)
-- Int → Int1D → NDArray[np.int64] (counts, periods, durations)
-- Bool → Bool1D → NDArray[np.bool_] (flags, conditions, masks)
-- Agent → Idx1D → NDArray[np.intp] (agent IDs, -1 for unassigned)
+- `Float` → `Float1D` → `NDArray[np.float64]` (prices, quantities, rates)
+- `Int` → `Int1D` → `NDArray[np.int64]` (counts, periods, durations)
+- `Bool` → `Bool1D` → `NDArray[np.bool_]` (flags, conditions, masks)
+- `Agent` → `Idx1D` → `NDArray[np.intp]` (agent IDs, -1 for unassigned)
 
 Examples
 --------
