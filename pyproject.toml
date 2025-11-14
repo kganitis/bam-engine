@@ -165,9 +165,20 @@ data_file = ".coverage_cache/.coverage"
 [tool.coverage.report]
 exclude_lines = [
     "pragma: no cover",
-    "log\\.",
-    "ValueError",
-    "KeyError",
+    "if TYPE_CHECKING:",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    # Exclude all logging statements
+    ".*log\\.trace",
+    ".*log\\.debug",
+    ".*log\\.info",
+    ".*log\\.warning",
+    ".*log\\.error",
+    ".*log\\.critical",
+    ".*log\\.isEnabledFor",
+    # Exclude common defensive code
+    "raise ValueError",
+    "raise KeyError",
 ]
 
 [tool.coverage.json]
