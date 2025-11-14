@@ -5,6 +5,25 @@ All notable changes to BAM Engine will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2024-11-14
+
+### Added
+
+- **CI/CD**: GitHub Actions workflows for automated testing and PyPI publishing
+  - Cross-platform testing on Ubuntu, macOS, and Windows
+  - Multi-version testing for Python 3.11, 3.12, 3.13
+  - Automated PyPI publishing on GitHub releases
+
+### Changed
+
+- **Breaking**: Dropped Python 3.10 support. Minimum required Python version is now 3.11+
+  - Python 3.10 had complex metaclass compatibility issues in decorators that are not worth maintaining
+  - Supported versions: Python 3.11, 3.12, 3.13
+
+### Fixed
+
+- Windows compatibility in test suite (file handle management, path separators)
+
 ## [0.1.0] - 2025-11-13
 
 This release is feature-complete for the core BAM model but APIs may change in future releases.
@@ -52,3 +71,6 @@ Designed for academic research and policy analysis experiments.
 ---
 
 *Note: This project follows [Semantic Versioning](https://semver.org/). Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.*
+
+[0.1.1]: https://github.com/kganitis/bam-engine/releases/tag/v0.1.1
+[0.1.0]: https://github.com/kganitis/bam-engine/releases/tag/v0.1.0
