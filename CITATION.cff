@@ -16,6 +16,7 @@ date-released: 2025-11-14
 repository-code: "https://github.com/kganitis/bam-engine"
 url: "https://kganitis.github.io/bam-engine/"
 license: MIT
+doi: "10.5281/zenodo.17610305"
 
 abstract: |
   BAM Engine is a high-performance Python implementation of the BAM (Bottom-Up
