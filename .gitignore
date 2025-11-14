@@ -31,6 +31,9 @@ coverage.json
 *.svg
 benchmarks/*.prof
 benchmarks/*.svg
+asv_benchmarks/.asv/
+asv_benchmarks/env/
+asv_benchmarks/__pycache__/
 
 # IDEs
 .idea/
@@ -64,9 +67,8 @@ Thumbs.db
 *.swp
 *.tmp
 
-# Benchmarking markdown files
+# Local notes
 notes/
-benchmarks/*.md
 
 # Claude AI files
 .claude/

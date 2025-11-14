@@ -1,0 +1,37 @@
+{
+    // ASV configuration for BAM Engine
+    "version": 1,
+    "project": "bamengine",
+    "project_url": "https://github.com/kganitis/bam-engine",
+    "repo": "..",
+    "branches": ["main"],
+
+    // Environment configuration
+    "environment_type": "virtualenv",
+    "pythons": ["3.12"],
+
+    // Build configuration
+    "install_command": ["python -m pip install {wheel_file}"],
+    "uninstall_command": ["return-code=any python -m pip uninstall -y {project}"],
+    "build_command": [
+        "python -m pip install build",
+        "python -m build --wheel -o {build_cache_dir} {build_dir}"
+    ],
+
+    // Results configuration
+    "results_dir": ".asv/results",
+    "html_dir": ".asv/html",
+
+    // Benchmark configuration
+    "benchmark_dir": ".",
+    "dvcs": "git",
+
+    // Display configuration
+    "show_commit_url": "https://github.com/kganitis/bam-engine/commit/",
+
+    // Matrix configuration - test only latest Python
+    "matrix": {
+        "numpy": [],
+        "PyYAML": []
+    }
+}
