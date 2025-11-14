@@ -2,18 +2,20 @@
 
 **Bottom-Up Adaptive Macroeconomics Simulation Framework**
 
-[![PyPI version](https://img.shields.io/pypi/v/bamengine.svg)](https://pypi.org/project/bamengine/)
 [![Python](https://img.shields.io/pypi/pyversions/bamengine.svg)](https://pypi.org/project/bamengine/)
+[![PyPI version](https://img.shields.io/pypi/v/bamengine.svg)](https://pypi.org/project/bamengine/)
+[![DOI](https://zenodo.org/badge/972128676.svg)](https://doi.org/10.5281/zenodo.17610305)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-[![Tests](https://img.shields.io/badge/tests-99%25%20coverage-brightgreen)]()
+[![Tests](https://github.com/kganitis/bam-engine/actions/workflows/test.yml/badge.svg)](https://github.com/kganitis/bam-engine/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/kganitis/bam-engine/branch/main/graph/badge.svg)](https://codecov.io/gh/kganitis/bam-engine)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Type Checked](https://img.shields.io/badge/type%20checked-mypy-blue)](http://mypy-lang.org/)
 [![Linter: Ruff](https://img.shields.io/badge/linter-ruff-orange)](https://github.com/astral-sh/ruff)
 
 BAM Engine is a high-performance Python implementation of the BAM model from *Macroeconomics from the Bottom-up* (Delli Gatti et al., 2011, Chapter 3). It provides a modular, extensible agent-based macroeconomic simulation framework built on ECS (Entity-Component-System) architecture with fully vectorized NumPy operations.
 
-> **Note**: This (**v0.1.0**) release is feature-complete for the core BAM model but APIs may change in future releases before v1.0.0. Designed for academic research and policy analysis experiments.
+> **Note**: This release is feature-complete for the core BAM model but APIs may change in future releases before v1.0.0. Designed for academic research and policy analysis experiments.
 
 ## Features
 
