@@ -169,7 +169,6 @@ def test_one_round_skip_sold_out() -> None:
     by one and not crash.
     """
     con, prod, rng, Z = _mini_state()
-    con.shop_visits_targets.shape[1]
 
     # Ensure consumer 0 has budget
     consumers_calc_propensity(con, avg_sav=1.0, beta=0.9)

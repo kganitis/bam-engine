@@ -466,7 +466,7 @@ class Simulation:
 
         Custom pipeline:
 
-        >>> sim = be.Simulation.init(
+        >>> sim = bam.Simulation.init(
         ...     pipeline_path="custom_pipeline.yml",
         ...     seed=42
         ... )  # doctest: +SKIP
@@ -480,7 +480,7 @@ class Simulation:
         ...         "workers_send_one_round": "WARNING"
         ...     }
         ... }
-        >>> sim = be.Simulation.init(logging=log_config, seed=42)
+        >>> sim = bam.Simulation.init(logging=log_config, seed=42)
 
         Notes
         -----
