@@ -3,14 +3,16 @@
 **Bottom-Up Adaptive Macroeconomics Simulation Framework**
 
 [![Python](https://img.shields.io/pypi/pyversions/bamengine.svg)](https://pypi.org/project/bamengine/)
-[![PyPI version](https://img.shields.io/pypi/v/bamengine.svg)](https://pypi.org/project/bamengine/)
+[![PyPI version](https://img.shields.io/pypi/v/bamengine.svg?color=blue)](https://pypi.org/project/bamengine/)
 [![DOI](https://zenodo.org/badge/972128676.svg)](https://doi.org/10.5281/zenodo.17610305)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 [![Tests](https://github.com/kganitis/bam-engine/actions/workflows/test.yml/badge.svg)](https://github.com/kganitis/bam-engine/actions/workflows/test.yml)
-[![codecov](https://codecov.io/github/kganitis/bam-engine/graph/badge.svg?token=YIG31U3OR3)](https://codecov.io/github/kganitis/bam-engine)
+[![codecov](https://codecov.io/github/kganitis/bam-engine/graph/badge.svg?token=YIG31U3OR3?color=brightgreen)](https://codecov.io/github/kganitis/bam-engine)
+[![Benchmarked by ASV](https://img.shields.io/badge/Benchmarked%20by-asv-brightgreen)](asv_benchmarks/)
+
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Type Checked](https://img.shields.io/badge/type%20checked-mypy-blue)](http://mypy-lang.org/)
+[![Type Checked](https://img.shields.io/badge/type%20checked-mypy-orange)](http://mypy-lang.org/)
 [![Linter: Ruff](https://img.shields.io/badge/linter-ruff-orange)](https://github.com/astral-sh/ruff)
 
 BAM Engine is a high-performance Python implementation of the BAM model from *Macroeconomics from the Bottom-up* (Delli Gatti et al., 2011, Chapter 3). It provides a modular, extensible agent-based macroeconomic simulation framework built on ECS (Entity-Component-System) architecture with fully vectorized NumPy operations.
@@ -44,7 +46,7 @@ Friendly to users without deep Python expertise, with:
 ### Reproducibility & Testing
 
 * Deterministic simulations with seedable RNG for reproducible results
-* Comprehensive test suite (99%+ coverage) with unit, integration, and property-based tests
+* Comprehensive test suite (95%+ coverage) with unit, integration, and property-based tests
 * Performance regression testing to prevent degradation
 
 ## Quick Start
@@ -208,19 +210,16 @@ Parameters not specified in keyword arguments fall back to custom YAML, then pac
 
 BAM Engine achieves excellent performance through vectorization:
 
-| Configuration | Firms | Households | Throughput    |
-|---------------|-------|------------|---------------|
-| Small         | 100   | 500        | 172 periods/s |
-| Medium        | 200   | 1,000      | 96 periods/s  |
-| Large         | 500   | 2,500      | 40 periods/s  |
+| Configuration | Firms | Households | Banks | 1000 periods | 100 periods | Throughput |
+|---------------|-------|------------|-------|--------------|-------------|------------|
+| Small         | 100   | 500        | 10    | 4.1s         | 0.4s        | 244 periods/s |
+| Medium        | 200   | 1,000      | 10    | 8.0s         | 0.8s        | 125 periods/s |
+| Large         | 500   | 2,500      | 10    | 20.5s        | 2.1s        | 49 periods/s  |
 
-**Benchmarks** (1000 periods, Apple M4 Pro, macOS 15.1, Python 3.12):
+**Machine**: Apple M4 Pro (macOS 15.1, Python 3.12)
+**Benchmarking**: [ASV (Airspeed Velocity)]() with machine-specific baselines and historical tracking
 
-* Small: 5.8s
-* Medium: 10.4s
-* Large: 24.5s
-
-Performance scales sub-linearly with agent count due to NumPy vectorization efficiency.
+Performance scales sub-linearly with agent count due to NumPy vectorization efficiency. For detailed benchmarks and regression tracking, see [asv_benchmarks/](asv_benchmarks/).
 
 ## Development
 
@@ -264,14 +263,17 @@ pytest -m "not slow and not regression and not invariants" -v
 ### Benchmarking
 
 ```bash
-# Run macro-benchmarks (full simulation)
-python benchmarks/bench_full_simulation.py
+# ASV benchmarks (performance tracking with historical data)
+cd asv_benchmarks
+asv run                    # benchmark current commit
+asv continuous HEAD~1 HEAD # check for regressions
+asv publish && asv preview # view results
 
-# Profile with cProfile
+# Profiling tools (detailed bottleneck analysis)
 python benchmarks/profile_simulation.py
 
-# Performance regression tests
-pytest tests/performance/ -v
+# Performance regression tests (local quick checks)
+pytest tests/performance/ -v -m regression
 ```
 
 ## Documentation
