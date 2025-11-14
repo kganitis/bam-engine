@@ -47,7 +47,12 @@ def benchmark_configuration(n_firms, n_households, n_periods, seed=42):
     float
         Elapsed time in seconds
     """
-    sim = Simulation.init(n_firms=n_firms, n_households=n_households, seed=seed)
+    sim = Simulation.init(
+        n_firms=n_firms,
+        n_households=n_households,
+        seed=seed,
+        logging={"default_level": "ERROR"},  # Disable logging for performance tests
+    )
 
     start = time.perf_counter()
     sim.run(n_periods)

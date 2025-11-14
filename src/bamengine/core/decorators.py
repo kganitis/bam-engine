@@ -147,22 +147,16 @@ def role(
                 "__annotations__": getattr(cls, "__annotations__", {}),
             }
             # Copy methods and class attributes (but not __dict__, __weakref__, etc.)
-            # Exclude 'name' to avoid conflict with metaclass parameter
             for attr_name in dir(cls):
-                if not attr_name.startswith("__") and attr_name != "name":
+                if not attr_name.startswith("__"):
                     namespace[attr_name] = getattr(cls, attr_name)
 
-            # Set custom name in namespace if provided
-            if name is not None:
-                namespace["name"] = name
+            cls = type(cls.__name__, (Role,), namespace)
 
-            # Use Role's metaclass explicitly (fixes Python 3.10 compatibility)
-            cls = type(Role)(cls.__name__, (Role,), namespace)  # type: ignore[misc]
-        else:
-            # Set custom name BEFORE applying dataclass
-            # This ensures __init_subclass__ sees the correct name
-            if name is not None:
-                cls.name = name
+        # Set custom name BEFORE applying dataclass
+        # This ensures __init_subclass__ sees the correct name
+        if name is not None:
+            cls.name = name  # type: ignore[attr-defined]
 
         # Apply dataclass decorator
         cls = dataclass(**dataclass_kwargs)(cls)
@@ -241,22 +235,16 @@ def event(
                 "__annotations__": getattr(cls, "__annotations__", {}),
             }
             # Copy methods and class attributes (but not __dict__, __weakref__, etc.)
-            # Exclude 'name' to avoid conflict with metaclass parameter
             for attr_name in dir(cls):
-                if not attr_name.startswith("__") and attr_name != "name":
+                if not attr_name.startswith("__"):
                     namespace[attr_name] = getattr(cls, attr_name)
 
-            # Set custom name in namespace if provided
-            if name is not None:
-                namespace["name"] = name
+            cls = type(cls.__name__, (Event,), namespace)
 
-            # Use Event's metaclass explicitly (fixes Python 3.10 compatibility)
-            cls = type(Event)(cls.__name__, (Event,), namespace)  # type: ignore[misc]
-        else:
-            # Set custom name BEFORE applying dataclass
-            # This ensures __init_subclass__ sees the correct name
-            if name is not None:
-                cls.name = name
+        # Set custom name BEFORE applying dataclass
+        # This ensures __init_subclass__ sees the correct name
+        if name is not None:
+            cls.name = name  # type: ignore[attr-defined]
 
         # Apply dataclass decorator
         cls = dataclass(**dataclass_kwargs)(cls)
@@ -355,32 +343,21 @@ def relationship(
                 "__annotations__": getattr(cls, "__annotations__", {}),
             }
             # Copy methods and class attributes
-            # Exclude 'name' to avoid conflict with metaclass parameter
             for attr_name in dir(cls):
-                if not attr_name.startswith("__") and attr_name != "name":
+                if not attr_name.startswith("__"):
                     namespace[attr_name] = getattr(cls, attr_name)
 
-            # Set metadata in namespace
-            if source is not None:
-                namespace["source_role"] = source
-            if target is not None:
-                namespace["target_role"] = target
-            namespace["cardinality"] = cardinality
-            if name is not None:
-                namespace["name"] = name
+            cls = type(cls.__name__, (Relationship,), namespace)
 
-            # Use Relationship's metaclass explicitly (fixes Python 3.10 compatibility)
-            cls = type(Relationship)(cls.__name__, (Relationship,), namespace)  # type: ignore[misc]
-        else:
-            # Set metadata as class variables
-            cls.source_role = source
-            cls.target_role = target
-            cls.cardinality = cardinality
+        # Set metadata as class variables
+        cls.source_role = source  # type: ignore[attr-defined]
+        cls.target_role = target  # type: ignore[attr-defined]
+        cls.cardinality = cardinality  # type: ignore[attr-defined]
 
-            # Set custom name BEFORE applying dataclass
-            # This ensures __init_subclass__ sees the correct name
-            if name is not None:
-                cls.name = name
+        # Set custom name BEFORE applying dataclass
+        # This ensures __init_subclass__ sees the correct name
+        if name is not None:
+            cls.name = name  # type: ignore[attr-defined]
 
         # Apply dataclass decorator
         cls = dataclass(**dataclass_kwargs)(cls)

@@ -59,7 +59,7 @@ pip install -U bamengine
 
 **Dependencies**: NumPy (≥1.26) and PyYAML (≥6.0.2) are automatically installed by pip.
 
-**Requirements**: Python 3.10 or higher.
+**Requirements**: Python 3.11 or higher.
 
 ### Basic Usage
 
