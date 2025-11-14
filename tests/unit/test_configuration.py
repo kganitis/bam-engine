@@ -238,34 +238,37 @@ events:
   - firms_run_production
 """
 
+    # Create temp files - close them before deleting (Windows compatibility)
     with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as pf:
         pf.write(pipeline_yaml)
         pf.flush()
         pipeline_path = pf.name
+    # File is now closed
 
-        # Create config YAML referencing custom pipeline (must use absolute path)
-        config_yaml = f"""
+    # Create config YAML referencing custom pipeline (must use absolute path)
+    config_yaml = f"""
 n_firms: 10
 n_households: 50
 pipeline_path: "{pipeline_path}"
 """
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as cf:
-            cf.write(config_yaml)
-            cf.flush()
-            config_path = cf.name
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as cf:
+        cf.write(config_yaml)
+        cf.flush()
+        config_path = cf.name
+    # File is now closed
 
-            try:
-                sim = Simulation.init(config=config_path, seed=42)
+    try:
+        sim = Simulation.init(config=config_path, seed=42)
 
-                # Should have custom pipeline with 2 events
-                assert len(sim.pipeline) == 2
-                assert sim.pipeline.events[0].name == "firms_decide_desired_production"
-                assert sim.pipeline.events[1].name == "firms_run_production"
-            finally:
-                Path(config_path).unlink()
-
-    Path(pipeline_path).unlink()
+        # Should have custom pipeline with 2 events
+        assert len(sim.pipeline) == 2
+        assert sim.pipeline.events[0].name == "firms_decide_desired_production"
+        assert sim.pipeline.events[1].name == "firms_run_production"
+    finally:
+        # Clean up both temp files (both are closed now - Windows safe)
+        Path(config_path).unlink(missing_ok=True)
+        Path(pipeline_path).unlink(missing_ok=True)
 
 
 def test_kwargs_override_logging():
