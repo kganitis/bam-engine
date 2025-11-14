@@ -151,7 +151,8 @@ def role(
                 if not attr_name.startswith("__"):
                     namespace[attr_name] = getattr(cls, attr_name)
 
-            cls = type(cls.__name__, (Role,), namespace)
+            # Use Role's metaclass explicitly (fixes Python 3.10 compatibility)
+            cls = type(Role)(cls.__name__, (Role,), namespace)
 
         # Set custom name BEFORE applying dataclass
         # This ensures __init_subclass__ sees the correct name
@@ -239,7 +240,8 @@ def event(
                 if not attr_name.startswith("__"):
                     namespace[attr_name] = getattr(cls, attr_name)
 
-            cls = type(cls.__name__, (Event,), namespace)
+            # Use Event's metaclass explicitly (fixes Python 3.10 compatibility)
+            cls = type(Event)(cls.__name__, (Event,), namespace)
 
         # Set custom name BEFORE applying dataclass
         # This ensures __init_subclass__ sees the correct name
@@ -347,7 +349,8 @@ def relationship(
                 if not attr_name.startswith("__"):
                     namespace[attr_name] = getattr(cls, attr_name)
 
-            cls = type(cls.__name__, (Relationship,), namespace)
+            # Use Relationship's metaclass explicitly (fixes Python 3.10 compatibility)
+            cls = type(Relationship)(cls.__name__, (Relationship,), namespace)
 
         # Set metadata as class variables
         cls.source_role = source  # type: ignore[attr-defined]
