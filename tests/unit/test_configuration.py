@@ -246,10 +246,12 @@ events:
     # File is now closed
 
     # Create config YAML referencing custom pipeline (must use absolute path)
+    # Use forward slashes for YAML compatibility (works on Windows too)
+    pipeline_path_posix = Path(pipeline_path).as_posix()
     config_yaml = f"""
 n_firms: 10
 n_households: 50
-pipeline_path: "{pipeline_path}"
+pipeline_path: "{pipeline_path_posix}"
 """
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as cf:
