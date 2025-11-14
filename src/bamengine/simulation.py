@@ -489,7 +489,7 @@ class Simulation:
         - Vector parameters (price_init, net_worth_init, etc.) accept scalars
           (broadcast to all agents) or 1D arrays of appropriate length
         - Random seed ensures reproducible simulations
-        - Default pipeline includes 37 events across 8 economic phases
+        - Default pipeline includes 39 events across 8 economic phases
 
         See Also
         --------
