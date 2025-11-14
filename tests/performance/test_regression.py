@@ -3,6 +3,19 @@
 These tests ensure that performance hasn't regressed beyond acceptable
 thresholds. Baselines are established from benchmarking runs and updated
 after confirmed improvements.
+
+**Important**: These tests are designed for local development on consistent
+hardware. They are SKIPPED in CI because:
+- CI runners are virtualized and performance varies significantly (1.5-3x)
+- Different OS runners have different baseline performance
+- pytest-based regression tests need machine-specific baselines
+
+**Future Work**: Consider using ASV (Airspeed Velocity) for proper performance
+tracking with machine-specific baselines and historical commit tracking.
+
+To run regression tests locally:
+    pytest -m regression
+    pytest  # runs all tests including regression
 """
 
 import logging
