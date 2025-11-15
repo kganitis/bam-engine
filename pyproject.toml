@@ -152,10 +152,11 @@ markers = [
     "integration: marks integration tests (deselect with '-m \"not integration\"')",
 ]
 addopts = """
---cov=bamengine
+--cov=src/bamengine
 --cov-report=term-missing
 --cov-report=html
 --cov-report=json
+--cov-report=xml
 --cov-fail-under=95
 """
 
