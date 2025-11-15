@@ -7,13 +7,16 @@ from bamengine.core import relationship
 from bamengine.typing import Float1D
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def clean_relationship_registry():
     """
     Save relationship registry state, clear it for the test, then restore it.
 
     This fixture ensures relationship tests are isolated from real BAM
     relationships and from each other.
+
+    Using autouse=True to automatically clean up after each test in this module,
+    preventing test relationship pollution in other test modules.
     """
     # noinspection PyProtectedMember
     from bamengine.core.registry import _RELATIONSHIP_REGISTRY

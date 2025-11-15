@@ -124,16 +124,14 @@ class TestGetterMethods:
         """get_event() raises KeyError for non-existent event."""
         sim = Simulation.init(n_firms=10, n_households=50, seed=42)
 
-        with pytest.raises(
-            KeyError, match="Event 'nonexistent_event' not found in pipeline"
-        ):
+        with pytest.raises(KeyError, match="Event 'nonexistent_event' not found"):
             sim.get_event("nonexistent_event")
 
     def test_get_event_shows_available_events(self):
         """get_event() error message includes available events."""
         sim = Simulation.init(n_firms=10, n_households=50, seed=42)
 
-        with pytest.raises(KeyError, match="Available \\(first 5\\)"):
+        with pytest.raises(KeyError, match="Available events"):
             sim.get_event("nonexistent_event")
 
     def test_get_event_valid(self):
@@ -144,19 +142,17 @@ class TestGetterMethods:
         assert event.name == "firms_decide_desired_production"
 
     def test_get_relationship_nonexistent(self):
-        """get_relationship() raises ValueError for non-existent relationship."""
+        """get_relationship() raises KeyError for non-existent relationship."""
         sim = Simulation.init(n_firms=10, n_households=50, seed=42)
 
-        with pytest.raises(ValueError, match="Relationship 'NonExistent' not found"):
+        with pytest.raises(KeyError, match="Relationship 'NonExistent' not found"):
             sim.get_relationship("NonExistent")
 
     def test_get_relationship_shows_available(self):
         """get_relationship() error message includes available relationships."""
         sim = Simulation.init(n_firms=10, n_households=50, seed=42)
 
-        with pytest.raises(
-            ValueError, match="Available relationships: \\['loanbook'\\]"
-        ):
+        with pytest.raises(KeyError, match="Available relationships: \\['LoanBook'\\]"):
             sim.get_relationship("InvalidRelationship")
 
     def test_get_relationship_valid(self):

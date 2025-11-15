@@ -1,11 +1,16 @@
 """Tests for Role and Event decorators."""
 
 import numpy as np
+import pytest
 
 from bamengine import relationship
 from bamengine.core import Event, Relationship, Role, event, get_relationship, role
 from bamengine.core.registry import get_event, get_role
 from bamengine.typing import Float1D
+
+# Use clean_registry from conftest.py for all tests in this module
+# to prevent test pollution
+pytestmark = pytest.mark.usefixtures("clean_registry")
 
 
 # noinspection PyUnresolvedReferences

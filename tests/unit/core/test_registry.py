@@ -30,17 +30,22 @@ def clean_registry():
 
     This fixture should be explicitly requested by tests that need isolation
     from real BAM components. Tests should use this fixture if they create
-    synthetic roles/events for testing registry mechanics.
+    synthetic roles/events/relationships for testing registry mechanics.
 
     DO NOT use autouse=True, as it would interfere with integration tests
     that rely on real components being registered.
     """
     # noinspection PyProtectedMember
-    from bamengine.core.registry import _EVENT_REGISTRY, _ROLE_REGISTRY
+    from bamengine.core.registry import (
+        _EVENT_REGISTRY,
+        _RELATIONSHIP_REGISTRY,
+        _ROLE_REGISTRY,
+    )
 
     # Save current state
     saved_roles = dict(_ROLE_REGISTRY)
     saved_events = dict(_EVENT_REGISTRY)
+    saved_relationships = dict(_RELATIONSHIP_REGISTRY)
 
     # Clear for test
     clear_registry()
@@ -52,6 +57,8 @@ def clean_registry():
     _ROLE_REGISTRY.update(saved_roles)
     _EVENT_REGISTRY.clear()
     _EVENT_REGISTRY.update(saved_events)
+    _RELATIONSHIP_REGISTRY.clear()
+    _RELATIONSHIP_REGISTRY.update(saved_relationships)
 
 
 # Test roles for relationship tests

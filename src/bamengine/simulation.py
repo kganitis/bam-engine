@@ -979,7 +979,7 @@ class Simulation:
 
         Raises
         ------
-        ValueError
+        KeyError
             If role name not found.
 
         Examples
@@ -988,21 +988,42 @@ class Simulation:
         >>> prod = sim.get_role("Producer")
         >>> assert prod is sim.prod
         """
-        role_map = {
-            "producer": self.prod,
-            "worker": self.wrk,
-            "employer": self.emp,
-            "borrower": self.bor,
-            "lender": self.lend,
-            "consumer": self.con,
+        from bamengine.core.registry import get_role as get_role_class
+        from bamengine.core.registry import list_roles
+
+        # Try to get the role class from registry (case-sensitive first)
+        try:
+            # First try exact match
+            role_cls = get_role_class(name)
+        except KeyError:
+            # Try case-insensitive match
+            name_title = name.title()  # Convert to TitleCase
+            try:
+                role_cls = get_role_class(name_title)
+            except KeyError:
+                # Provide helpful error message
+                available = list_roles()
+                raise KeyError(
+                    f"Role '{name}' not found. Available roles: {available}"
+                ) from None
+
+        # Map role class to instance
+        instance_map: dict[type, Any] = {
+            Producer: self.prod,
+            Worker: self.wrk,
+            Employer: self.emp,
+            Borrower: self.bor,
+            Lender: self.lend,
+            Consumer: self.con,
         }
 
-        name_lower = name.lower()
-        if name_lower not in role_map:
-            available = list(role_map.keys())
-            raise ValueError(f"Role '{name}' not found. Available roles: {available}")
+        if role_cls not in instance_map:
+            # This shouldn't happen unless new roles are added without updating Simulation
+            raise KeyError(
+                f"Role '{role_cls.__name__}' is registered but not available in simulation"
+            )
 
-        return role_map[name_lower]
+        return instance_map[role_cls]
 
     def get_event(self, name: str) -> Any:
         """
@@ -1028,15 +1049,30 @@ class Simulation:
         >>> sim = Simulation.init()
         >>> pricing_event = sim.get_event("firms_adjust_price")
         """
+        from bamengine.core.registry import get_event as get_event_class
+        from bamengine.core.registry import list_events
+
+        # First try to find by exact name match in pipeline
         for event in self.pipeline.events:
             if event.name == name:
                 return event
 
-        available = [e.name for e in self.pipeline.events[:5]]
-        raise KeyError(
-            f"Event '{name}' not found in pipeline. "
-            f"Available (first 5): {available}..."
-        )
+        # If not found, check if it's a valid event in registry
+        # This provides better error messages
+        try:
+            get_event_class(name)  # Just to check if it exists
+            # Event exists in registry but not in current pipeline
+            pipeline_events = [e.name for e in self.pipeline.events[:5]]  # TODO cover
+            raise KeyError(
+                f"Event '{name}' is registered but not in current pipeline. "
+                f"Pipeline events (first 5): {pipeline_events}..."
+            )
+        except KeyError:
+            # Event doesn't exist in registry at all
+            available = list_events()
+            raise KeyError(
+                f"Event '{name}' not found. Available events in registry: {available[:10]}..."
+            ) from None
 
     def get_relationship(self, name: str) -> Any:
         """
@@ -1054,7 +1090,7 @@ class Simulation:
 
         Raises
         ------
-        ValueError
+        KeyError
             If relationship name not found.
 
         Examples
@@ -1063,18 +1099,38 @@ class Simulation:
         >>> lb = sim.get_relationship("LoanBook")
         >>> assert lb is sim.lb
         """
-        relationship_map = {
-            "loanbook": self.lb,
+        from bamengine.core.registry import get_relationship as get_relationship_class
+        from bamengine.core.registry import list_relationships
+
+        # Try to get the relationship class from registry (case-sensitive first)
+        try:
+            # First try exact match
+            rel_cls = get_relationship_class(name)
+        except KeyError:
+            # Try case-insensitive match - check each registered name
+            for registered_name in list_relationships():
+                if registered_name.lower() == name.lower():
+                    rel_cls = get_relationship_class(registered_name)
+                    break
+            else:
+                # Provide helpful error message
+                available = list_relationships()
+                raise KeyError(
+                    f"Relationship '{name}' not found. Available relationships: {available}"
+                ) from None
+
+        # Map relationship class to instance
+        instance_map: dict[type, Any] = {
+            LoanBook: self.lb,
         }
 
-        name_lower = name.lower()
-        if name_lower not in relationship_map:
-            available = list(relationship_map.keys())
-            raise ValueError(
-                f"Relationship '{name}' not found. Available relationships: {available}"
+        if rel_cls not in instance_map:
+            # This shouldn't happen unless new relationships are added without updating Simulation
+            raise KeyError(
+                f"Relationship '{rel_cls.__name__}' is registered but not available in simulation"
             )
 
-        return relationship_map[name_lower]
+        return instance_map[rel_cls]
 
     def get(self, name: str) -> Any:
         """
@@ -1107,7 +1163,7 @@ class Simulation:
         """
         try:
             return self.get_role(name)
-        except ValueError:
+        except KeyError:
             pass
 
         try:
