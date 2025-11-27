@@ -1,0 +1,1151 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>bamengine.Simulation &mdash; BAM Engine 0.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=a58bc63e"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="bamengine.SimulationResults" href="bamengine.SimulationResults.html" />
+    <link rel="prev" title="API Reference" href="../index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            BAM Engine
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#install-from-pypi">Install from PyPI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#install-from-source">Install from source</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../quickstart.html#basic-simulation">Basic Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../quickstart.html#collecting-results">Collecting Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../quickstart.html#configuration">Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/index.html">User Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/index.html#topics">Topics</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html">Examples Gallery</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html#advanced-examples">Advanced Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html#basic-examples">Basic Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html#research-examples">Research Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../auto_examples/advanced/index.html">Advanced Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../auto_examples/basic/index.html">Basic Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../auto_examples/basic/example_hello_world.html">Hello BAM Engine</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_hello_world.html#initialize-and-run">Initialize and Run</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_hello_world.html#visualize-unemployment">Visualize Unemployment</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html">Configuring Your Simulation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#basic-configuration">Basic Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#economic-parameters">Economic Parameters</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#initial-conditions">Initial Conditions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#compare-scenarios">Compare Scenarios</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#visualize-comparison">Visualize Comparison</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#summary-statistics">Summary Statistics</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#available-parameters">Available Parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html">BAM Baseline Scenario (3.9.1)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html#initialize-the-simulation">Initialize the Simulation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html#run-simulation-and-collect-data">Run Simulation and Collect Data</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html#prepare-data-for-visualization">Prepare Data for Visualization</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html#visualize-key-economic-indicators">Visualize Key Economic Indicators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html#summary-statistics">Summary Statistics</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../auto_examples/research/index.html">Research Examples</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html#core-classes">Core Classes</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">bamengine.Simulation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#bamengine.Simulation"><code class="docutils literal notranslate"><span class="pre">Simulation</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.SimulationResults.html">bamengine.SimulationResults</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.SimulationResults.html#bamengine.SimulationResults"><code class="docutils literal notranslate"><span class="pre">SimulationResults</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#ecs-components">ECS Components</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Role.html">bamengine.Role</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Role.html#bamengine.Role"><code class="docutils literal notranslate"><span class="pre">Role</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Event.html">bamengine.Event</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Event.html#bamengine.Event"><code class="docutils literal notranslate"><span class="pre">Event</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Relationship.html">bamengine.Relationship</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Relationship.html#bamengine.Relationship"><code class="docutils literal notranslate"><span class="pre">Relationship</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#type-system">Type System</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Float.html">bamengine.Float</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Float.html#bamengine.Float"><code class="docutils literal notranslate"><span class="pre">Float</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Int.html">bamengine.Int</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Int.html#bamengine.Int"><code class="docutils literal notranslate"><span class="pre">Int</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Bool.html">bamengine.Bool</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Bool.html#bamengine.Bool"><code class="docutils literal notranslate"><span class="pre">Bool</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.AgentId.html">bamengine.AgentId</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.AgentId.html#bamengine.AgentId"><code class="docutils literal notranslate"><span class="pre">AgentId</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contributing.html">Contributing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../contributing.html#getting-started">Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../contributing.html#code-style">Code Style</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog.html">Changelog</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../changelog.html#unreleased">[Unreleased]</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../changelog.html#added">Added</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../changelog.html#id1">[0.1.1] - 2024-11</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">BAM Engine</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">API Reference</a></li>
+      <li class="breadcrumb-item active">bamengine.Simulation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/api/generated/bamengine.Simulation.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="bamengine-simulation">
+<h1>bamengine.Simulation<a class="headerlink" href="#bamengine-simulation" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="bamengine.Simulation">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">bamengine.</span></span><span class="sig-name descname"><span class="pre">Simulation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ec</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Economy</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rng</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/random/generator.html#numpy.random.Generator" title="(in NumPy v2.3)"><span class="pre">Generator</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_firms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_households</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_banks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">prod</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Producer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wrk</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Worker</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">emp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Employer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Borrower</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lend</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Lender</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">con</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Consumer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pipeline</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Pipeline</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lb</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">LoanBook</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_periods</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/bamengine/simulation.html#Simulation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.Simulation" title="Link to this definition"></a></dt>
+<dd><p>Main simulation facade for BAM Engine.</p>
+<p>The Simulation class is the primary interface for running BAM (Bottom-Up Adaptive
+Macroeconomics) simulations. It manages the economy state, agent roles, event pipeline,
+and provides methods for stepping through periods.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Simulation.ec">
+<span class="sig-name descname"><span class="pre">ec</span></span><a class="headerlink" href="#bamengine.Simulation.ec" title="Link to this definition"></a></dt>
+<dd><p>Global economy state (prices, wages, histories).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Economy</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Simulation.config">
+<span class="sig-name descname"><span class="pre">config</span></span><a class="headerlink" href="#bamengine.Simulation.config" title="Link to this definition"></a></dt>
+<dd><p>Configuration parameters for the simulation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Config</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Simulation.rng">
+<span class="sig-name descname"><span class="pre">rng</span></span><a class="headerlink" href="#bamengine.Simulation.rng" title="Link to this definition"></a></dt>
+<dd><p>Random number generator for deterministic simulations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.random.Generator</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Simulation.n_firms">
+<span class="sig-name descname"><span class="pre">n_firms</span></span><a class="headerlink" href="#bamengine.Simulation.n_firms" title="Link to this definition"></a></dt>
+<dd><p>Number of firms in the economy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Simulation.n_households">
+<span class="sig-name descname"><span class="pre">n_households</span></span><a class="headerlink" href="#bamengine.Simulation.n_households" title="Link to this definition"></a></dt>
+<dd><p>Number of households in the economy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Simulation.n_banks">
+<span class="sig-name descname"><span class="pre">n_banks</span></span><a class="headerlink" href="#bamengine.Simulation.n_banks" title="Link to this definition"></a></dt>
+<dd><p>Number of banks in the economy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Simulation.prod">
+<span class="sig-name descname"><span class="pre">prod</span></span><a class="headerlink" href="#bamengine.Simulation.prod" title="Link to this definition"></a></dt>
+<dd><p>Producer role (firm production state).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Producer</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Simulation.wrk">
+<span class="sig-name descname"><span class="pre">wrk</span></span><a class="headerlink" href="#bamengine.Simulation.wrk" title="Link to this definition"></a></dt>
+<dd><p>Worker role (household employment state).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Worker</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Simulation.emp">
+<span class="sig-name descname"><span class="pre">emp</span></span><a class="headerlink" href="#bamengine.Simulation.emp" title="Link to this definition"></a></dt>
+<dd><p>Employer role (firm hiring state).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Employer</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Simulation.bor">
+<span class="sig-name descname"><span class="pre">bor</span></span><a class="headerlink" href="#bamengine.Simulation.bor" title="Link to this definition"></a></dt>
+<dd><p>Borrower role (firm financial state).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Borrower</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Simulation.lend">
+<span class="sig-name descname"><span class="pre">lend</span></span><a class="headerlink" href="#bamengine.Simulation.lend" title="Link to this definition"></a></dt>
+<dd><p>Lender role (bank state).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Lender</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Simulation.con">
+<span class="sig-name descname"><span class="pre">con</span></span><a class="headerlink" href="#bamengine.Simulation.con" title="Link to this definition"></a></dt>
+<dd><p>Consumer role (household consumption state).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Consumer</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Simulation.pipeline">
+<span class="sig-name descname"><span class="pre">pipeline</span></span><a class="headerlink" href="#bamengine.Simulation.pipeline" title="Link to this definition"></a></dt>
+<dd><p>Event pipeline controlling simulation execution order.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Pipeline</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Simulation.lb">
+<span class="sig-name descname"><span class="pre">lb</span></span><a class="headerlink" href="#bamengine.Simulation.lb" title="Link to this definition"></a></dt>
+<dd><p>Loan relationship between borrowers and lenders.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>LoanBook</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Simulation.n_periods">
+<span class="sig-name descname"><span class="pre">n_periods</span></span><a class="headerlink" href="#bamengine.Simulation.n_periods" title="Link to this definition"></a></dt>
+<dd><p>Default run length for run() method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Simulation.t">
+<span class="sig-name descname"><span class="pre">t</span></span><a class="headerlink" href="#bamengine.Simulation.t" title="Link to this definition"></a></dt>
+<dd><p>Current period (starts at 0).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Examples</p>
+<p>Basic usage with default configuration:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">bamengine</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">bam</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">bam</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">n_periods</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">unemployment</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">ec</span><span class="o">.</span><span class="n">unemp_rate_history</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Final unemployment: </span><span class="si">{</span><span class="n">unemployment</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="go">Final unemployment: 0.04%</span>
+</pre></div>
+</div>
+<p>Override configuration parameters:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">bam</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">n_firms</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">n_households</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">n_banks</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>  <span class="c1"># Single period</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span><span class="o">.</span><span class="n">t</span>
+<span class="go">1</span>
+</pre></div>
+</div>
+<p>Use custom configuration file:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">bam</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="s2">&quot;my_config.yml&quot;</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">n_periods</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Access roles and inspect state:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">bam</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">prod</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">get_role</span><span class="p">(</span><span class="s2">&quot;Producer&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">avg_price</span> <span class="o">=</span> <span class="n">prod</span><span class="o">.</span><span class="n">price</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average price: </span><span class="si">{</span><span class="n">avg_price</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="go">Average price: 1.50</span>
+</pre></div>
+</div>
+<p>Custom pipeline:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">bam</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">pipeline_path</span><span class="o">=</span><span class="s2">&quot;custom_pipeline.yml&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">n_periods</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+</pre></div>
+</div>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>All simulations are deterministic when seed is specified</p></li>
+<li><p>State is mutated in-place during step() and run()</p></li>
+<li><p>Agent roles share NumPy arrays for memory efficiency</p></li>
+<li><p>Pipeline execution order can be customized via YAML files</p></li>
+</ul>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#bamengine.Simulation.init" title="bamengine.Simulation.init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">init</span></code></a></dt><dd><p>Class method to create Simulation instances</p>
+</dd>
+<dt><a class="reference internal" href="#bamengine.Simulation.step" title="bamengine.Simulation.step"><code class="xref py py-obj docutils literal notranslate"><span class="pre">step</span></code></a></dt><dd><p>Execute one simulation period</p>
+</dd>
+<dt><a class="reference internal" href="#bamengine.Simulation.run" title="bamengine.Simulation.run"><code class="xref py py-obj docutils literal notranslate"><span class="pre">run</span></code></a></dt><dd><p>Execute multiple periods</p>
+</dd>
+<dt><a class="reference internal" href="#bamengine.Simulation.get_role" title="bamengine.Simulation.get_role"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_role</span></code></a></dt><dd><p>Access role instances</p>
+</dd>
+<dt><a class="reference internal" href="#bamengine.Simulation.get_event" title="bamengine.Simulation.get_event"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_event</span></code></a></dt><dd><p>Access event instances</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">Pipeline</span></code></dt><dd><p>Event pipeline configuration</p>
+</dd>
+</dl>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.Simulation.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ec</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Economy</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rng</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/random/generator.html#numpy.random.Generator" title="(in NumPy v2.3)"><span class="pre">Generator</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_firms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_households</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_banks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">prod</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Producer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wrk</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Worker</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">emp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Employer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Borrower</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lend</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Lender</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">con</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Consumer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pipeline</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Pipeline</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lb</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">LoanBook</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_periods</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#bamengine.Simulation.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#id16" title="bamengine.Simulation.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(ec, config, rng, n_firms, ...)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bamengine.Simulation.get" title="bamengine.Simulation.get"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get</span></code></a>(name)</p></td>
+<td><p>Get role, event or relationship by name.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bamengine.Simulation.get_event" title="bamengine.Simulation.get_event"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_event</span></code></a>(name)</p></td>
+<td><p>Get event instance from pipeline by name.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bamengine.Simulation.get_relationship" title="bamengine.Simulation.get_relationship"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_relationship</span></code></a>(name)</p></td>
+<td><p>Get relationship instance by name.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bamengine.Simulation.get_role" title="bamengine.Simulation.get_role"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_role</span></code></a>(name)</p></td>
+<td><p>Get role instance by name.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bamengine.Simulation.init" title="bamengine.Simulation.init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">init</span></code></a>([config])</p></td>
+<td><p>Create a new Simulation instance with validated configuration.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bamengine.Simulation.run" title="bamengine.Simulation.run"><code class="xref py py-obj docutils literal notranslate"><span class="pre">run</span></code></a>([n_periods, collect])</p></td>
+<td><p>Run the simulation for multiple periods.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bamengine.Simulation.step" title="bamengine.Simulation.step"><code class="xref py py-obj docutils literal notranslate"><span class="pre">step</span></code></a>()</p></td>
+<td><p>Execute one simulation period through the event pipeline.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#id0" title="bamengine.Simulation.ec"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ec</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#id1" title="bamengine.Simulation.config"><code class="xref py py-obj docutils literal notranslate"><span class="pre">config</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#id2" title="bamengine.Simulation.rng"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rng</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#id3" title="bamengine.Simulation.n_firms"><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_firms</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#id4" title="bamengine.Simulation.n_households"><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_households</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#id5" title="bamengine.Simulation.n_banks"><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_banks</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#id6" title="bamengine.Simulation.prod"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prod</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#id7" title="bamengine.Simulation.wrk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">wrk</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#id8" title="bamengine.Simulation.emp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">emp</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#id9" title="bamengine.Simulation.bor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bor</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#id10" title="bamengine.Simulation.lend"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lend</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#id11" title="bamengine.Simulation.con"><code class="xref py py-obj docutils literal notranslate"><span class="pre">con</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#id12" title="bamengine.Simulation.pipeline"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pipeline</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#id13" title="bamengine.Simulation.lb"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lb</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#id14" title="bamengine.Simulation.n_periods"><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_periods</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#id15" title="bamengine.Simulation.t"><code class="xref py py-obj docutils literal notranslate"><span class="pre">t</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bamengine.Simulation.beta" title="bamengine.Simulation.beta"><code class="xref py py-obj docutils literal notranslate"><span class="pre">beta</span></code></a></p></td>
+<td><p>Propensity to consume exponent β.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bamengine.Simulation.cap_factor" title="bamengine.Simulation.cap_factor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cap_factor</span></code></a></p></td>
+<td><p>Breakeven price cap factor.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bamengine.Simulation.delta" title="bamengine.Simulation.delta"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delta</span></code></a></p></td>
+<td><p>Dividend payout ratio δ (DPR).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bamengine.Simulation.h_eta" title="bamengine.Simulation.h_eta"><code class="xref py py-obj docutils literal notranslate"><span class="pre">h_eta</span></code></a></p></td>
+<td><p>Max price-growth shock.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bamengine.Simulation.h_phi" title="bamengine.Simulation.h_phi"><code class="xref py py-obj docutils literal notranslate"><span class="pre">h_phi</span></code></a></p></td>
+<td><p>Max bank operational costs shock.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bamengine.Simulation.h_rho" title="bamengine.Simulation.h_rho"><code class="xref py py-obj docutils literal notranslate"><span class="pre">h_rho</span></code></a></p></td>
+<td><p>Max production-growth shock.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bamengine.Simulation.h_xi" title="bamengine.Simulation.h_xi"><code class="xref py py-obj docutils literal notranslate"><span class="pre">h_xi</span></code></a></p></td>
+<td><p>Max wage-growth shock.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bamengine.Simulation.max_H" title="bamengine.Simulation.max_H"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_H</span></code></a></p></td>
+<td><p>Max loan applications per firm.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bamengine.Simulation.max_M" title="bamengine.Simulation.max_M"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_M</span></code></a></p></td>
+<td><p>Max job applications per unemployed worker.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bamengine.Simulation.max_Z" title="bamengine.Simulation.max_Z"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_Z</span></code></a></p></td>
+<td><p>Max firm visits per consumer.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bamengine.Simulation.r_bar" title="bamengine.Simulation.r_bar"><code class="xref py py-obj docutils literal notranslate"><span class="pre">r_bar</span></code></a></p></td>
+<td><p>Baseline interest rate r̄.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bamengine.Simulation.theta" title="bamengine.Simulation.theta"><code class="xref py py-obj docutils literal notranslate"><span class="pre">theta</span></code></a></p></td>
+<td><p>Job contract length θ.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bamengine.Simulation.v" title="bamengine.Simulation.v"><code class="xref py py-obj docutils literal notranslate"><span class="pre">v</span></code></a></p></td>
+<td><p>Bank capital requirement coefficient v.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">ec</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Economy</span></em><a class="headerlink" href="#id0" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Config</span></em><a class="headerlink" href="#id1" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id2">
+<span class="sig-name descname"><span class="pre">rng</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/random/generator.html#numpy.random.Generator" title="(in NumPy v2.3)"><span class="pre">Generator</span></a></em><a class="headerlink" href="#id2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id3">
+<span class="sig-name descname"><span class="pre">n_firms</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#id3" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">n_households</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#id4" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id5">
+<span class="sig-name descname"><span class="pre">n_banks</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#id5" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id6">
+<span class="sig-name descname"><span class="pre">prod</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Producer</span></em><a class="headerlink" href="#id6" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id7">
+<span class="sig-name descname"><span class="pre">wrk</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Worker</span></em><a class="headerlink" href="#id7" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id8">
+<span class="sig-name descname"><span class="pre">emp</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Employer</span></em><a class="headerlink" href="#id8" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id9">
+<span class="sig-name descname"><span class="pre">bor</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Borrower</span></em><a class="headerlink" href="#id9" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id10">
+<span class="sig-name descname"><span class="pre">lend</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Lender</span></em><a class="headerlink" href="#id10" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id11">
+<span class="sig-name descname"><span class="pre">con</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Consumer</span></em><a class="headerlink" href="#id11" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id12">
+<span class="sig-name descname"><span class="pre">pipeline</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Pipeline</span></em><a class="headerlink" href="#id12" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id13">
+<span class="sig-name descname"><span class="pre">lb</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">LoanBook</span></em><a class="headerlink" href="#id13" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id14">
+<span class="sig-name descname"><span class="pre">n_periods</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#id14" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id15">
+<span class="sig-name descname"><span class="pre">t</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#id15" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="bamengine.Simulation.h_rho">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">h_rho</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#bamengine.Simulation.h_rho" title="Link to this definition"></a></dt>
+<dd><p>Max production-growth shock.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="bamengine.Simulation.h_xi">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">h_xi</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#bamengine.Simulation.h_xi" title="Link to this definition"></a></dt>
+<dd><p>Max wage-growth shock.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="bamengine.Simulation.h_phi">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">h_phi</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#bamengine.Simulation.h_phi" title="Link to this definition"></a></dt>
+<dd><p>Max bank operational costs shock.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="bamengine.Simulation.h_eta">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">h_eta</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#bamengine.Simulation.h_eta" title="Link to this definition"></a></dt>
+<dd><p>Max price-growth shock.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="bamengine.Simulation.max_M">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">max_M</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#bamengine.Simulation.max_M" title="Link to this definition"></a></dt>
+<dd><p>Max job applications per unemployed worker.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="bamengine.Simulation.max_H">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">max_H</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#bamengine.Simulation.max_H" title="Link to this definition"></a></dt>
+<dd><p>Max loan applications per firm.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="bamengine.Simulation.max_Z">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">max_Z</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#bamengine.Simulation.max_Z" title="Link to this definition"></a></dt>
+<dd><p>Max firm visits per consumer.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="bamengine.Simulation.theta">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">theta</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#bamengine.Simulation.theta" title="Link to this definition"></a></dt>
+<dd><p>Job contract length θ.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="bamengine.Simulation.beta">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">beta</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#bamengine.Simulation.beta" title="Link to this definition"></a></dt>
+<dd><p>Propensity to consume exponent β.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="bamengine.Simulation.delta">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">delta</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#bamengine.Simulation.delta" title="Link to this definition"></a></dt>
+<dd><p>Dividend payout ratio δ (DPR).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="bamengine.Simulation.r_bar">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">r_bar</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#bamengine.Simulation.r_bar" title="Link to this definition"></a></dt>
+<dd><p>Baseline interest rate r̄.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="bamengine.Simulation.v">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">v</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#bamengine.Simulation.v" title="Link to this definition"></a></dt>
+<dd><p>Bank capital requirement coefficient v.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="bamengine.Simulation.cap_factor">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cap_factor</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><a class="headerlink" href="#bamengine.Simulation.cap_factor" title="Link to this definition"></a></dt>
+<dd><p>Breakeven price cap factor.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.Simulation.init">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Mapping" title="(in Python v3.14)"><span class="pre">Mapping</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">overrides</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#bamengine.Simulation" title="bamengine.simulation.Simulation"><span class="pre">Simulation</span></a></span></span><a class="reference internal" href="../../_modules/bamengine/simulation.html#Simulation.init"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.Simulation.init" title="Link to this definition"></a></dt>
+<dd><p>Create a new Simulation instance with validated configuration.</p>
+<p>Configuration parameters are merged from three sources (later overrides earlier):
+1. Package defaults (bamengine/config/defaults.yml)
+2. User config (YAML file path, dict, or None)
+3. Keyword arguments (highest priority)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>config</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>Path</em><em>, </em><em>Mapping</em><em>, or </em><em>None</em><em>, </em><em>optional</em>) – Configuration source:
+- str/Path: Path to YAML configuration file
+- Mapping: Dictionary of configuration parameters
+- None: Use package defaults only</p></li>
+<li><p><strong>**overrides</strong> (<em>Any</em>) – Configuration parameters to override (highest precedence).
+Common parameters:
+- n_firms : int (default: 100)
+- n_households : int (default: 500)
+- n_banks : int (default: 10)
+- seed : int or None (default: None)
+- pipeline_path : str or None (default: None)
+- logging : dict (default: {“default_level”: “INFO”})
+See config/defaults.yml for all parameters.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Initialized simulation ready to run.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#bamengine.Simulation" title="bamengine.Simulation">Simulation</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If configuration validation fails (invalid ranges, types, etc.).</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#FileNotFoundError" title="(in Python v3.14)"><strong>FileNotFoundError</strong></a> – If config file path does not exist.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<p>Use default configuration:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">bamengine</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">bam</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">bam</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span><span class="o">.</span><span class="n">n_firms</span><span class="p">,</span> <span class="n">sim</span><span class="o">.</span><span class="n">n_households</span><span class="p">,</span> <span class="n">sim</span><span class="o">.</span><span class="n">n_banks</span>
+<span class="go">(100, 500, 10)</span>
+</pre></div>
+</div>
+<p>Override population sizes:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">bam</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">n_firms</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">n_households</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">n_banks</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span><span class="o">.</span><span class="n">n_firms</span>
+<span class="go">200</span>
+</pre></div>
+</div>
+<p>Load configuration from file:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">bam</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="s2">&quot;my_config.yml&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Combine file config with overrides:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">bam</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">config</span><span class="o">=</span><span class="s2">&quot;base_config.yml&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">n_firms</span><span class="o">=</span><span class="mi">150</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Custom pipeline:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">bam</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">pipeline_path</span><span class="o">=</span><span class="s2">&quot;custom_pipeline.yml&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Configure logging:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">log_config</span> <span class="o">=</span> <span class="p">{</span>
+<span class="gp">... </span>    <span class="s2">&quot;default_level&quot;</span><span class="p">:</span> <span class="s2">&quot;DEBUG&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;events&quot;</span><span class="p">:</span> <span class="p">{</span>
+<span class="gp">... </span>        <span class="s2">&quot;firms_adjust_price&quot;</span><span class="p">:</span> <span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;workers_send_one_round&quot;</span><span class="p">:</span> <span class="s2">&quot;WARNING&quot;</span>
+<span class="gp">... </span>    <span class="p">}</span>
+<span class="gp">... </span><span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">bam</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">logging</span><span class="o">=</span><span class="n">log_config</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+</pre></div>
+</div>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>All configuration is validated before initialization</p></li>
+<li><p>Invalid parameters raise ValueError with clear error messages</p></li>
+<li><p>Vector parameters (price_init, net_worth_init, etc.) accept scalars
+(broadcast to all agents) or 1D arrays of appropriate length</p></li>
+<li><p>Random seed ensures reproducible simulations</p></li>
+<li><p>Default pipeline includes 39 events across 8 economic phases</p></li>
+</ul>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">Config</span></code></dt><dd><p>Configuration dataclass</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">ConfigValidator</span></code></dt><dd><p>Centralized validation logic</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">Pipeline</span></code></dt><dd><p>Event pipeline configuration</p>
+</dd>
+</dl>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.Simulation.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_periods</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collect</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="s"><span class="pre">'SimulationResults'</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/bamengine/simulation.html#Simulation.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.Simulation.run" title="Link to this definition"></a></dt>
+<dd><p>Run the simulation for multiple periods.</p>
+<p>Executes the event pipeline for a specified number of periods, advancing
+the economy state incrementally. If no argument is provided, uses the
+n_periods value from initialization.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n_periods</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – Number of periods to simulate. If None (default), uses the n_periods
+value passed at initialization via <cite>Simulation.init()</cite>.</p></li>
+<li><p><strong>collect</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>default=False</em>) – <p>Whether to collect and return simulation results.</p>
+<ul>
+<li><p>False: No collection, returns None (default)</p></li>
+<li><p>True: Collect all roles (aggregated means) + economy metrics</p></li>
+<li><dl class="simple">
+<dt>dict: Custom collection config with keys:</dt><dd><ul>
+<li><p>’roles’: list of role names or None for all</p></li>
+<li><p>’variables’: dict mapping role -&gt; list of variables</p></li>
+<li><p>’aggregate’: ‘mean’, ‘median’, ‘sum’, ‘std’, or None for full</p></li>
+<li><p>’economy’: bool, include economy metrics (default True)</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Results object if collect is truthy, None otherwise.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="bamengine.SimulationResults.html#bamengine.SimulationResults" title="bamengine.SimulationResults">SimulationResults</a> or None</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<p>Run simulation for 100 periods using default configuration:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">bamengine</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">be</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">be</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">n_periods</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">unemployment</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">ec</span><span class="o">.</span><span class="n">unemp_rate_history</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Final unemployment rate: </span><span class="si">{</span><span class="n">unemployment</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="go">Final unemployment rate: 4.32%</span>
+</pre></div>
+</div>
+<p>Use n_periods from initialization:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">be</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">n_periods</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>  <span class="c1"># Runs for 50 periods</span>
+</pre></div>
+</div>
+<p>Collect results with default settings:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">be</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">results</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">n_periods</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">collect</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">results</span><span class="o">.</span><span class="n">economy_metrics</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Custom data collection:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">results</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">collect</span><span class="o">=</span><span class="p">{</span>
+<span class="gp">... </span>    <span class="s1">&#39;roles&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;Producer&#39;</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="s1">&#39;variables&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;Producer&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;price&#39;</span><span class="p">,</span> <span class="s1">&#39;inventory&#39;</span><span class="p">]},</span>
+<span class="gp">... </span>    <span class="s1">&#39;aggregate&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>  <span class="c1"># full per-agent data</span>
+<span class="gp">... </span><span class="p">})</span>
+</pre></div>
+</div>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>Each period corresponds to one execution of the full event pipeline</p></li>
+<li><p>State is mutated in-place regardless of collect parameter</p></li>
+<li><p>Simulation halts early if economy is destroyed (all firms/banks bankrupt)</p></li>
+<li><p>For step-by-step execution with custom logic, use <cite>step()</cite> instead</p></li>
+</ul>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#bamengine.Simulation.step" title="bamengine.Simulation.step"><code class="xref py py-obj docutils literal notranslate"><span class="pre">step</span></code></a></dt><dd><p>Execute a single simulation period</p>
+</dd>
+<dt><a class="reference internal" href="#bamengine.Simulation.init" title="bamengine.Simulation.init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">init</span></code></a></dt><dd><p>Initialize simulation with configuration</p>
+</dd>
+<dt><a class="reference internal" href="bamengine.SimulationResults.html#bamengine.SimulationResults" title="bamengine.SimulationResults"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SimulationResults</span></code></a></dt><dd><p>Container for collected simulation data</p>
+</dd>
+</dl>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.Simulation.step">
+<span class="sig-name descname"><span class="pre">step</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/bamengine/simulation.html#Simulation.step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.Simulation.step" title="Link to this definition"></a></dt>
+<dd><p>Execute one simulation period through the event pipeline.</p>
+<p>Advances the economy by exactly one period, executing all events in the
+pipeline in the order specified. This is the core execution method called
+by <cite>run()</cite>. Users can call this directly for fine-grained control between
+periods.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>State is mutated in-place. The period counter (<cite>sim.t</cite>) is incremented
+by 1. If the economy is destroyed (all firms/banks bankrupt), execution
+halts immediately.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<p>Step through simulation manually with intermediate analysis:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">bamengine</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">be</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">be</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">period</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">sim</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+<span class="gp">... </span>    <span class="k">if</span> <span class="n">period</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="n">unemployment</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">ec</span><span class="o">.</span><span class="n">unemp_rate_history</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="gp">... </span>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Period </span><span class="si">{</span><span class="n">period</span><span class="si">}</span><span class="s2">: Unemployment = </span><span class="si">{</span><span class="n">unemployment</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="go">Period 0: Unemployment = 8.40%</span>
+<span class="go">Period 10: Unemployment = 5.20%</span>
+<span class="go">Period 20: Unemployment = 4.80%</span>
+<span class="go">...</span>
+</pre></div>
+</div>
+<p>Modify pipeline before stepping:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">be</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Remove a specific event from the pipeline</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span><span class="o">.</span><span class="n">pipeline</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s2">&quot;firms_pay_dividends&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>  <span class="c1"># Executes modified pipeline</span>
+</pre></div>
+</div>
+<p>Conditional execution based on economy state:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">be</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">while</span> <span class="n">sim</span><span class="o">.</span><span class="n">t</span> <span class="o">&lt;</span> <span class="mi">100</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">sim</span><span class="o">.</span><span class="n">ec</span><span class="o">.</span><span class="n">destroyed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">sim</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+<span class="gp">... </span>    <span class="n">avg_price</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">ec</span><span class="o">.</span><span class="n">avg_mkt_price</span>
+<span class="gp">... </span>    <span class="k">if</span> <span class="n">avg_price</span> <span class="o">&gt;</span> <span class="mf">2.0</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;High prices detected at period </span><span class="si">{</span><span class="n">sim</span><span class="o">.</span><span class="n">t</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="k">break</span>
+</pre></div>
+</div>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>Executes all events in <cite>sim.pipeline</cite> in order</p></li>
+<li><p>Increments period counter (<cite>sim.t</cite>) before pipeline execution</p></li>
+<li><p>Halts immediately if <cite>sim.ec.destroyed</cite> is True (economy collapse)</p></li>
+<li><p>For bulk execution over many periods, use <cite>run()</cite> instead</p></li>
+<li><p>Pipeline can be modified between calls to <cite>step()</cite></p></li>
+</ul>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#bamengine.Simulation.run" title="bamengine.Simulation.run"><code class="xref py py-obj docutils literal notranslate"><span class="pre">run</span></code></a></dt><dd><p>Execute multiple periods</p>
+</dd>
+<dt><a class="reference internal" href="#id12" title="bamengine.Simulation.pipeline"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pipeline</span></code></a></dt><dd><p>Event pipeline (can be modified before stepping)</p>
+</dd>
+</dl>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.Simulation.get_role">
+<span class="sig-name descname"><span class="pre">get_role</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="reference internal" href="../../_modules/bamengine/simulation.html#Simulation.get_role"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.Simulation.get_role" title="Link to this definition"></a></dt>
+<dd><p>Get role instance by name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Role name (case-insensitive): ‘Producer’, ‘Worker’, ‘Employer’,
+‘Borrower’, ‘Lender’, ‘Consumer’.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Role instance from simulation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="bamengine.Role.html#bamengine.Role" title="bamengine.Role">Role</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#KeyError" title="(in Python v3.14)"><strong>KeyError</strong></a> – If role name not found.</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">prod</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">get_role</span><span class="p">(</span><span class="s2">&quot;Producer&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">assert</span> <span class="n">prod</span> <span class="ow">is</span> <span class="n">sim</span><span class="o">.</span><span class="n">prod</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.Simulation.get_event">
+<span class="sig-name descname"><span class="pre">get_event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="reference internal" href="../../_modules/bamengine/simulation.html#Simulation.get_event"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.Simulation.get_event" title="Link to this definition"></a></dt>
+<dd><p>Get event instance from pipeline by name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Event name (e.g., ‘firms_adjust_price’).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Event instance from current pipeline.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="bamengine.Event.html#bamengine.Event" title="bamengine.Event">Event</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#KeyError" title="(in Python v3.14)"><strong>KeyError</strong></a> – If event not found in pipeline.</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pricing_event</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="s2">&quot;firms_adjust_price&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.Simulation.get_relationship">
+<span class="sig-name descname"><span class="pre">get_relationship</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="reference internal" href="../../_modules/bamengine/simulation.html#Simulation.get_relationship"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.Simulation.get_relationship" title="Link to this definition"></a></dt>
+<dd><p>Get relationship instance by name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Relationship name (case-insensitive): ‘LoanBook’.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Relationship instance from simulation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="bamengine.Relationship.html#bamengine.Relationship" title="bamengine.Relationship">Relationship</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#KeyError" title="(in Python v3.14)"><strong>KeyError</strong></a> – If relationship name not found.</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lb</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">get_relationship</span><span class="p">(</span><span class="s2">&quot;LoanBook&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">assert</span> <span class="n">lb</span> <span class="ow">is</span> <span class="n">sim</span><span class="o">.</span><span class="n">lb</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.Simulation.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="reference internal" href="../../_modules/bamengine/simulation.html#Simulation.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.Simulation.get" title="Link to this definition"></a></dt>
+<dd><p>Get role, event or relationship by name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Role, event or relationship name.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Role, event or relationship instance from simulation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="bamengine.Role.html#bamengine.Role" title="bamengine.Role">Role</a> | <a class="reference internal" href="bamengine.Event.html#bamengine.Event" title="bamengine.Event">Event</a> | <a class="reference internal" href="bamengine.Relationship.html#bamengine.Relationship" title="bamengine.Relationship">Relationship</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If name not found in simulation.</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Searches roles first, then events, then relationships.</p>
+</div>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">prod</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Producer&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">event</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;firms_adjust_price&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id16">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ec</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Economy</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rng</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/random/generator.html#numpy.random.Generator" title="(in NumPy v2.3)"><span class="pre">Generator</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_firms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_households</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_banks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">prod</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Producer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wrk</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Worker</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">emp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Employer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Borrower</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lend</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Lender</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">con</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Consumer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pipeline</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Pipeline</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lb</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">LoanBook</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_periods</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#id16" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../index.html" class="btn btn-neutral float-left" title="API Reference" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="bamengine.SimulationResults.html" class="btn btn-neutral float-right" title="bamengine.SimulationResults" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Kostas Ganitis.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,7 +1,3 @@
-# BAM Engine
-
-**Bottom-Up Adaptive Macroeconomics Simulation Framework**
-
 [![Python](https://img.shields.io/pypi/pyversions/bamengine.svg)](https://pypi.org/project/bamengine/)
 [![PyPI version](https://img.shields.io/pypi/v/bamengine.svg?color=blue)](https://pypi.org/project/bamengine/)
 [![DOI](https://zenodo.org/badge/972128676.svg)](https://doi.org/10.5281/zenodo.17610305)
@@ -12,12 +8,16 @@
 [![Benchmarked by ASV](https://img.shields.io/badge/Benchmarked%20by-asv-brightgreen)](asv_benchmarks/)
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Type Checked](https://img.shields.io/badge/type%20checked-mypy-orange)](http://mypy-lang.org/)
-[![Linter: Ruff](https://img.shields.io/badge/linter-ruff-orange)](https://github.com/astral-sh/ruff)
+[![Linter: Ruff](https://img.shields.io/badge/linter-ruff-black)](https://github.com/astral-sh/ruff)
+[![Type Checked](https://img.shields.io/badge/type%20checked-mypy-black)](http://mypy-lang.org/)
 
-BAM Engine is a high-performance Python implementation of the BAM model from *Macroeconomics from the Bottom-up* (Delli Gatti et al., 2011, Chapter 3). It provides a modular, extensible agent-based macroeconomic simulation framework built on ECS (Entity-Component-System) architecture with fully vectorized NumPy operations.
+# BAM Engine
 
-> **Note**: This release is feature-complete for the core BAM model but APIs may change in future releases before v1.0.0. Designed for academic research and policy analysis experiments.
+__Modular Python Framework for the Agent-based BAM Model__
+
+__BAM Engine__ is a high-performance Python implementation of the BAM model from *Macroeconomics from the Bottom-up* (Delli Gatti et al., 2011, Chapter 3). It provides a modular, extensible agent-based macroeconomic simulation framework built on ECS (Entity-Component-System) architecture with fully vectorized NumPy operations.
+
+> __Note__: This release is feature-complete for the core BAM model but APIs may change in future releases before v1.0.0.
 
 ## Features
 
@@ -37,7 +37,8 @@ BAM's Entity-Component-System design separates agent state (Roles) from behavior
 
 Friendly to users without deep Python expertise, with:
 
-* Easy access to core ECS components (Roles, Events, Relationships) that allows creation, modification and extension
+* Easy access to core ECS components (Roles, Events, Relationships), for creation, retrieval, modification and extension
+* YAML-configurable event pipeline for flexible simulation workflows
 * Vectorized operations module with safe handling that wraps NumPy functions
 * Three-tier configuration system (package defaults -> user YAML -> keyword args)
 
@@ -54,16 +55,12 @@ Friendly to users without deep Python expertise, with:
 ### Installation
 
 ```bash
-# Install (first time)
 pip install bamengine
-
-# Upgrade to latest version
-pip install -U bamengine
 ```
 
-**Dependencies**: NumPy (≥1.26) and PyYAML (≥6.0.2) are automatically installed by pip.
+__Dependencies__: NumPy (≥1.26) and PyYAML (≥6.0.2) are automatically installed by pip.
 
-**Requirements**: Python 3.11 or higher.
+__Requirements__: Python 3.11 or higher.
 
 ### Basic Usage
 
@@ -85,32 +82,32 @@ print(f"Final average price: {avg_price:.2f}")
 
 ## Architecture
 
-BAM Engine uses an **ECS (Entity-Component-System)** architecture for modularity and performance:
+BAM Engine uses an __ECS (Entity-Component-System)__ architecture for modularity and performance:
 
-* **Agents**: Lightweight entities with immutable IDs and types (FIRM, HOUSEHOLD, BANK)
-* **Roles (Components)**: Dataclasses storing agent state as NumPy arrays (Producer, Worker, Lender, etc.)
-* **Events (Systems)**: Pure functions operating on roles, executed in pipeline order
-* **Relationships**: Many-to-many connections with sparse COO format (e.g., LoanBook for loans)
-* **Pipeline**: YAML-configurable event execution with special syntax (repeat, interleave)
+* __Agents__: Lightweight entities with immutable IDs and types (FIRM, HOUSEHOLD, BANK)
+* __Roles (Components)__: Dataclasses storing agent state as NumPy arrays (Producer, Worker, Lender, etc.)
+* __Events (Systems)__: Pure functions operating on roles, executed in pipeline order
+* __Relationships__: Many-to-many connections with sparse COO format (e.g., LoanBook for loans)
+* __Pipeline__: YAML-configurable event execution with special syntax (repeat, interleave)
 
 ### Agent Roles
 
-* **Firms**: Producer + Employer + Borrower
-* **Households**: Worker + Consumer
-* **Banks**: Lender
+* __Firms__: Producer + Employer + Borrower
+* __Households__: Worker + Consumer
+* __Banks__: Lender
 
 ### Event Pipeline
 
 Each period executes 39 events across 8 economic phases:
 
-1. **Planning**: Production targets, pricing, labor needs
-2. **Labor Market**: Wage setting, job search, hiring (4 rounds)
-3. **Credit Market**: Loan supply/demand, matching (2 rounds)
-4. **Production**: Wage payments, production execution
-5. **Goods Market**: Consumption decisions, shopping (2 rounds)
-6. **Revenue**: Revenue collection, debt repayment, dividends
-7. **Bankruptcy**: Insolvency detection, exit
-8. **Entry**: Replacement firm/bank spawning
+1. __Planning__: Production targets, pricing, labor needs
+2. __Labor Market__: Wage setting, job search, hiring (4 rounds)
+3. __Credit Market__: Loan supply/demand, matching (2 rounds)
+4. __Production__: Wage payments, production execution
+5. __Goods Market__: Consumption decisions, shopping (2 rounds)
+6. __Revenue__: Revenue collection, debt repayment, dividends
+7. __Bankruptcy__: Insolvency detection, exit
+8. __Entry__: Replacement firm/bank spawning
 
 ## Creating Custom Components
 
@@ -169,9 +166,9 @@ class GigEmployment:
 
 ### Three-Tier System
 
-1. **Package defaults** (`src/bamengine/config/defaults.yml`)
-2. **User YAML file** (custom configuration)
-3. **Keyword arguments** (highest priority)
+1. __Package defaults__ (`src/bamengine/config/defaults.yml`)
+2. __User YAML file__ (custom configuration)
+3. __Keyword arguments__ (highest priority)
 
 ### Example Configuration
 
@@ -208,18 +205,24 @@ Parameters not specified in keyword arguments fall back to custom YAML, then pac
 
 ## Performance
 
+### Benchmarks
+
 BAM Engine achieves excellent performance through vectorization:
 
-| Configuration | Firms | Households | Banks | 1000 periods | 100 periods | Throughput |
-|---------------|-------|------------|-------|--------------|-------------|------------|
+| Configuration | Firms | Households | Banks | 1000 periods | 100 periods | Throughput    |
+|---------------|-------|------------|-------|--------------|-------------|---------------|
 | Small         | 100   | 500        | 10    | 4.1s         | 0.4s        | 244 periods/s |
 | Medium        | 200   | 1,000      | 10    | 8.0s         | 0.8s        | 125 periods/s |
 | Large         | 500   | 2,500      | 10    | 20.5s        | 2.1s        | 49 periods/s  |
 
-**Machine**: Apple M4 Pro (macOS 15.1, Python 3.12)
-**Benchmarking**: [ASV (Airspeed Velocity)]() with machine-specific baselines and historical tracking
+* __Machine__: Apple M4 Pro (macOS 15.1, Python 3.12)
+* __Benchmarking__: [ASV (Airspeed Velocity)]() with machine-specific baselines and historical tracking
 
 Performance scales sub-linearly with agent count due to NumPy vectorization efficiency. For detailed benchmarks and regression tracking, see [asv_benchmarks/](asv_benchmarks/).
+
+### Profiling
+
+<!-- Add profiling results and insights here -->
 
 ## Development
 
@@ -234,8 +237,8 @@ cd bam-engine
 pip install -e ".[dev]"
 ```
 
-### Code Quality
-
+### Linting & Formatting
+<!-- Make this the default linting/formatting setup for the project, so the user can just run black/ruff/mypy as needed, without extra arguments. -->
 ```bash
 # Format code
 black src/ tests/
@@ -247,8 +250,8 @@ ruff check --fix src/ tests/
 mypy src/
 ```
 
-### Testing
-
+### Running Tests
+<!-- Same as above, make this the default test setup for the project, so the user can just run pytest as needed, without extra arguments. -->
 ```bash
 # Run all tests
 pytest
@@ -260,7 +263,7 @@ pytest --cov=src/bamengine
 pytest -m "not slow and not regression and not invariants" -v
 ```
 
-### Benchmarking
+### Benchmarking & Profiling
 
 ```bash
 # ASV benchmarks (performance tracking with historical data)
@@ -298,7 +301,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 If you use BAM Engine in your research, please cite both:
 
-1. **This software** - Use the metadata in [`CITATION.cff`](CITATION.cff) or GitHub's "Cite this repository" button
-2. **The original BAM model** - Delli Gatti, D., Desiderio, S., Gaffeo, E., Cirillo, P., & Gallegati, M. (2011). The BAM model at work. In Macroeconomics from the Bottom-up (New Economic Windows). Springer Milano. DOI: [10.1007/978-88-470-1971-3](https://doi.org/10.1007/978-88-470-1971-3)
+1. __This software__ - Use the metadata in [`CITATION.cff`](CITATION.cff) or GitHub's "Cite this repository" button
+2. __The original BAM model__ - Delli Gatti, D., Desiderio, S., Gaffeo, E., Cirillo, P., & Gallegati, M. (2011). The BAM model at work. In Macroeconomics from the Bottom-up (New Economic Windows). Springer Milano. DOI: [10.1007/978-88-470-1971-3](https://doi.org/10.1007/978-88-470-1971-3)
 
 Both citations are included in [`CITATION.cff`](CITATION.cff) for citation management tools.

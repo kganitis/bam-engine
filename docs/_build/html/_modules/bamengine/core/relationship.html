@@ -1,0 +1,743 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>bamengine.core.relationship &mdash; BAM Engine 0.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=d2d258e8" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=a58bc63e"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            BAM Engine
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../installation.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../installation.html#install-from-pypi">Install from PyPI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../installation.html#install-from-source">Install from source</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../quickstart.html#basic-simulation">Basic Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../quickstart.html#collecting-results">Collecting Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../quickstart.html#configuration">Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/index.html">User Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../user_guide/index.html#topics">Topics</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../auto_examples/index.html">Examples Gallery</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../auto_examples/index.html#advanced-examples">Advanced Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../auto_examples/index.html#basic-examples">Basic Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../auto_examples/index.html#research-examples">Research Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../auto_examples/advanced/index.html">Advanced Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../auto_examples/basic/index.html">Basic Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../auto_examples/basic/example_hello_world.html">Hello BAM Engine</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../auto_examples/basic/example_hello_world.html#initialize-and-run">Initialize and Run</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../auto_examples/basic/example_hello_world.html#visualize-unemployment">Visualize Unemployment</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../auto_examples/basic/example_configuration.html">Configuring Your Simulation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../auto_examples/basic/example_configuration.html#basic-configuration">Basic Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../auto_examples/basic/example_configuration.html#economic-parameters">Economic Parameters</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../auto_examples/basic/example_configuration.html#initial-conditions">Initial Conditions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../auto_examples/basic/example_configuration.html#compare-scenarios">Compare Scenarios</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../auto_examples/basic/example_configuration.html#visualize-comparison">Visualize Comparison</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../auto_examples/basic/example_configuration.html#summary-statistics">Summary Statistics</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../auto_examples/basic/example_configuration.html#available-parameters">Available Parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../auto_examples/basic/example_baseline_scenario.html">BAM Baseline Scenario (3.9.1)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../auto_examples/basic/example_baseline_scenario.html#initialize-the-simulation">Initialize the Simulation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../auto_examples/basic/example_baseline_scenario.html#run-simulation-and-collect-data">Run Simulation and Collect Data</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../auto_examples/basic/example_baseline_scenario.html#prepare-data-for-visualization">Prepare Data for Visualization</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../auto_examples/basic/example_baseline_scenario.html#visualize-key-economic-indicators">Visualize Key Economic Indicators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../auto_examples/basic/example_baseline_scenario.html#summary-statistics">Summary Statistics</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../auto_examples/research/index.html">Research Examples</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/index.html#core-classes">Core Classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/generated/bamengine.Simulation.html">bamengine.Simulation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/generated/bamengine.Simulation.html#bamengine.Simulation"><code class="docutils literal notranslate"><span class="pre">Simulation</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/generated/bamengine.SimulationResults.html">bamengine.SimulationResults</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/generated/bamengine.SimulationResults.html#bamengine.SimulationResults"><code class="docutils literal notranslate"><span class="pre">SimulationResults</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/index.html#ecs-components">ECS Components</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/generated/bamengine.Role.html">bamengine.Role</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/generated/bamengine.Role.html#bamengine.Role"><code class="docutils literal notranslate"><span class="pre">Role</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/generated/bamengine.Event.html">bamengine.Event</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/generated/bamengine.Event.html#bamengine.Event"><code class="docutils literal notranslate"><span class="pre">Event</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/generated/bamengine.Relationship.html">bamengine.Relationship</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/generated/bamengine.Relationship.html#bamengine.Relationship"><code class="docutils literal notranslate"><span class="pre">Relationship</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/index.html#type-system">Type System</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/generated/bamengine.Float.html">bamengine.Float</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/generated/bamengine.Float.html#bamengine.Float"><code class="docutils literal notranslate"><span class="pre">Float</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/generated/bamengine.Int.html">bamengine.Int</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/generated/bamengine.Int.html#bamengine.Int"><code class="docutils literal notranslate"><span class="pre">Int</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/generated/bamengine.Bool.html">bamengine.Bool</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/generated/bamengine.Bool.html#bamengine.Bool"><code class="docutils literal notranslate"><span class="pre">Bool</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/generated/bamengine.AgentId.html">bamengine.AgentId</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/generated/bamengine.AgentId.html#bamengine.AgentId"><code class="docutils literal notranslate"><span class="pre">AgentId</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing.html">Contributing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../contributing.html#getting-started">Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../contributing.html#code-style">Code Style</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog.html">Changelog</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../changelog.html#unreleased">[Unreleased]</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../changelog.html#added">Added</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../changelog.html#id1">[0.1.1] - 2024-11</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">BAM Engine</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">bamengine.core.relationship</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for bamengine.core.relationship</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Relationship system for managing many-to-many relationships between roles.</span>
+
+<span class="sd">This module provides a base class for defining relationships between roles,</span>
+<span class="sd">storing edges (connections) between agents with edge-specific data. Uses</span>
+<span class="sd">COO (Coordinate List) sparse format for efficient storage and querying.</span>
+
+<span class="sd">Design Notes</span>
+<span class="sd">------------</span>
+<span class="sd">- Relationships store edges between source and target roles</span>
+<span class="sd">- Edge data stored in parallel NumPy arrays (COO format)</span>
+<span class="sd">- Supports many-to-many, one-to-many, and many-to-one cardinality</span>
+<span class="sd">- Auto-registration via __init_subclass__ hook</span>
+<span class="sd">- Query methods use vectorized NumPy operations</span>
+
+<span class="sd">Examples</span>
+<span class="sd">--------</span>
+<span class="sd">Define a loan relationship using @relationship decorator:</span>
+
+<span class="sd">&gt;&gt;&gt; from bamengine import relationship, get_role, Float</span>
+<span class="sd">&gt;&gt;&gt;</span>
+<span class="sd">&gt;&gt;&gt; @relationship(source=get_role(&quot;Borrower&quot;), target=get_role(&quot;Lender&quot;))</span>
+<span class="sd">... class LoanBook:</span>
+<span class="sd">...     principal: Float</span>
+<span class="sd">...     rate: Float</span>
+<span class="sd">...     debt: Float</span>
+
+<span class="sd">Access relationship in simulation:</span>
+
+<span class="sd">&gt;&gt;&gt; import bamengine as be</span>
+<span class="sd">&gt;&gt;&gt; sim = be.Simulation.init(n_firms=100, n_banks=10, seed=42)</span>
+<span class="sd">&gt;&gt;&gt; loans = sim.get_relationship(&quot;LoanBook&quot;)</span>
+<span class="sd">&gt;&gt;&gt; # Query loans from specific borrower</span>
+<span class="sd">&gt;&gt;&gt; borrower_id = 5</span>
+<span class="sd">&gt;&gt;&gt; mask = loans.source_ids[:loans.size] == borrower_id</span>
+<span class="sd">&gt;&gt;&gt; borrower_loans = loans.principal[:loans.size][mask]</span>
+
+<span class="sd">Traditional syntax:</span>
+
+<span class="sd">&gt;&gt;&gt; from dataclasses import dataclass</span>
+<span class="sd">&gt;&gt;&gt; from bamengine.core import Relationship</span>
+<span class="sd">&gt;&gt;&gt; from bamengine.typing import Float, Int</span>
+<span class="sd">&gt;&gt;&gt;</span>
+<span class="sd">&gt;&gt;&gt; @dataclass(slots=True)</span>
+<span class="sd">... class Employment(Relationship):</span>
+<span class="sd">...     source_role = get_role(&quot;Borrower&quot;)</span>
+<span class="sd">...     target_role = get_role(&quot;Lender&quot;)</span>
+<span class="sd">...     wage: Float</span>
+<span class="sd">...     contract_duration: Int</span>
+
+<span class="sd">See Also</span>
+<span class="sd">--------</span>
+<span class="sd">Role : Base class for component state</span>
+<span class="sd">bamengine.decorators.relationship : Simplified @relationship decorator</span>
+<span class="sd">LoanBook : Concrete relationship between Borrower and Lender</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">TypeVar</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">bamengine.typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Float1D</span><span class="p">,</span> <span class="n">Idx1D</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">bamengine.core.role</span><span class="w"> </span><span class="kn">import</span> <span class="n">Role</span>
+
+<span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;T&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Relationship">
+<a class="viewcode-back" href="../../../api/generated/bamengine.Relationship.html#bamengine.Relationship">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Relationship</span><span class="p">(</span>
+    <span class="n">ABC</span>
+<span class="p">):</span>  <span class="c1"># Some abstract methods/edge cases not covered - tested via LoanBook</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base class for defining relationships between roles.</span>
+
+<span class="sd">    Relationships store edges (connections) between agents in different roles,</span>
+<span class="sd">    along with edge-specific data. Internally uses COO (Coordinate List) sparse</span>
+<span class="sd">    format for efficient storage and querying.</span>
+
+<span class="sd">    Example</span>
+<span class="sd">    -------</span>
+<span class="sd">    Define a loan relationship between borrowers and lenders::</span>
+
+<span class="sd">        @relationship(source=Borrower, target=Lender, cardinality=&quot;many-to-many&quot;)</span>
+<span class="sd">        class LoanBook:</span>
+<span class="sd">            principal: Float1D</span>
+<span class="sd">            rate: Float1D</span>
+<span class="sd">            interest: Float1D</span>
+<span class="sd">            debt: Float1D</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    source_ids : Idx1D</span>
+<span class="sd">        Array of source agent IDs</span>
+<span class="sd">    target_ids : Idx1D</span>
+<span class="sd">        Array of target agent IDs</span>
+<span class="sd">    size : int</span>
+<span class="sd">        Current number of active edges</span>
+<span class="sd">    capacity : int</span>
+<span class="sd">        Maximum number of edges that can be stored</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    - Edges are stored in COO format with parallel arrays</span>
+<span class="sd">    - Empty slots are filled with sentinels (-1 for indices)</span>
+<span class="sd">    - Subclasses define edge-specific data as additional fields</span>
+<span class="sd">    - Query methods use NumPy operations for vectorized performance</span>
+<span class="sd">    - The __init_subclass__ hook automatically registers relationships</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Metadata (set by __init_subclass__)</span>
+    <span class="n">name</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">source_role</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">Role</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">target_role</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">Role</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="c1"># noinspection PyClassVar</span>
+    <span class="n">cardinality</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;many-to-many&quot;</span><span class="p">,</span> <span class="s2">&quot;one-to-many&quot;</span><span class="p">,</span> <span class="s2">&quot;many-to-one&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;many-to-many&quot;</span>
+    <span class="p">)</span>
+
+    <span class="c1"># COO format arrays (always present)</span>
+    <span class="n">source_ids</span><span class="p">:</span> <span class="n">Idx1D</span>  <span class="c1"># Source entity IDs</span>
+    <span class="n">target_ids</span><span class="p">:</span> <span class="n">Idx1D</span>  <span class="c1"># Target entity IDs</span>
+    <span class="n">size</span><span class="p">:</span> <span class="nb">int</span>  <span class="c1"># Current number of active edges</span>
+    <span class="n">capacity</span><span class="p">:</span> <span class="nb">int</span>  <span class="c1"># Maximum number of edges</span>
+
+<div class="viewcode-block" id="Relationship.__init_subclass__">
+<a class="viewcode-back" href="../../../api/generated/bamengine.Relationship.html#bamengine.Relationship.__init_subclass__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">__init_subclass__</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">source</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">Role</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">target</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">Role</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">cardinality</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span>
+            <span class="s2">&quot;many-to-many&quot;</span><span class="p">,</span> <span class="s2">&quot;one-to-many&quot;</span><span class="p">,</span> <span class="s2">&quot;many-to-one&quot;</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;many-to-many&quot;</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Auto-register Relationship subclasses in the global registry.</span>
+
+<span class="sd">        This hook is called automatically when a class inherits from Relationship.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        name : str, optional</span>
+<span class="sd">            Custom name for the relationship. If not provided, uses the class name.</span>
+<span class="sd">        source : type[Role], optional</span>
+<span class="sd">            Source role class for the relationship</span>
+<span class="sd">        target : type[Role], optional</span>
+<span class="sd">            Target role class for the relationship</span>
+<span class="sd">        cardinality : {&quot;many-to-many&quot;, &quot;one-to-many&quot;, &quot;many-to-one&quot;},</span>
+<span class="sd">            optional, default &quot;many-to-many&quot;,</span>
+<span class="sd">            Cardinality constraint for the relationship</span>
+<span class="sd">        **kwargs</span>
+<span class="sd">            Additional keyword arguments passed to parent __init_subclass__.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Relationship</span><span class="p">,</span> <span class="bp">cls</span><span class="p">)</span><span class="o">.</span><span class="n">__init_subclass__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># Use custom name if provided, otherwise preserve existing name or use cls name</span>
+        <span class="c1"># This handles the case where @dataclass(slots=True) creates a new class</span>
+        <span class="c1"># and triggers __init_subclass__ a second time without the custom name</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="k">elif</span> <span class="bp">cls</span><span class="o">.</span><span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span>
+
+        <span class="c1"># Set relationship metadata</span>
+        <span class="k">if</span> <span class="n">source</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">source_role</span> <span class="o">=</span> <span class="n">source</span>
+        <span class="k">if</span> <span class="n">target</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">target_role</span> <span class="o">=</span> <span class="n">target</span>
+        <span class="k">if</span> <span class="n">cardinality</span> <span class="o">!=</span> <span class="s2">&quot;many-to-many&quot;</span> <span class="ow">or</span> <span class="bp">cls</span><span class="o">.</span><span class="n">cardinality</span> <span class="o">==</span> <span class="s2">&quot;many-to-many&quot;</span><span class="p">:</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">cardinality</span> <span class="o">=</span> <span class="n">cardinality</span>
+
+        <span class="c1"># Auto-register in global registry</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">bamengine.core.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">_RELATIONSHIP_REGISTRY</span>
+
+        <span class="n">_RELATIONSHIP_REGISTRY</span><span class="p">[</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">cls</span></div>
+
+
+<div class="viewcode-block" id="Relationship.__repr__">
+<a class="viewcode-back" href="../../../api/generated/bamengine.Relationship.html#bamengine.Relationship.__repr__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Provide informative repr showing relationship metadata and state.&quot;&quot;&quot;</span>
+        <span class="n">fields</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;__dataclass_fields__&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="c1"># Count only the edge data fields (exclude the base fields)</span>
+        <span class="n">base_fields</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;source_ids&quot;</span><span class="p">,</span> <span class="s2">&quot;target_ids&quot;</span><span class="p">,</span> <span class="s2">&quot;size&quot;</span><span class="p">,</span> <span class="s2">&quot;capacity&quot;</span><span class="p">}</span>
+        <span class="n">edge_fields</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">fields</span> <span class="k">if</span> <span class="n">f</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">base_fields</span><span class="p">]</span>
+
+        <span class="n">relationship_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="n">source_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">source_role</span><span class="o">.</span><span class="vm">__name__</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">source_role</span> <span class="k">else</span> <span class="s2">&quot;?&quot;</span>
+        <span class="n">target_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_role</span><span class="o">.</span><span class="vm">__name__</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_role</span> <span class="k">else</span> <span class="s2">&quot;?&quot;</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">relationship_name</span><span class="si">}</span><span class="s2">(&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">source_name</span><span class="si">}</span><span class="s2">-&gt;</span><span class="si">{</span><span class="n">target_name</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;cardinality=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cardinality</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;edges=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">capacity</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;fields=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">edge_fields</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;)&quot;</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Relationship.query_sources">
+<a class="viewcode-back" href="../../../api/generated/bamengine.Relationship.html#bamengine.Relationship.query_sources">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">query_sources</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Idx1D</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get indices of all edges originating from a source.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        source_id : int</span>
+<span class="sd">            Source agent ID to query</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Idx1D</span>
+<span class="sd">            Array of edge indices where source_ids == source_id</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">source_ids</span><span class="p">[:</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">]</span> <span class="o">==</span> <span class="n">source_id</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="Relationship.query_targets">
+<a class="viewcode-back" href="../../../api/generated/bamengine.Relationship.html#bamengine.Relationship.query_targets">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">query_targets</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Idx1D</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get indices of all edges pointing to a target.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        target_id : int</span>
+<span class="sd">            Target agent ID to query</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Idx1D</span>
+<span class="sd">            Array of edge indices where target_ids == target_id</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_ids</span><span class="p">[:</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">]</span> <span class="o">==</span> <span class="n">target_id</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="Relationship.aggregate_by_source">
+<a class="viewcode-back" href="../../../api/generated/bamengine.Relationship.html#bamengine.Relationship.aggregate_by_source">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">aggregate_by_source</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">component</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">func</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;sum&quot;</span><span class="p">,</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;sum&quot;</span><span class="p">,</span>
+        <span class="n">n_sources</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">out</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Float1D</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float1D</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Aggregate component values grouped by source.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        component : np.ndarray</span>
+<span class="sd">            Array of component values to aggregate (length = size)</span>
+<span class="sd">        func : {&quot;sum&quot;, &quot;mean&quot;, &quot;count&quot;}, default &quot;sum&quot;</span>
+<span class="sd">            Aggregation function</span>
+<span class="sd">        n_sources : int, optional</span>
+<span class="sd">            Number of source agents (for output array size).</span>
+<span class="sd">            If None, inferred from max source_id + 1.</span>
+<span class="sd">        out : Float1D, optional</span>
+<span class="sd">            Pre-allocated output array</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Float1D</span>
+<span class="sd">            Aggregated values per source (length = n_sources)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">n_sources</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">active_sources</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">source_ids</span><span class="p">[:</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">]</span>
+            <span class="n">n_sources</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">active_sources</span><span class="o">.</span><span class="n">max</span><span class="p">())</span> <span class="o">+</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">active_sources</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="n">out</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_sources</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">out</span><span class="p">[:]</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">out</span>
+
+        <span class="n">active_sources</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">source_ids</span><span class="p">[:</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">]</span>
+        <span class="n">active_component</span> <span class="o">=</span> <span class="n">component</span><span class="p">[:</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">func</span> <span class="o">==</span> <span class="s2">&quot;sum&quot;</span><span class="p">:</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">at</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">active_sources</span><span class="p">,</span> <span class="n">active_component</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">func</span> <span class="o">==</span> <span class="s2">&quot;mean&quot;</span><span class="p">:</span>
+            <span class="c1"># Sum values</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">at</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">active_sources</span><span class="p">,</span> <span class="n">active_component</span><span class="p">)</span>
+            <span class="c1"># Count edges per source</span>
+            <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">active_sources</span><span class="p">,</span> <span class="n">minlength</span><span class="o">=</span><span class="n">n_sources</span><span class="p">)</span>
+            <span class="c1"># Divide by counts (avoid division by zero)</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">counts</span> <span class="o">&gt;</span> <span class="mi">0</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">/=</span> <span class="n">counts</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">func</span> <span class="o">==</span> <span class="s2">&quot;count&quot;</span><span class="p">:</span>
+            <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">active_sources</span><span class="p">,</span> <span class="n">minlength</span><span class="o">=</span><span class="n">n_sources</span><span class="p">)</span>
+            <span class="n">out</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">counts</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown aggregation function: </span><span class="si">{</span><span class="n">func</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">out</span></div>
+
+
+<div class="viewcode-block" id="Relationship.aggregate_by_target">
+<a class="viewcode-back" href="../../../api/generated/bamengine.Relationship.html#bamengine.Relationship.aggregate_by_target">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">aggregate_by_target</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">component</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">func</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;sum&quot;</span><span class="p">,</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;sum&quot;</span><span class="p">,</span>
+        <span class="n">n_targets</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">out</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Float1D</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float1D</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Aggregate component values grouped by target.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        component : np.ndarray</span>
+<span class="sd">            Array of component values to aggregate (length = size)</span>
+<span class="sd">        func : {&quot;sum&quot;, &quot;mean&quot;, &quot;count&quot;}, default &quot;sum&quot;</span>
+<span class="sd">            Aggregation function</span>
+<span class="sd">        n_targets : int, optional</span>
+<span class="sd">            Number of target agents (for output array size).</span>
+<span class="sd">            If None, inferred from max target_id + 1.</span>
+<span class="sd">        out : Float1D, optional</span>
+<span class="sd">            Pre-allocated output array</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Float1D</span>
+<span class="sd">            Aggregated values per target (length = n_targets)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">n_targets</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">active_targets</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_ids</span><span class="p">[:</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">]</span>
+            <span class="n">n_targets</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">active_targets</span><span class="o">.</span><span class="n">max</span><span class="p">())</span> <span class="o">+</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">active_targets</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="n">out</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_targets</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">out</span><span class="p">[:]</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">out</span>
+
+        <span class="n">active_targets</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_ids</span><span class="p">[:</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">]</span>
+        <span class="n">active_component</span> <span class="o">=</span> <span class="n">component</span><span class="p">[:</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">func</span> <span class="o">==</span> <span class="s2">&quot;sum&quot;</span><span class="p">:</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">at</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">active_targets</span><span class="p">,</span> <span class="n">active_component</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">func</span> <span class="o">==</span> <span class="s2">&quot;mean&quot;</span><span class="p">:</span>
+            <span class="c1"># Sum values</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">at</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">active_targets</span><span class="p">,</span> <span class="n">active_component</span><span class="p">)</span>
+            <span class="c1"># Count edges per target</span>
+            <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">active_targets</span><span class="p">,</span> <span class="n">minlength</span><span class="o">=</span><span class="n">n_targets</span><span class="p">)</span>
+            <span class="c1"># Divide by counts (avoid division by zero)</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">counts</span> <span class="o">&gt;</span> <span class="mi">0</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">/=</span> <span class="n">counts</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">func</span> <span class="o">==</span> <span class="s2">&quot;count&quot;</span><span class="p">:</span>
+            <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">active_targets</span><span class="p">,</span> <span class="n">minlength</span><span class="o">=</span><span class="n">n_targets</span><span class="p">)</span>
+            <span class="n">out</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">counts</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown aggregation function: </span><span class="si">{</span><span class="n">func</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">out</span></div>
+
+
+<div class="viewcode-block" id="Relationship.drop_rows">
+<a class="viewcode-back" href="../../../api/generated/bamengine.Relationship.html#bamengine.Relationship.drop_rows">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">drop_rows</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Remove edges matching a boolean mask.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        mask : np.ndarray</span>
+<span class="sd">            Boolean array (length = size) indicating which edges to remove</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        int</span>
+<span class="sd">            Number of edges removed</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+        <span class="n">mask_active</span> <span class="o">=</span> <span class="n">mask</span><span class="p">[:</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">]</span>
+        <span class="n">n_drop</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mask_active</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">n_drop</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+        <span class="c1"># Invert mask to get edges to keep</span>
+        <span class="n">keep_mask</span> <span class="o">=</span> <span class="o">~</span><span class="n">mask_active</span>
+        <span class="n">n_keep</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="n">n_drop</span>
+
+        <span class="c1"># Compact arrays by keeping only non-dropped edges</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">source_ids</span><span class="p">[:</span><span class="n">n_keep</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">source_ids</span><span class="p">[:</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">][</span><span class="n">keep_mask</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_ids</span><span class="p">[:</span><span class="n">n_keep</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_ids</span><span class="p">[:</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">][</span><span class="n">keep_mask</span><span class="p">]</span>
+
+        <span class="c1"># Update any edge-specific component arrays (must be handled by subclass)</span>
+        <span class="c1"># Subclasses should override this method to compact their own arrays</span>
+
+        <span class="c1"># Update size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="n">n_keep</span>
+
+        <span class="k">return</span> <span class="n">n_drop</span></div>
+
+
+<div class="viewcode-block" id="Relationship.purge_sources">
+<a class="viewcode-back" href="../../../api/generated/bamengine.Relationship.html#bamengine.Relationship.purge_sources">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">purge_sources</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_ids</span><span class="p">:</span> <span class="n">Idx1D</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Remove all edges originating from given source IDs.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        source_ids : Idx1D</span>
+<span class="sd">            Array of source IDs to purge</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        int</span>
+<span class="sd">            Number of edges removed</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">source_ids</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+        <span class="c1"># Create mask for edges to drop</span>
+        <span class="n">drop_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">source_ids</span><span class="p">[:</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">],</span> <span class="n">source_ids</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_rows</span><span class="p">(</span><span class="n">drop_mask</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Relationship.purge_targets">
+<a class="viewcode-back" href="../../../api/generated/bamengine.Relationship.html#bamengine.Relationship.purge_targets">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">purge_targets</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_ids</span><span class="p">:</span> <span class="n">Idx1D</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Remove all edges pointing to given target IDs.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        target_ids : Idx1D</span>
+<span class="sd">            Array of target IDs to purge</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        int</span>
+<span class="sd">            Number of edges removed</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">target_ids</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+        <span class="c1"># Create mask for edges to drop</span>
+        <span class="n">drop_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_ids</span><span class="p">[:</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">],</span> <span class="n">target_ids</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_rows</span><span class="p">(</span><span class="n">drop_mask</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Relationship.append_edges">
+<a class="viewcode-back" href="../../../api/generated/bamengine.Relationship.html#bamengine.Relationship.append_edges">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">append_edges</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">source_ids</span><span class="p">:</span> <span class="n">Idx1D</span><span class="p">,</span>
+        <span class="n">target_ids</span><span class="p">:</span> <span class="n">Idx1D</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">component_arrays</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Append new edges with given source/target IDs and component values.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        source_ids : Idx1D</span>
+<span class="sd">            Array of source IDs for new edges</span>
+<span class="sd">        target_ids : Idx1D</span>
+<span class="sd">            Array of target IDs for new edges</span>
+<span class="sd">        **component_arrays</span>
+<span class="sd">            Component arrays (must match subclass fields)</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            If arrays have mismatched lengths or exceed capacity</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">n_new</span> <span class="o">=</span> <span class="n">source_ids</span><span class="o">.</span><span class="n">size</span>
+
+        <span class="k">if</span> <span class="n">n_new</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">source_ids</span><span class="o">.</span><span class="n">size</span> <span class="o">!=</span> <span class="n">target_ids</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;source_ids and target_ids must have same length&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">+</span> <span class="n">n_new</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">capacity</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Cannot append </span><span class="si">{</span><span class="n">n_new</span><span class="si">}</span><span class="s2"> edges: would exceed capacity &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="si">}</span><span class="s2"> + </span><span class="si">{</span><span class="n">n_new</span><span class="si">}</span><span class="s2"> &gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">capacity</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Append IDs</span>
+        <span class="n">new_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span>
+        <span class="n">new_end</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">+</span> <span class="n">n_new</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">source_ids</span><span class="p">[</span><span class="n">new_start</span><span class="p">:</span><span class="n">new_end</span><span class="p">]</span> <span class="o">=</span> <span class="n">source_ids</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_ids</span><span class="p">[</span><span class="n">new_start</span><span class="p">:</span><span class="n">new_end</span><span class="p">]</span> <span class="o">=</span> <span class="n">target_ids</span>
+
+        <span class="c1"># Subclasses must override to append their component arrays</span>
+
+        <span class="c1"># Update size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="n">new_end</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Kostas Ganitis.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
