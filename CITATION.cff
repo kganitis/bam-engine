@@ -3,8 +3,8 @@
 #   2. Macroeconomics from the Bottom-up (Delli Gatti et al., 2011) (citation in references)
 
 cff-version: 1.2.0
-message: 'If you use this software, please cite both the software and the original book "Macroeconomics from the Bottom-up" (Delli Gatti et al., 2011).'
-title: "BAM Engine: Modular Python Framework for the BAM Macroeconomic Model"
+message: 'If you use this software, please cite it along with the original BAM model (Delli Gatti et al., 2011).'
+title: "BAM Engine: Modular Python Framework for the Agent-based BAM Model"
 type: software
 authors:
   - family-names: Ganitis
@@ -21,13 +21,14 @@ doi: "10.5281/zenodo.17610305"
 abstract: |
   BAM Engine is a high-performance Python implementation of the BAM (Bottom-Up
   Adaptive Macroeconomics) model, an agent-based macroeconomic simulation framework
-  from the CATS (Complex Adaptive Trivial Systems) family. The model simulates
-  interactions between three types of agents (households, firms, and banks) across
-  three markets (labor, credit, and consumption goods). The implementation uses
-  vectorized NumPy operations for performance and follows an Entity-Component-System
-  (ECS) architecture for modularity and extensibility. BAM Engine is designed for
-  economics researchers studying macroeconomic dynamics, financial stability, and
-  policy interventions in heterogeneous agent economies.
+  from the CATS (Complex Adaptive Trivial Systems) family. It was first presented 
+  in "Macroeconomics from the Bottom-up" by Delli Gatti et al. (2011). The model
+  simulates interactions between three types of agents (households, firms, and banks)
+  across three markets (labor, credit, and consumption goods). BAM Engine uses
+  vectorized operations for performance and follows an Entity-Component-System
+  (ECS) architecture for modularity and extensibility. It is designed for economics 
+  researchers studying macroeconomic dynamics, financial stability, and policy
+  interventions in heterogeneous agent economies.
 
 keywords:
   - agent-based modeling

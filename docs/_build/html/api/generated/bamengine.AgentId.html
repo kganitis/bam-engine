@@ -1,0 +1,484 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>bamengine.AgentId &mdash; BAM Engine 0.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=a58bc63e"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Contributing" href="../../contributing.html" />
+    <link rel="prev" title="bamengine.Bool" href="bamengine.Bool.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            BAM Engine
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#install-from-pypi">Install from PyPI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#install-from-source">Install from source</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../quickstart.html#basic-simulation">Basic Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../quickstart.html#collecting-results">Collecting Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../quickstart.html#configuration">Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/index.html">User Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/index.html#topics">Topics</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html">Examples Gallery</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html#advanced-examples">Advanced Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html#basic-examples">Basic Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html#research-examples">Research Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../auto_examples/advanced/index.html">Advanced Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../auto_examples/basic/index.html">Basic Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../auto_examples/basic/example_hello_world.html">Hello BAM Engine</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_hello_world.html#initialize-and-run">Initialize and Run</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_hello_world.html#visualize-unemployment">Visualize Unemployment</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html">Configuring Your Simulation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#basic-configuration">Basic Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#economic-parameters">Economic Parameters</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#initial-conditions">Initial Conditions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#compare-scenarios">Compare Scenarios</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#visualize-comparison">Visualize Comparison</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#summary-statistics">Summary Statistics</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#available-parameters">Available Parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html">BAM Baseline Scenario (3.9.1)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html#initialize-the-simulation">Initialize the Simulation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html#run-simulation-and-collect-data">Run Simulation and Collect Data</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html#prepare-data-for-visualization">Prepare Data for Visualization</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html#visualize-key-economic-indicators">Visualize Key Economic Indicators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html#summary-statistics">Summary Statistics</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../auto_examples/research/index.html">Research Examples</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#core-classes">Core Classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Simulation.html">bamengine.Simulation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Simulation.html#bamengine.Simulation"><code class="docutils literal notranslate"><span class="pre">Simulation</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.SimulationResults.html">bamengine.SimulationResults</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.SimulationResults.html#bamengine.SimulationResults"><code class="docutils literal notranslate"><span class="pre">SimulationResults</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#ecs-components">ECS Components</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Role.html">bamengine.Role</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Role.html#bamengine.Role"><code class="docutils literal notranslate"><span class="pre">Role</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Event.html">bamengine.Event</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Event.html#bamengine.Event"><code class="docutils literal notranslate"><span class="pre">Event</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Relationship.html">bamengine.Relationship</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Relationship.html#bamengine.Relationship"><code class="docutils literal notranslate"><span class="pre">Relationship</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html#type-system">Type System</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Float.html">bamengine.Float</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Float.html#bamengine.Float"><code class="docutils literal notranslate"><span class="pre">Float</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Int.html">bamengine.Int</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Int.html#bamengine.Int"><code class="docutils literal notranslate"><span class="pre">Int</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Bool.html">bamengine.Bool</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Bool.html#bamengine.Bool"><code class="docutils literal notranslate"><span class="pre">Bool</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">bamengine.AgentId</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#bamengine.AgentId"><code class="docutils literal notranslate"><span class="pre">AgentId</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contributing.html">Contributing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../contributing.html#getting-started">Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../contributing.html#code-style">Code Style</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog.html">Changelog</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../changelog.html#unreleased">[Unreleased]</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../changelog.html#added">Added</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../changelog.html#id1">[0.1.1] - 2024-11</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">BAM Engine</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">API Reference</a></li>
+      <li class="breadcrumb-item active">bamengine.AgentId</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/api/generated/bamengine.AgentId.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="bamengine-agentid">
+<h1>bamengine.AgentId<a class="headerlink" href="#bamengine-agentid" title="Link to this heading"></a></h1>
+<dl class="py data">
+<dt class="sig sig-object py" id="bamengine.AgentId">
+<span class="sig-prename descclassname"><span class="pre">bamengine.</span></span><span class="sig-name descname"><span class="pre">AgentId</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strides</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#bamengine.AgentId" title="Link to this definition"></a></dt>
+<dd><p>An array object represents a multidimensional, homogeneous array
+of fixed-size items.  An associated data-type object describes the
+format of each element in the array (its byte-order, how many bytes it
+occupies in memory, whether it is an integer, a floating point number,
+or something else, etc.)</p>
+<p>Arrays should be constructed using <cite>array</cite>, <cite>zeros</cite> or <cite>empty</cite> (refer
+to the See Also section below).  The parameters given here refer to
+a low-level method (<cite>ndarray(…)</cite>) for instantiating an array.</p>
+<p>For more information, refer to the <cite>numpy</cite> module and examine the
+methods and attributes of an array.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>below</strong><strong>)</strong> (<em>(</em><em>for the __new__ method; see Notes</em>)</p></li>
+<li><p><strong>shape</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><em>ints</em>) – Shape of created array.</p></li>
+<li><p><strong>dtype</strong> (<em>data-type</em><em>, </em><em>optional</em>) – Any object that can be interpreted as a numpy data type.</p></li>
+<li><p><strong>buffer</strong> (<em>object exposing buffer interface</em><em>, </em><em>optional</em>) – Used to fill the array with data.</p></li>
+<li><p><strong>offset</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – Offset of array data in buffer.</p></li>
+<li><p><strong>strides</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><em>ints</em><em>, </em><em>optional</em>) – Strides of data in memory.</p></li>
+<li><p><strong>order</strong> (<em>{'C'</em><em>, </em><em>'F'}</em><em>, </em><em>optional</em>) – Row-major (C-style) or column-major (Fortran-style) order.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.T">
+<span class="sig-prename descclassname"><span class="pre">bamengine.</span></span><span class="sig-name descname"><span class="pre">T</span></span><a class="headerlink" href="#bamengine.T" title="Link to this definition"></a></dt>
+<dd><p>Transpose of the array.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.data">
+<span class="sig-prename descclassname"><span class="pre">bamengine.</span></span><span class="sig-name descname"><span class="pre">data</span></span><a class="headerlink" href="#bamengine.data" title="Link to this definition"></a></dt>
+<dd><p>The array’s elements, in memory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>buffer</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.dtype">
+<span class="sig-prename descclassname"><span class="pre">bamengine.</span></span><span class="sig-name descname"><span class="pre">dtype</span></span><a class="headerlink" href="#bamengine.dtype" title="Link to this definition"></a></dt>
+<dd><p>Describes the format of the elements in the array.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dtype object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.flags">
+<span class="sig-prename descclassname"><span class="pre">bamengine.</span></span><span class="sig-name descname"><span class="pre">flags</span></span><a class="headerlink" href="#bamengine.flags" title="Link to this definition"></a></dt>
+<dd><p>Dictionary containing information related to memory use, e.g.,
+‘C_CONTIGUOUS’, ‘OWNDATA’, ‘WRITEABLE’, etc.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.flat">
+<span class="sig-prename descclassname"><span class="pre">bamengine.</span></span><span class="sig-name descname"><span class="pre">flat</span></span><a class="headerlink" href="#bamengine.flat" title="Link to this definition"></a></dt>
+<dd><p>Flattened version of the array as an iterator.  The iterator
+allows assignments, e.g., <code class="docutils literal notranslate"><span class="pre">x.flat</span> <span class="pre">=</span> <span class="pre">3</span></code> (See <cite>ndarray.flat</cite> for
+assignment examples; TODO).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.flatiter object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.imag">
+<span class="sig-prename descclassname"><span class="pre">bamengine.</span></span><span class="sig-name descname"><span class="pre">imag</span></span><a class="headerlink" href="#bamengine.imag" title="Link to this definition"></a></dt>
+<dd><p>Imaginary part of the array.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.real">
+<span class="sig-prename descclassname"><span class="pre">bamengine.</span></span><span class="sig-name descname"><span class="pre">real</span></span><a class="headerlink" href="#bamengine.real" title="Link to this definition"></a></dt>
+<dd><p>Real part of the array.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.size">
+<span class="sig-prename descclassname"><span class="pre">bamengine.</span></span><span class="sig-name descname"><span class="pre">size</span></span><a class="headerlink" href="#bamengine.size" title="Link to this definition"></a></dt>
+<dd><p>Number of elements in the array.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.itemsize">
+<span class="sig-prename descclassname"><span class="pre">bamengine.</span></span><span class="sig-name descname"><span class="pre">itemsize</span></span><a class="headerlink" href="#bamengine.itemsize" title="Link to this definition"></a></dt>
+<dd><p>The memory use of each array element in bytes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.nbytes">
+<span class="sig-prename descclassname"><span class="pre">bamengine.</span></span><span class="sig-name descname"><span class="pre">nbytes</span></span><a class="headerlink" href="#bamengine.nbytes" title="Link to this definition"></a></dt>
+<dd><p>The total number of bytes required to store the array data,
+i.e., <code class="docutils literal notranslate"><span class="pre">itemsize</span> <span class="pre">*</span> <span class="pre">size</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.ndim">
+<span class="sig-prename descclassname"><span class="pre">bamengine.</span></span><span class="sig-name descname"><span class="pre">ndim</span></span><a class="headerlink" href="#bamengine.ndim" title="Link to this definition"></a></dt>
+<dd><p>The array’s number of dimensions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.shape">
+<span class="sig-prename descclassname"><span class="pre">bamengine.</span></span><span class="sig-name descname"><span class="pre">shape</span></span><a class="headerlink" href="#bamengine.shape" title="Link to this definition"></a></dt>
+<dd><p>Shape of the array.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a> of ints</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.strides">
+<span class="sig-prename descclassname"><span class="pre">bamengine.</span></span><span class="sig-name descname"><span class="pre">strides</span></span><a class="headerlink" href="#bamengine.strides" title="Link to this definition"></a></dt>
+<dd><p>The step-size required to move from one element to the next in
+memory. For example, a contiguous <code class="docutils literal notranslate"><span class="pre">(3,</span> <span class="pre">4)</span></code> array of type
+<code class="docutils literal notranslate"><span class="pre">int16</span></code> in C-order has strides <code class="docutils literal notranslate"><span class="pre">(8,</span> <span class="pre">2)</span></code>.  This implies that
+to move from element to element in memory requires jumps of 2 bytes.
+To move from row-to-row, one needs to jump 8 bytes at a time
+(<code class="docutils literal notranslate"><span class="pre">2</span> <span class="pre">*</span> <span class="pre">4</span></code>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a> of ints</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.ctypes">
+<span class="sig-prename descclassname"><span class="pre">bamengine.</span></span><span class="sig-name descname"><span class="pre">ctypes</span></span><a class="headerlink" href="#bamengine.ctypes" title="Link to this definition"></a></dt>
+<dd><p>Class containing properties of the array needed for interaction
+with ctypes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ctypes object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.base">
+<span class="sig-prename descclassname"><span class="pre">bamengine.</span></span><span class="sig-name descname"><span class="pre">base</span></span><a class="headerlink" href="#bamengine.base" title="Link to this definition"></a></dt>
+<dd><p>If the array is a view into another array, that array is its <cite>base</cite>
+(unless that array is also a view).  The <cite>base</cite> array is where the
+array data is actually stored.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference external" href="https://docs.python.org/3/library/array.html#module-array" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">array</span></code></a></dt><dd><p>Construct an array.</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">zeros</span></code></dt><dd><p>Create an array, each element of which is zero.</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">empty</span></code></dt><dd><p>Create an array, but leave its allocated memory unchanged (i.e., it contains “garbage”).</p>
+</dd>
+<dt><a class="reference internal" href="bamengine.Int.html#bamengine.dtype" title="bamengine.dtype"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dtype</span></code></a></dt><dd><p>Create a data-type.</p>
+</dd>
+<dt><a class="reference external" href="https://numpy.org/doc/stable/reference/typing.html#numpy.typing.NDArray" title="(in NumPy v2.3)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.typing.NDArray</span></code></a></dt><dd><p>An ndarray alias <a class="reference external" href="https://docs.python.org/3/glossary.html#term-generic-type" title="(in Python v3.14)"><span class="xref std std-term">generic</span></a> w.r.t. its <cite>dtype.type &lt;numpy.dtype.type&gt;</cite>.</p>
+</dd>
+</dl>
+</div>
+<p class="rubric">Notes</p>
+<p>There are two modes of creating an array using <code class="docutils literal notranslate"><span class="pre">__new__</span></code>:</p>
+<ol class="arabic simple">
+<li><p>If <cite>buffer</cite> is None, then only <cite>shape</cite>, <cite>dtype</cite>, and <cite>order</cite>
+are used.</p></li>
+<li><p>If <cite>buffer</cite> is an object exposing the buffer interface, then
+all keywords are interpreted.</p></li>
+</ol>
+<p>No <code class="docutils literal notranslate"><span class="pre">__init__</span></code> method is needed because the array is fully initialized
+after the <code class="docutils literal notranslate"><span class="pre">__new__</span></code> method.</p>
+<p class="rubric">Examples</p>
+<p>These examples illustrate the low-level <cite>ndarray</cite> constructor.  Refer
+to the <cite>See Also</cite> section above for easier ways of constructing an
+ndarray.</p>
+<p>First mode, <cite>buffer</cite> is None:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s1">&#39;F&#39;</span><span class="p">)</span>
+<span class="go">array([[0.0e+000, 0.0e+000], # random</span>
+<span class="go">       [     nan, 2.5e-323]])</span>
+</pre></div>
+</div>
+<p>Second mode:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">((</span><span class="mi">2</span><span class="p">,),</span> <span class="n">buffer</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]),</span>
+<span class="gp">... </span>           <span class="n">offset</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int_</span><span class="p">()</span><span class="o">.</span><span class="n">itemsize</span><span class="p">,</span>
+<span class="gp">... </span>           <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span> <span class="c1"># offset = 1*itemsize, i.e. skip first element</span>
+<span class="go">array([2, 3])</span>
+</pre></div>
+</div>
+<p>alias of <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Any</span></code></a>, …], <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.3)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dtype</span></code></a>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int64</span></code>]]</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="bamengine.Bool.html" class="btn btn-neutral float-left" title="bamengine.Bool" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../../contributing.html" class="btn btn-neutral float-right" title="Contributing" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Kostas Ganitis.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,557 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>bamengine.Relationship &mdash; BAM Engine 0.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=a58bc63e"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="bamengine.Float" href="bamengine.Float.html" />
+    <link rel="prev" title="bamengine.Event" href="bamengine.Event.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            BAM Engine
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#install-from-pypi">Install from PyPI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#install-from-source">Install from source</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../quickstart.html#basic-simulation">Basic Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../quickstart.html#collecting-results">Collecting Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../quickstart.html#configuration">Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/index.html">User Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/index.html#topics">Topics</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html">Examples Gallery</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html#advanced-examples">Advanced Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html#basic-examples">Basic Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html#research-examples">Research Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../auto_examples/advanced/index.html">Advanced Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../auto_examples/basic/index.html">Basic Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../auto_examples/basic/example_hello_world.html">Hello BAM Engine</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_hello_world.html#initialize-and-run">Initialize and Run</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_hello_world.html#visualize-unemployment">Visualize Unemployment</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html">Configuring Your Simulation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#basic-configuration">Basic Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#economic-parameters">Economic Parameters</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#initial-conditions">Initial Conditions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#compare-scenarios">Compare Scenarios</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#visualize-comparison">Visualize Comparison</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#summary-statistics">Summary Statistics</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#available-parameters">Available Parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html">BAM Baseline Scenario (3.9.1)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html#initialize-the-simulation">Initialize the Simulation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html#run-simulation-and-collect-data">Run Simulation and Collect Data</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html#prepare-data-for-visualization">Prepare Data for Visualization</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html#visualize-key-economic-indicators">Visualize Key Economic Indicators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html#summary-statistics">Summary Statistics</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../auto_examples/research/index.html">Research Examples</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#core-classes">Core Classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Simulation.html">bamengine.Simulation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Simulation.html#bamengine.Simulation"><code class="docutils literal notranslate"><span class="pre">Simulation</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.SimulationResults.html">bamengine.SimulationResults</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.SimulationResults.html#bamengine.SimulationResults"><code class="docutils literal notranslate"><span class="pre">SimulationResults</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html#ecs-components">ECS Components</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Role.html">bamengine.Role</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Role.html#bamengine.Role"><code class="docutils literal notranslate"><span class="pre">Role</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Event.html">bamengine.Event</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Event.html#bamengine.Event"><code class="docutils literal notranslate"><span class="pre">Event</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">bamengine.Relationship</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#bamengine.Relationship"><code class="docutils literal notranslate"><span class="pre">Relationship</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#type-system">Type System</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Float.html">bamengine.Float</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Float.html#bamengine.Float"><code class="docutils literal notranslate"><span class="pre">Float</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Int.html">bamengine.Int</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Int.html#bamengine.Int"><code class="docutils literal notranslate"><span class="pre">Int</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Bool.html">bamengine.Bool</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Bool.html#bamengine.Bool"><code class="docutils literal notranslate"><span class="pre">Bool</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.AgentId.html">bamengine.AgentId</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.AgentId.html#bamengine.AgentId"><code class="docutils literal notranslate"><span class="pre">AgentId</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contributing.html">Contributing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../contributing.html#getting-started">Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../contributing.html#code-style">Code Style</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog.html">Changelog</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../changelog.html#unreleased">[Unreleased]</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../changelog.html#added">Added</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../changelog.html#id1">[0.1.1] - 2024-11</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">BAM Engine</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">API Reference</a></li>
+      <li class="breadcrumb-item active">bamengine.Relationship</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/api/generated/bamengine.Relationship.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="bamengine-relationship">
+<h1>bamengine.Relationship<a class="headerlink" href="#bamengine-relationship" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="bamengine.Relationship">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">bamengine.</span></span><span class="sig-name descname"><span class="pre">Relationship</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.3)"><span class="pre">dtype</span></a><span class="p"><span class="pre">[</span></span><span class="pre">int64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.3)"><span class="pre">dtype</span></a><span class="p"><span class="pre">[</span></span><span class="pre">int64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">capacity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/bamengine/core/relationship.html#Relationship"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.Relationship" title="Link to this definition"></a></dt>
+<dd><p>Base class for defining relationships between roles.</p>
+<p>Relationships store edges (connections) between agents in different roles,
+along with edge-specific data. Internally uses COO (Coordinate List) sparse
+format for efficient storage and querying.</p>
+<p class="rubric">Example</p>
+<p>Define a loan relationship between borrowers and lenders:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@relationship</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">Borrower</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">Lender</span><span class="p">,</span> <span class="n">cardinality</span><span class="o">=</span><span class="s2">&quot;many-to-many&quot;</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">LoanBook</span><span class="p">:</span>
+    <span class="n">principal</span><span class="p">:</span> <span class="n">Float1D</span>
+    <span class="n">rate</span><span class="p">:</span> <span class="n">Float1D</span>
+    <span class="n">interest</span><span class="p">:</span> <span class="n">Float1D</span>
+    <span class="n">debt</span><span class="p">:</span> <span class="n">Float1D</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source_ids</strong> (<em>Idx1D</em>) – Array of source agent IDs</p></li>
+<li><p><strong>target_ids</strong> (<em>Idx1D</em>) – Array of target agent IDs</p></li>
+<li><p><strong>size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Current number of active edges</p></li>
+<li><p><strong>capacity</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Maximum number of edges that can be stored</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>Edges are stored in COO format with parallel arrays</p></li>
+<li><p>Empty slots are filled with sentinels (-1 for indices)</p></li>
+<li><p>Subclasses define edge-specific data as additional fields</p></li>
+<li><p>Query methods use NumPy operations for vectorized performance</p></li>
+<li><p>The __init_subclass__ hook automatically registers relationships</p></li>
+</ul>
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.Relationship.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.3)"><span class="pre">dtype</span></a><span class="p"><span class="pre">[</span></span><span class="pre">int64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.3)"><span class="pre">dtype</span></a><span class="p"><span class="pre">[</span></span><span class="pre">int64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">capacity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#bamengine.Relationship.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#id0" title="bamengine.Relationship.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(source_ids, target_ids, size, capacity)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bamengine.Relationship.aggregate_by_source" title="bamengine.Relationship.aggregate_by_source"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aggregate_by_source</span></code></a>(component, *[, func, ...])</p></td>
+<td><p>Aggregate component values grouped by source.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bamengine.Relationship.aggregate_by_target" title="bamengine.Relationship.aggregate_by_target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aggregate_by_target</span></code></a>(component, *[, func, ...])</p></td>
+<td><p>Aggregate component values grouped by target.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bamengine.Relationship.append_edges" title="bamengine.Relationship.append_edges"><code class="xref py py-obj docutils literal notranslate"><span class="pre">append_edges</span></code></a>(source_ids, target_ids, ...)</p></td>
+<td><p>Append new edges with given source/target IDs and component values.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bamengine.Relationship.drop_rows" title="bamengine.Relationship.drop_rows"><code class="xref py py-obj docutils literal notranslate"><span class="pre">drop_rows</span></code></a>(mask)</p></td>
+<td><p>Remove edges matching a boolean mask.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bamengine.Relationship.purge_sources" title="bamengine.Relationship.purge_sources"><code class="xref py py-obj docutils literal notranslate"><span class="pre">purge_sources</span></code></a>(source_ids)</p></td>
+<td><p>Remove all edges originating from given source IDs.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bamengine.Relationship.purge_targets" title="bamengine.Relationship.purge_targets"><code class="xref py py-obj docutils literal notranslate"><span class="pre">purge_targets</span></code></a>(target_ids)</p></td>
+<td><p>Remove all edges pointing to given target IDs.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bamengine.Relationship.query_sources" title="bamengine.Relationship.query_sources"><code class="xref py py-obj docutils literal notranslate"><span class="pre">query_sources</span></code></a>(source_id)</p></td>
+<td><p>Get indices of all edges originating from a source.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bamengine.Relationship.query_targets" title="bamengine.Relationship.query_targets"><code class="xref py py-obj docutils literal notranslate"><span class="pre">query_targets</span></code></a>(target_id)</p></td>
+<td><p>Get indices of all edges pointing to a target.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bamengine.Relationship.source_ids" title="bamengine.Relationship.source_ids"><code class="xref py py-obj docutils literal notranslate"><span class="pre">source_ids</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bamengine.Relationship.target_ids" title="bamengine.Relationship.target_ids"><code class="xref py py-obj docutils literal notranslate"><span class="pre">target_ids</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bamengine.Relationship.size" title="bamengine.Relationship.size"><code class="xref py py-obj docutils literal notranslate"><span class="pre">size</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bamengine.Relationship.capacity" title="bamengine.Relationship.capacity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">capacity</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bamengine.Relationship.cardinality" title="bamengine.Relationship.cardinality"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cardinality</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bamengine.Relationship.name" title="bamengine.Relationship.name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bamengine.Relationship.source_role" title="bamengine.Relationship.source_role"><code class="xref py py-obj docutils literal notranslate"><span class="pre">source_role</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bamengine.Relationship.target_role" title="bamengine.Relationship.target_role"><code class="xref py py-obj docutils literal notranslate"><span class="pre">target_role</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Relationship.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#bamengine.Relationship.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Relationship.source_role">
+<span class="sig-name descname"><span class="pre">source_role</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="bamengine.Role.html#bamengine.Role" title="bamengine.Role"><span class="pre">Role</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#bamengine.Relationship.source_role" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Relationship.target_role">
+<span class="sig-name descname"><span class="pre">target_role</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="bamengine.Role.html#bamengine.Role" title="bamengine.Role"><span class="pre">Role</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#bamengine.Relationship.target_role" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Relationship.cardinality">
+<span class="sig-name descname"><span class="pre">cardinality</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'many-to-many'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'one-to-many'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'many-to-one'</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'many-to-many'</span></em><a class="headerlink" href="#bamengine.Relationship.cardinality" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Relationship.source_ids">
+<span class="sig-name descname"><span class="pre">source_ids</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Idx1D</span></em><a class="headerlink" href="#bamengine.Relationship.source_ids" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Relationship.target_ids">
+<span class="sig-name descname"><span class="pre">target_ids</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Idx1D</span></em><a class="headerlink" href="#bamengine.Relationship.target_ids" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Relationship.size">
+<span class="sig-name descname"><span class="pre">size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#bamengine.Relationship.size" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.Relationship.capacity">
+<span class="sig-name descname"><span class="pre">capacity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#bamengine.Relationship.capacity" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.Relationship.__init_subclass__">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">__init_subclass__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="bamengine.Role.html#bamengine.Role" title="bamengine.Role"><span class="pre">Role</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="bamengine.Role.html#bamengine.Role" title="bamengine.Role"><span class="pre">Role</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cardinality</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'many-to-many'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'one-to-many'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'many-to-one'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'many-to-many'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/bamengine/core/relationship.html#Relationship.__init_subclass__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.Relationship.__init_subclass__" title="Link to this definition"></a></dt>
+<dd><p>Auto-register Relationship subclasses in the global registry.</p>
+<p>This hook is called automatically when a class inherits from Relationship.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Custom name for the relationship. If not provided, uses the class name.</p></li>
+<li><p><strong>source</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a><em>[</em><a class="reference internal" href="bamengine.Role.html#bamengine.Role" title="bamengine.Role"><em>Role</em></a><em>]</em><em>, </em><em>optional</em>) – Source role class for the relationship</p></li>
+<li><p><strong>target</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a><em>[</em><a class="reference internal" href="bamengine.Role.html#bamengine.Role" title="bamengine.Role"><em>Role</em></a><em>]</em><em>, </em><em>optional</em>) – Target role class for the relationship</p></li>
+<li><p><strong>cardinality</strong> (<em>{&quot;many-to-many&quot;</em><em>, </em><em>&quot;one-to-many&quot;</em><em>, </em><em>&quot;many-to-one&quot;}</em><em>,</em>) – optional, default “many-to-many”,
+Cardinality constraint for the relationship</p></li>
+<li><p><strong>**kwargs</strong> – Additional keyword arguments passed to parent __init_subclass__.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.Relationship.__repr__">
+<span class="sig-name descname"><span class="pre">__repr__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/bamengine/core/relationship.html#Relationship.__repr__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.Relationship.__repr__" title="Link to this definition"></a></dt>
+<dd><p>Provide informative repr showing relationship metadata and state.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.Relationship.query_sources">
+<span class="sig-name descname"><span class="pre">query_sources</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.3)"><span class="pre">dtype</span></a><span class="p"><span class="pre">[</span></span><span class="pre">int64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/bamengine/core/relationship.html#Relationship.query_sources"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.Relationship.query_sources" title="Link to this definition"></a></dt>
+<dd><p>Get indices of all edges originating from a source.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>source_id</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Source agent ID to query</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Array of edge indices where source_ids == source_id</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Idx1D</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.Relationship.query_targets">
+<span class="sig-name descname"><span class="pre">query_targets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.3)"><span class="pre">dtype</span></a><span class="p"><span class="pre">[</span></span><span class="pre">int64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/bamengine/core/relationship.html#Relationship.query_targets"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.Relationship.query_targets" title="Link to this definition"></a></dt>
+<dd><p>Get indices of all edges pointing to a target.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>target_id</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Target agent ID to query</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Array of edge indices where target_ids == target_id</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Idx1D</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.Relationship.aggregate_by_source">
+<span class="sig-name descname"><span class="pre">aggregate_by_source</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'sum'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'mean'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'count'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'sum'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_sources</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.3)"><span class="pre">dtype</span></a><span class="p"><span class="pre">[</span></span><span class="pre">float64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.3)"><span class="pre">dtype</span></a><span class="p"><span class="pre">[</span></span><span class="pre">float64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/bamengine/core/relationship.html#Relationship.aggregate_by_source"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.Relationship.aggregate_by_source" title="Link to this definition"></a></dt>
+<dd><p>Aggregate component values grouped by source.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>component</strong> (<em>np.ndarray</em>) – Array of component values to aggregate (length = size)</p></li>
+<li><p><strong>func</strong> (<em>{&quot;sum&quot;</em><em>, </em><em>&quot;mean&quot;</em><em>, </em><em>&quot;count&quot;}</em><em>, </em><em>default &quot;sum&quot;</em>) – Aggregation function</p></li>
+<li><p><strong>n_sources</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – Number of source agents (for output array size).
+If None, inferred from max source_id + 1.</p></li>
+<li><p><strong>out</strong> (<em>Float1D</em><em>, </em><em>optional</em>) – Pre-allocated output array</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Aggregated values per source (length = n_sources)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Float1D</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.Relationship.aggregate_by_target">
+<span class="sig-name descname"><span class="pre">aggregate_by_target</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'sum'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'mean'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'count'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'sum'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_targets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.3)"><span class="pre">dtype</span></a><span class="p"><span class="pre">[</span></span><span class="pre">float64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.3)"><span class="pre">dtype</span></a><span class="p"><span class="pre">[</span></span><span class="pre">float64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/bamengine/core/relationship.html#Relationship.aggregate_by_target"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.Relationship.aggregate_by_target" title="Link to this definition"></a></dt>
+<dd><p>Aggregate component values grouped by target.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>component</strong> (<em>np.ndarray</em>) – Array of component values to aggregate (length = size)</p></li>
+<li><p><strong>func</strong> (<em>{&quot;sum&quot;</em><em>, </em><em>&quot;mean&quot;</em><em>, </em><em>&quot;count&quot;}</em><em>, </em><em>default &quot;sum&quot;</em>) – Aggregation function</p></li>
+<li><p><strong>n_targets</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – Number of target agents (for output array size).
+If None, inferred from max target_id + 1.</p></li>
+<li><p><strong>out</strong> (<em>Float1D</em><em>, </em><em>optional</em>) – Pre-allocated output array</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Aggregated values per target (length = n_targets)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Float1D</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.Relationship.drop_rows">
+<span class="sig-name descname"><span class="pre">drop_rows</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/bamengine/core/relationship.html#Relationship.drop_rows"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.Relationship.drop_rows" title="Link to this definition"></a></dt>
+<dd><p>Remove edges matching a boolean mask.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>mask</strong> (<em>np.ndarray</em>) – Boolean array (length = size) indicating which edges to remove</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Number of edges removed</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.Relationship.purge_sources">
+<span class="sig-name descname"><span class="pre">purge_sources</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.3)"><span class="pre">dtype</span></a><span class="p"><span class="pre">[</span></span><span class="pre">int64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/bamengine/core/relationship.html#Relationship.purge_sources"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.Relationship.purge_sources" title="Link to this definition"></a></dt>
+<dd><p>Remove all edges originating from given source IDs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>source_ids</strong> (<em>Idx1D</em>) – Array of source IDs to purge</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Number of edges removed</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.Relationship.purge_targets">
+<span class="sig-name descname"><span class="pre">purge_targets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.3)"><span class="pre">dtype</span></a><span class="p"><span class="pre">[</span></span><span class="pre">int64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/bamengine/core/relationship.html#Relationship.purge_targets"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.Relationship.purge_targets" title="Link to this definition"></a></dt>
+<dd><p>Remove all edges pointing to given target IDs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>target_ids</strong> (<em>Idx1D</em>) – Array of target IDs to purge</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Number of edges removed</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.Relationship.append_edges">
+<span class="sig-name descname"><span class="pre">append_edges</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.3)"><span class="pre">dtype</span></a><span class="p"><span class="pre">[</span></span><span class="pre">int64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.3)"><span class="pre">dtype</span></a><span class="p"><span class="pre">[</span></span><span class="pre">int64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">component_arrays</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/bamengine/core/relationship.html#Relationship.append_edges"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.Relationship.append_edges" title="Link to this definition"></a></dt>
+<dd><p>Append new edges with given source/target IDs and component values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source_ids</strong> (<em>Idx1D</em>) – Array of source IDs for new edges</p></li>
+<li><p><strong>target_ids</strong> (<em>Idx1D</em>) – Array of target IDs for new edges</p></li>
+<li><p><strong>**component_arrays</strong> – Component arrays (must match subclass fields)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If arrays have mismatched lengths or exceed capacity</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.3)"><span class="pre">dtype</span></a><span class="p"><span class="pre">[</span></span><span class="pre">int64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.3)"><span class="pre">dtype</span></a><span class="p"><span class="pre">[</span></span><span class="pre">int64</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">capacity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#id0" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="bamengine.Event.html" class="btn btn-neutral float-left" title="bamengine.Event" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="bamengine.Float.html" class="btn btn-neutral float-right" title="bamengine.Float" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Kostas Ganitis.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

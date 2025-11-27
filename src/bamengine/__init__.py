@@ -245,6 +245,7 @@ from .core import (  # noqa: E402 (circular‑safe)
     role,
 )
 from .economy import Economy  # noqa: E402 (circular‑safe)
+from .results import SimulationResults  # noqa: E402 (circular‑safe)
 from .simulation import Simulation  # noqa: E402  (circular‑safe)
 
 # ============================================================================
@@ -252,6 +253,7 @@ from .simulation import Simulation  # noqa: E402  (circular‑safe)
 # ============================================================================
 __all__ = [
     "Simulation",
+    "SimulationResults",
     "__version__",
     # Core ECS components
     "Agent",

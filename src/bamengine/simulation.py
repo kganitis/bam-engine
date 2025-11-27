@@ -66,13 +66,17 @@ Step-by-step execution with intermediate analysis:
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
-from typing import Any, Dict, Mapping, Optional
+from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional, Union
 
 import numpy as np
 import yaml
+
+if TYPE_CHECKING:  # pragma: no cover
+    from bamengine.results import SimulationResults
 
 import bamengine.events  # noqa: F401 - needed to register events
 from bamengine import Rng, logging, make_rng
@@ -496,7 +500,6 @@ class Simulation:
         Config : Configuration dataclass
         ConfigValidator : Centralized validation logic
         Pipeline : Event pipeline configuration
-        config/defaults.yml : Package default configuration
         """
         # 1 + 2 + 3 → one merged dict
         cfg_dict: Dict[str, Any] = _package_defaults()
@@ -829,7 +832,11 @@ class Simulation:
 
     # public API
     # ---------------------------------------------------------------------
-    def run(self, n_periods: Optional[int] = None) -> None:
+    def run(
+        self,
+        n_periods: Optional[int] = None,
+        collect: Union[bool, Dict[str, Any]] = False,
+    ) -> Optional["SimulationResults"]:
         """
         Run the simulation for multiple periods.
 
@@ -842,12 +849,21 @@ class Simulation:
         n_periods : int, optional
             Number of periods to simulate. If None (default), uses the n_periods
             value passed at initialization via `Simulation.init()`.
+        collect : bool or dict, default=False
+            Whether to collect and return simulation results.
+
+            - False: No collection, returns None (default)
+            - True: Collect all roles (aggregated means) + economy metrics
+            - dict: Custom collection config with keys:
+                - 'roles': list of role names or None for all
+                - 'variables': dict mapping role -> list of variables
+                - 'aggregate': 'mean', 'median', 'sum', 'std', or None for full
+                - 'economy': bool, include economy metrics (default True)
 
         Returns
         -------
-        None
-            State is mutated in-place. Access results via `sim.ec` (economy state)
-            or role attributes (e.g., `sim.prod`, `sim.wrk`).
+        SimulationResults or None
+            Results object if collect is truthy, None otherwise.
 
         Examples
         --------
@@ -865,18 +881,25 @@ class Simulation:
         >>> sim = be.Simulation.init(n_periods=50, seed=42)
         >>> sim.run()  # Runs for 50 periods
 
-        Access time-series data after simulation:
+        Collect results with default settings:
 
         >>> sim = be.Simulation.init(seed=42)
-        >>> sim.run(n_periods=100)
-        >>> import matplotlib.pyplot as plt
-        >>> plt.plot(sim.ec.inflation_history)
-        >>> plt.title("Inflation Rate Over Time")
+        >>> results = sim.run(n_periods=100, collect=True)
+        >>> df = results.to_dataframe()
+        >>> results.economy_metrics.plot()
+
+        Custom data collection:
+
+        >>> results = sim.run(collect={
+        ...     'roles': ['Producer'],
+        ...     'variables': {'Producer': ['price', 'inventory']},
+        ...     'aggregate': None,  # full per-agent data
+        ... })
 
         Notes
         -----
         - Each period corresponds to one execution of the full event pipeline
-        - State is mutated in-place; no return value
+        - State is mutated in-place regardless of collect parameter
         - Simulation halts early if economy is destroyed (all firms/banks bankrupt)
         - For step-by-step execution with custom logic, use `step()` instead
 
@@ -884,10 +907,86 @@ class Simulation:
         --------
         step : Execute a single simulation period
         init : Initialize simulation with configuration
+        SimulationResults : Container for collected simulation data
         """
         n = n_periods if n_periods is not None else self.n_periods
+
+        # Set up collector if requested
+        collector = None
+        if collect:
+            collector = self._create_collector(collect)
+
+        # Run simulation
+        start_time = time.time()
         for _ in range(int(n)):
             self.step()
+            if collector:
+                collector.capture(self)
+
+        # Return results if collecting
+        if collector:
+            elapsed = time.time() - start_time
+            metadata = {
+                "n_periods": int(n),
+                "n_firms": self.n_firms,
+                "n_households": self.n_households,
+                "n_banks": self.n_banks,
+                "seed": self.config.seed if hasattr(self.config, "seed") else None,
+                "runtime_seconds": elapsed,
+            }
+            config_dict = {
+                "h_rho": self.config.h_rho,
+                "h_xi": self.config.h_xi,
+                "h_phi": self.config.h_phi,
+                "h_eta": self.config.h_eta,
+                "max_M": self.config.max_M,
+                "max_H": self.config.max_H,
+                "max_Z": self.config.max_Z,
+                "theta": self.config.theta,
+                "beta": self.config.beta,
+                "delta": self.config.delta,
+                "r_bar": self.config.r_bar,
+                "v": self.config.v,
+            }
+            return collector.finalize(config_dict, metadata)
+
+        return None
+
+    def _create_collector(self, collect: Union[bool, Dict[str, Any]]) -> Any:
+        """
+        Create data collector from collect parameter.
+
+        Parameters
+        ----------
+        collect : bool or dict
+            Collection configuration (True for defaults, dict for custom).
+
+        Returns
+        -------
+        _DataCollector
+            Configured data collector instance.
+        """
+        from bamengine.results import _DataCollector
+
+        # Get all role names
+        all_roles = ["Producer", "Worker", "Employer", "Borrower", "Lender", "Consumer"]
+
+        if collect is True:
+            # Default: all roles, aggregated means, include economy
+            return _DataCollector(
+                roles=all_roles,
+                variables=None,
+                include_economy=True,
+                aggregate="mean",
+            )
+        else:
+            # Custom configuration
+            return _DataCollector(
+                roles=collect.get("roles") or all_roles,
+                variables=collect.get("variables"),
+                include_economy=collect.get("economy", True),
+                aggregate=collect.get("aggregate", "mean"),
+            )
 
     def step(self) -> None:
         """

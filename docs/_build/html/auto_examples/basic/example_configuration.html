@@ -1,0 +1,463 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Configuring Your Simulation &mdash; BAM Engine 0.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=a58bc63e"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="BAM Baseline Scenario (3.9.1)" href="example_baseline_scenario.html" />
+    <link rel="prev" title="Hello BAM Engine" href="example_hello_world.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            BAM Engine
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#install-from-pypi">Install from PyPI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#install-from-source">Install from source</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../quickstart.html#basic-simulation">Basic Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../quickstart.html#collecting-results">Collecting Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../quickstart.html#configuration">Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/index.html">User Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/index.html#topics">Topics</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Examples Gallery</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#advanced-examples">Advanced Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#basic-examples">Basic Examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html#research-examples">Research Examples</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../advanced/index.html">Advanced Examples</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Basic Examples</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="example_hello_world.html">Hello BAM Engine</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="example_hello_world.html#initialize-and-run">Initialize and Run</a></li>
+<li class="toctree-l4"><a class="reference internal" href="example_hello_world.html#visualize-unemployment">Visualize Unemployment</a></li>
+</ul>
+</li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Configuring Your Simulation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#basic-configuration">Basic Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#economic-parameters">Economic Parameters</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#initial-conditions">Initial Conditions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#compare-scenarios">Compare Scenarios</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#visualize-comparison">Visualize Comparison</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#summary-statistics">Summary Statistics</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#available-parameters">Available Parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="example_baseline_scenario.html">BAM Baseline Scenario (3.9.1)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="example_baseline_scenario.html#initialize-the-simulation">Initialize the Simulation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="example_baseline_scenario.html#run-simulation-and-collect-data">Run Simulation and Collect Data</a></li>
+<li class="toctree-l4"><a class="reference internal" href="example_baseline_scenario.html#prepare-data-for-visualization">Prepare Data for Visualization</a></li>
+<li class="toctree-l4"><a class="reference internal" href="example_baseline_scenario.html#visualize-key-economic-indicators">Visualize Key Economic Indicators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="example_baseline_scenario.html#summary-statistics">Summary Statistics</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../research/index.html">Research Examples</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/index.html#core-classes">Core Classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/generated/bamengine.Simulation.html">bamengine.Simulation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/generated/bamengine.Simulation.html#bamengine.Simulation"><code class="docutils literal notranslate"><span class="pre">Simulation</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/generated/bamengine.SimulationResults.html">bamengine.SimulationResults</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/generated/bamengine.SimulationResults.html#bamengine.SimulationResults"><code class="docutils literal notranslate"><span class="pre">SimulationResults</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/index.html#ecs-components">ECS Components</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/generated/bamengine.Role.html">bamengine.Role</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/generated/bamengine.Role.html#bamengine.Role"><code class="docutils literal notranslate"><span class="pre">Role</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/generated/bamengine.Event.html">bamengine.Event</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/generated/bamengine.Event.html#bamengine.Event"><code class="docutils literal notranslate"><span class="pre">Event</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/generated/bamengine.Relationship.html">bamengine.Relationship</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/generated/bamengine.Relationship.html#bamengine.Relationship"><code class="docutils literal notranslate"><span class="pre">Relationship</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/index.html#type-system">Type System</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api/generated/bamengine.Float.html">bamengine.Float</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/generated/bamengine.Float.html#bamengine.Float"><code class="docutils literal notranslate"><span class="pre">Float</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/generated/bamengine.Int.html">bamengine.Int</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/generated/bamengine.Int.html#bamengine.Int"><code class="docutils literal notranslate"><span class="pre">Int</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/generated/bamengine.Bool.html">bamengine.Bool</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/generated/bamengine.Bool.html#bamengine.Bool"><code class="docutils literal notranslate"><span class="pre">Bool</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api/generated/bamengine.AgentId.html">bamengine.AgentId</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api/generated/bamengine.AgentId.html#bamengine.AgentId"><code class="docutils literal notranslate"><span class="pre">AgentId</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contributing.html">Contributing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../contributing.html#getting-started">Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../contributing.html#code-style">Code Style</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog.html">Changelog</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../changelog.html#unreleased">[Unreleased]</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../changelog.html#added">Added</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../changelog.html#id1">[0.1.1] - 2024-11</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">BAM Engine</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Examples Gallery</a></li>
+          <li class="breadcrumb-item"><a href="index.html">Basic Examples</a></li>
+      <li class="breadcrumb-item active">Configuring Your Simulation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/auto_examples/basic/example_configuration.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#sphx-glr-download-auto-examples-basic-example-configuration-py"><span class="std std-ref">Go to the end</span></a>
+to download the full example code.</p>
+</div>
+<section class="sphx-glr-example-title" id="configuring-your-simulation">
+<span id="sphx-glr-auto-examples-basic-example-configuration-py"></span><h1>Configuring Your Simulation<a class="headerlink" href="#configuring-your-simulation" title="Link to this heading"></a></h1>
+<p>This example demonstrates how to customize simulation parameters using
+keyword arguments. You can override any default parameter to explore
+different economic scenarios.</p>
+<p>BAM Engine uses a three-tier configuration system:
+1. Package defaults
+2. User config file (YAML)
+3. Keyword arguments (highest priority, shown here)</p>
+<section id="basic-configuration">
+<h2>Basic Configuration<a class="headerlink" href="#basic-configuration" title="Link to this heading"></a></h2>
+<p>The simplest way to configure a simulation is to pass parameters
+as keyword arguments to Simulation.init().</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">bamengine</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">bam</span>
+
+<span class="c1"># Create simulation with custom agent counts</span>
+<span class="n">sim</span> <span class="o">=</span> <span class="n">bam</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span>
+    <span class="n">n_firms</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>        <span class="c1"># Double the default</span>
+    <span class="n">n_households</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>  <span class="c1"># More households</span>
+    <span class="n">n_banks</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>         <span class="c1"># More banks</span>
+    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span>
+<span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Custom configuration:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Firms: </span><span class="si">{</span><a href="https://docs.python.org/3/library/functions.html#int" title="builtins.int" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><a href="https://docs.python.org/3/library/functions.html#int" title="builtins.int" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">sim</span><span class="o">.</span><span class="n">n_firms</span></a></a><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Households: </span><span class="si">{</span><a href="https://docs.python.org/3/library/functions.html#int" title="builtins.int" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><a href="https://docs.python.org/3/library/functions.html#int" title="builtins.int" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">sim</span><span class="o">.</span><span class="n">n_households</span></a></a><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Banks: </span><span class="si">{</span><a href="https://docs.python.org/3/library/functions.html#int" title="builtins.int" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><a href="https://docs.python.org/3/library/functions.html#int" title="builtins.int" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">sim</span><span class="o">.</span><span class="n">n_banks</span></a></a><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Custom configuration:
+  Firms: 200
+  Households: 1000
+  Banks: 20
+</pre></div>
+</div>
+</section>
+<section id="economic-parameters">
+<h2>Economic Parameters<a class="headerlink" href="#economic-parameters" title="Link to this heading"></a></h2>
+<p>Customize economic parameters to explore different scenarios.
+Here we create a low-friction economy with different shock widths.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">sim_low_friction</span> <span class="o">=</span> <span class="n">bam</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span>
+    <span class="n">n_firms</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="n">n_households</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+    <span class="c1"># Shock width parameters</span>
+    <span class="n">h_rho</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>         <span class="c1"># Lower production shock (default: 0.10)</span>
+    <span class="n">h_xi</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>          <span class="c1"># Lower wage shock (default: 0.05)</span>
+    <span class="c1"># Labor market parameters</span>
+    <span class="n">theta</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>            <span class="c1"># Shorter base contract duration (default: 8)</span>
+    <span class="c1"># Search friction parameters</span>
+    <span class="n">max_M</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>            <span class="c1"># More job applications per worker (default: 4)</span>
+    <span class="n">max_H</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>            <span class="c1"># More loan applications per firm (default: 2)</span>
+    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span>
+<span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Low-friction economy parameters:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Production shock (h_rho): </span><span class="si">{</span><a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">sim_low_friction</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">h_rho</span></a></a><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Wage shock (h_xi): </span><span class="si">{</span><a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><a href="https://docs.python.org/3/library/functions.html#float" title="builtins.float" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">sim_low_friction</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">h_xi</span></a></a><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Contract duration (theta): </span><span class="si">{</span><a href="https://docs.python.org/3/library/functions.html#int" title="builtins.int" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><a href="https://docs.python.org/3/library/functions.html#int" title="builtins.int" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">sim_low_friction</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">theta</span></a></a><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Low-friction economy parameters:
+  Production shock (h_rho): 0.05
+  Wage shock (h_xi): 0.02
+  Contract duration (theta): 4
+</pre></div>
+</div>
+</section>
+<section id="initial-conditions">
+<h2>Initial Conditions<a class="headerlink" href="#initial-conditions" title="Link to this heading"></a></h2>
+<p>You can also customize initial conditions for agents. Parameters can be
+either scalars (applied to all agents) or arrays (agent-specific values).</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="c1"># Custom initial conditions with higher firm net worth</span>
+<span class="n">sim_wealthy_firms</span> <span class="o">=</span> <span class="n">bam</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span>
+    <span class="n">n_firms</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="n">n_households</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+    <span class="n">net_worth_init</span><span class="o">=</span><span class="mf">200.0</span><span class="p">,</span>      <span class="c1"># All firms start with 200 (default: 12.0)</span>
+    <span class="n">price_init</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span>            <span class="c1"># Higher initial prices (default: 1.0)</span>
+    <span class="n">savings_init</span><span class="o">=</span><span class="mf">5.0</span><span class="p">,</span>          <span class="c1"># Households start with more savings (default: 3.0)</span>
+    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span>
+<span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Custom initial conditions:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Initial firm net worth: </span><span class="si">{</span><span class="n">sim_wealthy_firms</span><span class="o">.</span><span class="n">bor</span><span class="o">.</span><span class="n">net_worth</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Initial prices: </span><span class="si">{</span><span class="n">sim_wealthy_firms</span><span class="o">.</span><span class="n">prod</span><span class="o">.</span><span class="n">price</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Initial household savings: </span><span class="si">{</span><span class="n">sim_wealthy_firms</span><span class="o">.</span><span class="n">con</span><span class="o">.</span><span class="n">savings</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Custom initial conditions:
+  Initial firm net worth: 200.0
+  Initial prices: 2.0
+  Initial household savings: 5.0
+</pre></div>
+</div>
+</section>
+<section id="compare-scenarios">
+<h2>Compare Scenarios<a class="headerlink" href="#compare-scenarios" title="Link to this heading"></a></h2>
+<p>Run two simulations with different parameters and compare outcomes.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Baseline scenario</span>
+<span class="n">sim_baseline</span> <span class="o">=</span> <span class="n">bam</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">n_firms</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">n_households</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="k">for</span> <a href="https://docs.python.org/3/library/functions.html#int" title="builtins.int" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><a href="https://docs.python.org/3/library/functions.html#int" title="builtins.int" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">_</span></a></a> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
+    <span class="n">sim_baseline</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+
+<span class="c1"># Low-friction scenario (more search rounds)</span>
+<span class="n">sim_low_friction_run</span> <span class="o">=</span> <span class="n">bam</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span>
+    <span class="n">n_firms</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="n">n_households</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+    <span class="n">max_M</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>   <span class="c1"># More job applications (default: 4)</span>
+    <span class="n">max_Z</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>   <span class="c1"># More shopping rounds (default: 2)</span>
+    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span>
+<span class="p">)</span>
+<span class="k">for</span> <a href="https://docs.python.org/3/library/functions.html#int" title="builtins.int" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><a href="https://docs.python.org/3/library/functions.html#int" title="builtins.int" class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">_</span></a></a> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
+    <span class="n">sim_low_friction_run</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="visualize-comparison">
+<h2>Visualize Comparison<a class="headerlink" href="#visualize-comparison" title="Link to this heading"></a></h2>
+<p>Compare unemployment rates between scenarios.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">baseline_unemp</span></a></a> <span class="o">=</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.array.html#numpy.array" title="numpy.array" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function"><a href="https://numpy.org/doc/stable/reference/generated/numpy.array.html#numpy.array" title="numpy.array" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function"><span class="n">np</span><span class="o">.</span><span class="n">array</span></a></a><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">sim_baseline</span><span class="o">.</span><span class="n">ec</span><span class="o">.</span><span class="n">unemp_rate_history</span></a></a><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+<a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">lowfric_unemp</span></a></a> <span class="o">=</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.array.html#numpy.array" title="numpy.array" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function"><a href="https://numpy.org/doc/stable/reference/generated/numpy.array.html#numpy.array" title="numpy.array" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function"><span class="n">np</span><span class="o">.</span><span class="n">array</span></a></a><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">sim_low_friction_run</span><span class="o">.</span><span class="n">ec</span><span class="o">.</span><span class="n">unemp_rate_history</span></a></a><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">ax1</span><span class="p">,</span> <span class="n">ax2</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+
+<span class="c1"># Baseline</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">baseline_unemp</span></a></a><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#2E86AB&#39;</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Baseline (max_M=4, max_Z=2)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Period&#39;</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Unemployment Rate (%)&#39;</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">baseline_unemp</span></a></a><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">lowfric_unemp</span></a></a><span class="o">.</span><span class="n">max</span><span class="p">())</span> <span class="o">*</span> <span class="mf">1.1</span><span class="p">])</span>
+
+<span class="c1"># Low friction</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">lowfric_unemp</span></a></a><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#A23B72&#39;</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Low Friction (max_M=8, max_Z=4)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Period&#39;</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Unemployment Rate (%)&#39;</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">baseline_unemp</span></a></a><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">lowfric_unemp</span></a></a><span class="o">.</span><span class="n">max</span><span class="p">())</span> <span class="o">*</span> <span class="mf">1.1</span><span class="p">])</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_example_configuration_001.png" srcset="../../_images/sphx_glr_example_configuration_001.png" alt="Baseline (max_M=4, max_Z=2), Low Friction (max_M=8, max_Z=4)" class = "sphx-glr-single-img"/></section>
+<section id="summary-statistics">
+<h2>Summary Statistics<a class="headerlink" href="#summary-statistics" title="Link to this heading"></a></h2>
+<p>Compare key metrics between scenarios.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;COMPARISON: Baseline vs Low Friction&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Average Unemployment Rate:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Baseline (max_M=4, max_Z=2):     </span><span class="si">{</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">baseline_unemp</span></a></a><span class="p">[</span><span class="mi">20</span><span class="p">:]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Low Friction (max_M=8, max_Z=4): </span><span class="si">{</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">lowfric_unemp</span></a></a><span class="p">[</span><span class="mi">20</span><span class="p">:]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+
+<a href="https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.float64" title="numpy.float64" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-attribute"><a href="https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.float64" title="numpy.float64" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-attribute"><span class="n">baseline_price</span></a></a> <span class="o">=</span> <a href="https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.float64" title="numpy.float64" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-attribute"><a href="https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.float64" title="numpy.float64" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-attribute"><span class="n">sim_baseline</span><span class="o">.</span><span class="n">ec</span><span class="o">.</span><span class="n">avg_mkt_price</span></a></a>
+<a href="https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.float64" title="numpy.float64" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-attribute"><a href="https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.float64" title="numpy.float64" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-attribute"><span class="n">lowfric_price</span></a></a> <span class="o">=</span> <a href="https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.float64" title="numpy.float64" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-attribute"><a href="https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.float64" title="numpy.float64" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-attribute"><span class="n">sim_low_friction_run</span><span class="o">.</span><span class="n">ec</span><span class="o">.</span><span class="n">avg_mkt_price</span></a></a>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Final Average Price:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Baseline (max_M=4, max_Z=2):     </span><span class="si">{</span><a href="https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.float64" title="numpy.float64" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-attribute"><a href="https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.float64" title="numpy.float64" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-attribute"><span class="n">baseline_price</span></a></a><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Low Friction (max_M=8, max_Z=4): </span><span class="si">{</span><a href="https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.float64" title="numpy.float64" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-attribute"><a href="https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.float64" title="numpy.float64" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-attribute"><span class="n">lowfric_price</span></a></a><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>============================================================
+COMPARISON: Baseline vs Low Friction
+============================================================
+
+Average Unemployment Rate:
+  Baseline (max_M=4, max_Z=2):     6.28%
+  Low Friction (max_M=8, max_Z=4): 6.51%
+
+Final Average Price:
+  Baseline (max_M=4, max_Z=2):     1.78
+  Low Friction (max_M=8, max_Z=4): 2.44
+============================================================
+</pre></div>
+</div>
+</section>
+<section id="available-parameters">
+<h2>Available Parameters<a class="headerlink" href="#available-parameters" title="Link to this heading"></a></h2>
+<p>For a complete list of configurable parameters, see the package
+defaults file or the API documentation.</p>
+<p>Common parameters include:</p>
+<dl class="simple">
+<dt><strong>Agent counts:</strong></dt><dd><ul class="simple">
+<li><p>n_firms, n_households, n_banks</p></li>
+</ul>
+</dd>
+<dt><strong>Shock widths (uniform random ±):</strong></dt><dd><ul class="simple">
+<li><p>h_rho (production), h_xi (wage), h_phi (bank expense), h_eta (price)</p></li>
+</ul>
+</dd>
+<dt><strong>Search frictions:</strong></dt><dd><ul class="simple">
+<li><p>max_M (job applications), max_H (loan applications), max_Z (shopping rounds)</p></li>
+</ul>
+</dd>
+<dt><strong>Structural parameters:</strong></dt><dd><ul class="simple">
+<li><p>theta (contract duration), beta (consumption propensity), delta (dividend rate)</p></li>
+<li><p>v (bank capital requirement), r_bar (baseline interest rate)</p></li>
+</ul>
+</dd>
+<dt><strong>Initial conditions:</strong></dt><dd><ul class="simple">
+<li><p>price_init, net_worth_init, wage_offer_init, savings_init, etc.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 1.354 seconds)</p>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-basic-example-configuration-py">
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/78823bf5eba17cfaf5f83606ed9a9102/example_configuration.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">example_configuration.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/9e591af28a03f9a8cbe6eaebc264864b/example_configuration.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">example_configuration.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-zip docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/d31e953f24a2780470fc407869c3aa5d/example_configuration.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">zipped:</span> <span class="pre">example_configuration.zip</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="example_hello_world.html" class="btn btn-neutral float-left" title="Hello BAM Engine" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="example_baseline_scenario.html" class="btn btn-neutral float-right" title="BAM Baseline Scenario (3.9.1)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Kostas Ganitis.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

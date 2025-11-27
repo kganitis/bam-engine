@@ -1,0 +1,358 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>&lt;no title&gt; &mdash; BAM Engine 0.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=d2d258e8" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=a58bc63e"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Advanced Examples" href="advanced/index.html" />
+    <link rel="prev" title="Examples Gallery" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BAM Engine
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../installation.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../installation.html#install-from-pypi">Install from PyPI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../installation.html#install-from-source">Install from source</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart.html#basic-simulation">Basic Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart.html#collecting-results">Collecting Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart.html#configuration">Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/index.html">User Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../user_guide/index.html#topics">Topics</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Examples Gallery</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="index.html#advanced-examples">Advanced Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html#basic-examples">Basic Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html#research-examples">Research Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="advanced/index.html">Advanced Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="basic/index.html">Basic Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="basic/example_hello_world.html">Hello BAM Engine</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="basic/example_hello_world.html#initialize-and-run">Initialize and Run</a></li>
+<li class="toctree-l4"><a class="reference internal" href="basic/example_hello_world.html#visualize-unemployment">Visualize Unemployment</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="basic/example_configuration.html">Configuring Your Simulation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="basic/example_configuration.html#basic-configuration">Basic Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="basic/example_configuration.html#economic-parameters">Economic Parameters</a></li>
+<li class="toctree-l4"><a class="reference internal" href="basic/example_configuration.html#initial-conditions">Initial Conditions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="basic/example_configuration.html#compare-scenarios">Compare Scenarios</a></li>
+<li class="toctree-l4"><a class="reference internal" href="basic/example_configuration.html#visualize-comparison">Visualize Comparison</a></li>
+<li class="toctree-l4"><a class="reference internal" href="basic/example_configuration.html#summary-statistics">Summary Statistics</a></li>
+<li class="toctree-l4"><a class="reference internal" href="basic/example_configuration.html#available-parameters">Available Parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="basic/example_baseline_scenario.html">BAM Baseline Scenario (3.9.1)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="basic/example_baseline_scenario.html#initialize-the-simulation">Initialize the Simulation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="basic/example_baseline_scenario.html#run-simulation-and-collect-data">Run Simulation and Collect Data</a></li>
+<li class="toctree-l4"><a class="reference internal" href="basic/example_baseline_scenario.html#prepare-data-for-visualization">Prepare Data for Visualization</a></li>
+<li class="toctree-l4"><a class="reference internal" href="basic/example_baseline_scenario.html#visualize-key-economic-indicators">Visualize Key Economic Indicators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="basic/example_baseline_scenario.html#summary-statistics">Summary Statistics</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="research/index.html">Research Examples</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/index.html#core-classes">Core Classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/generated/bamengine.Simulation.html">bamengine.Simulation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/generated/bamengine.Simulation.html#bamengine.Simulation"><code class="docutils literal notranslate"><span class="pre">Simulation</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/generated/bamengine.SimulationResults.html">bamengine.SimulationResults</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/generated/bamengine.SimulationResults.html#bamengine.SimulationResults"><code class="docutils literal notranslate"><span class="pre">SimulationResults</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/index.html#ecs-components">ECS Components</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/generated/bamengine.Role.html">bamengine.Role</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/generated/bamengine.Role.html#bamengine.Role"><code class="docutils literal notranslate"><span class="pre">Role</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/generated/bamengine.Event.html">bamengine.Event</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/generated/bamengine.Event.html#bamengine.Event"><code class="docutils literal notranslate"><span class="pre">Event</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/generated/bamengine.Relationship.html">bamengine.Relationship</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/generated/bamengine.Relationship.html#bamengine.Relationship"><code class="docutils literal notranslate"><span class="pre">Relationship</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/index.html#type-system">Type System</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/generated/bamengine.Float.html">bamengine.Float</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/generated/bamengine.Float.html#bamengine.Float"><code class="docutils literal notranslate"><span class="pre">Float</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/generated/bamengine.Int.html">bamengine.Int</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/generated/bamengine.Int.html#bamengine.Int"><code class="docutils literal notranslate"><span class="pre">Int</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/generated/bamengine.Bool.html">bamengine.Bool</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/generated/bamengine.Bool.html#bamengine.Bool"><code class="docutils literal notranslate"><span class="pre">Bool</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/generated/bamengine.AgentId.html">bamengine.AgentId</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/generated/bamengine.AgentId.html#bamengine.AgentId"><code class="docutils literal notranslate"><span class="pre">AgentId</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../contributing.html#getting-started">Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../contributing.html#code-style">Code Style</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../changelog.html#unreleased">[Unreleased]</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../changelog.html#added">Added</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../changelog.html#id1">[0.1.1] - 2024-11</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BAM Engine</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Examples Gallery</a></li>
+      <li class="breadcrumb-item active">&lt;no title&gt;</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/auto_examples/decorator_usage.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#sphx-glr-download-auto-examples-decorator-usage-py"><span class="std std-ref">Go to the end</span></a>
+to download the full example code.</p>
+</div>
+<p class="sphx-glr-example-title" id="sphx-glr-auto-examples-decorator-usage-py">Example demonstrating the &#64;role and &#64;event decorators.</p>
+<p>This example shows how users can define custom roles and events using the
+simplified decorator syntax. NO INHERITANCE NEEDED!</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">bamengine</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+
+
+<span class="c1"># ============================================================================</span>
+<span class="c1"># Example 1: Define a custom Role using @role decorator (NO INHERITANCE!)</span>
+<span class="c1"># ============================================================================</span>
+
+
+<span class="nd">@role</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Inventor</span><span class="p">:</span>  <span class="c1"># ← No (Role) inheritance needed!</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Custom role tracking innovation capacity of agents.&quot;&quot;&quot;</span>
+
+    <span class="n">innovation_score</span><span class="p">:</span> <span class="n">Float</span>
+    <span class="n">patents</span><span class="p">:</span> <span class="n">Int</span>
+    <span class="n">research_budget</span><span class="p">:</span> <span class="n">Float</span>
+
+
+<span class="c1"># Alternative: With custom name</span>
+<span class="nd">@role</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;CustomInventor&quot;</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">InventorV2</span><span class="p">:</span>  <span class="c1"># ← No (Role) inheritance needed!</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Custom role with explicit name.&quot;&quot;&quot;</span>
+
+    <span class="n">innovation_score</span><span class="p">:</span> <span class="n">Float</span>
+    <span class="n">patents</span><span class="p">:</span> <span class="n">Int</span>
+
+
+<span class="c1"># Traditional syntax still works if you prefer explicit inheritance</span>
+<span class="nd">@role</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">InventorV3</span><span class="p">(</span><span class="n">Role</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Traditional syntax with explicit Role inheritance.&quot;&quot;&quot;</span>
+
+    <span class="n">innovation_score</span><span class="p">:</span> <span class="n">Float</span>
+    <span class="n">patents</span><span class="p">:</span> <span class="n">Int</span>
+
+
+<span class="c1"># ============================================================================</span>
+<span class="c1"># Example 2: Define a custom Event using @event decorator (NO INHERITANCE!)</span>
+<span class="c1"># ============================================================================</span>
+
+
+<span class="nd">@event</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">InnovationEvent</span><span class="p">:</span>  <span class="c1"># ← No (Event) inheritance needed!</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Custom event that processes innovation.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sim</span><span class="p">:</span> <span class="n">Simulation</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute innovation logic.&quot;&quot;&quot;</span>
+        <span class="c1"># Access custom role (would need to be added to simulation first)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Executing </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="c1"># Custom logic here...</span>
+
+
+<span class="c1"># Alternative: With custom name</span>
+<span class="nd">@event</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;my_innovation_event&quot;</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">InnovationEventV2</span><span class="p">:</span>  <span class="c1"># ← No (Event) inheritance needed!</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Custom event with explicit name.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sim</span><span class="p">:</span> <span class="n">Simulation</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute innovation logic.&quot;&quot;&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Executing </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="c1"># ============================================================================</span>
+<span class="c1"># Example 3: Verify registration</span>
+<span class="c1"># ============================================================================</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="c1"># List all registered roles</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Registered Roles:&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">role_name</span> <span class="ow">in</span> <span class="n">list_roles</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  - </span><span class="si">{</span><span class="n">role_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Our custom roles:&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  - Inventor: </span><span class="si">{</span><span class="n">get_role</span><span class="p">(</span><span class="s1">&#39;Inventor&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  - CustomInventor: </span><span class="si">{</span><span class="n">get_role</span><span class="p">(</span><span class="s1">&#39;CustomInventor&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># List all registered events</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Some registered Events (first 5):&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">event_name</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">list_events</span><span class="p">())[:</span><span class="mi">5</span><span class="p">]:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  - </span><span class="si">{</span><span class="n">event_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Our custom events:&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  - innovation_event: </span><span class="si">{</span><span class="n">get_event</span><span class="p">(</span><span class="s1">&#39;innovation_event&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  - my_innovation_event: </span><span class="si">{</span><span class="n">get_event</span><span class="p">(</span><span class="s1">&#39;my_innovation_event&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Instantiate custom role</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Instantiating Inventor role:&quot;</span><span class="p">)</span>
+    <span class="n">inventor</span> <span class="o">=</span> <span class="n">Inventor</span><span class="p">(</span>
+        <span class="n">innovation_score</span><span class="o">=</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.array.html#numpy.array" title="numpy.array" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function"><a href="https://numpy.org/doc/stable/reference/generated/numpy.array.html#numpy.array" title="numpy.array" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function"><span class="n">np</span><span class="o">.</span><span class="n">array</span></a></a><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">]),</span>
+        <span class="n">patents</span><span class="o">=</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.array.html#numpy.array" title="numpy.array" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function"><a href="https://numpy.org/doc/stable/reference/generated/numpy.array.html#numpy.array" title="numpy.array" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function"><span class="n">np</span><span class="o">.</span><span class="n">array</span></a></a><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><a href="https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.int64" title="numpy.int64" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-attribute"><a href="https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.int64" title="numpy.int64" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-attribute"><span class="n">np</span><span class="o">.</span><span class="n">int64</span></a></a><span class="p">),</span>
+        <span class="n">research_budget</span><span class="o">=</span><a href="https://numpy.org/doc/stable/reference/generated/numpy.array.html#numpy.array" title="numpy.array" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function"><a href="https://numpy.org/doc/stable/reference/generated/numpy.array.html#numpy.array" title="numpy.array" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function"><span class="n">np</span><span class="o">.</span><span class="n">array</span></a></a><span class="p">([</span><span class="mf">10000.0</span><span class="p">,</span> <span class="mf">25000.0</span><span class="p">,</span> <span class="mf">5000.0</span><span class="p">]),</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">inventor</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Innovation scores: </span><span class="si">{</span><span class="n">inventor</span><span class="o">.</span><span class="n">innovation_score</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Patents: </span><span class="si">{</span><span class="n">inventor</span><span class="o">.</span><span class="n">patents</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Instantiate custom event</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Instantiating InnovationEvent:&quot;</span><span class="p">)</span>
+    <span class="n">event</span> <span class="o">=</span> <span class="n">InnovationEvent</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">event</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Event name: </span><span class="si">{</span><span class="n">event</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">✅ All examples completed successfully!&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-decorator-usage-py">
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/5137fd1340d9ac77883c07bc05326b0e/decorator_usage.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">decorator_usage.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/d817963001901ed792c1015f14406249/decorator_usage.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">decorator_usage.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-zip docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/99d4283b050ead70fb6686c93ec5da2b/decorator_usage.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">zipped:</span> <span class="pre">decorator_usage.zip</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Examples Gallery" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="advanced/index.html" class="btn btn-neutral float-right" title="Advanced Examples" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Kostas Ganitis.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

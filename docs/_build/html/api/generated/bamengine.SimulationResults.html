@@ -1,0 +1,524 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>bamengine.SimulationResults &mdash; BAM Engine 0.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=a58bc63e"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="bamengine.Role" href="bamengine.Role.html" />
+    <link rel="prev" title="bamengine.Simulation" href="bamengine.Simulation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            BAM Engine
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#install-from-pypi">Install from PyPI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#install-from-source">Install from source</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../quickstart.html#basic-simulation">Basic Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../quickstart.html#collecting-results">Collecting Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../quickstart.html#configuration">Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/index.html">User Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/index.html#topics">Topics</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html">Examples Gallery</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html#advanced-examples">Advanced Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html#basic-examples">Basic Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html#research-examples">Research Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../auto_examples/advanced/index.html">Advanced Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../auto_examples/basic/index.html">Basic Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../auto_examples/basic/example_hello_world.html">Hello BAM Engine</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_hello_world.html#initialize-and-run">Initialize and Run</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_hello_world.html#visualize-unemployment">Visualize Unemployment</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html">Configuring Your Simulation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#basic-configuration">Basic Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#economic-parameters">Economic Parameters</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#initial-conditions">Initial Conditions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#compare-scenarios">Compare Scenarios</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#visualize-comparison">Visualize Comparison</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#summary-statistics">Summary Statistics</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_configuration.html#available-parameters">Available Parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html">BAM Baseline Scenario (3.9.1)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html#initialize-the-simulation">Initialize the Simulation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html#run-simulation-and-collect-data">Run Simulation and Collect Data</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html#prepare-data-for-visualization">Prepare Data for Visualization</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html#visualize-key-economic-indicators">Visualize Key Economic Indicators</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../auto_examples/basic/example_baseline_scenario.html#summary-statistics">Summary Statistics</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../auto_examples/research/index.html">Research Examples</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html#core-classes">Core Classes</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Simulation.html">bamengine.Simulation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Simulation.html#bamengine.Simulation"><code class="docutils literal notranslate"><span class="pre">Simulation</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">bamengine.SimulationResults</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#bamengine.SimulationResults"><code class="docutils literal notranslate"><span class="pre">SimulationResults</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#ecs-components">ECS Components</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Role.html">bamengine.Role</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Role.html#bamengine.Role"><code class="docutils literal notranslate"><span class="pre">Role</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Event.html">bamengine.Event</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Event.html#bamengine.Event"><code class="docutils literal notranslate"><span class="pre">Event</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Relationship.html">bamengine.Relationship</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Relationship.html#bamengine.Relationship"><code class="docutils literal notranslate"><span class="pre">Relationship</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#type-system">Type System</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Float.html">bamengine.Float</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Float.html#bamengine.Float"><code class="docutils literal notranslate"><span class="pre">Float</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Int.html">bamengine.Int</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Int.html#bamengine.Int"><code class="docutils literal notranslate"><span class="pre">Int</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.Bool.html">bamengine.Bool</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.Bool.html#bamengine.Bool"><code class="docutils literal notranslate"><span class="pre">Bool</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bamengine.AgentId.html">bamengine.AgentId</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bamengine.AgentId.html#bamengine.AgentId"><code class="docutils literal notranslate"><span class="pre">AgentId</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contributing.html">Contributing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../contributing.html#getting-started">Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../contributing.html#code-style">Code Style</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog.html">Changelog</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../changelog.html#unreleased">[Unreleased]</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../changelog.html#added">Added</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../changelog.html#id1">[0.1.1] - 2024-11</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">BAM Engine</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">API Reference</a></li>
+      <li class="breadcrumb-item active">bamengine.SimulationResults</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/api/generated/bamengine.SimulationResults.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="bamengine-simulationresults">
+<h1>bamengine.SimulationResults<a class="headerlink" href="#bamengine-simulationresults" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="bamengine.SimulationResults">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">bamengine.</span></span><span class="sig-name descname"><span class="pre">SimulationResults</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">role_data:</span> <span class="pre">~typing.Dict[str,</span> <span class="pre">~typing.Dict[str,</span> <span class="pre">~numpy.ndarray[tuple[~typing.Any,</span> <span class="pre">...],</span> <span class="pre">~numpy.dtype[~numpy._typing._array_like._ScalarT]]]]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">economy_data:</span> <span class="pre">~typing.Dict[str,</span> <span class="pre">~numpy.ndarray[tuple[~typing.Any,</span> <span class="pre">...],</span> <span class="pre">~numpy.dtype[~numpy._typing._array_like._ScalarT]]]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">config:</span> <span class="pre">~typing.Dict[str,</span> <span class="pre">~typing.Any]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">metadata:</span> <span class="pre">~typing.Dict[str,</span> <span class="pre">~typing.Any]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/bamengine/results.html#SimulationResults"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.SimulationResults" title="Link to this definition"></a></dt>
+<dd><p>Container for simulation results with convenient data access methods.</p>
+<p>This class is returned by Simulation.run() and provides structured
+access to simulation data, including time series of role states,
+economy-wide metrics, and metadata about the simulation run.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.SimulationResults.role_data">
+<span class="sig-name descname"><span class="pre">role_data</span></span><a class="headerlink" href="#bamengine.SimulationResults.role_data" title="Link to this definition"></a></dt>
+<dd><p>Time series data for each role, keyed by role name.
+Each value is a dict of arrays with shape (n_periods, n_agents).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.SimulationResults.economy_data">
+<span class="sig-name descname"><span class="pre">economy_data</span></span><a class="headerlink" href="#bamengine.SimulationResults.economy_data" title="Link to this definition"></a></dt>
+<dd><p>Time series of economy-wide metrics with shape (n_periods,).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.SimulationResults.config">
+<span class="sig-name descname"><span class="pre">config</span></span><a class="headerlink" href="#bamengine.SimulationResults.config" title="Link to this definition"></a></dt>
+<dd><p>Configuration parameters used for this simulation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="bamengine.SimulationResults.metadata">
+<span class="sig-name descname"><span class="pre">metadata</span></span><a class="headerlink" href="#bamengine.SimulationResults.metadata" title="Link to this definition"></a></dt>
+<dd><p>Run metadata (seed, runtime, n_periods, etc.).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">bam</span><span class="o">.</span><span class="n">Simulation</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">n_firms</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">results</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">n_periods</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+</pre></div>
+</div>
+<p># Get all data as DataFrame
+&gt;&gt;&gt; df = results.to_dataframe()</p>
+<p># Get specific role data
+&gt;&gt;&gt; prod_df = results.get_role_data(‘Producer’)</p>
+<p># Access economy metrics directly
+&gt;&gt;&gt; unemployment = results.economy_data[‘unemployment_rate’]</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.SimulationResults.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">role_data:</span> <span class="pre">~typing.Dict[str,</span> <span class="pre">~typing.Dict[str,</span> <span class="pre">~numpy.ndarray[tuple[~typing.Any,</span> <span class="pre">...],</span> <span class="pre">~numpy.dtype[~numpy._typing._array_like._ScalarT]]]]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">economy_data:</span> <span class="pre">~typing.Dict[str,</span> <span class="pre">~numpy.ndarray[tuple[~typing.Any,</span> <span class="pre">...],</span> <span class="pre">~numpy.dtype[~numpy._typing._array_like._ScalarT]]]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">config:</span> <span class="pre">~typing.Dict[str,</span> <span class="pre">~typing.Any]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">metadata:</span> <span class="pre">~typing.Dict[str,</span> <span class="pre">~typing.Any]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#bamengine.SimulationResults.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#id4" title="bamengine.SimulationResults.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>([role_data, economy_data, config, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bamengine.SimulationResults.get_role_data" title="bamengine.SimulationResults.get_role_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_role_data</span></code></a>(role_name[, aggregate])</p></td>
+<td><p>Get data for a specific role as a DataFrame.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bamengine.SimulationResults.load" title="bamengine.SimulationResults.load"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load</span></code></a>(filepath)</p></td>
+<td><p>Load results from disk.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bamengine.SimulationResults.save" title="bamengine.SimulationResults.save"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save</span></code></a>(filepath)</p></td>
+<td><p>Save results to disk (HDF5 or pickle format).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bamengine.SimulationResults.to_dataframe" title="bamengine.SimulationResults.to_dataframe"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_dataframe</span></code></a>([roles, variables, ...])</p></td>
+<td><p>Export results to a pandas DataFrame.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bamengine.SimulationResults.economy_metrics" title="bamengine.SimulationResults.economy_metrics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">economy_metrics</span></code></a></p></td>
+<td><p>Get economy-wide metrics as a DataFrame.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bamengine.SimulationResults.summary" title="bamengine.SimulationResults.summary"><code class="xref py py-obj docutils literal notranslate"><span class="pre">summary</span></code></a></p></td>
+<td><p>Get summary statistics for key metrics.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#id0" title="bamengine.SimulationResults.role_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">role_data</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#id1" title="bamengine.SimulationResults.economy_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">economy_data</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#id2" title="bamengine.SimulationResults.config"><code class="xref py py-obj docutils literal notranslate"><span class="pre">config</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#id3" title="bamengine.SimulationResults.metadata"><code class="xref py py-obj docutils literal notranslate"><span class="pre">metadata</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">role_data</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.3)"><span class="pre">dtype</span></a><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarT</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#id0" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">economy_data</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.3)"><span class="pre">dtype</span></a><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarT</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#id1" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id2">
+<span class="sig-name descname"><span class="pre">config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#id2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id3">
+<span class="sig-name descname"><span class="pre">metadata</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#id3" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.SimulationResults.to_dataframe">
+<span class="sig-name descname"><span class="pre">to_dataframe</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">roles</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">variables</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_economy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pd.DataFrame</span></span></span><a class="reference internal" href="../../_modules/bamengine/results.html#SimulationResults.to_dataframe"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.SimulationResults.to_dataframe" title="Link to this definition"></a></dt>
+<dd><p>Export results to a pandas DataFrame.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>roles</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Specific roles to include. If None, includes all roles.</p></li>
+<li><p><strong>variables</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Specific variables to include. If None, includes all variables.</p></li>
+<li><p><strong>include_economy</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>default=True</em>) – Whether to include economy-wide metrics.</p></li>
+<li><p><strong>aggregate</strong> (<em>{'mean'</em><em>, </em><em>'median'</em><em>, </em><em>'sum'</em><em>, </em><em>'std'}</em><em>, </em><em>optional</em>) – How to aggregate agent-level data. If None, returns all agents.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame with simulation results. Index is period number.
+Columns depend on parameters and aggregation method.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If pandas is not installed.</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<p># Get everything
+&gt;&gt;&gt; df = results.to_dataframe()</p>
+<p># Get only Producer price and inventory, averaged
+&gt;&gt;&gt; df = results.to_dataframe(
+…     roles=[‘Producer’],
+…     variables=[‘price’, ‘inventory’],
+…     aggregate=’mean’
+… )</p>
+<p># Get only economy metrics
+&gt;&gt;&gt; df = results.to_dataframe(include_economy=True, roles=[])</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.SimulationResults.get_role_data">
+<span class="sig-name descname"><span class="pre">get_role_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">role_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pd.DataFrame</span></span></span><a class="reference internal" href="../../_modules/bamengine/results.html#SimulationResults.get_role_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.SimulationResults.get_role_data" title="Link to this definition"></a></dt>
+<dd><p>Get data for a specific role as a DataFrame.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>role_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Name of the role (e.g., ‘Producer’, ‘Worker’).</p></li>
+<li><p><strong>aggregate</strong> (<em>{'mean'</em><em>, </em><em>'median'</em><em>, </em><em>'sum'</em><em>, </em><em>'std'}</em><em>, </em><em>optional</em>) – How to aggregate across agents.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame with the role’s time series data.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If pandas is not installed.</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">prod_df</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">get_role_data</span><span class="p">(</span><span class="s1">&#39;Producer&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">prod_mean</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">get_role_data</span><span class="p">(</span><span class="s1">&#39;Producer&#39;</span><span class="p">,</span> <span class="n">aggregate</span><span class="o">=</span><span class="s1">&#39;mean&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="bamengine.SimulationResults.economy_metrics">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">economy_metrics</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">pd.DataFrame</span></em><a class="headerlink" href="#bamengine.SimulationResults.economy_metrics" title="Link to this definition"></a></dt>
+<dd><p>Get economy-wide metrics as a DataFrame.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DataFrame with economy time series (unemployment rate, GDP, etc.).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If pandas is not installed.</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">econ_df</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">economy_metrics</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">econ_df</span><span class="p">[[</span><span class="s1">&#39;unemployment_rate&#39;</span><span class="p">,</span> <span class="s1">&#39;avg_price&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="bamengine.SimulationResults.summary">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">summary</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">pd.DataFrame</span></em><a class="headerlink" href="#bamengine.SimulationResults.summary" title="Link to this definition"></a></dt>
+<dd><p>Get summary statistics for key metrics.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Summary statistics (mean, std, min, max) for key variables.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If pandas is not installed.</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">summary</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.SimulationResults.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/bamengine/results.html#SimulationResults.save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.SimulationResults.save" title="Link to this definition"></a></dt>
+<dd><p>Save results to disk (HDF5 or pickle format).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filepath</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Path to save file. Use .h5 for HDF5, .pkl for pickle.</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">results</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s1">&#39;results.h5&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">results</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s1">&#39;results.pkl&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.SimulationResults.load">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#bamengine.SimulationResults" title="bamengine.results.SimulationResults"><span class="pre">SimulationResults</span></a></span></span><a class="reference internal" href="../../_modules/bamengine/results.html#SimulationResults.load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.SimulationResults.load" title="Link to this definition"></a></dt>
+<dd><p>Load results from disk.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filepath</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Path to saved results file.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Loaded results object.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#bamengine.SimulationResults" title="bamengine.SimulationResults">SimulationResults</a></p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">results</span> <span class="o">=</span> <span class="n">SimulationResults</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;results.h5&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="bamengine.SimulationResults.__repr__">
+<span class="sig-name descname"><span class="pre">__repr__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/bamengine/results.html#SimulationResults.__repr__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bamengine.SimulationResults.__repr__" title="Link to this definition"></a></dt>
+<dd><p>String representation showing summary information.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">role_data:</span> <span class="pre">~typing.Dict[str,</span> <span class="pre">~typing.Dict[str,</span> <span class="pre">~numpy.ndarray[tuple[~typing.Any,</span> <span class="pre">...],</span> <span class="pre">~numpy.dtype[~numpy._typing._array_like._ScalarT]]]]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">economy_data:</span> <span class="pre">~typing.Dict[str,</span> <span class="pre">~numpy.ndarray[tuple[~typing.Any,</span> <span class="pre">...],</span> <span class="pre">~numpy.dtype[~numpy._typing._array_like._ScalarT]]]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">config:</span> <span class="pre">~typing.Dict[str,</span> <span class="pre">~typing.Any]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">metadata:</span> <span class="pre">~typing.Dict[str,</span> <span class="pre">~typing.Any]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#id4" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="bamengine.Simulation.html" class="btn btn-neutral float-left" title="bamengine.Simulation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="bamengine.Role.html" class="btn btn-neutral float-right" title="bamengine.Role" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Kostas Ganitis.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
