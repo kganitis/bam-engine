@@ -1,6 +1,6 @@
 """
 ===============================
-BAM Baseline Scenario (3.9.1)
+BAM Baseline Scenario
 ===============================
 
 This example reproduces the baseline scenario from section 3.9.1 of the
@@ -12,15 +12,17 @@ agents (firms, households, banks) interacting in three markets (labor, credit,
 consumption goods). We visualize four key macroeconomic indicators that
 characterize the baseline dynamics: real GDP, unemployment rate, annual
 inflation rate, and the productivity to real wage ratio.
+
+This example demonstrates using SimulationResults to collect time series data.
 """
 
 # %%
-# Initialize the Simulation
-# --------------------------
+# Initialize and Run Simulation
+# -----------------------------
 #
 # Create a simulation with 100 firms, 500 households, and 10 banks using
 # default parameters that correspond to the baseline scenario.
-# We set a random seed for reproducibility.
+# We use ``run(collect=...)`` to automatically collect time series data.
 
 import numpy as np
 import bamengine as bam
@@ -39,66 +41,87 @@ print(f"  - {sim.n_households} households")
 print(f"  - {sim.n_banks} banks")
 
 # %%
-# Run Simulation and Collect Data
-# --------------------------------
+# Run the simulation and collect data using SimulationResults.
+# We collect:
 #
-# Run the simulation period-by-period, collecting key economic indicators
-# at each step. We collect:
+# 1. **Real GDP**: Total production across all firms (sum aggregation)
+# 2. **Unemployment Rate**: From economy metrics (automatically captured)
+# 3. **Annual Inflation Rate**: From economy metrics (automatically captured)
+# 4. **Productivity**: Average labor productivity (mean aggregation)
+# 5. **Wages**: Per-worker wages (no aggregation, to filter employed only)
+
+results = sim.run(
+    collect={
+        "roles": ["Producer", "Worker"],
+        "variables": {
+            "Producer": ["production", "labor_productivity"],
+            "Worker": ["wage", "employed"],
+        },
+        "include_economy": True,
+        "aggregate": None,  # Keep full per-agent data for wages
+    }
+)
+
+print(f"\nSimulation completed: {results.metadata['n_periods']} periods")
+print(f"Runtime: {results.metadata['runtime_seconds']:.2f} seconds")
+
+# %%
+# Extract Data from Results
+# -------------------------
 #
-# 1. **Real GDP**: Total production across all firms
-# 2. **Unemployment Rate**: Fraction of households without jobs
-# 3. **Annual Inflation Rate**: Year-over-year change in average price level
-# 4. **Productivity/Wage Ratio**: Labor productivity relative to real wages
+# SimulationResults provides easy access to the collected time series data.
+# Economy-wide metrics are in ``economy_data``, role data in ``role_data``.
 
-# Initialize data collection lists
-gdp_data = []
-unemployment_data = []
-inflation_data = []
-productivity_wage_ratio_data = []
+# Economy metrics (automatically captured)
+unemployment = results.economy_data["unemployment_rate"]
+inflation = results.economy_data["inflation"]
+avg_price = results.economy_data["avg_price"]
 
-# Run simulation period by period
-for period in range(sim.n_periods):
-    # Execute one period
-    sim.step()
+# Role data - shape is (n_periods, n_agents)
+production = results.role_data["Producer"]["production"]  # (1000, 100)
+productivity = results.role_data["Producer"]["labor_productivity"]  # (1000, 100)
+wages = results.role_data["Worker"]["wage"]  # (1000, 500)
+employed = results.role_data["Worker"]["employed"]  # (1000, 500)
 
-    # Collect Real GDP (sum of production)
-    real_gdp = float(sim.prod.production.sum())
-    gdp_data.append(real_gdp)
+# Calculate Real GDP as total production per period
+gdp = production.sum(axis=1)  # Sum across all firms
 
-    # Collect Unemployment Rate
-    unemployment_rate = float(sim.ec.unemp_rate_history[-1])
-    unemployment_data.append(unemployment_rate)
+# Calculate average productivity per period
+avg_productivity = productivity.mean(axis=1)
 
-    # Collect Annual Inflation Rate
-    annual_inflation = float(sim.ec.inflation_history[-1])
-    inflation_data.append(annual_inflation)
+# Calculate average wage for EMPLOYED workers only per period
+# (unemployed workers have wage=0, which would skew the average)
+employed_wages_sum = np.where(employed, wages, 0.0).sum(axis=1)
+employed_count = employed.sum(axis=1)
+avg_employed_wage = np.divide(
+    employed_wages_sum,
+    employed_count,
+    out=np.zeros_like(employed_wages_sum),
+    where=employed_count > 0
+)
 
-    # Calculate Productivity to Real Wage Ratio
-    avg_productivity = float(sim.prod.labor_productivity.mean())
-    if sim.ec.avg_mkt_price > 0:
-        employed_wages = sim.wrk.wage[sim.wrk.employed]
-        avg_nominal_wage = float(employed_wages.mean()) if len(employed_wages) > 0 else 0.0
-        avg_real_wage = avg_nominal_wage / sim.ec.avg_mkt_price
-        prod_wage_ratio = avg_productivity / avg_real_wage if avg_real_wage > 0 else 0.0
-    else:
-        prod_wage_ratio = 0.0
-    productivity_wage_ratio_data.append(prod_wage_ratio)
+# Calculate Productivity / Real Wage Ratio
+# Real wage = nominal wage / price level
+real_wage = avg_employed_wage / avg_price
+prod_wage_ratio = np.divide(
+    avg_productivity,
+    real_wage,
+    out=np.zeros_like(avg_productivity),
+    where=real_wage > 0
+)
 
-print(f"\nSimulation completed: {sim.t} periods")
+print(f"\nCollected {len(gdp)} periods of data")
+print(f"Economy metrics: {list(results.economy_data.keys())}")
+print(f"Role data captured: {list(results.role_data.keys())}")
 
 # %%
 # Prepare Data for Visualization
-# -------------------------------
+# ------------------------------
 #
-# Convert collected data to NumPy arrays and apply a burn-in period to
-# focus on steady-state dynamics (excluding initial transients).
+# Apply a burn-in period to focus on steady-state dynamics
+# (excluding initial transients).
 
 burn_in = 500  # Exclude first 500 periods
-
-gdp = np.array(gdp_data)
-unemployment = np.array(unemployment_data)
-inflation = np.array(inflation_data)
-prod_wage_ratio = np.array(productivity_wage_ratio_data)
 
 # Apply burn-in and create time axis
 periods = np.arange(burn_in, len(gdp))
@@ -111,7 +134,7 @@ print(f"Plotting {len(periods)} periods (after {burn_in}-period burn-in)")
 
 # %%
 # Visualize Key Economic Indicators
-# ----------------------------------
+# ---------------------------------
 #
 # Create a 4-panel figure showing the evolution of macroeconomic indicators
 # over time. Each panel shows a different aspect of the economy's dynamics.
