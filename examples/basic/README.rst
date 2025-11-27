@@ -9,11 +9,17 @@ Examples in this section:
 1. **Hello World**: The simplest possible BAM Engine example - initialize, run, and visualize
 2. **Configuration**: Customize simulation parameters using keyword arguments
 3. **Baseline Scenario**: Reproduce the baseline scenario from section 3.9.1 of the original BAM book
+4. **YAML Configuration**: Configure simulations using YAML files
+5. **Results Module**: Comprehensive guide to SimulationResults for data collection
+6. **Type System**: Using Float, Int, Bool, Agent type aliases for custom roles
+7. **Logging**: Configure logging levels globally and per-event
 
 These examples will teach you:
 
 * How to initialize and run a basic simulation
-* How to configure simulation parameters via keyword arguments
+* How to configure simulation parameters via kwargs and YAML files
 * How to collect and visualize simulation results
 * How to compare different economic scenarios
 * How to reproduce scenarios from the BAM literature
+* How to use type aliases for extending BAM Engine
+* How to configure and use the logging system
