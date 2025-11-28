@@ -224,14 +224,12 @@ class SimulationResults:
     --------
     >>> sim = bam.Simulation.init(n_firms=100, seed=42)
     >>> results = sim.run(n_periods=100)
-
-    # Get all data as DataFrame
+    ...
+    >>> # Get all data as DataFrame
     >>> df = results.to_dataframe()
-
-    # Get specific role data
+    >>> # Get specific role data
     >>> prod_df = results.get_role_data('Producer')
-
-    # Access economy metrics directly
+    >>> # Access economy metrics directly
     >>> unemployment = results.economy_data['unemployment_rate']
     """
 
