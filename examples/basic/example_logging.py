@@ -164,7 +164,8 @@ def expensive_computation():
     """Simulate an expensive debugging calculation."""
     import numpy as np
 
-    return np.random.rand(1000000).mean()
+    rng = np.random.default_rng()
+    return rng.random(1000000).mean()
 
 
 # Create a logger
@@ -233,7 +234,6 @@ class TaxCollectionEvent:
         logger.info("Collecting taxes from firms...")
 
         # Access firm data
-        prod = sim.get_role("Producer")
         borr = sim.get_role("Borrower")
 
         # Calculate tax (10% of net worth)
@@ -279,7 +279,8 @@ print("\nCustom TaxCollectionEvent defined (see code for logging pattern)")
 #
 #     sim = bam.Simulation.init(config="config.yml")
 
-print("""
+print(
+    """
 YAML logging configuration example:
 
 logging:
@@ -288,7 +289,8 @@ logging:
     workers_send_one_round: WARNING
     firms_hire_workers: DEBUG
     firms_adjust_price: TRACE
-""")
+"""
+)
 
 # %%
 # Key Takeaways

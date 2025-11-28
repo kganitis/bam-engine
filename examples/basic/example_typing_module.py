@@ -24,8 +24,9 @@ these types will make your code cleaner and more maintainable.
 #
 # These are all NumPy arrays under the hood, but with clear semantic meaning.
 
-from bamengine import Float, Int, Bool, Agent
 import numpy as np
+
+from bamengine import Agent, Bool, Float, Int
 
 # Create arrays using standard NumPy, but type them semantically
 prices: Float = np.array([1.0, 1.2, 0.95, 1.1], dtype=np.float64)
@@ -46,10 +47,10 @@ print(f"  Agent  -> {employers.dtype}")
 # Each type alias corresponds to a specific NumPy dtype:
 
 print("\nType mapping:")
-print(f"  Float = NDArray[np.float64]  # 64-bit floating point")
-print(f"  Int   = NDArray[np.int64]    # 64-bit signed integer")
-print(f"  Bool  = NDArray[np.bool_]    # Boolean (True/False)")
-print(f"  Agent = NDArray[np.intp]     # Platform-dependent integer (for indexing)")
+print("  Float = NDArray[np.float64]  # 64-bit floating point")
+print("  Int   = NDArray[np.int64]    # 64-bit signed integer")
+print("  Bool  = NDArray[np.bool_]    # Boolean (True/False)")
+print("  Agent = NDArray[np.intp]     # Platform-dependent integer (for indexing)")
 
 # The Agent type uses np.intp for safe array indexing
 # This ensures compatibility across 32-bit and 64-bit systems
@@ -63,6 +64,7 @@ print(f"\nnp.intp on this system: {np.dtype(np.intp)}")
 # This provides IDE autocomplete, type checking, and documentation.
 
 from bamengine import role
+
 
 @role
 class Inventory:
@@ -120,7 +122,8 @@ print(f"  Supplier IDs:  {inventory.supplier_id}")
 #
 # Here's guidance on choosing the right type:
 
-print("""
+print(
+    """
 Type Selection Guide
 ====================
 
@@ -147,7 +150,8 @@ Agent (np.intp):
   - References to other agents (employer_id, supplier_id)
   - Agent indices for array lookup
   - Use -1 to indicate "no agent" (unemployed, no supplier)
-""")
+"""
+)
 
 # %%
 # Type Checking Benefits
@@ -202,7 +206,7 @@ print(f"Workers at firm 0: {np.where(at_firm_0)[0]}")
 #
 # Both work identically - use whichever you prefer.
 
-from bamengine.typing import Float1D, Int1D
+from bamengine.typing import Float1D
 
 # These are equivalent:
 prices_v1: Float = np.ones(10)
@@ -215,6 +219,7 @@ print(f"\nFloat and Float1D are equivalent: {Float is Float1D}")
 # -----------------------------------------
 #
 # Here's a realistic example of a custom role with proper typing.
+
 
 @role
 class AdvancedProducer:

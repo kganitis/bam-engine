@@ -82,15 +82,16 @@ print(f"Created config file at: {config_path}")
 
 sim = bam.Simulation.init(config=str(config_path))
 
-print(f"Loaded configuration:")
-print(f"  Firms: {sim.config.n_firms}")
-print(f"  Households: {sim.config.n_households}")
-print(f"  Banks: {sim.config.n_banks}")
-print(f"  Seed: {sim.config.seed}")
+print("Loaded configuration:")
+print(f"  Firms: {sim.n_firms}")
+print(f"  Households: {sim.n_households}")
+print(f"  Banks: {sim.n_banks}")
 
 # Run a short simulation to verify it works
 sim.run(n_periods=20)
-print(f"\nSimulation completed! Final unemployment: {sim.ec.unemp_rate_history[-1]:.2%}")
+print(
+    f"\nSimulation completed! Final unemployment: {sim.ec.unemp_rate_history[-1]:.2%}"
+)
 
 # %%
 # Configuration Precedence
@@ -112,9 +113,8 @@ sim_override = bam.Simulation.init(
 )
 
 print("With kwargs override:")
-print(f"  Firms: {sim_override.config.n_firms}")  # 150 (from kwargs)
-print(f"  Households: {sim_override.config.n_households}")  # 400 (from YAML)
-print(f"  Seed: {sim_override.config.seed}")  # 999 (from kwargs)
+print(f"  Firms: {sim_override.n_firms}")  # 150 (from kwargs)
+print(f"  Households: {sim_override.n_households}")  # 400 (from YAML)
 
 # %%
 # Using a Dictionary as Config
@@ -135,8 +135,8 @@ config_dict = {
 sim_dict = bam.Simulation.init(config=config_dict)
 
 print("From dictionary config:")
-print(f"  Firms: {sim_dict.config.n_firms}")
-print(f"  Households: {sim_dict.config.n_households}")
+print(f"  Firms: {sim_dict.n_firms}")
+print(f"  Households: {sim_dict.n_households}")
 print(f"  Shock cap (h_rho): {sim_dict.config.h_rho}")
 
 # %%
@@ -199,8 +199,12 @@ plt.show()
 print("\nSummary Statistics:")
 print(f"{'Scenario':<15} {'Mean Unemp.':<15} {'Std Unemp.':<15}")
 print("-" * 45)
-print(f"{'High Friction':<15} {unemployment_high.mean():>12.2f}% {unemployment_high.std():>12.2f}%")
-print(f"{'Low Friction':<15} {unemployment_low.mean():>12.2f}% {unemployment_low.std():>12.2f}%")
+print(
+    f"{'High Friction':<15} {unemployment_high.mean():>12.2f}% {unemployment_high.std():>12.2f}%"
+)
+print(
+    f"{'Low Friction':<15} {unemployment_low.mean():>12.2f}% {unemployment_low.std():>12.2f}%"
+)
 
 # %%
 # Key Configuration Parameters Reference

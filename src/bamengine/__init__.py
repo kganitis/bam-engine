@@ -156,8 +156,10 @@ Springer Milano. https://doi.org/10.1007/978-88-470-1971-3
 
 See Also
 --------
-defaults.yml : Default configuration parameters
-default_pipeline.yml : Default event execution order
+Configuration files in ``bamengine/config/``:
+
+- ``defaults.yml`` : Default configuration parameters
+- ``default_pipeline.yml`` : Default event execution order
 
 Notes
 -----

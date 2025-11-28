@@ -20,7 +20,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 if TYPE_CHECKING:  # pragma: no cover
-    import pandas as pd
+    import pandas as pd  # type: ignore[import-untyped]
 
     from bamengine.simulation import Simulation
 
@@ -235,8 +235,8 @@ class SimulationResults:
     >>> unemployment = results.economy_data['unemployment_rate']
     """
 
-    role_data: Dict[str, Dict[str, NDArray]] = field(default_factory=dict)
-    economy_data: Dict[str, NDArray] = field(default_factory=dict)
+    role_data: Dict[str, Dict[str, NDArray[Any]]] = field(default_factory=dict)
+    economy_data: Dict[str, NDArray[Any]] = field(default_factory=dict)
     config: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
 

@@ -78,7 +78,7 @@ docs = [
     "bamengine[pandas]",
     "sphinx>=7.0",
     "sphinx-gallery>=0.15.0",
-    "sphinx-rtd-theme>=2.0",
+    "pydata-sphinx-theme>=0.15.0",
     "matplotlib>=3.8",
     "numpydoc>=1.6",
 ]
@@ -108,10 +108,24 @@ version = {attr = "bamengine.__version__"}
 [tool.ruff]
 fix = true
 line-length = 88
+include = ["src/**/*.py", "tests/**/*.py", "benchmarks/**/*.py", "examples/**/*.py", "asv_benchmarks/*.py", "docs/conf.py"]
+exclude = [
+    "asv_benchmarks/env/",
+    "docs/_build/",
+    "docs/auto_examples/",
+    ".venv/",
+    "build/",
+    "dist/",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "NPY"]
 ignore = ["E501"]  # Black handles line length
+
+[tool.ruff.lint.per-file-ignores]
+# Examples use literate programming style with imports near usage
+"examples/**/*.py" = ["E402"]
+"docs/conf.py" = ["E402"]
 
 [tool.ruff.lint.isort]
 # Prevent reordering that breaks import dependencies (LoanBook after roles)
@@ -149,6 +163,17 @@ disable_error_code = ["call-arg"]
 
 [tool.black]
 line-length = 88
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    asv_benchmarks/env
+    | docs/_build
+    | docs/auto_examples
+    | \.venv
+    | build
+    | dist
+)/
+'''
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

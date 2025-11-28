@@ -6,6 +6,8 @@
 import os
 import sys
 
+from sphinx_gallery.sorting import ExplicitOrder
+
 # Add project root to path so we can import bamengine
 sys.path.insert(0, os.path.abspath("../src"))
 
@@ -48,8 +50,19 @@ napoleon_use_admonition_for_references = False
 napoleon_use_ivar = False
 napoleon_use_param = True
 napoleon_use_rtype = True
-napoleon_preprocess_types = False
-napoleon_type_aliases = None
+napoleon_preprocess_types = True
+napoleon_type_aliases = {
+    "Float1D": "Float1D",
+    "Int1D": "Int1D",
+    "Bool1D": "Bool1D",
+    "Idx1D": "Idx1D",
+    "Float": "Float",
+    "Int": "Int",
+    "Bool": "Bool",
+    "Agent": "Agent",
+    "AgentId": "AgentId",
+    "Rng": "Rng",
+}
 napoleon_attr_annotations = True
 
 # Numpydoc settings
@@ -63,6 +76,25 @@ autodoc_default_options = {
     "special-members": "__init__",
     "undoc-members": True,
     "exclude-members": "__weakref__",
+}
+
+# Hide types from signatures entirely to avoid verbose numpy.ndarray[...] types
+# Types are documented in the class docstrings instead
+autodoc_typehints = "none"
+
+# Type aliases for cleaner type display in docs
+# Maps verbose NumPy array types to user-friendly names
+autodoc_type_aliases = {
+    "Float1D": "Float1D",
+    "Int1D": "Int1D",
+    "Bool1D": "Bool1D",
+    "Idx1D": "Idx1D",
+    "Float": "Float",
+    "Int": "Int",
+    "Bool": "Bool",
+    "Agent": "Agent",
+    "AgentId": "AgentId",
+    "Rng": "Rng",
 }
 
 # Autosummary settings
@@ -79,7 +111,7 @@ intersphinx_mapping = {
 sphinx_gallery_conf = {
     "examples_dirs": "../examples",  # Path to example scripts
     "gallery_dirs": "auto_examples",  # Where to save gallery generated output
-    "filename_pattern": r"example_.*\.py$",  # Only run files starting with example_
+    "filename_pattern": r"/example_",  # Match all example_*.py files
     "download_all_examples": False,  # Don't create download all button
     "matplotlib_animations": False,  # Don't try to save animations
     "image_scrapers": ("matplotlib",),  # Scrape matplotlib figures
@@ -89,9 +121,14 @@ sphinx_gallery_conf = {
     "min_reported_time": 0.1,  # Minimum time to report for example execution
     "show_memory": False,  # Don't show memory usage
     "junit": "",  # Don't generate JUnit XML
-    # Use ExplicitOrder if you want specific order, otherwise use default (alphabetical)
-    # "subsection_order": ExplicitOrder([...]),
-    # "within_subsection_order": FileNameSortKey,
+    # Order subsections: basic first, then advanced, then research
+    "subsection_order": ExplicitOrder(
+        [
+            "../examples/basic",
+            "../examples/advanced",
+            "../examples/research",
+        ]
+    ),
     "capture_repr": ("_repr_html_", "__repr__"),  # Capture these repr methods
     "nested_sections": True,  # Allow nested sections in galleries
     "expected_failing_examples": [],  # List of examples expected to fail
@@ -110,20 +147,24 @@ master_doc = "index"
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "sphinx_rtd_theme"
+html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
 
-# Theme options
+# Theme options for PyData Sphinx Theme
 html_theme_options = {
-    "collapse_navigation": False,
-    "sticky_navigation": True,
-    "navigation_depth": 4,
-    "includehidden": True,
-    "titles_only": False,
-    "logo_only": False,
-    "display_version": True,
-    "prev_next_buttons_location": "bottom",
-    "style_external_links": False,
+    "github_url": "https://github.com/kganitis/bam-engine",
+    "show_prev_next": True,
+    "navigation_with_keys": True,
+    "show_toc_level": 2,
+    "navbar_align": "left",
+    "navbar_end": ["theme-switcher", "navbar-icon-links"],
+    "icon_links": [
+        {
+            "name": "PyPI",
+            "url": "https://pypi.org/project/bamengine/",
+            "icon": "fa-brands fa-python",
+        },
+    ],
 }
 
 # Output file base name for HTML help builder

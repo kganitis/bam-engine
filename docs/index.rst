@@ -61,7 +61,7 @@ Contents
 
 .. toctree::
    :maxdepth: 2
-   :caption: API Reference
+   :caption: API
 
    api/index
 
@@ -69,7 +69,8 @@ Contents
    :maxdepth: 1
    :caption: Development
 
-   contributing
+   development
+   performance
    changelog
 
 Indices and tables
