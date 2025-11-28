@@ -82,9 +82,9 @@ class Lender:
 
     See Also
     --------
-    Borrower : Credit demand role for firms
-    LoanBook : Loan relationship between borrowers and lenders
-    bamengine.events._internal.credit_market : Credit market logic
+    :class:`~bamengine.roles.Borrower` : Credit demand role for firms
+    :class:`~bamengine.relationships.LoanBook` : Loan relationship between borrowers and lenders
+    :mod:`bamengine.events._internal.credit_market` : Credit market logic
     """
 
     equity_base: Float1D

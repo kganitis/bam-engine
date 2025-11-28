@@ -47,12 +47,12 @@ Access registry:
 
 See Also
 --------
-bamengine.core.role : Role base class and related functions
-bamengine.core.event : Event base class and related functions
-bamengine.core.relationship : Relationship base class and related functions
-bamengine.core.pipeline : Pipeline management
-bamengine.decorators : Decorator implementations
-bamengine.registry : Registry functions
+:mod:`bamengine.core.role` : Role base class and related functions
+:mod:`bamengine.core.event` : Event base class and related functions
+:mod:`bamengine.core.relationship` : Relationship base class and related functions
+:mod:`bamengine.core.pipeline` : Pipeline management
+:mod:`bamengine.core.decorators` : Decorator implementations
+:mod:`bamengine.core.registry` : Registry functions
 """
 
 from typing import Any, Callable, TypeVar

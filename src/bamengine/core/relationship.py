@@ -50,9 +50,9 @@ Traditional syntax:
 
 See Also
 --------
-Role : Base class for component state
-bamengine.decorators.relationship : Simplified @relationship decorator
-LoanBook : Concrete relationship between Borrower and Lender
+:class:`~bamengine.core.Role` : Base class for component state
+:func:`bamengine.decorators.relationship` : Simplified @relationship decorator
+:class:`~bamengine.relationships.LoanBook` : Concrete relationship between Borrower and Lender
 """
 
 from __future__ import annotations

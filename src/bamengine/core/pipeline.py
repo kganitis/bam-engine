@@ -54,9 +54,9 @@ Modify an existing pipeline:
 
 See Also
 --------
-Event : Base class for all events
-create_default_pipeline : Factory for canonical BAM pipeline
-bamengine.config.validator.ConfigValidator.validate_pipeline_yaml : Pipeline validation
+:class:`~bamengine.core.Event` : Base class for all events
+:func:`create_default_pipeline` : Factory for canonical BAM pipeline
+:meth:`bamengine.config.ConfigValidator.validate_pipeline_yaml` : Pipeline validation
 """
 
 from __future__ import annotations

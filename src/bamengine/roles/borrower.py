@@ -86,12 +86,12 @@ class Borrower:
 
     See Also
     --------
-    Producer : Production role for firms
-    Employer : Labor hiring role for firms
-    Lender : Credit supply role for banks
-    LoanBook : Loan relationship between borrowers and lenders
-    bamengine.events._internal.credit_market : Credit market logic
-    bamengine.events._internal.revenue : Revenue collection logic
+    :class:`~bamengine.roles.Producer` : Production role for firms
+    :class:`~bamengine.roles.Employer` : Labor hiring role for firms
+    :class:`~bamengine.roles.Lender` : Credit supply role for banks
+    :class:`~bamengine.relationships.LoanBook` : Loan relationship between borrowers and lenders
+    :mod:`bamengine.events._internal.credit_market` : Credit market logic
+    :mod:`bamengine.events._internal.revenue` : Revenue collection logic
     """
 
     rnd_intensity: Float1D

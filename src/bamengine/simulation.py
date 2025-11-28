@@ -31,10 +31,10 @@ _validate_float1d
 
 See Also
 --------
-bamengine.config : Configuration dataclass and validation
-bamengine.core : Event and Pipeline infrastructure
-bamengine.roles : Agent role components (Producer, Worker, etc.)
-bamengine.events : Event classes wrapping system functions
+:mod:`bamengine.config` : Configuration dataclass and validation
+:mod:`bamengine.core` : Event and Pipeline infrastructure
+:mod:`bamengine.roles` : Agent role components (Producer, Worker, etc.)
+:mod:`bamengine.events` : Event classes wrapping system functions
 
 Examples
 --------
@@ -195,11 +195,11 @@ class Simulation:
 
     Attributes
     ----------
-    ec : Economy
+    ec : :class:`~bamengine.Economy`
         Global economy state (prices, wages, histories).
-    config : Config
+    config : :class:`~bamengine.config.Config`
         Configuration parameters for the simulation.
-    rng : np.random.Generator
+    rng : :class:`numpy.random.Generator`
         Random number generator for deterministic simulations.
     n_firms : int
         Number of firms in the economy.
@@ -207,21 +207,21 @@ class Simulation:
         Number of households in the economy.
     n_banks : int
         Number of banks in the economy.
-    prod : Producer
+    prod : :class:`~bamengine.roles.Producer`
         Producer role (firm production state).
-    wrk : Worker
+    wrk : :class:`~bamengine.roles.Worker`
         Worker role (household employment state).
-    emp : Employer
+    emp : :class:`~bamengine.roles.Employer`
         Employer role (firm hiring state).
-    bor : Borrower
+    bor : :class:`~bamengine.roles.Borrower`
         Borrower role (firm financial state).
-    lend : Lender
+    lend : :class:`~bamengine.roles.Lender`
         Lender role (bank state).
-    con : Consumer
+    con : :class:`~bamengine.roles.Consumer`
         Consumer role (household consumption state).
-    pipeline : Pipeline
+    pipeline : :class:`~bamengine.core.Pipeline`
         Event pipeline controlling simulation execution order.
-    lb : LoanBook
+    lb : :class:`~bamengine.relationships.LoanBook`
         Loan relationship between borrowers and lenders.
     n_periods : int
         Default run length for run() method.
@@ -287,7 +287,7 @@ class Simulation:
     run : Execute multiple periods
     get_role : Access role instances
     get_event : Access event instances
-    Pipeline : Event pipeline configuration
+    :class:`~bamengine.core.Pipeline` : Event pipeline configuration
     """
 
     # Economy instance
@@ -497,9 +497,9 @@ class Simulation:
 
         See Also
         --------
-        bamengine.config.Config : Configuration dataclass
-        bamengine.config.ConfigValidator : Centralized validation logic
-        bamengine.core.Pipeline : Event pipeline configuration
+        :class:`bamengine.config.Config` : Configuration dataclass
+        :class:`bamengine.config.ConfigValidator` : Centralized validation logic
+        :class:`bamengine.core.Pipeline` : Event pipeline configuration
         """
         # 1 + 2 + 3 → one merged dict
         cfg_dict: Dict[str, Any] = _package_defaults()
@@ -907,7 +907,7 @@ class Simulation:
         --------
         step : Execute a single simulation period
         init : Initialize simulation with configuration
-        SimulationResults : Container for collected simulation data
+        :class:`~bamengine.SimulationResults` : Container for collected simulation data
         """
         n = n_periods if n_periods is not None else self.n_periods
 
@@ -1076,7 +1076,7 @@ class Simulation:
 
         Returns
         -------
-        Role
+        :class:`~bamengine.core.Role`
             Role instance from simulation.
 
         Raises
@@ -1138,7 +1138,7 @@ class Simulation:
 
         Returns
         -------
-        Event
+        :class:`~bamengine.core.Event`
             Event instance from current pipeline.
 
         Raises
@@ -1187,7 +1187,7 @@ class Simulation:
 
         Returns
         -------
-        Relationship
+        :class:`~bamengine.core.Relationship`
             Relationship instance from simulation.
 
         Raises
@@ -1245,7 +1245,7 @@ class Simulation:
 
         Returns
         -------
-        Role | Event | Relationship
+        :class:`~bamengine.core.Role` | :class:`~bamengine.core.Event` | :class:`~bamengine.core.Relationship`
             Role, event or relationship instance from simulation.
 
         Raises

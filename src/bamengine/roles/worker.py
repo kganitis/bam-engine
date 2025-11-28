@@ -86,9 +86,9 @@ class Worker:
 
     See Also
     --------
-    Consumer : Consumption role for households
-    Employer : Labor hiring role for firms
-    bamengine.events._internal.labor_market : Labor market logic
+    :class:`~bamengine.roles.Consumer` : Consumption role for households
+    :class:`~bamengine.roles.Employer` : Labor hiring role for firms
+    :mod:`bamengine.events._internal.labor_market` : Labor market logic
     """
 
     employer: Idx1D
