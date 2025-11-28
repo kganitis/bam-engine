@@ -26,7 +26,7 @@ these types will make your code cleaner and more maintainable.
 
 import numpy as np
 
-from bamengine import Agent, Bool, Float, Int
+from bamengine import Agent, Bool, Float, Int, ops
 
 # Create arrays using standard NumPy, but type them semantically
 prices: Float = np.array([1.0, 1.2, 0.95, 1.1], dtype=np.float64)
@@ -185,7 +185,7 @@ worker_employers: Agent = np.array([0, 0, 1, -1, 2, -1], dtype=np.intp)
 employed_mask: Bool = worker_employers >= 0
 print(f"Worker employers: {worker_employers}")
 print(f"Employed mask:    {employed_mask}")
-print(f"Employed count:   {np.sum(employed_mask)}")
+print(f"Employed count:   {ops.sum(employed_mask)}")
 
 # Find workers at firm 0
 at_firm_0: Bool = worker_employers == 0

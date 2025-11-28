@@ -8,11 +8,12 @@ Examples in this section:
 
 1. **Hello World**: The simplest possible BAM Engine example - initialize, run, and visualize
 2. **Configuration**: Customize simulation parameters using keyword arguments
-3. **Baseline Scenario**: Reproduce the baseline scenario from section 3.9.1 of the original BAM book
-4. **YAML Configuration**: Configure simulations using YAML files
-5. **Results Module**: Comprehensive guide to SimulationResults for data collection
+3. **YAML Configuration**: Configure simulations using YAML files
+4. **Logging**: Configure logging levels globally and per-event
+5. **BAM Operations**: Comprehensive guide to the ops module for NumPy-free array operations
 6. **Type System**: Using Float, Int, Bool, Agent type aliases for custom roles
-7. **Logging**: Configure logging levels globally and per-event
+7. **Simulation Results**: Comprehensive guide to SimulationResults for data collection
+8. **Baseline Scenario**: Reproduce the baseline scenario from section 3.9.1 of the original BAM book
 
 These examples will teach you:
 

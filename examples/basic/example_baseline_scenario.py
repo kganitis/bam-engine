@@ -24,9 +24,8 @@ This example demonstrates using SimulationResults to collect time series data.
 # default parameters that correspond to the baseline scenario.
 # We use ``run(collect=...)`` to automatically collect time series data.
 
-import numpy as np
-
 import bamengine as bam
+from bamengine import ops
 
 sim = bam.Simulation.init(
     n_firms=100, n_households=500, n_banks=10, n_periods=1000, seed=42
@@ -81,30 +80,28 @@ wages = results.role_data["Worker"]["wage"]  # (1000, 500)
 employed = results.role_data["Worker"]["employed"]  # (1000, 500)
 
 # Calculate Real GDP as total production per period
-gdp = production.sum(axis=1)  # Sum across all firms
+gdp = ops.sum(production, axis=1)  # Sum across all firms
 
 # Calculate average productivity per period
-avg_productivity = productivity.mean(axis=1)
+avg_productivity = ops.mean(productivity, axis=1)
 
 # Calculate average wage for EMPLOYED workers only per period
 # (unemployed workers have wage=0, which would skew the average)
-employed_wages_sum = np.where(employed, wages, 0.0).sum(axis=1)
-employed_count = employed.sum(axis=1)
-avg_employed_wage = np.divide(
-    employed_wages_sum,
-    employed_count,
-    out=np.zeros_like(employed_wages_sum),
-    where=employed_count > 0,
+employed_wages_sum = ops.sum(ops.where(employed, wages, 0.0), axis=1)
+employed_count = ops.sum(employed, axis=1)
+avg_employed_wage = ops.where(
+    ops.greater(employed_count, 0),
+    ops.divide(employed_wages_sum, employed_count),
+    0.0,
 )
 
 # Calculate Productivity / Real Wage Ratio
 # Real wage = nominal wage / price level
-real_wage = avg_employed_wage / avg_price
-prod_wage_ratio = np.divide(
-    avg_productivity,
-    real_wage,
-    out=np.zeros_like(avg_productivity),
-    where=real_wage > 0,
+real_wage = ops.divide(avg_employed_wage, avg_price)
+prod_wage_ratio = ops.where(
+    ops.greater(real_wage, 0),
+    ops.divide(avg_productivity, real_wage),
+    0.0,
 )
 
 print(f"\nCollected {len(gdp)} periods of data")
@@ -121,8 +118,8 @@ print(f"Role data captured: {list(results.role_data.keys())}")
 burn_in = 500  # Exclude first 500 periods
 
 # Apply burn-in and create time axis
-periods = np.arange(burn_in, len(gdp))
-log_gdp = np.log(gdp[burn_in:])
+periods = ops.arange(burn_in, len(gdp))
+log_gdp = ops.log(gdp[burn_in:])
 unemployment_pct = unemployment[burn_in:] * 100  # Convert to percentage
 inflation_pct = inflation[burn_in:] * 100  # Convert to percentage
 prod_wage_ratio_trimmed = prod_wage_ratio[burn_in:]

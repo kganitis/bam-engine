@@ -32,7 +32,7 @@ You'll learn to:
 import numpy as np
 
 import bamengine as bam
-from bamengine import Bool, Float, Int, get_role, relationship
+from bamengine import Bool, Float, Int, get_role, ops, relationship
 
 # Check the built-in LoanBook relationship
 sim = bam.Simulation.init(n_firms=50, n_households=250, n_banks=5, seed=42)
@@ -435,9 +435,9 @@ if loans.size > 0:
     )
 
     print("\n  Debt statistics:")
-    print(f"    Total debt: {np.sum(debt_per_firm):.2f}")
-    print(f"    Mean debt per firm: {np.mean(debt_per_firm):.2f}")
-    print(f"    Firms with debt: {np.sum(debt_per_firm > 0)}")
+    print(f"    Total debt: {ops.sum(debt_per_firm):.2f}")
+    print(f"    Mean debt per firm: {ops.mean(debt_per_firm):.2f}")
+    print(f"    Firms with debt: {ops.sum(ops.greater(debt_per_firm, 0))}")
 
     print(f"\n  Loans per bank: {loans_per_bank.astype(int)}")
 

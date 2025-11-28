@@ -22,7 +22,8 @@ Operation Categories
 - **Conditional**: where (if-then-else), select (switch-case)
 - **Element-wise**: maximum, minimum, clip
 - **Aggregation**: sum, mean, any, all
-- **Array creation**: zeros, ones, full, empty
+- **Array creation**: zeros, ones, full, empty, arange
+- **Mathematical**: log
 - **Utilities**: unique, bincount, isin, argsort, sort
 - **Random**: uniform (requires RNG)
 - **Assignment**: assign (in-place array modification)
@@ -88,8 +89,8 @@ with bamengine.ops for flexibility:
 ...     def execute(self, sim):
 ...         # Use ops for safety
 ...         unit_cost = ops.divide(wages, productivity)
-...         # Use NumPy directly for complex operations
-...         log_prices = np.log(prices)
+...         log_prices = ops.log(prices)
+...         # Use NumPy directly for complex operations not in ops
 ...         weighted_avg = np.average(prices, weights=market_share)
 ```
 
@@ -147,6 +148,9 @@ __all__ = [
     "ones",
     "full",
     "empty",
+    "arange",
+    # Mathematical
+    "log",
     # Utilities
     "unique",
     "bincount",
@@ -847,6 +851,61 @@ def empty(n: int) -> Float:
     Values are undefined until assigned.
     """
     return np.empty(n, dtype=np.float64)
+
+
+def arange(start: float, stop: float, step: float = 1.0) -> Float:
+    """
+    Create array with evenly spaced values within interval.
+
+    Parameters
+    ----------
+    start : float
+        Start of interval.
+    stop : float
+        End of interval (exclusive).
+    step : float, optional
+        Spacing between values (default: 1.0).
+
+    Returns
+    -------
+    array
+        Array of evenly spaced values.
+
+    Examples
+    --------
+    >>> import bamengine.ops as ops
+    >>> periods = ops.arange(0, 100, 1)  # 0, 1, 2, ..., 99
+    >>> # Create time axis for plotting
+    >>> time = ops.arange(0, 1000, 1)
+    """
+    return np.arange(start, stop, step, dtype=np.float64)
+
+
+# === Mathematical Functions ===
+
+
+def log(a: Float) -> Float:
+    """
+    Natural logarithm of array elements.
+
+    Parameters
+    ----------
+    a : array
+        Input array (must be positive).
+
+    Returns
+    -------
+    array
+        Natural log of each element.
+
+    Examples
+    --------
+    >>> import bamengine.ops as ops
+    >>> gdp = np.array([100.0, 110.0, 121.0])
+    >>> log_gdp = ops.log(gdp)
+    >>> # log_gdp: [4.605, 4.700, 4.796]
+    """
+    return np.log(a)
 
 
 # === Utility Operations ===
