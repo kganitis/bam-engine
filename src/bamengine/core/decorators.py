@@ -116,16 +116,17 @@ def role(
     Examples
     --------
     Simplest usage (no inheritance needed):
+
     >>> from bamengine.typing import Float
-    >>>
     >>> @role
-    >>> class Producer:
+    ... class Producer:
     ...    price: Float
     ...    production: Float
 
     With custom name:
+
     >>> @role(name="MyProducer")
-    >>> class Producer:
+    ... class Producer:
     ...     price: Float
     ...     production: Float
     """
@@ -205,18 +206,19 @@ def event(
     Examples
     --------
     Simplest usage (no inheritance needed):
+
     >>> from bamengine import Simulation
-    >>>
     >>> @event
-    >>> class Planning:
+    ... class Planning:
     ...    def execute(self, sim: Simulation) -> None:
-    ...         # implementation
+    ...         pass  # implementation
 
     With custom name:
+
     >>> @event(name="my_planning")
-    >>> class Planning:
+    ... class Planning:
     ...    def execute(self, sim: Simulation) -> None:
-    ...         # implementation
+    ...         pass  # implementation
     """
     # Import here to avoid circular imports
     from bamengine.core.event import Event
@@ -304,19 +306,18 @@ def relationship(
 
     Examples
     --------
-    Simplest usage::
+    Simplest usage:
 
     >>> from bamengine import get_role
     >>> from bamengine.typing import Float, Int
-    >>>
     >>> @relationship(source=get_role("Borrower"), target=get_role("Lender"))
-    >>> class LoanBook:
+    ... class LoanBook:
     ...     principal: Float
     ...     rate: Float
     ...     interest: Float
     ...     debt: Float
 
-    With custom name and cardinality::
+    With custom name and cardinality:
 
     >>> @relationship(
     ...     source=get_role("Worker"),
@@ -324,7 +325,7 @@ def relationship(
     ...     cardinality="many-to-many",
     ...     name="MultiJobEmployment"
     ... )
-    >>> class Employment:
+    ... class Employment:
     ...     wage: Float
     ...     contract_duration: Int
     """
