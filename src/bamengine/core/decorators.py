@@ -144,6 +144,7 @@ def role(
             namespace = {
                 "__module__": cls.__module__,
                 "__qualname__": cls.__qualname__,
+                "__doc__": cls.__doc__,  # Preserve docstring for Sphinx
                 "__annotations__": getattr(cls, "__annotations__", {}),
             }
             # Copy methods and class attributes (but not __dict__, __weakref__, etc.)
@@ -232,6 +233,7 @@ def event(
             namespace = {
                 "__module__": cls.__module__,
                 "__qualname__": cls.__qualname__,
+                "__doc__": cls.__doc__,  # Preserve docstring for Sphinx
                 "__annotations__": getattr(cls, "__annotations__", {}),
             }
             # Copy methods and class attributes (but not __dict__, __weakref__, etc.)
@@ -340,6 +342,7 @@ def relationship(
             namespace = {
                 "__module__": cls.__module__,
                 "__qualname__": cls.__qualname__,
+                "__doc__": cls.__doc__,  # Preserve docstring for Sphinx
                 "__annotations__": getattr(cls, "__annotations__", {}),
             }
             # Copy methods and class attributes

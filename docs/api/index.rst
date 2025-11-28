@@ -3,6 +3,20 @@ API
 
 This section contains the API reference for BAM Engine.
 
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+
+   core
+   roles
+   relationships
+   decorators
+   registry
+   operations
+   types
+   config
+   utilities
+
 .. currentmodule:: bamengine
 
 Core Classes
@@ -11,7 +25,6 @@ Core Classes
 Main classes for running simulations and collecting results.
 
 .. autosummary::
-   :toctree: generated
    :nosignatures:
 
    Simulation
@@ -23,12 +36,11 @@ ECS Base Classes
 Base classes for creating custom components in the ECS architecture.
 
 .. autosummary::
-   :toctree: generated
    :nosignatures:
 
-   Role
-   Event
-   Relationship
+   core.Role
+   core.Event
+   core.Relationship
 
 Agent Roles
 -----------
@@ -38,7 +50,6 @@ Built-in role components for the three agent types.
 **Firm Roles**
 
 .. autosummary::
-   :toctree: generated
    :nosignatures:
 
    roles.Producer
@@ -48,7 +59,6 @@ Built-in role components for the three agent types.
 **Household Roles**
 
 .. autosummary::
-   :toctree: generated
    :nosignatures:
 
    roles.Worker
@@ -57,7 +67,6 @@ Built-in role components for the three agent types.
 **Bank Roles**
 
 .. autosummary::
-   :toctree: generated
    :nosignatures:
 
    roles.Lender
@@ -68,7 +77,6 @@ Relationships
 Built-in relationship types for agent connections.
 
 .. autosummary::
-   :toctree: generated
    :nosignatures:
 
    relationships.LoanBook
@@ -79,7 +87,6 @@ Core Infrastructure
 Pipeline and agent management infrastructure.
 
 .. autosummary::
-   :toctree: generated
    :nosignatures:
 
    core.Pipeline
@@ -93,7 +100,6 @@ Decorators
 Simplified syntax for defining custom components.
 
 .. autosummary::
-   :toctree: generated
    :nosignatures:
 
    role
@@ -106,7 +112,6 @@ Registry Functions
 Functions for retrieving and listing registered components.
 
 .. autosummary::
-   :toctree: generated
    :nosignatures:
 
    get_role
@@ -119,7 +124,7 @@ Functions for retrieving and listing registered components.
 Operations Module
 -----------------
 
-NumPy-free operations for writing custom events. See :mod:`bamengine.ops` for the full list of operations.
+NumPy-free operations for writing custom events. See :mod:`bamengine.ops` for the full module documentation.
 
 **Arithmetic**: ``add``, ``subtract``, ``multiply``, ``divide``
 
@@ -135,7 +140,9 @@ NumPy-free operations for writing custom events. See :mod:`bamengine.ops` for th
 
 **Aggregation**: ``sum``, ``mean``, ``any``, ``all``
 
-**Array creation**: ``zeros``, ``ones``, ``full``, ``empty``
+**Array creation**: ``zeros``, ``ones``, ``full``, ``empty``, ``arange``
+
+**Mathematical**: ``log``
 
 **Utilities**: ``unique``, ``bincount``, ``isin``, ``argsort``, ``sort``
 
@@ -147,7 +154,6 @@ Type System
 Type aliases for defining custom roles without NumPy knowledge.
 
 .. autosummary::
-   :toctree: generated
    :nosignatures:
 
    Float
@@ -162,7 +168,6 @@ Configuration
 Configuration and validation classes.
 
 .. autosummary::
-   :toctree: generated
    :nosignatures:
 
    config.Config
@@ -173,7 +178,6 @@ Utilities
 Helper functions and utilities.
 
 .. autosummary::
-   :toctree: generated
    :nosignatures:
 
    make_rng
