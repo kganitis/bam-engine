@@ -76,7 +76,7 @@ import numpy as np
 import yaml
 
 if TYPE_CHECKING:  # pragma: no cover
-    from bamengine.results import SimulationResults
+    from bamengine.results import SimulationResults, _DataCollector
 
 import bamengine.events  # noqa: F401 - needed to register events
 from bamengine import Rng, logging, make_rng
@@ -497,9 +497,9 @@ class Simulation:
 
         See Also
         --------
-        Config : Configuration dataclass
-        ConfigValidator : Centralized validation logic
-        Pipeline : Event pipeline configuration
+        bamengine.config.Config : Configuration dataclass
+        bamengine.config.ConfigValidator : Centralized validation logic
+        bamengine.core.Pipeline : Event pipeline configuration
         """
         # 1 + 2 + 3 → one merged dict
         cfg_dict: Dict[str, Any] = _package_defaults()
@@ -952,7 +952,9 @@ class Simulation:
 
         return None
 
-    def _create_collector(self, collect: Union[bool, Dict[str, Any]]) -> Any:
+    def _create_collector(
+        self, collect: Union[bool, Dict[str, Any]]
+    ) -> "_DataCollector":
         """
         Create data collector from collect parameter.
 
@@ -980,7 +982,8 @@ class Simulation:
                 aggregate="mean",
             )
         else:
-            # Custom configuration
+            # Custom configuration (collect must be a dict at this point)
+            assert isinstance(collect, dict)
             return _DataCollector(
                 roles=collect.get("roles") or all_roles,
                 variables=collect.get("variables"),

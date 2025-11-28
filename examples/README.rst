@@ -1,7 +1,3 @@
-:orphan:
-
-.. _examples:
-
 Examples
 ========
 
@@ -12,10 +8,3 @@ The examples are organized into three sections:
 - **Basic**: Getting started tutorials for new users
 - **Advanced**: Custom components and pipeline modifications
 - **Research**: Scenarios from the BAM literature
-
-All examples assume BAM Engine is installed:
-
-.. code-block:: bash
-
-   pip install bamengine
-   pip install bamengine[pandas]  # For DataFrame export support

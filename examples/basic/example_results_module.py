@@ -29,7 +29,7 @@ sim = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
 results = sim.run(n_periods=50, collect=True)
 
 print(f"Collected results: {results}")
-print(f"\nMetadata:")
+print("\nMetadata:")
 print(f"  Periods simulated: {results.metadata.get('n_periods', 'N/A')}")
 print(f"  Firms: {results.metadata.get('n_firms', 'N/A')}")
 print(f"  Households: {results.metadata.get('n_households', 'N/A')}")
@@ -50,12 +50,12 @@ avg_price = results.economy_data.get("avg_price", np.array([]))
 inflation = results.economy_data.get("inflation", np.array([]))
 
 if len(unemployment) > 0:
-    print(f"\nUnemployment rate:")
+    print("\nUnemployment rate:")
     print(f"  Mean: {np.mean(unemployment):.2%}")
     print(f"  Final: {unemployment[-1]:.2%}")
 
 if len(avg_price) > 0:
-    print(f"\nAverage price:")
+    print("\nAverage price:")
     print(f"  Mean: {np.mean(avg_price):.3f}")
     print(f"  Final: {avg_price[-1]:.3f}")
 
@@ -184,7 +184,7 @@ if "Producer" in full_results.role_data:
 # Note: pandas is an optional dependency.
 
 try:
-    import pandas as pd
+    import pandas  # noqa: F401 - check if pandas is installed
 
     # Run a new simulation for DataFrame export
     df_results = bam.Simulation.init(n_firms=100, n_households=500, seed=42).run(
@@ -200,7 +200,7 @@ try:
 
     # Get economy metrics only
     df_economy = df_results.economy_metrics
-    print(f"\nEconomy metrics DataFrame:")
+    print("\nEconomy metrics DataFrame:")
     print(df_economy.head())
 
     # Get specific role data
@@ -217,7 +217,7 @@ except ImportError:
 # Get descriptive statistics for all collected metrics.
 
 try:
-    import pandas as pd
+    import pandas  # noqa: F401 - check if pandas is installed
 
     summary_results = bam.Simulation.init(n_firms=100, n_households=500, seed=42).run(
         n_periods=100,
@@ -272,7 +272,7 @@ if all_unemployment:
 
     # Summary across runs
     final_rates = [unemp[-1] * 100 for unemp in all_unemployment]
-    print(f"\nFinal unemployment rates:")
+    print("\nFinal unemployment rates:")
     print(f"  Mean: {np.mean(final_rates):.2f}%")
     print(f"  Std:  {np.std(final_rates):.2f}%")
     print(f"  Range: {np.min(final_rates):.2f}% - {np.max(final_rates):.2f}%")

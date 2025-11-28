@@ -28,14 +28,18 @@ You'll learn to:
 #
 # Events implement economic mechanisms like wage setting, hiring, production.
 
-import bamengine as bam
-from bamengine import event, ops, get_event
-from bamengine import logging
 import numpy as np
+
+import bamengine as bam
+from bamengine import event, get_event, logging, ops
 
 # Check built-in events
 print("Sample built-in events:")
-for name in ["firms_decide_desired_production", "firms_adjust_price", "workers_receive_wage"]:
+for name in [
+    "firms_decide_desired_production",
+    "firms_adjust_price",
+    "workers_receive_wage",
+]:
     try:
         e = get_event(name)
         print(f"  {name}")
@@ -200,7 +204,9 @@ class WageSubsidy:
         cons = sim.get_role("Consumer")
 
         # Subsidy parameters
-        wage_threshold = sim.ec.min_wage * 1.5  # Subsidy for wages below 150% of min wage
+        wage_threshold = (
+            sim.ec.min_wage * 1.5
+        )  # Subsidy for wages below 150% of min wage
         subsidy_rate = 0.2  # 20% top-up
 
         # Find eligible workers (employed with low wages)
@@ -210,11 +216,7 @@ class WageSubsidy:
 
         if ops.any(eligible):
             # Calculate subsidy amounts
-            subsidy = ops.where(
-                eligible,
-                ops.multiply(wrk.wage, subsidy_rate),
-                0.0
-            )
+            subsidy = ops.where(eligible, ops.multiply(wrk.wage, subsidy_rate), 0.0)
 
             # Add to consumer income (same indices as workers)
             cons.income[:] = cons.income + subsidy
@@ -294,7 +296,7 @@ sim.run(n_periods=10)
 
 print("\nBefore custom events:")
 print(f"  Mean price: {np.mean(sim.prod.price):.3f}")
-print(f"  Mean net worth: {np.mean(sim.borr.net_worth):.2f}")
+print(f"  Mean net worth: {np.mean(sim.bor.net_worth):.2f}")
 
 # Execute custom events directly
 price_floor_event = ApplyPriceFloor()
@@ -305,7 +307,7 @@ tax_event.execute(sim)
 
 print("\nAfter custom events:")
 print(f"  Mean price: {np.mean(sim.prod.price):.3f} (floor applied)")
-print(f"  Mean net worth: {np.mean(sim.borr.net_worth):.2f} (taxes paid)")
+print(f"  Mean net worth: {np.mean(sim.bor.net_worth):.2f} (taxes paid)")
 
 # %%
 # Event with Custom Name
@@ -336,8 +338,8 @@ class GovernmentSpendingShock:
 
 # Verify custom name
 print("\nEvent with custom name:")
-print(f"  Class name: GovernmentSpendingShock")
-print(f"  Registered as: government_spending_shock")
+print("  Class name: GovernmentSpendingShock")
+print("  Registered as: government_spending_shock")
 
 gov_event = get_event("government_spending_shock")
 print(f"  Retrieved: {gov_event is GovernmentSpendingShock}")
@@ -355,7 +357,7 @@ sim_no_tax = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
 nw_no_tax = []
 for _ in range(50):
     sim_no_tax.step()
-    nw_no_tax.append(np.mean(sim_no_tax.borr.net_worth))
+    nw_no_tax.append(np.mean(sim_no_tax.bor.net_worth))
 
 # Simulation with tax (manual execution each period)
 sim_with_tax = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
@@ -364,7 +366,7 @@ tax_event = TaxCollection()
 for _ in range(50):
     sim_with_tax.step()
     tax_event.execute(sim_with_tax)  # Collect taxes after each period
-    nw_with_tax.append(np.mean(sim_with_tax.borr.net_worth))
+    nw_with_tax.append(np.mean(sim_with_tax.bor.net_worth))
 
 # Plot comparison
 fig, ax = plt.subplots(figsize=(10, 6))
@@ -379,7 +381,7 @@ plt.tight_layout()
 plt.show()
 
 # Print final comparison
-print(f"\nFinal mean net worth:")
+print("\nFinal mean net worth:")
 print(f"  Without tax: {nw_no_tax[-1]:.2f}")
 print(f"  With tax: {nw_with_tax[-1]:.2f}")
 print(f"  Difference: {nw_no_tax[-1] - nw_with_tax[-1]:.2f}")
@@ -391,6 +393,7 @@ print(f"  Difference: {nw_no_tax[-1] - nw_with_tax[-1]:.2f}")
 # The ``@event`` decorator is sugar. You can also use explicit inheritance.
 
 from dataclasses import dataclass
+
 from bamengine.core import Event
 
 
@@ -444,8 +447,7 @@ class UnemploymentInsurance:
             total_paid = benefit * n_unemployed
 
             logger.info(
-                f"UI payments: {n_unemployed} recipients, "
-                f"total {total_paid:.2f}"
+                f"UI payments: {n_unemployed} recipients, " f"total {total_paid:.2f}"
             )
 
 

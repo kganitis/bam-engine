@@ -29,9 +29,10 @@ You'll learn to:
 # For example, the built-in ``LoanBook`` connects Borrowers (firms) to
 # Lenders (banks), with each loan having principal, rate, and debt.
 
-import bamengine as bam
-from bamengine import relationship, get_role, get_relationship, Float, Int, Bool
 import numpy as np
+
+import bamengine as bam
+from bamengine import Bool, Float, Int, get_role, relationship
 
 # Check the built-in LoanBook relationship
 sim = bam.Simulation.init(n_firms=50, n_households=250, n_banks=5, seed=42)
@@ -39,8 +40,8 @@ loans = sim.get_relationship("LoanBook")
 
 print("Built-in LoanBook relationship:")
 print(f"  Type: {type(loans).__name__}")
-print(f"  Source role: Borrower (firms)")
-print(f"  Target role: Lender (banks)")
+print("  Source role: Borrower (firms)")
+print("  Target role: Lender (banks)")
 print(f"  Cardinality: {loans.cardinality}")
 print(f"  Current edges: {loans.size}")
 print(f"  Capacity: {loans.capacity}")
@@ -108,8 +109,8 @@ class EmploymentHistory:
 
 
 print("\nEmploymentHistory relationship created!")
-print(f"  Source: Worker")
-print(f"  Target: Employer")
+print("  Source: Worker")
+print("  Target: Employer")
 print(f"  Registered as: {EmploymentHistory.name}")
 
 # %%
@@ -146,9 +147,9 @@ class SupplyChainNetwork:
 
 
 print("\nSupplyChainNetwork relationship created!")
-print(f"  Source: Producer (buyer)")
-print(f"  Target: Producer (seller)")
-print(f"  Note: Same role can be both source and target")
+print("  Source: Producer (buyer)")
+print("  Target: Producer (seller)")
+print("  Note: Same role can be both source and target")
 
 # %%
 # Instantiating and Populating Relationships
@@ -175,7 +176,7 @@ employment = EmploymentHistory(
     was_fired=np.zeros(n_records, dtype=np.bool_),
 )
 
-print(f"\nEmployment history instantiated:")
+print("\nEmployment history instantiated:")
 print(f"  Size: {employment.size}")
 print(f"  Capacity: {employment.capacity}")
 
@@ -184,6 +185,7 @@ print(f"  Capacity: {employment.capacity}")
 # ---------------------
 #
 # Add edges by setting array values and incrementing size.
+
 
 # Add some employment records
 def add_employment_record(emp, worker_id, employer_id, wage, start_period):
@@ -209,9 +211,11 @@ add_employment_record(employment, worker_id=0, employer_id=2, wage=50.0, start_p
 add_employment_record(employment, worker_id=1, employer_id=2, wage=55.0, start_period=1)
 add_employment_record(employment, worker_id=2, employer_id=0, wage=60.0, start_period=3)
 add_employment_record(employment, worker_id=3, employer_id=1, wage=45.0, start_period=2)
-add_employment_record(employment, worker_id=0, employer_id=1, wage=52.0, start_period=5)  # Job change!
+add_employment_record(
+    employment, worker_id=0, employer_id=1, wage=52.0, start_period=5
+)  # Job change!
 
-print(f"\nAfter adding records:")
+print("\nAfter adding records:")
 print(f"  Size: {employment.size}")
 print(f"  Workers: {employment.source_ids[:employment.size]}")
 print(f"  Employers: {employment.target_ids[:employment.size]}")
@@ -225,14 +229,14 @@ print(f"  Wages: {employment.wage[:employment.size]}")
 
 # Find all records for worker 0
 worker_0_edges = employment.query_sources(0)
-print(f"\nWorker 0 employment records:")
+print("\nWorker 0 employment records:")
 print(f"  Edge indices: {worker_0_edges}")
 print(f"  Employers: {employment.target_ids[worker_0_edges]}")
 print(f"  Wages: {employment.wage[worker_0_edges]}")
 
 # Find all records for employer 2
 employer_2_edges = employment.query_targets(2)
-print(f"\nEmployer 2 records:")
+print("\nEmployer 2 records:")
 print(f"  Edge indices: {employer_2_edges}")
 print(f"  Workers: {employment.source_ids[employer_2_edges]}")
 print(f"  Wages: {employment.wage[employer_2_edges]}")
@@ -278,29 +282,23 @@ print(f"  Employers: 0-{n_employers-1}")
 
 # Aggregate total wages by employer
 wages_by_employer = demo_emp.aggregate_by_target(
-    demo_emp.wage,
-    func="sum",
-    n_targets=n_employers
+    demo_emp.wage, func="sum", n_targets=n_employers
 )
-print(f"\nTotal wages by employer:")
+print("\nTotal wages by employer:")
 for i, w in enumerate(wages_by_employer):
     print(f"  Employer {i}: {w:.2f}")
 
 # Count workers per employer
 workers_per_employer = demo_emp.aggregate_by_target(
-    demo_emp.wage,  # Any array works for count
-    func="count",
-    n_targets=n_employers
+    demo_emp.wage, func="count", n_targets=n_employers  # Any array works for count
 )
 print(f"\nWorkers per employer: {workers_per_employer.astype(int)}")
 
 # Average wage per employer
 avg_wage_by_employer = demo_emp.aggregate_by_target(
-    demo_emp.wage,
-    func="mean",
-    n_targets=n_employers
+    demo_emp.wage, func="mean", n_targets=n_employers
 )
-print(f"\nAverage wage by employer:")
+print("\nAverage wage by employer:")
 for i, w in enumerate(avg_wage_by_employer):
     print(f"  Employer {i}: {w:.2f}")
 
@@ -318,7 +316,7 @@ print(f"\nBefore layoffs: {demo_emp.size} edges")
 
 # Method 2: Using drop_rows with custom mask
 layoff_mask = np.zeros(demo_emp.size, dtype=bool)
-layoff_mask[:demo_emp.size] = (demo_emp.target_ids[:demo_emp.size] == 1)
+layoff_mask[: demo_emp.size] = demo_emp.target_ids[: demo_emp.size] == 1
 n_removed = demo_emp.drop_rows(layoff_mask)
 
 print(f"After layoffs: {demo_emp.size} edges")
@@ -349,9 +347,15 @@ viz_emp = EmploymentHistory(
 
 # Add edges
 edges = [
-    (0, 0, 50), (1, 0, 55), (2, 0, 60),  # Workers at employer 0
-    (3, 1, 45), (4, 1, 50),              # Workers at employer 1
-    (5, 2, 70), (6, 2, 65), (7, 2, 68), (8, 2, 72),  # Workers at employer 2
+    (0, 0, 50),
+    (1, 0, 55),
+    (2, 0, 60),  # Workers at employer 0
+    (3, 1, 45),
+    (4, 1, 50),  # Workers at employer 1
+    (5, 2, 70),
+    (6, 2, 65),
+    (7, 2, 68),
+    (8, 2, 72),  # Workers at employer 2
 ]
 for w, e, wage in edges:
     idx = viz_emp.size
@@ -380,25 +384,27 @@ for i in range(viz_emp.size):
     ax.plot(
         [worker_x[w], employer_x[e]],
         [worker_y[w], employer_y[e]],
-        'b-', alpha=0.5, linewidth=wage/30
+        "b-",
+        alpha=0.5,
+        linewidth=wage / 30,
     )
 
 # Draw nodes
-ax.scatter(worker_x, worker_y, s=200, c='skyblue', zorder=5, label='Workers')
-ax.scatter(employer_x, employer_y, s=300, c='coral', zorder=5, label='Employers')
+ax.scatter(worker_x, worker_y, s=200, c="skyblue", zorder=5, label="Workers")
+ax.scatter(employer_x, employer_y, s=300, c="coral", zorder=5, label="Employers")
 
 # Labels
 for i in range(n_workers_viz):
-    ax.annotate(f'W{i}', (worker_x[i]-0.1, worker_y[i]), ha='center', va='center')
+    ax.annotate(f"W{i}", (worker_x[i] - 0.1, worker_y[i]), ha="center", va="center")
 for i in range(n_employers_viz):
-    ax.annotate(f'E{i}', (employer_x[i]+0.1, employer_y[i]), ha='center', va='center')
+    ax.annotate(f"E{i}", (employer_x[i] + 0.1, employer_y[i]), ha="center", va="center")
 
 ax.set_xlim(-0.3, 1.3)
 ax.set_ylim(-0.1, 1.1)
-ax.set_aspect('equal')
-ax.legend(loc='upper center')
-ax.set_title('Employment Network (line width = wage)')
-ax.axis('off')
+ax.set_aspect("equal")
+ax.legend(loc="upper center")
+ax.set_title("Employment Network (line width = wage)")
+ax.axis("off")
 plt.tight_layout()
 plt.show()
 
@@ -414,25 +420,21 @@ sim.run(n_periods=20)
 
 loans = sim.get_relationship("LoanBook")
 
-print(f"\nLoanBook after 20 periods:")
+print("\nLoanBook after 20 periods:")
 print(f"  Active loans: {loans.size}")
 
 if loans.size > 0:
     # Aggregate debt by borrower
     debt_per_firm = loans.aggregate_by_source(
-        loans.debt,
-        func="sum",
-        n_sources=sim.config.n_firms
+        loans.debt, func="sum", n_sources=sim.n_firms
     )
 
     # Aggregate loans by lender
     loans_per_bank = loans.aggregate_by_target(
-        loans.debt,
-        func="count",
-        n_targets=sim.config.n_banks
+        loans.debt, func="count", n_targets=sim.n_banks
     )
 
-    print(f"\n  Debt statistics:")
+    print("\n  Debt statistics:")
     print(f"    Total debt: {np.sum(debt_per_firm):.2f}")
     print(f"    Mean debt per firm: {np.mean(debt_per_firm):.2f}")
     print(f"    Firms with debt: {np.sum(debt_per_firm > 0)}")
@@ -444,14 +446,14 @@ if loans.size > 0:
 
     # Debt distribution
     ax1 = axes[0]
-    ax1.hist(debt_per_firm[debt_per_firm > 0], bins=20, edgecolor='black')
+    ax1.hist(debt_per_firm[debt_per_firm > 0], bins=20, edgecolor="black")
     ax1.set_xlabel("Debt per Firm")
     ax1.set_ylabel("Count")
     ax1.set_title("Debt Distribution (firms with debt)")
 
     # Loans per bank
     ax2 = axes[1]
-    ax2.bar(range(sim.config.n_banks), loans_per_bank)
+    ax2.bar(range(sim.n_banks), loans_per_bank)
     ax2.set_xlabel("Bank ID")
     ax2.set_ylabel("Number of Loans")
     ax2.set_title("Loan Portfolio Size by Bank")

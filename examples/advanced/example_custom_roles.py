@@ -29,9 +29,9 @@ You'll learn to:
 # Roles bundle related state together. For example, the built-in
 # ``Producer`` role holds production-related state (price, inventory, output).
 
-import bamengine as bam
-from bamengine import role, Float, Int, Bool, Agent, get_role
 import numpy as np
+
+from bamengine import Agent, Bool, Float, Int, get_role, role
 
 # Check built-in roles
 print("Built-in roles:")
@@ -48,6 +48,7 @@ for name in ["Producer", "Worker", "Consumer", "Borrower", "Lender", "Employer"]
 #
 # The ``@role`` decorator handles everything: dataclass creation,
 # Role inheritance, and registration.
+
 
 @role
 class Inventory:
@@ -81,6 +82,7 @@ print(f"  Registered: {inv_role is Inventory}")
 # Roles can use all type aliases: Float, Int, Bool, and Agent.
 # Each serves a specific purpose.
 
+
 @role
 class SupplyChain:
     """Supply chain management role for firms.
@@ -109,10 +111,10 @@ class SupplyChain:
 
 
 print("\nSupplyChain role created with typed fields:")
-print(f"  Float fields: order_value, unit_cost, delivery_cost")
-print(f"  Int fields: pending_orders, days_to_delivery, contract_length")
-print(f"  Bool fields: has_supplier, awaiting_delivery, is_preferred_customer")
-print(f"  Agent fields: supplier_id, backup_supplier_id")
+print("  Float fields: order_value, unit_cost, delivery_cost")
+print("  Int fields: pending_orders, days_to_delivery, contract_length")
+print("  Bool fields: has_supplier, awaiting_delivery, is_preferred_customer")
+print("  Agent fields: supplier_id, backup_supplier_id")
 
 # %%
 # Optional Fields with Defaults
@@ -121,8 +123,8 @@ print(f"  Agent fields: supplier_id, backup_supplier_id")
 # Use ``Optional`` and ``field()`` for optional fields that may not
 # always be populated.
 
-from typing import Optional
 from dataclasses import field
+from typing import Optional
 
 
 @role
@@ -146,8 +148,8 @@ class QualityControl:
 
 
 print("\nQualityControl role with optional fields:")
-print(f"  Required: defect_rate, quality_score")
-print(f"  Optional: inspection_results, warranty_claims, _temp_buffer")
+print("  Required: defect_rate, quality_score")
+print("  Optional: inspection_results, warranty_claims, _temp_buffer")
 
 # %%
 # Instantiating Custom Roles
@@ -259,6 +261,7 @@ print(f"  Needs review: {credit.needs_review()}")
 # explicit inheritance and dataclass decoration.
 
 from dataclasses import dataclass
+
 from bamengine.core import Role
 
 

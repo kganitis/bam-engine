@@ -43,9 +43,9 @@ unemployment_history = np.array(sim.ec.unemp_rate_history) * 100
 # Create simple plot
 plt.figure(figsize=(10, 6))
 plt.plot(unemployment_history, linewidth=2)
-plt.xlabel('Period')
-plt.ylabel('Unemployment Rate (%)')
-plt.title('Unemployment Rate Over Time')
+plt.xlabel("Period")
+plt.ylabel("Unemployment Rate (%)")
+plt.title("Unemployment Rate Over Time")
 plt.grid(True, alpha=0.3)
 plt.tight_layout()
 plt.show()

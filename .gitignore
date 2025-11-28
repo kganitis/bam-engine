@@ -46,6 +46,12 @@ asv_benchmarks/__pycache__/
 .DS_Store
 Thumbs.db
 
+# Sphinx documentation
+docs/_build/
+docs/api/generated/
+docs/auto_examples/
+docs/sg_execution_times.rst
+
 # Logs and local state
 *.log
 *.pid

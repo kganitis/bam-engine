@@ -30,8 +30,9 @@ You'll learn to:
 # 4. **Type hints**: Better IDE support
 # 5. **Progressive disclosure**: Beginners don't need NumPy knowledge
 
-from bamengine import ops
 import numpy as np
+
+from bamengine import ops
 
 # Example: Safe division (no error on division by zero)
 prices = np.array([10.0, 20.0, 0.0, 15.0])
@@ -44,7 +45,7 @@ print("Safe division with ops.divide:")
 print(f"  prices:     {prices}")
 print(f"  quantities: {quantities}")
 print(f"  unit_price: {unit_price}")
-print(f"  (zeros handled safely)")
+print("  (zeros handled safely)")
 
 # %%
 # Arithmetic Operations
@@ -66,7 +67,9 @@ print(f"  divide(b, a)   = {ops.divide(b, a)}")
 # In-place operations with out parameter
 result = np.zeros(4)
 ops.add(a, b, out=result)
-print(f"  add(a, b, out=result): result is same object? {result is ops.add(a, b, out=result)}")
+print(
+    f"  add(a, b, out=result): result is same object? {result is ops.add(a, b, out=result)}"
+)
 
 # %%
 # Comparison Operations
@@ -125,19 +128,15 @@ print("\nConditional with ops.where:")
 print(f"  inventory:     {inventory}")
 print(f"  has_inventory: {has_inventory}")
 print(f"  new_price:     {new_price}")
-print(f"  (discount if inventory > 0, premium otherwise)")
+print("  (discount if inventory > 0, premium otherwise)")
 
 # ops.select: multiple conditions (switch/case)
 # Pricing based on inventory level
 high_stock = ops.greater(inventory, 50)
 medium_stock = ops.logical_and(
-    ops.greater(inventory, 10),
-    ops.less_equal(inventory, 50)
+    ops.greater(inventory, 10), ops.less_equal(inventory, 50)
 )
-low_stock = ops.logical_and(
-    ops.greater(inventory, 0),
-    ops.less_equal(inventory, 10)
-)
+low_stock = ops.logical_and(ops.greater(inventory, 0), ops.less_equal(inventory, 10))
 
 tiered_price = ops.select(
     conditions=[high_stock, medium_stock, low_stock],
@@ -148,7 +147,7 @@ tiered_price = ops.select(
 print("\nConditional with ops.select:")
 print(f"  inventory:    {inventory}")
 print(f"  tiered_price: {tiered_price}")
-print(f"  (8 for high stock, 10 medium, 12 low, 15 none)")
+print("  (8 for high stock, 10 medium, 12 low, 15 none)")
 
 # %%
 # Element-wise Operations
@@ -249,7 +248,7 @@ prices = np.array([30.0, 10.0, 25.0, 15.0])
 print(f"\n  prices: {prices}")
 print(f"  sort(prices): {ops.sort(prices)}")
 print(f"  argsort(prices): {ops.argsort(prices)}")
-print(f"  (argsort gives indices that would sort the array)")
+print("  (argsort gives indices that would sort the array)")
 
 # %%
 # In-Place Assignment
@@ -282,7 +281,7 @@ sim = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
 # Generate uniform random numbers
 shocks = ops.uniform(sim.rng, low=-0.1, high=0.1, size=10)
 print("\nRandom operations:")
-print(f"  uniform(rng, -0.1, 0.1, size=10):")
+print("  uniform(rng, -0.1, 0.1, size=10):")
 print(f"    {shocks.round(4)}")
 
 # Random shocks are reproducible with same seed
@@ -319,7 +318,7 @@ class CostPlusPricing:
 
         # Calculate unit labor cost
         # (wage / productivity, safe division handles zeros)
-        unit_cost = ops.divide(emp.wage_offered, prod.labor_productivity)
+        unit_cost = ops.divide(emp.wage_offer, prod.labor_productivity)
 
         # Apply markup
         target_price = ops.multiply(unit_cost, 1.0 + markup_rate)

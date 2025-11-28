@@ -32,9 +32,10 @@ You'll learn to:
 # 7. **Bankruptcy**: Insolvency detection and exit
 # 8. **Entry & Statistics**: New firms, unemployment rate
 
-import bamengine as bam
 import tempfile
 from pathlib import Path
+
+import bamengine as bam
 
 # Initialize simulation
 sim = bam.Simulation.init(n_firms=50, n_households=250, seed=42)
@@ -125,7 +126,7 @@ sim_minimal = bam.Simulation.init(
 
 print("\nRunning with minimal pipeline...")
 sim_minimal.run(n_periods=10)
-print(f"Completed 10 periods")
+print("Completed 10 periods")
 
 # %%
 # Removing Events
@@ -207,7 +208,7 @@ sim_with_div = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
 nw_with_div = []
 for _ in range(50):
     sim_with_div.step()
-    nw_with_div.append(np.mean(sim_with_div.borr.net_worth))
+    nw_with_div.append(np.mean(sim_with_div.bor.net_worth))
 
 # Custom pipeline (no dividends)
 sim_no_div = bam.Simulation.init(
@@ -219,7 +220,7 @@ sim_no_div = bam.Simulation.init(
 nw_no_div = []
 for _ in range(50):
     sim_no_div.step()
-    nw_no_div.append(np.mean(sim_no_div.borr.net_worth))
+    nw_no_div.append(np.mean(sim_no_div.bor.net_worth))
 
 # Plot comparison
 fig, ax = plt.subplots(figsize=(10, 6))
@@ -233,7 +234,7 @@ ax.grid(True, alpha=0.3)
 plt.tight_layout()
 plt.show()
 
-print(f"\nFinal mean net worth:")
+print("\nFinal mean net worth:")
 print(f"  With dividends: {nw_with_div[-1]:.2f}")
 print(f"  No dividends: {nw_no_div[-1]:.2f}")
 
@@ -363,7 +364,7 @@ sim_custom = bam.Simulation.init(
 
 print("\nRunning with custom events pipeline...")
 sim_custom.run(n_periods=30)
-print(f"Completed 30 periods with tax and benefits")
+print("Completed 30 periods with tax and benefits")
 print(f"Final unemployment: {sim_custom.ec.unemp_rate_history[-1]:.2%}")
 
 # %%
@@ -469,7 +470,9 @@ friction_path.write_text(high_friction_pipeline)
 sim_low_friction = bam.Simulation.init(
     n_firms=100,
     n_households=500,
-    max_M=6, max_H=4, max_Z=4,  # More search rounds
+    max_M=6,
+    max_H=4,
+    max_Z=4,  # More search rounds
     seed=42,
     pipeline_path=str(friction_path),
 )
@@ -478,7 +481,9 @@ sim_low_friction = bam.Simulation.init(
 sim_high_friction = bam.Simulation.init(
     n_firms=100,
     n_households=500,
-    max_M=2, max_H=1, max_Z=1,  # Fewer rounds
+    max_M=2,
+    max_H=1,
+    max_Z=1,  # Fewer rounds
     seed=42,
     pipeline_path=str(friction_path),
 )
@@ -511,6 +516,7 @@ plt.show()
 # -------
 
 import shutil
+
 shutil.rmtree(config_dir)
 print("\nTemp files cleaned up.")
 
