@@ -54,10 +54,9 @@ Execute full pipeline:
 
 See Also
 --------
-bamengine.core.event : Event base class
-bamengine.core.pipeline : Pipeline composition
-bamengine.config.default_pipeline.yml : Default event ordering
-bamengine.events._internal : System function implementations
+:class:`bamengine.core.Event` : Event base class
+:class:`bamengine.core.Pipeline` : Pipeline composition
+:mod:`bamengine.events._internal` : System function implementations
 """
 
 # Import all events to trigger auto-registration

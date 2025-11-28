@@ -10,3 +10,4 @@ Configuration and validation classes.
    :nosignatures:
 
    config.Config
+   config.ConfigValidator

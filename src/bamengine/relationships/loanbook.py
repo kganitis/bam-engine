@@ -67,9 +67,9 @@ Purge loans from bankrupt firms:
 
 See Also
 --------
-bamengine.core.relationship.Relationship : Base class with query methods
-Borrower : Source role (firms)
-Lender : Target role (banks)
+:class:`bamengine.core.Relationship` : Base class with query methods
+:class:`~bamengine.roles.Borrower` : Source role (firms)
+:class:`~bamengine.roles.Lender` : Target role (banks)
 """
 
 from __future__ import annotations
@@ -198,11 +198,11 @@ class LoanBook:
 
     See Also
     --------
-    bamengine.core.relationship.Relationship : Base class with query/aggregation
-    Borrower : Source role (firms seeking credit)
-    Lender : Target role (banks providing credit)
-    bamengine.events._internal.credit_market : Loan creation logic
-    bamengine.events._internal.revenue : Debt repayment logic
+    :class:`bamengine.core.Relationship` : Base class with query/aggregation
+    :class:`~bamengine.roles.Borrower` : Source role (firms seeking credit)
+    :class:`~bamengine.roles.Lender` : Target role (banks providing credit)
+    :mod:`bamengine.events._internal.credit_market` : Loan creation logic
+    :mod:`bamengine.events._internal.revenue` : Debt repayment logic
     """
 
     # Edge-specific components (loan data per edge)

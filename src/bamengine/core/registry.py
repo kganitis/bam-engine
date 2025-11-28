@@ -52,9 +52,9 @@ Available roles: Borrower, Consumer, Employer, Lender, Producer, Worker
 
 See Also
 --------
-Role : Base class with __init_subclass__ registration
-Event : Base class with __init_subclass__ registration
-Relationship : Base class with __init_subclass__ registration
+:class:`~bamengine.core.Role` : Base class with __init_subclass__ registration
+:class:`~bamengine.core.Event` : Base class with __init_subclass__ registration
+:class:`~bamengine.core.Relationship` : Base class with __init_subclass__ registration
 """
 
 from __future__ import annotations
@@ -128,8 +128,8 @@ def get_role(name: str) -> type[Role]:
 
     See Also
     --------
-    list_roles : Get list of all registered role names
-    get_event : Retrieve event class from registry
+    :func:`list_roles` : Get list of all registered role names
+    :func:`get_event` : Retrieve event class from registry
     """
     if name not in _ROLE_REGISTRY:
         available = ", ".join(sorted(_ROLE_REGISTRY.keys()))
@@ -178,8 +178,8 @@ def get_event(name: str) -> type[Event]:
 
     See Also
     --------
-    list_events : Get list of all registered event names
-    get_role : Retrieve role class from registry
+    :func:`list_events` : Get list of all registered event names
+    :func:`get_role` : Retrieve role class from registry
     """
     if name not in _EVENT_REGISTRY:
         available = ", ".join(sorted(_EVENT_REGISTRY.keys()))

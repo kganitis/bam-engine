@@ -70,8 +70,8 @@ array([1., 1., 1., 1., 1., 1., 1., 1., 1., 1.])
 
 See Also
 --------
-bamengine.core.role.Role : Base class for all roles
-bamengine.simulation.Simulation : Simulation facade with role instances
+:class:`bamengine.core.Role` : Base class for all roles
+:class:`bamengine.Simulation` : Simulation facade with role instances
 """
 
 from bamengine.roles.borrower import Borrower

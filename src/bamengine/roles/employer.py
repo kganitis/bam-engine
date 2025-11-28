@@ -80,10 +80,10 @@ class Employer:
 
     See Also
     --------
-    Producer : Production role for firms
-    Borrower : Financial role for firms
-    Worker : Employment role for households
-    bamengine.events._internal.labor_market : Labor market logic
+    :class:`~bamengine.roles.Producer` : Production role for firms
+    :class:`~bamengine.roles.Borrower` : Financial role for firms
+    :class:`~bamengine.roles.Worker` : Employment role for households
+    :mod:`bamengine.events._internal.labor_market` : Labor market logic
     """
 
     desired_labor: Int1D

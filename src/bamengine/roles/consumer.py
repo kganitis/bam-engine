@@ -85,9 +85,9 @@ class Consumer:
 
     See Also
     --------
-    Worker : Employment role for households
-    Producer : Production role for firms
-    bamengine.events._internal.goods_market : Goods market logic
+    :class:`~bamengine.roles.Worker` : Employment role for households
+    :class:`~bamengine.roles.Producer` : Production role for firms
+    :mod:`bamengine.events._internal.goods_market` : Goods market logic
     """
 
     income: Float1D

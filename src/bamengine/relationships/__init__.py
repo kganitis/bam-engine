@@ -48,8 +48,8 @@ Aggregate debt per borrower:
 
 See Also
 --------
-bamengine.core.relationship.Relationship : Base class for all relationships
-LoanBook : Loan relationship implementation
+:class:`bamengine.core.Relationship` : Base class for all relationships
+:class:`~bamengine.relationships.LoanBook` : Loan relationship implementation
 """
 
 from .loanbook import LoanBook

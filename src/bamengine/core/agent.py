@@ -32,8 +32,8 @@ Access agent properties:
 
 See Also
 --------
-Role : Base class for component state
-AgentType : Enum of agent types
+:class:`~bamengine.core.Role` : Base class for component state
+:class:`AgentType` : Enum of agent types
 """
 
 from __future__ import annotations
@@ -117,8 +117,8 @@ class Agent:
 
     See Also
     --------
-    AgentType : Enum of agent types
-    Role : Base class for component state
+    :class:`AgentType` : Enum of agent types
+    :class:`~bamengine.core.Role` : Base class for component state
     """
 
     id: int

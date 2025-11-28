@@ -65,9 +65,9 @@ Traditional syntax (still works):
 
 See Also
 --------
-Role : Base class for roles (components)
-Event : Base class for events (systems)
-Relationship : Base class for relationships
+:class:`~bamengine.core.Role` : Base class for roles (components)
+:class:`~bamengine.core.Event` : Base class for events (systems)
+:class:`~bamengine.core.Relationship` : Base class for relationships
 """
 
 from __future__ import annotations
