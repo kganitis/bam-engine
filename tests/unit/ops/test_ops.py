@@ -299,6 +299,41 @@ class TestArrayCreation:
         assert result.shape == (3,)
         assert result.dtype == np.float64
 
+    def test_arange_basic(self):
+        result = ops.arange(0, 5, 1)
+        np.testing.assert_array_equal(result, [0.0, 1.0, 2.0, 3.0, 4.0])
+
+    def test_arange_with_step(self):
+        result = ops.arange(0, 10, 2)
+        np.testing.assert_array_equal(result, [0.0, 2.0, 4.0, 6.0, 8.0])
+
+    def test_arange_fractional_step(self):
+        result = ops.arange(0, 1, 0.25)
+        np.testing.assert_array_almost_equal(result, [0.0, 0.25, 0.5, 0.75])
+
+    def test_arange_default_step(self):
+        result = ops.arange(10, 15)
+        np.testing.assert_array_equal(result, [10.0, 11.0, 12.0, 13.0, 14.0])
+
+    def test_arange_dtype(self):
+        result = ops.arange(0, 5, 1)
+        assert result.dtype == np.float64
+
+
+class TestMathematical:
+    """Test mathematical operations."""
+
+    def test_log_basic(self):
+        a = np.array([1.0, np.e, np.e**2])
+        result = ops.log(a)
+        np.testing.assert_array_almost_equal(result, [0.0, 1.0, 2.0])
+
+    def test_log_array(self):
+        a = np.array([100.0, 1000.0, 10000.0])
+        result = ops.log(a)
+        expected = np.log(a)
+        np.testing.assert_array_almost_equal(result, expected)
+
 
 class TestUtilities:
     """Test utility operations."""

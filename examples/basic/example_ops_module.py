@@ -1,7 +1,7 @@
 """
-===========
-Ops Module
-===========
+==============
+BAM Operations
+==============
 
 This example provides a comprehensive guide to the ``ops`` module,
 which offers NumPy-free array operations for writing custom events.
@@ -219,6 +219,33 @@ print(f"  zeros({n}): {ops.zeros(n)}")
 print(f"  ones({n}):  {ops.ones(n)}")
 print(f"  full({n}, 3.14): {ops.full(n, 3.14)}")
 print(f"  empty({n}): (uninitialized values)")
+
+# arange: create evenly spaced values
+periods = ops.arange(0, 5, 1)
+print(f"  arange(0, 5, 1): {periods}")
+
+# arange with fractional step
+time_axis = ops.arange(0, 1, 0.25)
+print(f"  arange(0, 1, 0.25): {time_axis}")
+
+# %%
+# Mathematical Functions
+# ----------------------
+#
+# Logarithm and other math operations.
+
+gdp = np.array([100.0, 110.0, 121.0, 133.1])
+
+print("\nMathematical functions:")
+print(f"  gdp: {gdp}")
+
+# Natural logarithm (useful for log-scale analysis)
+log_gdp = ops.log(gdp)
+print(f"  log(gdp): {log_gdp.round(3)}")
+
+# Log differences approximate growth rates
+log_diff = np.diff(log_gdp)
+print(f"  log differences (≈ growth rates): {log_diff.round(3)}")
 
 # %%
 # Utility Operations
@@ -461,6 +488,10 @@ ARRAY CREATION
   ones(n)             - Array of ones
   full(n, val)        - Array of constant value
   empty(n)            - Uninitialized array
+  arange(start, stop) - Evenly spaced values
+
+MATHEMATICAL
+  log(a)              - Natural logarithm
 
 UTILITIES
   unique(a)           - Unique sorted values

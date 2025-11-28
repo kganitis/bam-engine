@@ -1,7 +1,7 @@
 """
-==============
-Results Module
-==============
+==================
+Simulation Results
+==================
 
 This example demonstrates how to collect and analyze simulation results
 using the ``SimulationResults`` class. Learn how to:

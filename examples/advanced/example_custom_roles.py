@@ -31,7 +31,7 @@ You'll learn to:
 
 import numpy as np
 
-from bamengine import Agent, Bool, Float, Int, get_role, role
+from bamengine import Agent, Bool, Float, Int, get_role, ops, role
 
 # Check built-in roles
 print("Built-in roles:")
@@ -304,11 +304,11 @@ rng = np.random.default_rng(42)
 for t in range(n_periods):
     # Random consumption
     consumption = rng.uniform(5, 20, n_firms)
-    stock = np.maximum(stock - consumption, 0)
+    stock = ops.maximum(ops.subtract(stock, consumption), 0)
 
     # Reorder if below threshold
     needs_reorder = stock < reorder_point
-    stock = np.where(needs_reorder, stock + 80, stock)
+    stock = ops.where(needs_reorder, ops.add(stock, 80), stock)
 
     stock_history.append(stock.copy())
 
