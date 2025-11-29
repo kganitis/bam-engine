@@ -76,17 +76,17 @@ IdxA = Idx1D
 
 # === User-Friendly Type Aliases ===
 
-Float = Float1D
 """Array of floating-point values (prices, quantities, rates, etc.)."""
+Float = Float1D
 
-Int = Int1D
 """Array of integer values (counts, periods, etc.)."""
+Int = Int1D
 
-Bool = Bool1D
 """Array of boolean values (flags, conditions, etc.)."""
+Bool = Bool1D
 
-Agent = Idx1D
 """Array of agent IDs (integer indices, -1 for unassigned)."""
+Agent = Idx1D
 
 __all__ = [
     # User-friendly (recommended for custom roles)
