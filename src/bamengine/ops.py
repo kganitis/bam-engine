@@ -96,8 +96,7 @@ with bamengine.ops for flexibility:
 
 See Also
 --------
-bamengine.typing : Type aliases (Float, Int, Bool, Agent)
-tests.unit.ops.test_ops : Comprehensive operation tests
+:class:`~bamengine.typing` : Type aliases (Float, Int, Bool, Agent)
 numpy : Underlying array library
 """
 

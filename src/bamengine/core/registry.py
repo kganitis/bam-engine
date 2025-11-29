@@ -207,6 +207,23 @@ def get_relationship(name: str) -> type[Relationship]:
     ------
     KeyError
         If the relationship name is not found in the registry.
+
+    Examples
+    --------
+    Retrieve a relationship class and create instance:
+
+    >>> from bamengine import get_relationship
+    >>> import numpy as np
+    >>> LoanBook = get_relationship("LoanBook")
+    >>> loans = LoanBook()
+    >>> loans.append_loans_for_lender(
+    ...     lender_idx=0,
+    ...     borrower_indices=np.array([1, 2]),
+    ...     amount=np.array([100.0, 200.0]),
+    ...     rate=np.array([0.05, 0.05])
+    ... )
+    >>> loans.size
+    2
     """
     if name not in _RELATIONSHIP_REGISTRY:
         available = ", ".join(sorted(_RELATIONSHIP_REGISTRY.keys()))

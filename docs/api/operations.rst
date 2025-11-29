@@ -1,28 +1,119 @@
-Operations Module
-=================
+BAM Operations
+==============
 
-NumPy-free operations for writing custom events. See :mod:`bamengine.ops` for the full module documentation.
+.. automodule:: bamengine.ops
+   :no-members:
 
 .. currentmodule:: bamengine.ops
 
-**Arithmetic**: ``add``, ``subtract``, ``multiply``, ``divide``
+**Arithmetic**
 
-**Assignment**: ``assign``
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
 
-**Comparisons**: ``equal``, ``not_equal``, ``less``, ``less_equal``, ``greater``, ``greater_equal``
+   add
+   subtract
+   multiply
+   divide
 
-**Logical**: ``logical_and``, ``logical_or``, ``logical_not``
+**Assignment**
 
-**Conditional**: ``where``, ``select``
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
 
-**Element-wise**: ``maximum``, ``minimum``, ``clip``
+   assign
 
-**Aggregation**: ``sum``, ``mean``, ``any``, ``all``
+**Comparisons**
 
-**Array creation**: ``zeros``, ``ones``, ``full``, ``empty``, ``arange``
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
 
-**Mathematical**: ``log``
+   equal
+   not_equal
+   less
+   less_equal
+   greater
+   greater_equal
 
-**Utilities**: ``unique``, ``bincount``, ``isin``, ``argsort``, ``sort``
+**Logical**
 
-**Random**: ``uniform``
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   logical_and
+   logical_or
+   logical_not
+
+**Conditional**
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   where
+   select
+
+**Element-wise**
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   maximum
+   minimum
+   clip
+
+**Aggregation**
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   sum
+   mean
+   any
+   all
+
+**Array creation**
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   zeros
+   ones
+   full
+   empty
+   arange
+
+**Mathematical**
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   log
+
+**Utilities**
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   unique
+   bincount
+   isin
+   argsort
+   sort
+
+**Random**
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   uniform

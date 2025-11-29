@@ -90,8 +90,8 @@ class Economy:
 
     See Also
     --------
-    Role : Base class for per-agent state components
-    Simulation : Main simulation facade with ec attribute
+    :class:`~bamengine.core.Role` : Base class for per-agent state components
+    :class:`~bamengine.Simulation` : Main simulation facade with ec attribute
     """
 
     # policy / structural scalars
