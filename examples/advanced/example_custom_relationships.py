@@ -253,7 +253,7 @@ n_employers = 3
 n_edges = 15
 
 # Random employment network
-rng = np.random.default_rng(42)
+rng = bam.make_rng(42)
 demo_emp = EmploymentHistory(
     source_ids=np.full(50, -1, dtype=np.intp),
     target_ids=np.full(50, -1, dtype=np.intp),

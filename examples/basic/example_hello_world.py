@@ -35,10 +35,9 @@ print(f"Final average price: {sim.ec.avg_mkt_price:.2f}")
 # Plot the unemployment rate over time.
 
 import matplotlib.pyplot as plt
-import numpy as np
 
-# Get unemployment history
-unemployment_history = np.array(sim.ec.unemp_rate_history) * 100
+# Get unemployment history (convert list to array and scale to percentage)
+unemployment_history = bam.ops.multiply(bam.ops.asarray(sim.ec.unemp_rate_history), 100)
 
 # Create simple plot
 plt.figure(figsize=(10, 6))

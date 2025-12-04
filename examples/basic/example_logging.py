@@ -162,10 +162,9 @@ print("\n(Custom logger messages shown above if level allows)")
 
 def expensive_computation():
     """Simulate an expensive debugging calculation."""
-    import numpy as np
-
-    rng = np.random.default_rng()
-    return rng.random(1000000).mean()
+    rng = bam.make_rng()
+    arr = bam.ops.uniform(rng, 0, 1, 1000000)
+    return bam.ops.mean(arr)
 
 
 # Create a logger

@@ -146,7 +146,6 @@ print(f"  Shock cap (h_rho): {sim_dict.config.h_rho}")
 # Run two scenarios with different configurations and compare results.
 
 import matplotlib.pyplot as plt
-import numpy as np
 
 # Scenario 1: High friction economy (fewer search attempts)
 high_friction_config = {
@@ -182,8 +181,11 @@ for _ in range(n_periods):
 # Compare unemployment rates
 fig, ax = plt.subplots(figsize=(10, 6))
 
-unemployment_high = np.array(sim_high.ec.unemp_rate_history) * 100
-unemployment_low = np.array(sim_low.ec.unemp_rate_history) * 100
+# Convert to arrays and scale to percentages using ops
+unemployment_high = bam.ops.multiply(
+    bam.ops.asarray(sim_high.ec.unemp_rate_history), 100
+)
+unemployment_low = bam.ops.multiply(bam.ops.asarray(sim_low.ec.unemp_rate_history), 100)
 
 ax.plot(unemployment_high, label="High Friction", linewidth=2)
 ax.plot(unemployment_low, label="Low Friction", linewidth=2)
@@ -195,15 +197,17 @@ ax.grid(True, alpha=0.3)
 plt.tight_layout()
 plt.show()
 
-# Print summary statistics
+# Print summary statistics using ops
 print("\nSummary Statistics:")
 print(f"{'Scenario':<15} {'Mean Unemp.':<15} {'Std Unemp.':<15}")
 print("-" * 45)
 print(
-    f"{'High Friction':<15} {unemployment_high.mean():>12.2f}% {unemployment_high.std():>12.2f}%"
+    f"{'High Friction':<15} {bam.ops.mean(unemployment_high):>12.2f}% "
+    f"{bam.ops.std(unemployment_high):>12.2f}%"
 )
 print(
-    f"{'Low Friction':<15} {unemployment_low.mean():>12.2f}% {unemployment_low.std():>12.2f}%"
+    f"{'Low Friction':<15} {bam.ops.mean(unemployment_low):>12.2f}% "
+    f"{bam.ops.std(unemployment_low):>12.2f}%"
 )
 
 # %%

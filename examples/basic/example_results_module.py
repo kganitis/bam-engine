@@ -38,25 +38,24 @@ print(f"  Households: {results.metadata.get('n_households', 'N/A')}")
 # Accessing Economy Metrics
 # -------------------------
 #
-# Economy-wide metrics are stored as NumPy arrays in ``economy_data``.
-
-import numpy as np
+# Economy-wide metrics are stored as arrays in ``economy_data``.
 
 print("Available economy metrics:", list(results.economy_data.keys()))
 
-# Access specific metrics
-unemployment = results.economy_data.get("unemployment_rate", np.array([]))
-avg_price = results.economy_data.get("avg_price", np.array([]))
-inflation = results.economy_data.get("inflation", np.array([]))
+# Access specific metrics (returns empty array if key not found)
+empty_array = bam.ops.zeros(0)  # Fallback empty array
+unemployment = results.economy_data.get("unemployment_rate", empty_array)
+avg_price = results.economy_data.get("avg_price", empty_array)
+inflation = results.economy_data.get("inflation", empty_array)
 
 if len(unemployment) > 0:
     print("\nUnemployment rate:")
-    print(f"  Mean: {np.mean(unemployment):.2%}")
+    print(f"  Mean: {bam.ops.mean(unemployment):.2%}")
     print(f"  Final: {unemployment[-1]:.2%}")
 
 if len(avg_price) > 0:
     print("\nAverage price:")
-    print(f"  Mean: {np.mean(avg_price):.3f}")
+    print(f"  Mean: {bam.ops.mean(avg_price):.3f}")
     print(f"  Final: {avg_price[-1]:.3f}")
 
 # %%
@@ -256,10 +255,12 @@ if all_unemployment:
     fig, ax = plt.subplots(figsize=(10, 6))
 
     for i, unemp in enumerate(all_unemployment):
-        ax.plot(unemp * 100, alpha=0.5, label=f"Run {i + 1}")
+        ax.plot(bam.ops.multiply(unemp, 100), alpha=0.5, label=f"Run {i + 1}")
 
-    # Calculate and plot mean
-    mean_unemployment = np.mean(all_unemployment, axis=0) * 100
+    # Calculate and plot mean unemployment across runs
+    # Stack arrays and compute mean along axis 0
+    stacked = bam.ops.asarray([list(u) for u in all_unemployment])
+    mean_unemployment = bam.ops.multiply(bam.ops.mean(stacked, axis=0), 100)
     ax.plot(mean_unemployment, "k-", linewidth=2, label="Mean")
 
     ax.set_xlabel("Period")
@@ -271,11 +272,11 @@ if all_unemployment:
     plt.show()
 
     # Summary across runs
-    final_rates = [unemp[-1] * 100 for unemp in all_unemployment]
+    final_rates = bam.ops.asarray([unemp[-1] * 100 for unemp in all_unemployment])
     print("\nFinal unemployment rates:")
-    print(f"  Mean: {np.mean(final_rates):.2f}%")
-    print(f"  Std:  {np.std(final_rates):.2f}%")
-    print(f"  Range: {np.min(final_rates):.2f}% - {np.max(final_rates):.2f}%")
+    print(f"  Mean: {bam.ops.mean(final_rates):.2f}%")
+    print(f"  Std:  {bam.ops.std(final_rates):.2f}%")
+    print(f"  Range: {bam.ops.min(final_rates):.2f}% - {bam.ops.max(final_rates):.2f}%")
 
 # %%
 # Key Takeaways

@@ -68,8 +68,6 @@ print(f"  Contract duration (theta): {sim_low_friction.config.theta}")
 # You can also customize initial conditions for agents. Parameters can be
 # either scalars (applied to all agents) or arrays (agent-specific values).
 
-import numpy as np
-
 # Custom initial conditions with higher firm net worth
 sim_wealthy_firms = bam.Simulation.init(
     n_firms=100,
@@ -80,10 +78,15 @@ sim_wealthy_firms = bam.Simulation.init(
     seed=42,
 )
 
+# Access roles via get_role() for cleaner API
+bor = sim_wealthy_firms.get_role("Borrower")
+prod = sim_wealthy_firms.get_role("Producer")
+con = sim_wealthy_firms.get_role("Consumer")
+
 print("\nCustom initial conditions:")
-print(f"  Initial firm net worth: {sim_wealthy_firms.bor.net_worth.mean():.1f}")
-print(f"  Initial prices: {sim_wealthy_firms.prod.price.mean():.1f}")
-print(f"  Initial household savings: {sim_wealthy_firms.con.savings.mean():.1f}")
+print(f"  Initial firm net worth: {bam.ops.mean(bor.net_worth):.1f}")
+print(f"  Initial prices: {bam.ops.mean(prod.price):.1f}")
+print(f"  Initial household savings: {bam.ops.mean(con.savings):.1f}")
 
 # %%
 # Compare Scenarios
@@ -115,10 +118,18 @@ for _ in range(100):
 
 import matplotlib.pyplot as plt
 
-baseline_unemp = np.array(sim_baseline.ec.unemp_rate_history) * 100
-lowfric_unemp = np.array(sim_low_friction_run.ec.unemp_rate_history) * 100
+# Convert unemployment histories to arrays and scale to percentages
+baseline_unemp = bam.ops.multiply(
+    bam.ops.asarray(sim_baseline.ec.unemp_rate_history), 100
+)
+lowfric_unemp = bam.ops.multiply(
+    bam.ops.asarray(sim_low_friction_run.ec.unemp_rate_history), 100
+)
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+
+# Calculate y-axis limit using ops.max
+y_max = bam.ops.max(bam.ops.maximum(baseline_unemp, lowfric_unemp)) * 1.1
 
 # Baseline
 ax1.plot(baseline_unemp, linewidth=2, color="#2E86AB")
@@ -126,7 +137,7 @@ ax1.set_title("Baseline (max_M=4, max_Z=2)", fontsize=12, fontweight="bold")
 ax1.set_xlabel("Period")
 ax1.set_ylabel("Unemployment Rate (%)")
 ax1.grid(True, alpha=0.3)
-ax1.set_ylim([0, max(baseline_unemp.max(), lowfric_unemp.max()) * 1.1])
+ax1.set_ylim([0, y_max])
 
 # Low friction
 ax2.plot(lowfric_unemp, linewidth=2, color="#A23B72")
@@ -134,7 +145,7 @@ ax2.set_title("Low Friction (max_M=8, max_Z=4)", fontsize=12, fontweight="bold")
 ax2.set_xlabel("Period")
 ax2.set_ylabel("Unemployment Rate (%)")
 ax2.grid(True, alpha=0.3)
-ax2.set_ylim([0, max(baseline_unemp.max(), lowfric_unemp.max()) * 1.1])
+ax2.set_ylim([0, y_max])
 
 plt.tight_layout()
 plt.show()
@@ -149,8 +160,8 @@ print("\n" + "=" * 60)
 print("COMPARISON: Baseline vs Low Friction")
 print("=" * 60)
 print("\nAverage Unemployment Rate:")
-print(f"  Baseline (max_M=4, max_Z=2):     {baseline_unemp[20:].mean():.2f}%")
-print(f"  Low Friction (max_M=8, max_Z=4): {lowfric_unemp[20:].mean():.2f}%")
+print(f"  Baseline (max_M=4, max_Z=2):     {bam.ops.mean(baseline_unemp[20:]):.2f}%")
+print(f"  Low Friction (max_M=8, max_Z=4): {bam.ops.mean(lowfric_unemp[20:]):.2f}%")
 
 baseline_price = sim_baseline.ec.avg_mkt_price
 lowfric_price = sim_low_friction_run.ec.avg_mkt_price

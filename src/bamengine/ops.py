@@ -102,7 +102,8 @@ numpy : Underlying array library
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union
+import builtins
+from typing import TYPE_CHECKING, Any, Optional, Sequence, Union
 
 import numpy as np
 
@@ -140,6 +141,9 @@ __all__ = [
     # Aggregation
     "sum",
     "mean",
+    "std",
+    "min",
+    "max",
     "any",
     "all",
     # Array creation
@@ -148,6 +152,7 @@ __all__ = [
     "full",
     "empty",
     "arange",
+    "asarray",
     # Mathematical
     "log",
     # Utilities
@@ -299,7 +304,7 @@ def divide(a: Float, b: float | Float, out: Optional[Float] = None) -> Float:
     if isinstance(b, np.ndarray):
         b_safe = np.maximum(b, 1e-10)
     else:
-        b_safe = max(b, 1e-10)
+        b_safe = builtins.max(b, 1e-10)
 
     result: Float
     if out is None:
@@ -706,6 +711,111 @@ def mean(
     return float(np.mean(a[where]))
 
 
+def std(
+    a: Float, axis: int | None = None, where: Optional[Bool] = None
+) -> float | Float:
+    """
+    Calculate standard deviation, optionally over axis or subset.
+
+    Parameters
+    ----------
+    a : array
+        Input array.
+    axis : int, optional
+        Axis to compute std over. If None, compute over all elements.
+    where : bool array, optional
+        Mask for subset.
+
+    Returns
+    -------
+    float or array
+        Standard deviation (scalar if axis=None, array otherwise).
+
+    Examples
+    --------
+    >>> import bamengine.ops as ops
+    >>> prices = np.array([100, 110, 90, 100])
+    >>> price_std = ops.std(prices)
+    >>> # price_std: ~7.07
+    """
+    if where is None:
+        if axis is None:
+            return float(np.std(a))
+        result: Float = np.std(a, axis=axis)
+        return result
+    return float(np.std(a[where]))
+
+
+# noinspection PyShadowingBuiltins
+def min(a: Float, axis: int | None = None) -> float | Float:
+    """
+    Return minimum value of array elements.
+
+    Parameters
+    ----------
+    a : array
+        Input array.
+    axis : int, optional
+        Axis to find minimum over. If None, find minimum over all elements.
+
+    Returns
+    -------
+    float or array
+        Minimum value (scalar if axis=None, array otherwise).
+
+    Examples
+    --------
+    >>> import bamengine.ops as ops
+    >>> prices = np.array([100, 110, 90, 105])
+    >>> min_price = ops.min(prices)
+    >>> # min_price: 90
+
+    Notes
+    -----
+    This is an aggregation function (reduces array to single value).
+    For element-wise minimum of two arrays, use :func:`minimum`.
+    """
+    if axis is None:
+        return float(np.min(a))
+    result: Float = np.min(a, axis=axis)
+    return result
+
+
+# noinspection PyShadowingBuiltins
+def max(a: Float, axis: int | None = None) -> float | Float:
+    """
+    Return maximum value of array elements.
+
+    Parameters
+    ----------
+    a : array
+        Input array.
+    axis : int, optional
+        Axis to find maximum over. If None, find maximum over all elements.
+
+    Returns
+    -------
+    float or array
+        Maximum value (scalar if axis=None, array otherwise).
+
+    Examples
+    --------
+    >>> import bamengine.ops as ops
+    >>> prices = np.array([100, 110, 90, 105])
+    >>> max_price = ops.max(prices)
+    >>> # max_price: 110
+
+    Notes
+    -----
+    This is an aggregation function (reduces array to single value).
+    For element-wise maximum of two arrays, use :func:`maximum`.
+    """
+    if axis is None:
+        return float(np.max(a))
+    result: Float = np.max(a, axis=axis)
+    return result
+
+
 # noinspection PyShadowingBuiltins
 def any(a: Bool) -> bool:
     """
@@ -878,6 +988,39 @@ def arange(start: float, stop: float, step: float = 1.0) -> Float:
     >>> time = ops.arange(0, 1000, 1)
     """
     return np.arange(start, stop, step, dtype=np.float64)
+
+
+def asarray(data: Sequence[Any] | Float) -> Float:
+    """
+    Convert input to a numpy array.
+
+    Use this to convert Python lists (e.g., from simulation history) to
+    arrays for use with other ops functions.
+
+    Parameters
+    ----------
+    data : list, tuple, or array
+        Input data to convert.
+
+    Returns
+    -------
+    array
+        NumPy array with float64 dtype.
+
+    Examples
+    --------
+    >>> import bamengine.ops as ops
+    >>> history = [0.05, 0.06, 0.07]  # Simulation history as list
+    >>> arr = ops.asarray(history)
+    >>> pct = ops.multiply(arr, 100)  # Convert to percentages
+    >>> # pct: [5.0, 6.0, 7.0]
+
+    Notes
+    -----
+    This is useful for converting simulation results (often stored as lists)
+    to arrays for mathematical operations or plotting.
+    """
+    return np.asarray(data, dtype=np.float64)
 
 
 # === Mathematical Functions ===

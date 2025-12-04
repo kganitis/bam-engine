@@ -28,8 +28,6 @@ You'll learn to:
 #
 # Events implement economic mechanisms like wage setting, hiring, production.
 
-import numpy as np
-
 import bamengine as bam
 from bamengine import event, get_event, logging, ops
 
@@ -294,9 +292,13 @@ sim = bam.Simulation.init(n_firms=50, n_households=250, seed=42)
 # Run a few periods to establish state
 sim.run(n_periods=10)
 
+# Access roles via get_role() for cleaner API
+prod = sim.get_role("Producer")
+borr = sim.get_role("Borrower")
+
 print("\nBefore custom events:")
-print(f"  Mean price: {np.mean(sim.prod.price):.3f}")
-print(f"  Mean net worth: {np.mean(sim.bor.net_worth):.2f}")
+print(f"  Mean price: {ops.mean(prod.price):.3f}")
+print(f"  Mean net worth: {ops.mean(borr.net_worth):.2f}")
 
 # Execute custom events directly
 price_floor_event = ApplyPriceFloor()
@@ -306,8 +308,8 @@ tax_event = TaxCollection()
 tax_event.execute(sim)
 
 print("\nAfter custom events:")
-print(f"  Mean price: {np.mean(sim.prod.price):.3f} (floor applied)")
-print(f"  Mean net worth: {np.mean(sim.bor.net_worth):.2f} (taxes paid)")
+print(f"  Mean price: {ops.mean(prod.price):.3f} (floor applied)")
+print(f"  Mean net worth: {ops.mean(borr.net_worth):.2f} (taxes paid)")
 
 # %%
 # Event with Custom Name
@@ -354,19 +356,21 @@ import matplotlib.pyplot as plt
 
 # Simulation without tax
 sim_no_tax = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
+borr_no_tax = sim_no_tax.get_role("Borrower")
 nw_no_tax = []
 for _ in range(50):
     sim_no_tax.step()
-    nw_no_tax.append(np.mean(sim_no_tax.bor.net_worth))
+    nw_no_tax.append(ops.mean(borr_no_tax.net_worth))
 
 # Simulation with tax (manual execution each period)
 sim_with_tax = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
+borr_with_tax = sim_with_tax.get_role("Borrower")
 nw_with_tax = []
 tax_event = TaxCollection()
 for _ in range(50):
     sim_with_tax.step()
     tax_event.execute(sim_with_tax)  # Collect taxes after each period
-    nw_with_tax.append(np.mean(sim_with_tax.bor.net_worth))
+    nw_with_tax.append(ops.mean(borr_with_tax.net_worth))
 
 # Plot comparison
 fig, ax = plt.subplots(figsize=(10, 6))
