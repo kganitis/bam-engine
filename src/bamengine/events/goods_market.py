@@ -78,8 +78,8 @@ class ConsumersCalcPropensity:
     ---------
     For each consumer j:
 
-    1. Calculate relative savings: r_j = SA_j / SA_avg
-    2. Apply propensity function: c_j = 1 / (1 + tanh(r_j)^β)
+    1. Calculate relative savings: :math:`r_j = SA_j / \\overline{SA}`
+    2. Apply propensity function: :math:`c_j = 1 / (1 + \\tanh(r_j)^\\beta)`
 
     Mathematical Notation
     ---------------------
@@ -88,10 +88,10 @@ class ConsumersCalcPropensity:
 
     where:
 
-    - c_j: propensity to consume (0 < c_j < 1)
-    - SA_j: current savings of consumer j
-    - SA_avg: average savings across all consumers
-    - β: sensitivity parameter controlling consumption response (config)
+    - :math:`c_j`: propensity to consume (:math:`0 < c_j < 1`)
+    - :math:`SA_j`: current savings of consumer j
+    - :math:`\\overline{SA}`: average savings across all consumers
+    - :math:`\\beta`: sensitivity parameter controlling consumption response (config)
 
     Examples
     --------
@@ -151,10 +151,10 @@ class ConsumersDecideIncomeToSpend:
     ---------
     For each consumer j:
 
-    1. Calculate wealth: W_j = SA_j + I_j
-    2. Allocate to spending: B_j = W_j × c_j
-    3. Update savings: SA_j = W_j - B_j
-    4. Reset income: I_j = 0
+    1. Calculate wealth: :math:`W_j = SA_j + I_j`
+    2. Allocate to spending: :math:`B_j = W_j \\times c_j`
+    3. Update savings: :math:`SA_j = W_j - B_j`
+    4. Reset income: :math:`I_j = 0`
 
     Mathematical Notation
     ---------------------
@@ -307,14 +307,14 @@ class ConsumersShopOneRound:
     Algorithm
     ---------
     1. Randomize consumer shopping order
-    2. For each consumer j with budget (B_j > 0):
-       - Pop next firm from shopping queue: i = shop_targets[j, head_j]
-       - Calculate purchase: Q = min(B_j / P_i, S_i)
-       - Update spending: B_j ← B_j - (Q × P_i)
-       - Update inventory: S_i ← S_i - Q
-       - Track purchase for loyalty: total_spent_j += (Q × P_i)
-       - If Q > 0: update prev_largest_producer if this is biggest purchase
-       - Advance queue pointer: head_j += 1
+    2. For each consumer j with budget (:math:`B_j > 0`):
+       - Pop next firm from shopping queue: :math:`i = \\text{shop\\_targets}[j, \\text{head}_j]`
+       - Calculate purchase: :math:`Q = \\min(B_j / P_i, S_i)`
+       - Update spending: :math:`B_j \\leftarrow B_j - (Q \\times P_i)`
+       - Update inventory: :math:`S_i \\leftarrow S_i - Q`
+       - Track purchase for loyalty: :math:`\\text{total\\_spent}_j \\mathrel{+}= (Q \\times P_i)`
+       - If :math:`Q > 0`: update prev_largest_producer if this is biggest purchase
+       - Advance queue pointer: :math:`\\text{head}_j \\mathrel{+}= 1`
 
     Examples
     --------
@@ -379,7 +379,7 @@ class ConsumersFinalizePurchases:
 
         B_j \\leftarrow 0
 
-    where SA_j = savings, B_j = income_to_spend (remaining budget).
+    where :math:`SA_j` = savings, :math:`B_j` = income_to_spend (remaining budget).
 
     Examples
     --------

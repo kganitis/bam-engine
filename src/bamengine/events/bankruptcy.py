@@ -64,7 +64,16 @@ class FirmsUpdateNetWorth:
     Net worth accumulates retained earnings from each period. Negative net worth
     (insolvency) leads to bankruptcy in the next event.
 
-    Algorithm: A_i ← A_i + RP_i, then total_funds_i = max(0, A_i)
+    Algorithm
+    ---------
+    For each firm i:
+
+    .. math::
+        A_i \\leftarrow A_i + RP_i
+
+        \\text{total\\_funds}_i = \\max(0, A_i)
+
+    where :math:`A_i` = net_worth, :math:`RP_i` = retained_profit.
 
     Examples
     --------

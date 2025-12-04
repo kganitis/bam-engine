@@ -71,14 +71,14 @@ class FirmsDecideDesiredProduction:
     ---------
     For each firm i:
 
-    1. Generate random shock: ε_i ~ U(0, h_ρ)
+    1. Generate random shock: :math:`\\varepsilon_i \\sim U(0, h_\\rho)`
     2. Classify firm state and apply production rule:
 
-       - If S_i = 0 and P_i ≥ P̄: Y*_i = Y_{i,t-1} × (1 + ε_i)  [increase]
-       - If S_i > 0 and P_i < P̄:  Y*_i = Y_{i,t-1} × (1 - ε_i)  [decrease]
-       - Otherwise:                Y*_i = Y_{i,t-1}              [maintain]
+       - If :math:`S_i = 0` and :math:`P_i \\geq \\bar{P}`: :math:`Y^*_i = Y_{i,t-1} \\times (1 + \\varepsilon_i)` [increase]
+       - If :math:`S_i > 0` and :math:`P_i < \\bar{P}`: :math:`Y^*_i = Y_{i,t-1} \\times (1 - \\varepsilon_i)` [decrease]
+       - Otherwise: :math:`Y^*_i = Y_{i,t-1}` [maintain]
 
-    3. Set desired_production = expected_demand = Y*_i
+    3. Set desired_production = expected_demand = :math:`Y^*_i`
 
     Mathematical Notation
     ---------------------
@@ -91,13 +91,13 @@ class FirmsDecideDesiredProduction:
 
     where:
 
-    - Y*: desired production for next period
-    - Y: actual production in previous period
-    - S: inventory (unsold goods from previous period)
-    - P: firm's individual price
-    - P̄: average market price across all firms
-    - ε: random shock ~ U(0, h_ρ)
-    - h_ρ: maximum production shock parameter (config)
+    - :math:`Y^*`: desired production for next period
+    - :math:`Y`: actual production in previous period
+    - :math:`S`: inventory (unsold goods from previous period)
+    - :math:`P`: firm's individual price
+    - :math:`\\bar{P}`: average market price across all firms
+    - :math:`\\varepsilon`: random shock :math:`\\sim U(0, h_\\rho)`
+    - :math:`h_\\rho`: maximum production shock parameter (config)
 
     Examples
     --------
@@ -161,15 +161,15 @@ class FirmsCalcBreakevenPrice:
     ---------
     For each firm i:
 
-    1. Calculate total costs: C_i = W_i + I_i
-    2. Calculate breakeven price: P_breakeven,i = C_i / Y_i
-    3. Apply cap (if configured): P_breakeven,i = min(P_breakeven,i, P_i × cap_factor)
+    1. Calculate total costs: :math:`C_i = W_i + I_i`
+    2. Calculate breakeven price: :math:`P_{\\text{breakeven},i} = C_i / Y_i`
+    3. Apply cap (if configured): :math:`P_{\\text{breakeven},i} = \\min(P_{\\text{breakeven},i}, P_i \\times \\text{cap\\_factor})`
 
     where:
 
-    - W: wage bill (total wages owed)
-    - I: interest owed on outstanding loans
-    - Y: current production level
+    - :math:`W`: wage bill (total wages owed)
+    - :math:`I`: interest owed on outstanding loans
+    - :math:`Y`: current production level
     - cap_factor: optional multiplier limiting price increases
 
     Mathematical Notation
@@ -248,12 +248,12 @@ class FirmsAdjustPrice:
     ---------
     For each firm i:
 
-    1. Generate price shock: ε_i ~ U(0, h_η)
+    1. Generate price shock: :math:`\\varepsilon_i \\sim U(0, h_\\eta)`
     2. Apply pricing rule:
-       - If S_i = 0 and P_i < P̄: P_i ← P_i × (1 + ε_i)  [raise]
-       - If S_i > 0 and P_i ≥ P̄: P_i ← P_i × (1 - ε_i)  [lower]
-       - Otherwise: P_i unchanged
-    3. Floor price at breakeven: P_i ← max(P_i, P_breakeven,i)
+       - If :math:`S_i = 0` and :math:`P_i < \\bar{P}`: :math:`P_i \\leftarrow P_i \\times (1 + \\varepsilon_i)` [raise]
+       - If :math:`S_i > 0` and :math:`P_i \\geq \\bar{P}`: :math:`P_i \\leftarrow P_i \\times (1 - \\varepsilon_i)` [lower]
+       - Otherwise: :math:`P_i` unchanged
+    3. Floor price at breakeven: :math:`P_i \\leftarrow \\max(P_i, P_{\\text{breakeven},i})`
 
     Mathematical Notation
     ---------------------
@@ -309,9 +309,9 @@ class FirmsDecideDesiredLabor:
 
     where:
 
-    - L^d: desired labor (number of workers needed)
-    - Y^d: desired production (from FirmsDecideDesiredProduction)
-    - φ: labor productivity (output per worker)
+    - :math:`L^d`: desired labor (number of workers needed)
+    - :math:`Y^d`: desired production (from FirmsDecideDesiredProduction)
+    - :math:`\\phi`: labor productivity (output per worker)
 
     Examples
     --------
@@ -352,9 +352,9 @@ class FirmsDecideVacancies:
 
     where:
 
-    - V: number of vacancies to post
-    - L^d: desired labor (from FirmsDecideDesiredLabor)
-    - L: current labor force
+    - :math:`V`: number of vacancies to post
+    - :math:`L^d`: desired labor (from FirmsDecideDesiredLabor)
+    - :math:`L`: current labor force
 
     Examples
     --------

@@ -28,7 +28,7 @@ Design Notes
 - Banks rank loan applicants by net worth (descending) for default risk assessment
 - Firms fire most expensive workers first to minimize layoffs
 - Credit supply constrained by bank equity and capital requirement (v parameter)
-- Interest rates: r = r̄ × (1 + shock), where shock ~ U(0, h_φ)
+- Interest rates: :math:`r = \\bar{r} \\times (1 + \\varepsilon)`, where :math:`\\varepsilon \\sim U(0, h_\\phi)`
 
 Examples
 --------
@@ -89,9 +89,9 @@ class BanksDecideCreditSupply:
 
     where:
 
-    - C_k: total credit supply (lendable funds) for bank k
-    - E_k: equity base of bank k
-    - v: capital requirement coefficient (Simulation parameter)
+    - :math:`C_k`: total credit supply (lendable funds) for bank k
+    - :math:`E_k`: equity base of bank k
+    - :math:`v`: capital requirement coefficient (Simulation parameter)
 
     Mathematical Notation
     ---------------------
@@ -164,8 +164,8 @@ class BanksDecideInterestRate:
     ---------
     For each bank k:
 
-    1. Generate rate shock: ε_k ~ U(0, h_φ)
-    2. Apply markup: r_k = r̄ × (1 + ε_k)
+    1. Generate rate shock: :math:`\\varepsilon_k \\sim U(0, h_\\phi)`
+    2. Apply markup: :math:`r_k = \\bar{r} \\times (1 + \\varepsilon_k)`
 
     Mathematical Notation
     ---------------------
@@ -174,10 +174,10 @@ class BanksDecideInterestRate:
 
     where:
 
-    - r_k: interest rate charged by bank k
-    - r̄: baseline policy rate (Simulation parameter)
-    - ε_k: random shock ~ U(0, h_φ)
-    - h_φ: maximum interest rate shock parameter (config)
+    - :math:`r_k`: interest rate charged by bank k
+    - :math:`\\bar{r}`: baseline policy rate (Simulation parameter)
+    - :math:`\\varepsilon_k`: random shock :math:`\\sim U(0, h_\\phi)`
+    - :math:`h_\\phi`: maximum interest rate shock parameter (config)
 
     Examples
     --------
@@ -210,9 +210,9 @@ class BanksDecideInterestRate:
     This event must execute after BanksDecideCreditSupply and before
     FirmsPrepareLoanApplications (firms sort banks by rate).
 
-    The baseline policy rate r̄ is a Simulation-level parameter accessed via `sim.r_bar`.
+    The baseline policy rate :math:`\\bar{r}` is a Simulation-level parameter accessed via `sim.r_bar`.
 
-    All banks charge rates >= r̄ since shock ε >=  0.
+    All banks charge rates :math:`\\geq \\bar{r}` since shock :math:`\\varepsilon \\geq 0`.
 
     See Also
     --------
@@ -249,11 +249,11 @@ class FirmsDecideCreditDemand:
 
     where:
 
-    - B_i: credit demand (amount firm needs to borrow)
-    - W_i: wage bill (total wages owed to workers)
-    - A_i: net worth (firm's current funds/assets)
+    - :math:`B_i`: credit demand (amount firm needs to borrow)
+    - :math:`W_i`: wage bill (total wages owed to workers)
+    - :math:`A_i`: net worth (firm's current funds/assets)
 
-    Firms with A_i >= W_i have zero credit demand (self-financed).
+    Firms with :math:`A_i \\geq W_i` have zero credit demand (self-financed).
 
     Mathematical Notation
     ---------------------
@@ -324,8 +324,8 @@ class FirmsCalcCreditMetrics:
     ---------
     For each firm i:
 
-    1. Calculate leverage: l_i = B_i / A_i (if A_i > 0, else l_i = 0)
-    2. Calculate fragility: f_i = μ_i × l_i
+    1. Calculate leverage: :math:`l_i = B_i / A_i` (if :math:`A_i > 0`, else :math:`l_i = 0`)
+    2. Calculate fragility: :math:`f_i = \\mu_i \\times l_i`
 
     Mathematical Notation
     ---------------------
@@ -336,11 +336,11 @@ class FirmsCalcCreditMetrics:
 
     where:
 
-    - l_i: leverage (credit demand relative to net worth)
-    - f_i: projected financial fragility
-    - μ_i: R&D intensity parameter (firm-specific)
-    - B_i: credit demand
-    - A_i: net worth
+    - :math:`l_i`: leverage (credit demand relative to net worth)
+    - :math:`f_i`: projected financial fragility
+    - :math:`\\mu_i`: R&D intensity parameter (firm-specific)
+    - :math:`B_i`: credit demand
+    - :math:`A_i`: net worth
 
     Examples
     --------
@@ -413,7 +413,7 @@ class FirmsPrepareLoanApplications:
 
     Algorithm
     ---------
-    For each firm i with B_i > 0 (credit demand):
+    For each firm i with :math:`B_i > 0` (credit demand):
 
     1. Sample min(max_H, n_banks) banks randomly
     2. Sort sampled banks by interest rate (ascending)
@@ -421,7 +421,7 @@ class FirmsPrepareLoanApplications:
 
     Mathematical Notation
     ---------------------
-    For firm i with B_i > 0:
+    For firm i with :math:`B_i > 0`:
 
     .. math::
         \\text{Sample}_i \\sim \\text{Random}(\\{1, ..., K\\}, k=\\min(H, K), \\text{replace}=False)
@@ -431,7 +431,7 @@ class FirmsPrepareLoanApplications:
     .. math::
         \\text{Queue}_i = \\text{argsort}_{\\text{asc}}(r_k \\text{ for } k \\in \\text{Sample}_i)
 
-    where K = n_banks, H = max_H.
+    where :math:`K` = n_banks, :math:`H` = max_H.
 
     Examples
     --------
@@ -478,7 +478,7 @@ class FirmsPrepareLoanApplications:
     This event must execute after BanksDecideInterestRate and FirmsDecideCreditDemand.
 
     Only firms with positive credit demand prepare applications. Self-financed
-    firms (B_i = 0) are skipped.
+    firms (:math:`B_i = 0`) are skipped.
 
     Firms sample banks randomly then sort by rate. This means firms may miss
     the absolute lowest-rate bank if it's not in their random sample.
@@ -515,7 +515,7 @@ class FirmsSendOneLoanApp:
 
     Algorithm
     ---------
-    For each firm i with credit demand (B_i > 0):
+    For each firm i with credit demand (:math:`B_i > 0`):
 
     1. Check if firm has applications remaining in queue (head pointer >= 0)
     2. Pop next target bank from firm's application queue
@@ -578,13 +578,13 @@ class BanksProvideLoans:
     1. Pop one batch of applications from bank's application queue
     2. Sort applicants by net worth (descending - prefer safer borrowers)
     3. For each applicant i in sorted order:
-       - Check if bank has credit supply remaining (C_k > 0)
-       - Check if firm still needs credit (B_i > 0)
-       - Grant loan amount: L = min(C_k, B_i, requested_amount)
-       - Update firm's total_funds: A_i ← A_i + L
-       - Update firm's credit_demand: B_i ← B_i - L
-       - Update bank's credit_supply: C_k ← C_k - L
-       - Add loan to LoanBook with principal=L, rate=r_k
+       - Check if bank has credit supply remaining (:math:`C_k > 0`)
+       - Check if firm still needs credit (:math:`B_i > 0`)
+       - Grant loan amount: :math:`L = \\min(C_k, B_i)`
+       - Update firm's total_funds: :math:`A_i \\leftarrow A_i + L`
+       - Update firm's credit_demand: :math:`B_i \\leftarrow B_i - L`
+       - Update bank's credit_supply: :math:`C_k \\leftarrow C_k - L`
+       - Add loan to LoanBook with principal=L, rate=:math:`r_k`
     4. Clear bank's application queue if credit supply exhausted
 
     Mathematical Notation
@@ -680,9 +680,9 @@ class FirmsFireWorkers:
 
     Algorithm
     ---------
-    For each firm i with W_i > A_i (wage bill exceeds available funds):
+    For each firm i with :math:`W_i > A_i` (wage bill exceeds available funds):
 
-    1. Calculate unfunded amount: U_i = W_i - A_i
+    1. Calculate unfunded amount: :math:`U_i = W_i - A_i`
     2. Get list of employees sorted by wage (descending)
     3. Fire workers from the list until unfunded amount <= 0:
        - Set worker's employer = -1 (unemployed)
@@ -690,12 +690,12 @@ class FirmsFireWorkers:
        - Set worker's fired flag = True
        - Decrement firm's current_labor
        - Reduce firm's wage_bill by worker's wage
-       - Reduce unfunded amount: U_i ← U_i - wage_j
+       - Reduce unfunded amount: :math:`U_i \\leftarrow U_i - w_j`
     4. Update firm's wage_bill to match new labor force
 
     Mathematical Notation
     ---------------------
-    For firm i with W_i > A_i:
+    For firm i with :math:`W_i > A_i`:
 
     .. math::
         U_i = W_i - A_i
