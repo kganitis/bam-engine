@@ -79,10 +79,10 @@ class CalcAnnualInflationRate:
 
     Algorithm
     ---------
-    1. Check if price history has at least 5 periods (t ≥ 4)
-    2. If insufficient history, set π_t = 0 and skip
-    3. Otherwise, calculate: π_t = (P̄_t - P̄_{t-4}) / P̄_{t-4}
-    4. Append π_t to inflation history
+    1. Check if price history has at least 5 periods (:math:`t \\geq 4`)
+    2. If insufficient history, set :math:`\\pi_t = 0` and skip
+    3. Otherwise, calculate: :math:`\\pi_t = (\\bar{P}_t - \\bar{P}_{t-4}) / \\bar{P}_{t-4}`
+    4. Append :math:`\\pi_t` to inflation history
 
     Mathematical Notation
     ---------------------
@@ -91,9 +91,9 @@ class CalcAnnualInflationRate:
 
     where:
 
-    - π_t: annual inflation rate at period t
-    - P̄_t: average market price at period t
-    - P̄_{t-4}: average market price 4 periods ago (year-over-year)
+    - :math:`\\pi_t`: annual inflation rate at period t
+    - :math:`\\bar{P}_t`: average market price at period t
+    - :math:`\\bar{P}_{t-4}`: average market price 4 periods ago (year-over-year)
 
     Examples
     --------
@@ -154,12 +154,12 @@ class AdjustMinimumWage:
 
     Algorithm
     ---------
-    1. Check if current period is a revision period: (t+1) mod min_wage_rev_period = 0
-    2. Check if sufficient price history exists: t > min_wage_rev_period
+    1. Check if current period is a revision period: :math:`(t+1) \\mod \\text{min\\_wage\\_rev\\_period} = 0`
+    2. Check if sufficient price history exists: :math:`t > \\text{min\\_wage\\_rev\\_period}`
     3. If both conditions met:
-       - Retrieve most recent inflation rate: π_t = inflation_history[-1]
-       - Update minimum wage: ŵ_t = ŵ_{t-1} × (1 + π_t)
-    4. Otherwise, skip revision (ŵ_t = ŵ_{t-1})
+       - Retrieve most recent inflation rate: :math:`\\pi_t = \\text{inflation\\_history}[-1]`
+       - Update minimum wage: :math:`\\hat{w}_t = \\hat{w}_{t-1} \\times (1 + \\pi_t)`
+    4. Otherwise, skip revision (:math:`\\hat{w}_t = \\hat{w}_{t-1}`)
 
     Mathematical Notation
     ---------------------
@@ -168,9 +168,9 @@ class AdjustMinimumWage:
 
     where:
 
-    - ŵ_t: minimum wage at period t
-    - π_t: annual inflation rate
-    - Revision occurs only when: (t+1) mod M = 0, where M = min_wage_rev_period
+    - :math:`\\hat{w}_t`: minimum wage at period t
+    - :math:`\\pi_t`: annual inflation rate
+    - Revision occurs only when: :math:`(t+1) \\mod M = 0`, where :math:`M` = min_wage_rev_period
 
     Examples
     --------
@@ -235,11 +235,11 @@ class FirmsDecideWageOffer:
     ---------
     For each firm i:
 
-    1. Generate wage shock: ε_i ~ U(0, h_ξ)
-    2. If firm has vacancies (V_i > 0):
-       - Apply markup: w'_i = w_{i,t-1} × (1 + ε_i)
-       - Enforce floor: w_i = max(w'_i, ŵ_t)
-    3. Otherwise: w_i = w_{i,t-1} (unchanged)
+    1. Generate wage shock: :math:`\\varepsilon_i \\sim U(0, h_\\xi)`
+    2. If firm has vacancies (:math:`V_i > 0`):
+       - Apply markup: :math:`w'_i = w_{i,t-1} \\times (1 + \\varepsilon_i)`
+       - Enforce floor: :math:`w_i = \\max(w'_i, \\hat{w}_t)`
+    3. Otherwise: :math:`w_i = w_{i,t-1}` (unchanged)
 
     Mathematical Notation
     ---------------------
@@ -251,11 +251,11 @@ class FirmsDecideWageOffer:
 
     where:
 
-    - w_i: wage offer by firm i
-    - ŵ_t: minimum wage at period t
-    - ε_i: wage shock ~ U(0, h_ξ)
-    - h_ξ: maximum wage growth rate parameter (config)
-    - V_i: number of vacancies at firm i
+    - :math:`w_i`: wage offer by firm i
+    - :math:`\\hat{w}_t`: minimum wage at period t
+    - :math:`\\varepsilon_i`: wage shock :math:`\\sim U(0, h_\\xi)`
+    - :math:`h_\\xi`: maximum wage growth rate parameter (config)
+    - :math:`V_i`: number of vacancies at firm i
 
     Examples
     --------
@@ -338,7 +338,7 @@ class WorkersDecideFirmsToApply:
 
     Mathematical Notation
     ---------------------
-    Let H = {i : V_i > 0} be the set of hiring firms (with vacancies).
+    Let :math:`H = \\{i : V_i > 0\\}` be the set of hiring firms (with vacancies).
 
     For unemployed worker j:
 
@@ -440,18 +440,18 @@ class WorkersSendOneRound:
 
     1. Check if worker has applications remaining in queue (head pointer >= 0)
     2. Pop next target firm from worker's application queue
-    3. Check if target firm still has vacancies (V_i > 0)
+    3. Check if target firm still has vacancies (:math:`V_i > 0`)
     4. If yes, append worker ID to firm's application queue
     5. Advance worker's queue pointer
 
     Mathematical Notation
     ---------------------
-    Sequential matching process over R rounds (R = max_M):
+    Sequential matching process over R rounds (:math:`R` = max_M):
 
     .. math::
         \\text{Round } r: \\text{ For each unemployed } j, \\text{ send to firm } \\text{Queue}_j[r]
 
-    Applications processed: A_i(r) = {j : Queue_j[r] = i and V_i > 0}
+    Applications processed: :math:`A_i(r) = \\{j : \\text{Queue}_j[r] = i \\text{ and } V_i > 0\\}`
 
     Examples
     --------
@@ -544,10 +544,10 @@ class FirmsHireWorkers:
 
     where:
 
-    - L_i: current labor force at firm i
-    - V_i: remaining vacancies at firm i
-    - w_i: wage offer by firm i
-    - θ: minimum contract duration (config parameter)
+    - :math:`L_i`: current labor force at firm i
+    - :math:`V_i`: remaining vacancies at firm i
+    - :math:`w_i`: wage offer by firm i
+    - :math:`\\theta`: minimum contract duration (config parameter)
 
     Examples
     --------
@@ -631,8 +631,8 @@ class FirmsCalcWageBill:
     ---------
     For each firm i:
 
-    1. Find all workers employed by firm i: E_i = {j : employer_j = i}
-    2. Sum wages: W_i = Σ_{j ∈ E_i} wage_j
+    1. Find all workers employed by firm i: :math:`E_i = \\{j : \\text{employer}_j = i\\}`
+    2. Sum wages: :math:`W_i = \\sum_{j \\in E_i} w_j`
     3. Store in firm's wage_bill field
 
     Uses vectorized aggregation via np.bincount for efficiency.
@@ -644,9 +644,9 @@ class FirmsCalcWageBill:
 
     where:
 
-    - W_i: total wage bill for firm i
-    - E_i: set of workers employed by firm i
-    - w_j: wage of worker j
+    - :math:`W_i`: total wage bill for firm i
+    - :math:`E_i`: set of workers employed by firm i
+    - :math:`w_j`: wage of worker j
 
     Examples
     --------

@@ -78,7 +78,7 @@ class FirmsPayWages:
     .. math::
         A_i \\leftarrow A_i - W_i
 
-    where A_i = total_funds, W_i = wage_bill.
+    where :math:`A_i` = total_funds, :math:`W_i` = wage_bill.
 
     Examples
     --------
@@ -119,12 +119,12 @@ class WorkersReceiveWage:
 
     Algorithm
     ---------
-    For each employed worker j (employer_j >= 0):
+    For each employed worker j (:math:`\\text{employer}_j \\geq 0`):
 
     .. math::
         I_j \\leftarrow I_j + w_j
 
-    where I_j = income, w_j = wage.
+    where :math:`I_j` = income, :math:`w_j` = wage.
 
     Examples
     --------
@@ -171,9 +171,9 @@ class FirmsRunProduction:
     ---------
     For each firm i:
 
-    1. Calculate output: Y_i = φ_i × L_i
-    2. Add to inventory: S_i ← S_i + Y_i
-    3. Store production: production_i = Y_i
+    1. Calculate output: :math:`Y_i = \\phi_i \\times L_i`
+    2. Add to inventory: :math:`S_i \\leftarrow S_i + Y_i`
+    3. Store production: :math:`\\text{production}_i = Y_i`
 
     Mathematical Notation
     ---------------------
@@ -184,10 +184,10 @@ class FirmsRunProduction:
 
     where:
 
-    - Y_i: production output for firm i
-    - φ_i: labor productivity (output per worker)
-    - L_i: current labor force (number of workers)
-    - S_i: inventory (accumulated unsold goods)
+    - :math:`Y_i`: production output for firm i
+    - :math:`\\phi_i`: labor productivity (output per worker)
+    - :math:`L_i`: current labor force (number of workers)
+    - :math:`S_i`: inventory (accumulated unsold goods)
 
     Examples
     --------
@@ -252,16 +252,16 @@ class WorkersUpdateContracts:
     ---------
     For each employed worker j:
 
-    1. Decrement contract: periods_left_j ← periods_left_j - 1
-    2. If periods_left_j = 0:
-       - Set contract_expired_j = True
-       - Set employer_prev_j = employer_j (store for loyalty)
-       - Set employer_j = -1 (unemployed)
-       - Set wage_j = 0
+    1. Decrement contract: :math:`\\text{periods\\_left}_j \\leftarrow \\text{periods\\_left}_j - 1`
+    2. If :math:`\\text{periods\\_left}_j = 0`:
+       - Set :math:`\\text{contract\\_expired}_j = \\text{True}`
+       - Set :math:`\\text{employer\\_prev}_j = \\text{employer}_j` (store for loyalty)
+       - Set :math:`\\text{employer}_j = -1` (unemployed)
+       - Set :math:`w_j = 0`
     3. Recalculate firm labor counts:
-       - For each firm i: L_i = count of workers with employer = i
+       - For each firm i: :math:`L_i = |\\{j : \\text{employer}_j = i\\}|`
     4. Recalculate firm wage bills:
-       - For each firm i: W_i = Σ wage_j for workers with employer = i
+       - For each firm i: :math:`W_i = \\sum_{j : \\text{employer}_j = i} w_j`
 
     Mathematical Notation
     ---------------------

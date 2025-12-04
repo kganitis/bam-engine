@@ -68,10 +68,10 @@ class FirmsCollectRevenue:
     ---------
     For each firm i:
 
-    1. Calculate units sold: Q_i = Y_i - S_i
-    2. Calculate revenue: R_i = P_i × Q_i
-    3. Calculate gross profit: GP_i = R_i - W_i
-    4. Add revenue to funds: A_i ← A_i + R_i
+    1. Calculate units sold: :math:`Q_i = Y_i - S_i`
+    2. Calculate revenue: :math:`R_i = P_i \\times Q_i`
+    3. Calculate gross profit: :math:`GP_i = R_i - W_i`
+    4. Add revenue to funds: :math:`A_i \\leftarrow A_i + R_i`
 
     Mathematical Notation
     ---------------------
@@ -84,7 +84,7 @@ class FirmsCollectRevenue:
 
         A_i \\leftarrow A_i + R_i
 
-    where Y_i = production, S_i = inventory, P_i = price, W_i = wage_bill, A_i = total_funds.
+    where :math:`Y_i` = production, :math:`S_i` = inventory, :math:`P_i` = price, :math:`W_i` = wage_bill, :math:`A_i` = total_funds.
 
     Examples
     --------
@@ -141,18 +141,18 @@ class FirmsValidateDebtCommitments:
     ---------
     For each firm i:
 
-    1. Calculate total debt: D_i = Σ debt for all loans to firm i
-    2. If A_i >= D_i (can repay):
-       - Pay full debt: A_i ← A_i - D_i
+    1. Calculate total debt: :math:`D_i = \\sum \\text{debt}` for all loans to firm i
+    2. If :math:`A_i \\geq D_i` (can repay):
+       - Pay full debt: :math:`A_i \\leftarrow A_i - D_i`
        - Bank receives payment
        - Remove loans from LoanBook
-       - Net profit: NP_i = GP_i - interest_paid
+       - Net profit: :math:`NP_i = GP_i - \\text{interest\\_paid}`
     3. Else (cannot repay):
-       - Calculate write-off: W = min(D_i - A_i, max(0, A_i))
-       - Proportionally reduce debt by W
-       - Pay remainder: A_i ← 0
+       - Calculate write-off: :math:`W = \\min(D_i - A_i, \\max(0, A_i))`
+       - Proportionally reduce debt by :math:`W`
+       - Pay remainder: :math:`A_i \\leftarrow 0`
        - Bank absorbs loss
-       - Net profit: NP_i = GP_i - interest_paid (partial)
+       - Net profit: :math:`NP_i = GP_i - \\text{interest\\_paid}` (partial)
 
     Examples
     --------
@@ -208,12 +208,12 @@ class FirmsPayDividends:
     ---------
     For each firm i:
 
-    1. If NP_i > 0 (profitable):
-       - Dividends: Div_i = δ × NP_i
-       - Retained: RP_i = (1 - δ) × NP_i
-       - Pay dividends: A_i ← A_i - Div_i
+    1. If :math:`NP_i > 0` (profitable):
+       - Dividends: :math:`Div_i = \\delta \\times NP_i`
+       - Retained: :math:`RP_i = (1 - \\delta) \\times NP_i`
+       - Pay dividends: :math:`A_i \\leftarrow A_i - Div_i`
     2. Else (unprofitable):
-       - Retained: RP_i = NP_i (retain all losses)
+       - Retained: :math:`RP_i = NP_i` (retain all losses)
        - No dividends paid
 
     Mathematical Notation
@@ -231,7 +231,7 @@ class FirmsPayDividends:
 
         \\quad RP_i = NP_i
 
-    where δ = dividend payout ratio (config).
+    where :math:`\\delta` = dividend payout ratio (config).
 
     Examples
     --------
