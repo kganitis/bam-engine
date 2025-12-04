@@ -7,13 +7,13 @@ documentation. System functions are organized by economic phase.
 
 Modules
 -------
-planning : Production targets, costs, prices, labor needs, vacancies (5 functions)
-labor_market : Wage setting, job applications, hiring, wage bills (7 functions)
-credit_market : Credit supply/demand, loan matching, layoffs (8 functions)
-production : Wage payments, production execution, contracts (4 functions + 2 stats)
-goods_market : Consumption decisions, shopping rounds (5 functions)
-revenue : Revenue collection, debt repayment, dividends (3 functions)
-bankruptcy : Insolvency detection, agent replacement (5 functions)
+:mod:`bamengine.events._internal.planning` : Production targets, costs, prices, labor needs, vacancies (5 functions)
+:mod:`bamengine.events._internal.labor_market` : Wage setting, job applications, hiring, wage bills (7 functions)
+:mod:`bamengine.events._internal.credit_market` : Credit supply/demand, loan matching, layoffs (8 functions)
+:mod:`bamengine.events._internal.production` : Wage payments, production execution, contracts (4 functions + 2 stats)
+:mod:`bamengine.events._internal.goods_market` : Consumption decisions, shopping rounds (5 functions)
+:mod:`bamengine.events._internal.revenue` : Revenue collection, debt repayment, dividends (3 functions)
+:mod:`bamengine.events._internal.bankruptcy` : Insolvency detection, agent replacement (5 functions)
 
 Design Pattern
 --------------
