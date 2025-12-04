@@ -65,6 +65,14 @@ napoleon_type_aliases = {
 }
 napoleon_attr_annotations = True
 
+# Custom sections for domain-specific docstrings
+napoleon_custom_sections = [
+    ("Algorithm", "notes_style"),
+    ("Mathematical Notation", "notes_style"),
+    ("Class Attributes", "params_style"),
+    ("Design Guidelines", "notes_style"),
+]
+
 # Numpydoc settings
 numpydoc_show_class_members = False  # Don't show inherited members
 numpydoc_class_members_toctree = False

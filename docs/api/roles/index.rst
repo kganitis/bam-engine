@@ -9,20 +9,6 @@ different aspects of agent behavior in the BAM model.
 
 .. currentmodule:: bamengine.roles
 
-Available Roles
----------------
-
-.. autosummary::
-   :toctree: ../generated
-   :nosignatures:
-
-   Producer
-   Employer
-   Borrower
-   Worker
-   Consumer
-   Lender
-
 Role Submodules
 ---------------
 

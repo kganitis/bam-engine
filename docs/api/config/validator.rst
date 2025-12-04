@@ -1,5 +1,5 @@
-bamengine.config.validator
-==========================
+validator
+=========
 
 .. automodule:: bamengine.config.validator
    :no-members:

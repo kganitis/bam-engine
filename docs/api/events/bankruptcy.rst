@@ -1,5 +1,5 @@
-bamengine.events.bankruptcy
-===========================
+bankruptcy
+==========
 
 .. automodule:: bamengine.events.bankruptcy
    :no-members:

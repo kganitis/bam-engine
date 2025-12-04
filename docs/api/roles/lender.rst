@@ -1,5 +1,5 @@
-bamengine.roles.lender
-======================
+lender
+======
 
 .. automodule:: bamengine.roles.lender
    :no-members:

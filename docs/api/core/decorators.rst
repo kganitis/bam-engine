@@ -1,5 +1,5 @@
-bamengine.core.decorators
-=========================
+decorators
+==========
 
 .. automodule:: bamengine.core.decorators
    :no-members:

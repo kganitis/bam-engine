@@ -1,5 +1,5 @@
-bamengine.roles.borrower
-========================
+borrower
+========
 
 .. automodule:: bamengine.roles.borrower
    :no-members:

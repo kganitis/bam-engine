@@ -1,5 +1,5 @@
-bamengine.core.registry
-=======================
+registry
+========
 
 .. automodule:: bamengine.core.registry
    :no-members:

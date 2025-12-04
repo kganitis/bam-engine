@@ -1,5 +1,5 @@
-bamengine.roles.producer
-========================
+producer
+========
 
 .. automodule:: bamengine.roles.producer
    :no-members:

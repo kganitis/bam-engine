@@ -1,5 +1,5 @@
-bamengine.events.production
-===========================
+production
+==========
 
 .. automodule:: bamengine.events.production
    :no-members:

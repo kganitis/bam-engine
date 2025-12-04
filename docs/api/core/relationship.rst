@@ -1,5 +1,5 @@
-bamengine.core.relationship
-===========================
+relationship
+============
 
 .. automodule:: bamengine.core.relationship
    :no-members:

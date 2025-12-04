@@ -19,17 +19,6 @@ Registry Functions
    get_relationship
    list_relationships
 
-Available Relationships
------------------------
-
-.. currentmodule:: bamengine.relationships
-
-.. autosummary::
-   :toctree: ../generated
-   :nosignatures:
-
-   LoanBook
-
 Relationship Submodules
 -----------------------
 

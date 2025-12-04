@@ -1,5 +1,5 @@
-bamengine.core.pipeline
-=======================
+pipeline
+========
 
 .. automodule:: bamengine.core.pipeline
    :no-members:
