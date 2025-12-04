@@ -1,5 +1,5 @@
-bamengine.roles.worker
-======================
+worker
+======
 
 .. automodule:: bamengine.roles.worker
    :no-members:

@@ -1,5 +1,5 @@
-bamengine.events.labor_market
-=============================
+labor_market
+============
 
 .. automodule:: bamengine.events.labor_market
    :no-members:

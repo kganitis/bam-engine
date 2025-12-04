@@ -40,48 +40,21 @@ Base classes for creating custom components in the ECS architecture.
 .. autosummary::
    :nosignatures:
 
-   core.Role
-   core.Event
-   core.Relationship
+   ~core.role.Role
+   ~core.event.Event
+   ~core.relationship.Relationship
 
 Agent Roles
 -----------
 
 Built-in role components for the three agent types.
-
-**Firm Roles**
-
-.. autosummary::
-   :nosignatures:
-
-   roles.Producer
-   roles.Employer
-   roles.Borrower
-
-**Household Roles**
-
-.. autosummary::
-   :nosignatures:
-
-   roles.Worker
-   roles.Consumer
-
-**Bank Roles**
-
-.. autosummary::
-   :nosignatures:
-
-   roles.Lender
+See :doc:`roles/index` for all available roles.
 
 Relationships
 -------------
 
 Built-in relationship types for agent connections.
-
-.. autosummary::
-   :nosignatures:
-
-   relationships.LoanBook
+See :doc:`relationships/index` for details.
 
 Core Infrastructure
 -------------------
@@ -91,7 +64,7 @@ Pipeline and agent management infrastructure.
 .. autosummary::
    :nosignatures:
 
-   core.Pipeline
+   ~core.Pipeline
    Agent
    AgentType
    Economy
@@ -172,7 +145,7 @@ Configuration and validation classes.
 .. autosummary::
    :nosignatures:
 
-   config.Config
+   ~config.Config
 
 Utilities
 ---------

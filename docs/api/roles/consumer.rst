@@ -1,5 +1,5 @@
-bamengine.roles.consumer
-========================
+consumer
+========
 
 .. automodule:: bamengine.roles.consumer
    :no-members:

@@ -1,5 +1,5 @@
-bamengine.events.planning
-=========================
+planning
+========
 
 .. automodule:: bamengine.events.planning
    :no-members:

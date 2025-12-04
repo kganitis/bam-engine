@@ -1,5 +1,5 @@
-bamengine.events.goods_market
-=============================
+goods_market
+============
 
 .. automodule:: bamengine.events.goods_market
    :no-members:

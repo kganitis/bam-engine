@@ -1,5 +1,5 @@
-bamengine.core.event
-====================
+event
+=====
 
 .. automodule:: bamengine.core.event
    :no-members:

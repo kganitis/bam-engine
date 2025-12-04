@@ -1,5 +1,5 @@
-bamengine.events.economy_stats
-==============================
+economy_stats
+=============
 
 .. automodule:: bamengine.events.economy_stats
    :no-members:

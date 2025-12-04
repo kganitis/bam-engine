@@ -1,5 +1,5 @@
-bamengine.relationships.loanbook
-================================
+loanbook
+========
 
 .. automodule:: bamengine.relationships.loanbook
    :no-members:

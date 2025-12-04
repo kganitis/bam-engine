@@ -1,5 +1,5 @@
-bamengine.core.role
-===================
+role
+====
 
 .. automodule:: bamengine.core.role
    :no-members:

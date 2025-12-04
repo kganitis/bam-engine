@@ -16,13 +16,13 @@ Classes
    :toctree: ../generated
    :nosignatures:
 
-   Role
-   Event
-   Relationship
+   role.Role
+   event.Event
+   relationship.Relationship
    Pipeline
 
-Functions
----------
+Decorators
+----------
 
 .. autosummary::
    :toctree: ../generated
@@ -31,12 +31,6 @@ Functions
    role
    event
    relationship
-   get_role
-   get_event
-   get_relationship
-   list_roles
-   list_events
-   list_relationships
 
 Submodules
 ----------

@@ -1,5 +1,5 @@
-bamengine.events.credit_market
-==============================
+credit_market
+=============
 
 .. automodule:: bamengine.events.credit_market
    :no-members:

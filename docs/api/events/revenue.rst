@@ -1,5 +1,5 @@
-bamengine.events.revenue
-========================
+revenue
+=======
 
 .. automodule:: bamengine.events.revenue
    :no-members:

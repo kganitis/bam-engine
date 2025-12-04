@@ -1,5 +1,5 @@
-bamengine.config.schema
-=======================
+schema
+======
 
 .. automodule:: bamengine.config.schema
    :no-members:
