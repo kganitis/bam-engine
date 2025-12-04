@@ -31,6 +31,7 @@ You'll learn to:
 
 import numpy as np
 
+import bamengine as bam
 from bamengine import Agent, Bool, Float, Int, get_role, ops, role
 
 # Check built-in roles
@@ -300,10 +301,10 @@ reorder_point = np.full(n_firms, 30.0)
 stock_history = [stock.copy()]
 
 # Simulate consumption and reorder
-rng = np.random.default_rng(42)
+rng = bam.make_rng(42)
 for t in range(n_periods):
     # Random consumption
-    consumption = rng.uniform(5, 20, n_firms)
+    consumption = ops.uniform(rng, 5, 20, n_firms)
     stock = ops.maximum(ops.subtract(stock, consumption), 0)
 
     # Reorder if below threshold

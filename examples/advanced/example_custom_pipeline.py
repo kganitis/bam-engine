@@ -201,14 +201,14 @@ print("Created pipeline without dividends")
 
 # Compare with and without dividends
 import matplotlib.pyplot as plt
-import numpy as np
 
 # Default pipeline (with dividends)
 sim_with_div = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
+borr_with_div = sim_with_div.get_role("Borrower")
 nw_with_div = []
 for _ in range(50):
     sim_with_div.step()
-    nw_with_div.append(np.mean(sim_with_div.bor.net_worth))
+    nw_with_div.append(bam.ops.mean(borr_with_div.net_worth))
 
 # Custom pipeline (no dividends)
 sim_no_div = bam.Simulation.init(
@@ -217,10 +217,11 @@ sim_no_div = bam.Simulation.init(
     seed=42,
     pipeline_path=str(no_div_path),
 )
+borr_no_div = sim_no_div.get_role("Borrower")
 nw_no_div = []
 for _ in range(50):
     sim_no_div.step()
-    nw_no_div.append(np.mean(sim_no_div.bor.net_worth))
+    nw_no_div.append(bam.ops.mean(borr_no_div.net_worth))
 
 # Plot comparison
 fig, ax = plt.subplots(figsize=(10, 6))
@@ -501,8 +502,16 @@ for _ in range(n_periods):
 
 # Plot
 fig, ax = plt.subplots(figsize=(10, 6))
-ax.plot(np.array(unemp_low) * 100, label="Low Friction (M=6, H=4, Z=4)", linewidth=2)
-ax.plot(np.array(unemp_high) * 100, label="High Friction (M=2, H=1, Z=1)", linewidth=2)
+ax.plot(
+    bam.ops.multiply(bam.ops.asarray(unemp_low), 100),
+    label="Low Friction (M=6, H=4, Z=4)",
+    linewidth=2,
+)
+ax.plot(
+    bam.ops.multiply(bam.ops.asarray(unemp_high), 100),
+    label="High Friction (M=2, H=1, Z=1)",
+    linewidth=2,
+)
 ax.set_xlabel("Period")
 ax.set_ylabel("Unemployment Rate (%)")
 ax.set_title("Effect of Search Frictions on Unemployment")

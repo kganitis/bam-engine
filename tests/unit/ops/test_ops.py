@@ -258,6 +258,44 @@ class TestAggregation:
         # Should exclude 100.0
         assert result == 2.0
 
+    def test_std_default(self):
+        a = np.array([2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0])
+        result = ops.std(a)
+        np.testing.assert_almost_equal(result, np.std(a))
+
+    def test_std_axis(self):
+        a = np.array([[1.0, 2.0], [3.0, 4.0]])
+        result = ops.std(a, axis=0)
+        np.testing.assert_array_almost_equal(result, np.std(a, axis=0))
+
+    def test_std_with_where(self):
+        """Test std with where clause to filter elements."""
+        values = np.array([1.0, 2.0, 100.0, 3.0])
+        mask = np.array([True, True, False, True])
+        result = ops.std(values, where=mask)
+        # Should exclude 100.0
+        np.testing.assert_almost_equal(result, np.std([1.0, 2.0, 3.0]))
+
+    def test_min_default(self):
+        a = np.array([3.0, 1.0, 4.0, 1.0, 5.0])
+        result = ops.min(a)
+        assert result == 1.0
+
+    def test_min_axis(self):
+        a = np.array([[3.0, 1.0], [4.0, 2.0]])
+        result = ops.min(a, axis=0)
+        np.testing.assert_array_equal(result, [3.0, 1.0])
+
+    def test_max_default(self):
+        a = np.array([3.0, 1.0, 4.0, 1.0, 5.0])
+        result = ops.max(a)
+        assert result == 5.0
+
+    def test_max_axis(self):
+        a = np.array([[3.0, 1.0], [4.0, 2.0]])
+        result = ops.max(a, axis=0)
+        np.testing.assert_array_equal(result, [4.0, 2.0])
+
     def test_any_true(self):
         a = np.array([False, False, True, False])
         result = ops.any(a)
@@ -317,6 +355,29 @@ class TestArrayCreation:
 
     def test_arange_dtype(self):
         result = ops.arange(0, 5, 1)
+        assert result.dtype == np.float64
+
+    def test_asarray_from_list(self):
+        result = ops.asarray([1.0, 2.0, 3.0])
+        np.testing.assert_array_equal(result, [1.0, 2.0, 3.0])
+        assert result.dtype == np.float64
+
+    def test_asarray_from_tuple(self):
+        result = ops.asarray((1.0, 2.0, 3.0))
+        np.testing.assert_array_equal(result, [1.0, 2.0, 3.0])
+        assert result.dtype == np.float64
+
+    def test_asarray_from_array(self):
+        """Asarray on an array returns a view or copy."""
+        original = np.array([1.0, 2.0, 3.0])
+        result = ops.asarray(original)
+        np.testing.assert_array_equal(result, original)
+        assert result.dtype == np.float64
+
+    def test_asarray_converts_int_to_float(self):
+        """Integer lists are converted to float64."""
+        result = ops.asarray([1, 2, 3])
+        np.testing.assert_array_equal(result, [1.0, 2.0, 3.0])
         assert result.dtype == np.float64
 
 
