@@ -5,7 +5,7 @@
 
 [![Tests](https://github.com/kganitis/bam-engine/actions/workflows/test.yml/badge.svg)](https://github.com/kganitis/bam-engine/actions/workflows/test.yml)
 [![codecov](https://codecov.io/github/kganitis/bam-engine/graph/badge.svg?token=YIG31U3OR3?color=brightgreen)](https://codecov.io/github/kganitis/bam-engine)
-[![Benchmarks](https://img.shields.io/badge/benchmarks-ASV-brightgreen)](https://kganitis.github.io/bam-engine/)
+[![Benchmarks](https://img.shields.io/badge/benchmarks-asv-brightgreen)](https://kganitis.github.io/bam-engine/)
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Linter: Ruff](https://img.shields.io/badge/linter-ruff-black)](https://github.com/astral-sh/ruff)

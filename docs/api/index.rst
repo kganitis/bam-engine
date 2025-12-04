@@ -7,14 +7,16 @@ This section contains the API reference for BAM Engine.
    :maxdepth: 2
    :hidden:
 
-   core
-   roles
-   relationships
-   decorators
-   registry
+   simulation
+   core/index
+   roles/index
+   events/index
+   relationships/index
+   economy
+   config/index
    operations
    types
-   config
+   logging
    utilities
 
 .. currentmodule:: bamengine
