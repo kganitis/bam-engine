@@ -10,6 +10,9 @@ import bamengine as bam
 class SimulationSuite:
     """Benchmark suite for full simulation runs."""
 
+    # ASV timeout (seconds) - large/1000 periods needs ~80-90s
+    timeout = 120
+
     # Configuration parameters
     params = ["small", "medium", "large"]
     param_names = ["config"]
