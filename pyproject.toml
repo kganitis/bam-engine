@@ -113,10 +113,10 @@ docs = [
 ]
 
 [project.urls]
-homepage = "https://kganitis.github.io/bam-engine/"
+homepage = "https://bam-engine.readthedocs.io/"
 source = "https://github.com/kganitis/bam-engine"
 tracker = "https://github.com/kganitis/bam-engine/issues"
-changelog = "https://github.com/kganitis/bam-engine/blob/main/CHANGELOG.md"
+changelog = "https://bam-engine.readthedocs.io/en/latest/changelog.html"
 
 # Package Configuration
 
