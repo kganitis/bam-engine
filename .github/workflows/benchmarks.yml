@@ -3,7 +3,15 @@ name: Benchmarks
 on:
   push:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'asv_benchmarks/**'
   workflow_dispatch:
+    inputs:
+      benchmark_tags:
+        description: 'Benchmark all release tags (builds historical data)'
+        type: boolean
+        default: false
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -46,8 +54,18 @@ jobs:
       - name: Run benchmarks
         working-directory: asv_benchmarks
         run: |
-          # Run benchmarks for the current commit only
-          asv run --quick HEAD^!
+          if [ "${{ inputs.benchmark_tags }}" = "true" ]; then
+            # Benchmark all release tags for historical data
+            for tag in $(git tag --sort=version:refname); do
+              echo "Benchmarking $tag..."
+              asv run "$tag^!" || true
+            done
+            # Also benchmark HEAD
+            asv run --quick HEAD^!
+          else
+            # Run benchmarks for the current commit only
+            asv run --quick HEAD^!
+          fi
 
       - name: Generate HTML report
         working-directory: asv_benchmarks
