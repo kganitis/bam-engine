@@ -78,11 +78,35 @@ Test categories:
 * **Property-based tests** (``tests/property/``): Hypothesis-driven randomized testing
 * **Performance tests** (``tests/performance/``): Benchmark regression testing
 
-Benchmarking
-------------
+Performance & Benchmarking
+--------------------------
 
 BAM Engine uses `ASV (Airspeed Velocity) <https://asv.readthedocs.io/>`_ for
 performance benchmarking with historical tracking.
+
+Monitoring Performance
+~~~~~~~~~~~~~~~~~~~~~~
+
+When contributing, ensure changes don't introduce performance regressions:
+
+1. **Run ASV comparison** before submitting a pull request:
+
+   .. code-block:: bash
+
+      cd asv_benchmarks
+      asv continuous HEAD~1 HEAD
+
+2. **For targeted checks**, specify a benchmark suite:
+
+   .. code-block:: bash
+
+      asv continuous -b SimulationSuite HEAD~1 HEAD
+
+3. **Report significant changes** (>5% improvement or regression) in your pull
+   request description.
+
+Running Benchmarks
+~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
@@ -97,17 +121,18 @@ performance benchmarking with historical tracking.
    # Publish and view results
    asv publish && asv preview
 
-For quick local benchmarks and profiling:
+Profiling
+~~~~~~~~~
+
+For detailed function-level profiling:
 
 .. code-block:: bash
 
-   # Macro-benchmarks (full simulation)
-   python benchmarks/bench_full_simulation.py
-
-   # Profiling with cProfile
    python benchmarks/profile_simulation.py
+   snakeviz benchmarks/simulation_profile.prof
 
-See :doc:`performance` for current benchmark results.
+See :doc:`performance` for comprehensive profiling guidance, optimization tips,
+and current benchmark results.
 
 Building Documentation
 ----------------------
