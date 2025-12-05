@@ -476,17 +476,17 @@ class TestFullEventReimplementation:
         custom_event.execute(sim)
 
         # Prices should have changed
-        assert not np.allclose(
-            sim.prod.price, original_price
-        ), "Custom event should change prices"
+        assert not np.allclose(sim.prod.price, original_price), (
+            "Custom event should change prices"
+        )
 
         # Prices should respect constraints
-        assert np.all(
-            sim.prod.price >= sim.prod.breakeven_price
-        ), "All prices should be >= breakeven"
-        assert np.all(
-            sim.prod.price <= sim.prod.breakeven_price * 2.0
-        ), "All prices should be <= 2x breakeven"
+        assert np.all(sim.prod.price >= sim.prod.breakeven_price), (
+            "All prices should be >= breakeven"
+        )
+        assert np.all(sim.prod.price <= sim.prod.breakeven_price * 2.0), (
+            "All prices should be <= 2x breakeven"
+        )
 
         # All prices should be positive
         assert np.all(sim.prod.price > 0), "All prices should be positive"

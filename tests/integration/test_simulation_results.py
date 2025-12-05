@@ -67,15 +67,15 @@ class TestRunWithCollect:
         # With aggregate='mean' (default), role data should be 1D arrays
         for role_name, role_vars in results.role_data.items():
             for var_name, data in role_vars.items():
-                assert data.shape == (
-                    n_periods,
-                ), f"{role_name}.{var_name} has wrong shape: {data.shape}"
+                assert data.shape == (n_periods,), (
+                    f"{role_name}.{var_name} has wrong shape: {data.shape}"
+                )
 
         # Economy data should also be 1D
         for metric_name, data in results.economy_data.items():
-            assert data.shape == (
-                n_periods,
-            ), f"Economy {metric_name} has wrong shape: {data.shape}"
+            assert data.shape == (n_periods,), (
+                f"Economy {metric_name} has wrong shape: {data.shape}"
+            )
 
     def test_run_collect_custom_roles(self):
         """Test custom role selection."""
