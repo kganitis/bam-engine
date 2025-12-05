@@ -15,6 +15,7 @@ Quick Example
 
    from bamengine import event, ops, Simulation
 
+
    @event
    class CustomPricing:
        """Apply markup pricing to all producers."""

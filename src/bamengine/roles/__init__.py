@@ -45,7 +45,7 @@ Access roles from simulation:
 >>> import bamengine as bam
 >>> sim = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
 >>> prod = sim.prod  # Producer role (100 firms)
->>> wrk = sim.wrk    # Worker role (500 households)
+>>> wrk = sim.wrk  # Worker role (500 households)
 >>> prod.price.shape
 (100,)
 >>> wrk.wage.shape
@@ -63,7 +63,7 @@ Use role registry:
 ...     expected_demand=np.ones(10),
 ...     desired_production=np.ones(10),
 ...     labor_productivity=np.ones(10) * 2.0,
-...     breakeven_price=np.ones(10)
+...     breakeven_price=np.ones(10),
 ... )
 >>> prod.price
 array([1., 1., 1., 1., 1., 1., 1., 1., 1., 1.])
@@ -82,10 +82,10 @@ from bamengine.roles.producer import Producer
 from bamengine.roles.worker import Worker
 
 __all__ = [
-    "Producer",
-    "Employer",
-    "Worker",
     "Borrower",
-    "Lender",
     "Consumer",
+    "Employer",
+    "Lender",
+    "Producer",
+    "Worker",
 ]

@@ -29,10 +29,7 @@ For production runs, disable verbose logging to improve performance:
 
 .. code-block:: python
 
-   sim = bam.Simulation.init(
-       logging={"default_level": "ERROR"},
-       seed=42
-   )
+   sim = bam.Simulation.init(logging={"default_level": "ERROR"}, seed=42)
 
 This can provide 10-20% speedup for long simulations by avoiding log message
 formatting overhead.
@@ -77,9 +74,11 @@ multiple CPU cores:
    from multiprocessing import Pool
    import bamengine as bam
 
+
    def run_simulation(seed):
        sim = bam.Simulation.init(seed=seed)
        return sim.run(n_periods=100)
+
 
    with Pool(4) as pool:
        results = pool.map(run_simulation, range(10))

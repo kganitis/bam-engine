@@ -120,8 +120,7 @@ def firms_decide_credit_demand(bor: Borrower) -> None:
     total_demand = bor.credit_demand.sum()
     num_borrowers = np.sum(bor.credit_demand > 0)
     log.info(
-        f"  {num_borrowers} borrowers demand credit, "
-        f"for a total of {total_demand:,.2f}"
+        f"  {num_borrowers} borrowers demand credit, for a total of {total_demand:,.2f}"
     )
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
@@ -142,9 +141,9 @@ def firms_calc_credit_metrics(bor: Borrower) -> None:
     log.info("--- Borrowers Calculating Credit Metrics ---")
     shape = bor.net_worth.shape
 
-    # Permanent scratch buffer
+    # Permanent scratch buffer (may be None on first call)
     frag = bor.projected_fragility
-    if frag is None or frag.shape != shape:
+    if frag is None or frag.shape != shape:  # type: ignore[redundant-expr]
         frag = np.empty(shape, dtype=np.float64)
         bor.projected_fragility = frag
 
@@ -412,8 +411,7 @@ def _clean_queue(
     """
     if log.isEnabledFor(logging.TRACE):
         log.trace(
-            f"    Bank {bank_idx_for_log}: Cleaning queue. "
-            f"Initial raw slice: {slice_}"
+            f"    Bank {bank_idx_for_log}: Cleaning queue. Initial raw slice: {slice_}"
         )
 
     # Drop -1 sentinels
@@ -421,8 +419,7 @@ def _clean_queue(
     if cleaned_slice.size == 0:
         if log.isEnabledFor(logging.TRACE):
             log.trace(
-                f"    Bank {bank_idx_for_log}: "
-                f"Queue empty after dropping sentinels."
+                f"    Bank {bank_idx_for_log}: Queue empty after dropping sentinels."
             )
         return cleaned_slice.astype(np.intp)
 
@@ -599,8 +596,7 @@ def banks_provide_loans(
         lend.credit_supply[k] -= final_amounts.sum()
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
-                f"      Bank {k} state updated: "
-                f"credit_supply={lend.credit_supply[k]}"
+                f"      Bank {k} state updated: credit_supply={lend.credit_supply[k]}"
             )
 
         # flush inbound queue for this bank

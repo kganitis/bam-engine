@@ -215,8 +215,7 @@ def workers_decide_firms_to_apply(
             )
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
-            f"  Initial random firm sample (first 10 workers, if any):\n"
-            f"{sample[:10]}"
+            f"  Initial random firm sample (first 10 workers, if any):\n{sample[:10]}"
         )
 
     # wage-descending partial sort
@@ -474,8 +473,7 @@ def _clean_queue(slice_: Idx1D, wrk: Worker, firm_idx_for_log: int) -> Idx1D:
     """
     if log.isEnabledFor(logging.TRACE):
         log.trace(
-            f"    Firm {firm_idx_for_log}: "
-            f"Cleaning queue. Initial raw slice: {slice_}"
+            f"    Firm {firm_idx_for_log}: Cleaning queue. Initial raw slice: {slice_}"
         )
 
     # Drop -1 sentinels
@@ -483,8 +481,7 @@ def _clean_queue(slice_: Idx1D, wrk: Worker, firm_idx_for_log: int) -> Idx1D:
     if cleaned_slice.size == 0:
         if log.isEnabledFor(logging.TRACE):
             log.trace(
-                f"    Firm {firm_idx_for_log}: "
-                f"Queue empty after dropping sentinels."
+                f"    Firm {firm_idx_for_log}: Queue empty after dropping sentinels."
             )
         return cleaned_slice.astype(np.intp)
 
@@ -657,8 +654,7 @@ def firms_calc_wage_bill(emp: Employer, wrk: Worker) -> None:
     employed_mask = wrk.employed == 1
     num_employed = np.sum(employed_mask)
     log.info(
-        f"  Calculating wage bill based on "
-        f"{num_employed:,} currently employed workers."
+        f"  Calculating wage bill based on {num_employed:,} currently employed workers."
     )
 
     n_firms = emp.wage_offer.size

@@ -55,7 +55,7 @@ def test_calc_propensity_basic() -> None:
     consumers_calc_propensity(con, avg_sav=5.0, beta=0.5)
     # monotone decreasing with savings
     assert con.propensity[0] > con.propensity[1] > con.propensity[2]
-    assert np.all((0.0 < con.propensity) & (con.propensity <= 1.0))
+    assert np.all((con.propensity > 0.0) & (con.propensity <= 1.0))
 
 
 @pytest.mark.parametrize("beta", [0.5, 1.0, 2.0])
@@ -66,7 +66,7 @@ def test_budget_rule_conservation(beta: float) -> None:
     consumers_calc_propensity(con, avg_sav=1.0, beta=0.9)
     consumers_decide_income_to_spend(con)
     np.testing.assert_allclose(con.income_to_spend + con.savings, wealth, rtol=1e-12)
-    assert np.all((con.income == 0.0))
+    assert np.all(con.income == 0.0)
 
 
 def test_budget_rule_zero_avg_savings_guard() -> None:
@@ -90,7 +90,7 @@ def test_pick_firms_basic() -> None:
 
     rows = heads // Z
     targets = con.shop_visits_targets[rows]
-    assert ((targets == -1) | ((0 <= targets) & (targets < prod.price.size))).all()
+    assert ((targets == -1) | ((targets >= 0) & (targets < prod.price.size))).all()
 
 
 def test_pick_firms_loyalty_slot() -> None:
@@ -110,8 +110,8 @@ def test_pick_firms_no_inventory_exits_early() -> None:
     consumers_calc_propensity(con, avg_sav=1.0, beta=0.9)
     consumers_decide_income_to_spend(con)
     consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=rng)
-    assert np.all((con.shop_visits_head == -1))
-    assert np.all((con.shop_visits_targets == -1))
+    assert np.all(con.shop_visits_head == -1)
+    assert np.all(con.shop_visits_targets == -1)
 
 
 def test_loyalty_swap_keeps_prev_at_slot0() -> None:

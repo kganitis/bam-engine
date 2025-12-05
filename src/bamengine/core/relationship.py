@@ -32,8 +32,8 @@ Access relationship in simulation:
 >>> loans = sim.get_relationship("LoanBook")
 >>> # Query loans from specific borrower
 >>> borrower_id = 5
->>> mask = loans.source_ids[:loans.size] == borrower_id
->>> borrower_loans = loans.principal[:loans.size][mask]
+>>> mask = loans.source_ids[: loans.size] == borrower_id
+>>> borrower_loans = loans.principal[: loans.size][mask]
 
 Traditional syntax:
 
@@ -59,7 +59,7 @@ from __future__ import annotations
 
 from abc import ABC
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeVar
 
 import numpy as np
 
@@ -238,7 +238,7 @@ class Relationship(
         *,
         func: Literal["sum", "mean", "count"] = "sum",
         n_sources: int | None = None,
-        out: Optional[Float1D] = None,
+        out: Float1D | None = None,
     ) -> Float1D:
         """
         Aggregate component values grouped by source.
@@ -299,7 +299,7 @@ class Relationship(
         *,
         func: Literal["sum", "mean", "count"] = "sum",
         n_targets: int | None = None,
-        out: Optional[Float1D] = None,
+        out: Float1D | None = None,
     ) -> Float1D:
         """
         Aggregate component values grouped by target.

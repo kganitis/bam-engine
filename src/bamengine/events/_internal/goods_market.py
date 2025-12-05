@@ -253,8 +253,7 @@ def consumers_decide_firms_to_visit(
     )
 
     log.info(
-        f"  Firm selection completed for "
-        f"{consumers_processed:,} consumers with budget."
+        f"  Firm selection completed for {consumers_processed:,} consumers with budget."
     )
     log.info(
         f"  Total firm selections made: {total_selections_made:,} "
@@ -428,8 +427,7 @@ def consumers_shop_one_round(
         )
         log.debug(f"  Firm outcomes: {firms_sold_out:,} firms sold out completely")
         log.debug(
-            f"  Loyalty updates: "
-            f"{loyalty_updates:,} consumers updated largest producer"
+            f"  Loyalty updates: {loyalty_updates:,} consumers updated largest producer"
         )
 
         # Validation check

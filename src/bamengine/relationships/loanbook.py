@@ -47,7 +47,7 @@ Append loans:
 ...     lender_idx=0,
 ...     borrower_indices=np.array([1, 2, 3]),
 ...     amount=np.array([100.0, 150.0, 200.0]),
-...     rate=np.array([0.02, 0.03, 0.02])
+...     rate=np.array([0.02, 0.03, 0.02]),
 ... )
 >>> loans.size
 3
@@ -147,14 +147,14 @@ class LoanBook:
     ...     lender_idx=0,
     ...     borrower_indices=np.array([1, 2, 3]),
     ...     amount=np.array([100.0, 150.0, 200.0]),
-    ...     rate=np.array([0.02, 0.03, 0.02])
+    ...     rate=np.array([0.02, 0.03, 0.02]),
     ... )
 
     Query loans for specific borrower:
 
     >>> borrower_id = 5
-    >>> loan_mask = loans.source_ids[:loans.size] == borrower_id
-    >>> borrower_loans = loans.principal[:loans.size][loan_mask]
+    >>> loan_mask = loans.source_ids[: loans.size] == borrower_id
+    >>> borrower_loans = loans.principal[: loans.size][loan_mask]
     >>> borrower_loans.sum()  # doctest: +SKIP
     250.0
 
@@ -386,7 +386,7 @@ class LoanBook:
         ...     lender_idx=0,
         ...     borrower_indices=np.array([1, 1, 3]),
         ...     amount=np.array([100.0, 50.0, 200.0]),
-        ...     rate=np.array([0.02, 0.03, 0.02])
+        ...     rate=np.array([0.02, 0.03, 0.02]),
         ... )
         >>> debt = loans.debt_per_borrower(n_borrowers=5)
         >>> debt.shape
@@ -430,7 +430,7 @@ class LoanBook:
         ...     lender_idx=0,
         ...     borrower_indices=np.array([1, 1, 3]),
         ...     amount=np.array([100.0, 50.0, 200.0]),
-        ...     rate=np.array([0.02, 0.03, 0.02])
+        ...     rate=np.array([0.02, 0.03, 0.02]),
         ... )
         >>> interest = loans.interest_per_borrower(n_borrowers=5)
         >>> interest.shape
@@ -495,7 +495,7 @@ class LoanBook:
         ...     lender_idx=0,
         ...     borrower_indices=np.array([1, 2, 3]),
         ...     amount=np.array([100.0, 150.0, 200.0]),
-        ...     rate=np.array([0.02, 0.03, 0.02])
+        ...     rate=np.array([0.02, 0.03, 0.02]),
         ... )
         >>> loans.size
         3
@@ -563,12 +563,12 @@ class LoanBook:
         ...     lender_idx=0,
         ...     borrower_indices=np.array([1, 2, 3, 4]),
         ...     amount=np.array([100.0, 150.0, 200.0, 250.0]),
-        ...     rate=np.array([0.02, 0.03, 0.02, 0.03])
+        ...     rate=np.array([0.02, 0.03, 0.02, 0.03]),
         ... )
         >>> loans.size
         4
         >>> # Remove loans with principal > 150
-        >>> mask = loans.principal[:loans.size] > 150.0
+        >>> mask = loans.principal[: loans.size] > 150.0
         >>> removed = loans.drop_rows(mask)
         >>> removed
         2
@@ -638,7 +638,7 @@ class LoanBook:
         ...     lender_idx=0,
         ...     borrower_indices=np.array([1, 2, 3, 4, 5]),
         ...     amount=np.array([100.0, 150.0, 200.0, 250.0, 300.0]),
-        ...     rate=np.array([0.02, 0.03, 0.02, 0.03, 0.02])
+        ...     rate=np.array([0.02, 0.03, 0.02, 0.03, 0.02]),
         ... )
         >>> loans.size
         5
@@ -648,7 +648,7 @@ class LoanBook:
         2
         >>> loans.size
         3
-        >>> np.sort(loans.source_ids[:loans.size])
+        >>> np.sort(loans.source_ids[: loans.size])
         array([1, 3, 5])
 
         See Also
@@ -694,13 +694,13 @@ class LoanBook:
         ...     lender_idx=0,
         ...     borrower_indices=np.array([1, 2]),
         ...     amount=np.array([100.0, 150.0]),
-        ...     rate=np.array([0.02, 0.03])
+        ...     rate=np.array([0.02, 0.03]),
         ... )
         >>> loans.append_loans_for_lender(
         ...     lender_idx=1,
         ...     borrower_indices=np.array([3, 4]),
         ...     amount=np.array([200.0, 250.0]),
-        ...     rate=np.array([0.02, 0.03])
+        ...     rate=np.array([0.02, 0.03]),
         ... )
         >>> loans.size
         4
@@ -710,7 +710,7 @@ class LoanBook:
         2
         >>> loans.size
         2
-        >>> loans.target_ids[:loans.size]
+        >>> loans.target_ids[: loans.size]
         array([1, 1])
 
         See Also

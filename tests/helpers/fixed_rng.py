@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Sequence, Tuple
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -45,11 +46,11 @@ class FixedRNG:
 
     # public API subset
     # noinspection PyTypeHints
-    def integers(  # noqa: D401  (matching numpy.signature)
+    def integers(
         self,
         low: int | np.int64,
         high: int | None = None,
-        size: int | Tuple[int, ...] | None = None,
+        size: int | tuple[int, ...] | None = None,
         dtype: type[np.int64] | np.dtype[np.int64] = np.int64,
         endpoint: bool = False,  # kept for signature parity
     ) -> NDArray[np.int64]:
@@ -68,7 +69,7 @@ class FixedRNG:
     def choice(
         self,
         a: Sequence[int] | _IntArray,
-        size: int | Tuple[int, ...] | None = None,
+        size: int | tuple[int, ...] | None = None,
         replace: bool = True,
         p: Any | None = None,
         axis: int = 0,
@@ -83,7 +84,7 @@ class FixedRNG:
 
         if not replace and n > pool.size:
             raise ValueError(
-                "Cannot take a larger sample than population " "when 'replace=False'"
+                "Cannot take a larger sample than population when 'replace=False'"
             )
 
         # deterministic index stream

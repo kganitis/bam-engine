@@ -6,7 +6,6 @@ in the BAM model. Each firm hires workers and pays wages.
 """
 
 from dataclasses import field
-from typing import Optional
 
 from bamengine.core.decorators import role
 from bamengine.typing import Float1D, Idx1D, Idx2D, Int1D
@@ -100,4 +99,4 @@ class Employer:
     recv_job_apps: Idx2D
 
     # Scratch buffer
-    wage_shock: Optional[Float1D] = field(default=None, repr=False)
+    wage_shock: Float1D | None = field(default=None, repr=False)

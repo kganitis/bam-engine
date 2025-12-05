@@ -304,11 +304,11 @@ class ConfigValidator:
             if not isinstance(val, (int, float)):
                 try:
                     np.asarray(val)  # Verify it's array-like
-                except (ValueError, TypeError):
+                except (ValueError, TypeError) as err:
                     raise ValueError(
                         f"Config parameter '{key}' must be float or array-like, "
                         f"got {type(val).__name__}"
-                    )
+                    ) from err
 
         # Check optional float `cap_factor`
         if "cap_factor" in cfg:
@@ -451,8 +451,8 @@ class ConfigValidator:
             if key in vector_params and not isinstance(val, (int, float)):
                 continue
 
-            # Check minimum
-            if min_val is not None and val < min_val:
+            # Check minimum (all current constraints have min_val, but keeping check for future)
+            if min_val is not None and val < min_val:  # type: ignore[redundant-expr]
                 raise ValueError(
                     f"Config parameter '{key}' must be >= {min_val}, got {val}"
                 )
@@ -568,7 +568,7 @@ class ConfigValidator:
 
         >>> log_cfg = {
         ...     "default_level": "DEBUG",
-        ...     "events": {"workers_send_one_round": "WARNING"}
+        ...     "events": {"workers_send_one_round": "WARNING"},
         ... }
         >>> ConfigValidator._validate_logging(log_cfg)
 
@@ -737,7 +737,9 @@ class ConfigValidator:
         ...   - firms_decide_desired_production
         ...   - workers_send_one_round x 4
         ... '''
-        >>> with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
+        >>> with tempfile.NamedTemporaryFile(
+        ...     mode="w", suffix=".yml", delete=False
+        ... ) as f:
         ...     f.write(yaml_content)
         ...     path = f.name
         >>> ConfigValidator.validate_pipeline_yaml(path)
@@ -749,7 +751,9 @@ class ConfigValidator:
         ... events:
         ...   - nonexistent_event
         ... '''
-        >>> with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
+        >>> with tempfile.NamedTemporaryFile(
+        ...     mode="w", suffix=".yml", delete=False
+        ... ) as f:
         ...     f.write(yaml_content)
         ...     path = f.name
         >>> ConfigValidator.validate_pipeline_yaml(path)  # doctest: +SKIP

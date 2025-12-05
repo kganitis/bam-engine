@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -73,20 +73,20 @@ class _DataCollector:
 
     def __init__(
         self,
-        roles: List[str],
-        variables: Optional[Dict[str, List[str]]],
+        roles: list[str],
+        variables: dict[str, list[str]] | None,
         include_economy: bool,
-        aggregate: Optional[str],
+        aggregate: str | None,
     ) -> None:
         self.roles = roles
         self.variables = variables
         self.include_economy = include_economy
         self.aggregate = aggregate
         # Storage: role_data[role_name][var_name] = list of arrays/scalars
-        self.role_data: Dict[str, Dict[str, List[Any]]] = defaultdict(
+        self.role_data: dict[str, dict[str, list[Any]]] = defaultdict(
             lambda: defaultdict(list)
         )
-        self.economy_data: Dict[str, List[float]] = defaultdict(list)
+        self.economy_data: dict[str, list[float]] = defaultdict(list)
 
     def capture(self, sim: Simulation) -> None:
         """
@@ -154,8 +154,8 @@ class _DataCollector:
                 self.economy_data["inflation"].append(float(ec.inflation_history[-1]))
 
     def finalize(
-        self, config: Dict[str, Any], metadata: Dict[str, Any]
-    ) -> "SimulationResults":
+        self, config: dict[str, Any], metadata: dict[str, Any]
+    ) -> SimulationResults:
         """
         Convert collected data to SimulationResults.
 
@@ -172,7 +172,7 @@ class _DataCollector:
             Results container with collected data as NumPy arrays.
         """
         # Convert role data lists to arrays
-        final_role_data: Dict[str, Dict[str, NDArray[Any]]] = {}
+        final_role_data: dict[str, dict[str, NDArray[Any]]] = {}
         for role_name, role_vars in self.role_data.items():
             final_role_data[role_name] = {}
             for var_name, data_list in role_vars.items():
@@ -186,7 +186,7 @@ class _DataCollector:
                     final_role_data[role_name][var_name] = np.stack(data_list, axis=0)
 
         # Convert economy data lists to arrays
-        final_economy_data: Dict[str, NDArray[Any]] = {}
+        final_economy_data: dict[str, NDArray[Any]] = {}
         for metric_name, data_list in self.economy_data.items():
             if data_list:
                 final_economy_data[metric_name] = np.array(data_list)
@@ -224,27 +224,26 @@ class SimulationResults:
     --------
     >>> sim = bam.Simulation.init(n_firms=100, seed=42)
     >>> results = sim.run(n_periods=100)
-    ...
     >>> # Get all data as DataFrame
     >>> df = results.to_dataframe()
     >>> # Get specific role data
-    >>> prod_df = results.get_role_data('Producer')
+    >>> prod_df = results.get_role_data("Producer")
     >>> # Access economy metrics directly
-    >>> unemployment = results.economy_data['unemployment_rate']
+    >>> unemployment = results.economy_data["unemployment_rate"]
     """
 
-    role_data: Dict[str, Dict[str, NDArray[Any]]] = field(default_factory=dict)
-    economy_data: Dict[str, NDArray[Any]] = field(default_factory=dict)
-    config: Dict[str, Any] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    role_data: dict[str, dict[str, NDArray[Any]]] = field(default_factory=dict)
+    economy_data: dict[str, NDArray[Any]] = field(default_factory=dict)
+    config: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dataframe(
         self,
-        roles: Optional[List[str]] = None,
-        variables: Optional[List[str]] = None,
+        roles: list[str] | None = None,
+        variables: list[str] | None = None,
         include_economy: bool = True,
-        aggregate: Optional[str] = None,
-    ) -> "pd.DataFrame":
+        aggregate: str | None = None,
+    ) -> pd.DataFrame:
         """
         Export results to a pandas DataFrame.
 
@@ -277,9 +276,7 @@ class SimulationResults:
 
         # Get only Producer price and inventory, averaged
         >>> df = results.to_dataframe(
-        ...     roles=['Producer'],
-        ...     variables=['price', 'inventory'],
-        ...     aggregate='mean'
+        ...     roles=["Producer"], variables=["price", "inventory"], aggregate="mean"
         ... )
 
         # Get only economy metrics
@@ -324,7 +321,7 @@ class SimulationResults:
                     dfs.append(df)
                 else:
                     # 2D data, return all agents
-                    n_periods, n_agents = data.shape
+                    _n_periods, n_agents = data.shape
                     columns = {
                         f"{role_name}.{var_name}.{i}": data[:, i]
                         for i in range(n_agents)
@@ -346,8 +343,8 @@ class SimulationResults:
         return result
 
     def get_role_data(
-        self, role_name: str, aggregate: Optional[str] = None
-    ) -> "pd.DataFrame":
+        self, role_name: str, aggregate: str | None = None
+    ) -> pd.DataFrame:
         """
         Get data for a specific role as a DataFrame.
 
@@ -370,15 +367,15 @@ class SimulationResults:
 
         Examples
         --------
-        >>> prod_df = results.get_role_data('Producer')
-        >>> prod_mean = results.get_role_data('Producer', aggregate='mean')
+        >>> prod_df = results.get_role_data("Producer")
+        >>> prod_mean = results.get_role_data("Producer", aggregate="mean")
         """
         return self.to_dataframe(
             roles=[role_name], include_economy=False, aggregate=aggregate
         )
 
     @property
-    def economy_metrics(self) -> "pd.DataFrame":
+    def economy_metrics(self) -> pd.DataFrame:
         """
         Get economy-wide metrics as a DataFrame.
 
@@ -395,7 +392,7 @@ class SimulationResults:
         Examples
         --------
         >>> econ_df = results.economy_metrics
-        >>> econ_df[['unemployment_rate', 'avg_price']].plot()
+        >>> econ_df[["unemployment_rate", "avg_price"]].plot()
         """
         pd = _import_pandas()
         if not self.economy_data:
@@ -406,7 +403,7 @@ class SimulationResults:
         return df
 
     @property
-    def summary(self) -> "pd.DataFrame":
+    def summary(self) -> pd.DataFrame:
         """
         Get summary statistics for key metrics.
 
@@ -446,15 +443,15 @@ class SimulationResults:
 
         Examples
         --------
-        >>> results.save('results.h5')
-        >>> results.save('results.pkl')
+        >>> results.save("results.h5")
+        >>> results.save("results.pkl")
         """
         # Implementation would use pandas HDFStore or pickle
         # This is a placeholder for the interface
         raise NotImplementedError("Save functionality not yet implemented")
 
     @classmethod
-    def load(cls, filepath: str) -> "SimulationResults":
+    def load(cls, filepath: str) -> SimulationResults:
         """
         Load results from disk.
 
@@ -470,7 +467,7 @@ class SimulationResults:
 
         Examples
         --------
-        >>> results = SimulationResults.load('results.h5')
+        >>> results = SimulationResults.load("results.h5")
         """
         # Implementation would use pandas HDFStore or pickle
         # This is a placeholder for the interface

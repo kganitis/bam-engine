@@ -183,21 +183,21 @@ def test_prepare_applications_basic() -> None:
     for f in active:
         assert bor.loan_apps_head[f] >= 0
         row = bor.loan_apps_targets[f]
-        assert ((0 <= row) & (row < lend.interest_rate.size)).all()
+        assert ((row >= 0) & (row < lend.interest_rate.size)).all()
 
 
 def test_prepare_applications_single_trial() -> None:
     bor, lend, _, rng, _ = _mini_state(H=1)
     firms_decide_credit_demand(bor)
     firms_prepare_loan_applications(bor, lend, max_H=1, rng=rng)
-    assert np.all((bor.loan_apps_head[bor.credit_demand > 0] % 1 == 0))
+    assert np.all(bor.loan_apps_head[bor.credit_demand > 0] % 1 == 0)
 
 
 def test_prepare_applications_no_demand() -> None:
     bor = mock_borrower(n=2, queue_h=2, credit_demand=np.zeros(2))
     lend = mock_lender(n=2, queue_h=2)
     firms_prepare_loan_applications(bor, lend, max_H=2, rng=make_rng(0))
-    assert np.all((bor.loan_apps_head == -1))
+    assert np.all(bor.loan_apps_head == -1)
     assert np.all(bor.loan_apps_targets == -1)
 
 

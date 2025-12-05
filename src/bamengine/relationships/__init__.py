@@ -28,14 +28,14 @@ Access LoanBook from simulation:
 >>> loans = sim.get_relationship("loanbook")
 >>> loans.size  # doctest: +SKIP
 45
->>> loans.principal[:loans.size].sum()  # doctest: +SKIP
+>>> loans.principal[: loans.size].sum()  # doctest: +SKIP
 1250.0
 
 Query loans by borrower:
 
 >>> borrower_id = 5
 >>> import numpy as np
->>> loan_indices = np.where(loans.source_ids[:loans.size] == borrower_id)[0]
+>>> loan_indices = np.where(loans.source_ids[: loans.size] == borrower_id)[0]
 >>> borrower_debt = loans.debt[loan_indices].sum()
 >>> borrower_debt  # doctest: +SKIP
 150.0

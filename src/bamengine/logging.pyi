@@ -26,7 +26,7 @@ logging : Python standard library logging module
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 (CRITICAL, ERROR, WARNING, INFO, DEBUG) = (
     logging.CRITICAL,
@@ -44,6 +44,6 @@ class BamLogger(logging.Logger):
         """Log message at TRACE level (5)."""
         ...
 
-def getLogger(name: Optional[str] = ...) -> BamLogger:
+def getLogger(name: str | None = ...) -> BamLogger:
     """Get a BamLogger instance with trace() method."""
     ...

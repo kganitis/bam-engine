@@ -8,7 +8,7 @@ Reusable builders for component instances in unit / property tests.
 Example
 -------
 >>> prod = mock_producer(5, desired_production=np.arange(5) + 1.0)
->>> emp  = mock_employer(5, current_labor=np.array([2,1,0,3,4]))
+>>> emp = mock_employer(5, current_labor=np.array([2, 1, 0, 3, 4]))
 """
 
 from __future__ import annotations

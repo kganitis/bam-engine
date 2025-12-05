@@ -125,7 +125,6 @@ print("  Agent fields: supplier_id, backup_supplier_id")
 # always be populated.
 
 from dataclasses import field
-from typing import Optional
 
 
 @role
@@ -141,11 +140,11 @@ class QualityControl:
     quality_score: Float  # Overall quality rating (0-100)
 
     # Optional fields (may be None if feature not used)
-    inspection_results: Optional[Float] = field(default=None)
-    warranty_claims: Optional[Int] = field(default=None)
+    inspection_results: Float | None = field(default=None)
+    warranty_claims: Int | None = field(default=None)
 
     # Optional scratch buffers for computation
-    _temp_buffer: Optional[Float] = field(default=None)
+    _temp_buffer: Float | None = field(default=None)
 
 
 print("\nQualityControl role with optional fields:")
@@ -302,7 +301,7 @@ stock_history = [stock.copy()]
 
 # Simulate consumption and reorder
 rng = bam.make_rng(42)
-for t in range(n_periods):
+for _ in range(n_periods):
     # Random consumption
     consumption = ops.uniform(rng, 5, 20, n_firms)
     stock = ops.maximum(ops.subtract(stock, consumption), 0)

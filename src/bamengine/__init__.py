@@ -19,12 +19,7 @@ Basic simulation with default configuration:
 
 Custom configuration via kwargs:
 
->>> sim = bam.Simulation.init(
-...     n_firms=200,
-...     n_households=1000,
-...     n_banks=20,
-...     seed=42
-... )
+>>> sim = bam.Simulation.init(n_firms=200, n_households=1000, n_banks=20, seed=42)
 >>> sim.run(n_periods=100)
 
 Custom configuration via YAML file:

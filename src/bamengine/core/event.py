@@ -177,14 +177,16 @@ class Event(ABC):
 
         >>> @dataclass(slots=True)
         ... class FirmsAdjustPrice(Event):
-        ...     def execute(self, sim): pass
+        ...     def execute(self, sim):
+        ...         pass
         >>> # Registered as 'firms_adjust_price'
 
         Custom name:
 
         >>> @dataclass(slots=True)
         ... class MyEvent(Event, name="custom_event_name"):
-        ...     def execute(self, sim): pass
+        ...     def execute(self, sim):
+        ...         pass
         >>> # Registered as 'custom_event_name'
         """
         super(Event, cls).__init_subclass__(**kwargs)
@@ -226,10 +228,10 @@ class Event(ABC):
 
         >>> # In config YAML or kwargs
         >>> config = {
-        ...     'logging': {
-        ...         'events': {
-        ...             'firms_adjust_price': 'DEBUG',
-        ...             'workers_send_one_round': 'WARNING'
+        ...     "logging": {
+        ...         "events": {
+        ...             "firms_adjust_price": "DEBUG",
+        ...             "workers_send_one_round": "WARNING",
         ...         }
         ...     }
         ... }

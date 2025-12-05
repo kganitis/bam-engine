@@ -40,11 +40,7 @@ Mix YAML and kwargs:
 
 Custom pipeline:
 
->>> sim = be.Simulation.init(
-...     n_firms=100,
-...     pipeline_path="custom_pipeline.yml",
-...     seed=42
-... )
+>>> sim = be.Simulation.init(n_firms=100, pipeline_path="custom_pipeline.yml", seed=42)
 
 Custom logging:
 
@@ -53,7 +49,7 @@ Custom logging:
 ...     "events": {
 ...         "workers_send_one_round": "WARNING",
 ...         "firms_hire_workers": "INFO",
-...     }
+...     },
 ... }
 >>> sim = be.Simulation.init(logging=log_config)
 

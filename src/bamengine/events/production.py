@@ -301,8 +301,7 @@ class WorkersUpdateContracts:
     Verify labor counts match:
 
     >>> worker_counts = np.bincount(
-    ...     sim.wrk.employer[sim.wrk.employed],
-    ...     minlength=sim.emp.current_labor.size
+    ...     sim.wrk.employer[sim.wrk.employed], minlength=sim.emp.current_labor.size
     ... )
     >>> np.array_equal(worker_counts, sim.emp.current_labor)
     True

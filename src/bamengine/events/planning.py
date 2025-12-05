@@ -364,7 +364,9 @@ class FirmsDecideVacancies:
     >>> event.execute(sim)
     >>> (sim.emp.n_vacancies >= 0).all()
     True
-    >>> (sim.emp.n_vacancies == sim.emp.desired_labor - sim.emp.current_labor).all()  # doctest: +SKIP
+    >>> (
+    ...     sim.emp.n_vacancies == sim.emp.desired_labor - sim.emp.current_labor
+    ... ).all()  # doctest: +SKIP
     True
 
     See Also

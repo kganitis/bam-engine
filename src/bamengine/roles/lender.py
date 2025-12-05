@@ -6,7 +6,6 @@ in the BAM model. Each bank provides credit to firms and charges interest.
 """
 
 from dataclasses import field
-from typing import Optional
 
 from bamengine.core.decorators import role
 from bamengine.typing import Float1D, Idx1D, Idx2D
@@ -96,4 +95,4 @@ class Lender:
     recv_loan_apps: Idx2D
 
     # Scratch buffer
-    opex_shock: Optional[Float1D] = field(default=None, repr=False)
+    opex_shock: Float1D | None = field(default=None, repr=False)

@@ -451,7 +451,7 @@ class UnemploymentInsurance:
             total_paid = benefit * n_unemployed
 
             logger.info(
-                f"UI payments: {n_unemployed} recipients, " f"total {total_paid:.2f}"
+                f"UI payments: {n_unemployed} recipients, total {total_paid:.2f}"
             )
 
 

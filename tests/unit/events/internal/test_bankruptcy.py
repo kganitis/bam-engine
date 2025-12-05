@@ -61,9 +61,9 @@ def test_mark_bankrupt_firms_fires_workers_and_purges_loans() -> None:
     assert np.array_equal(ec.exiting_firms, [1])
 
     # all workers of firm-1 flags set
-    assert np.all((wrk.employed[[0, 1, 2]] == 0))
-    assert np.all((wrk.fired[[0, 1, 2]] == 0))
-    assert np.all((wrk.employer[[0, 1, 2]] == -1))
+    assert np.all(wrk.employed[[0, 1, 2]] == 0)
+    assert np.all(wrk.fired[[0, 1, 2]] == 0)
+    assert np.all(wrk.employer[[0, 1, 2]] == -1)
 
     # employer books wiped
     assert emp.current_labor[1] == 0

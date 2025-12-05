@@ -115,6 +115,7 @@ intersphinx_mapping = {
     "pandas": ("https://pandas.pydata.org/docs/", None),
 }
 
+
 # Custom sorting for examples within each subsection
 class BasicExampleOrder:
     """Custom ordering for basic examples."""

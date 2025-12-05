@@ -72,8 +72,9 @@ See Also
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 if TYPE_CHECKING:  # pragma: no cover
     from bamengine.core import Role
@@ -120,8 +121,8 @@ def role(
     >>> from bamengine.typing import Float
     >>> @role
     ... class Producer:
-    ...    price: Float
-    ...    production: Float
+    ...     price: Float
+    ...     production: Float
 
     With custom name:
 
@@ -210,14 +211,14 @@ def event(
     >>> from bamengine import Simulation
     >>> @event
     ... class Planning:
-    ...    def execute(self, sim: Simulation) -> None:
+    ...     def execute(self, sim: Simulation) -> None:
     ...         pass  # implementation
 
     With custom name:
 
     >>> @event(name="my_planning")
     ... class Planning:
-    ...    def execute(self, sim: Simulation) -> None:
+    ...     def execute(self, sim: Simulation) -> None:
     ...         pass  # implementation
     """
     # Import here to avoid circular imports
@@ -323,7 +324,7 @@ def relationship(
     ...     source=get_role("Worker"),
     ...     target=get_role("Employer"),
     ...     cardinality="many-to-many",
-    ...     name="MultiJobEmployment"
+    ...     name="MultiJobEmployment",
     ... )
     ... class Employment:
     ...     wage: Float

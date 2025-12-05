@@ -16,9 +16,11 @@ Quick Example
    from bamengine import role
    from bamengine.typing import Float, Int
 
+
    @role
    class Inventory:
        """Custom inventory role for agents."""
+
        goods_on_hand: Float
        reorder_point: Float
        days_until_delivery: Int

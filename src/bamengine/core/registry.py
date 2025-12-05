@@ -108,7 +108,7 @@ def get_role(name: str) -> type[Role]:
     ...     price=np.array([1.0, 1.2]),
     ...     production=np.array([100.0, 120.0]),
     ...     inventory=np.array([0.0, 10.0]),
-    ...     labor_productivity=np.array([2.0, 2.0])
+    ...     labor_productivity=np.array([2.0, 2.0]),
     ... )
 
     Use in simulation:
@@ -134,7 +134,7 @@ def get_role(name: str) -> type[Role]:
     if name not in _ROLE_REGISTRY:
         available = ", ".join(sorted(_ROLE_REGISTRY.keys()))
         raise KeyError(
-            f"Role '{name}' not found in registry. " f"Available roles: {available}"
+            f"Role '{name}' not found in registry. Available roles: {available}"
         )
     return _ROLE_REGISTRY[name]
 
@@ -173,7 +173,7 @@ def get_event(name: str) -> type[Event]:
     Check event availability:
 
     >>> from bamengine.core.registry import list_events
-    >>> 'firms_adjust_price' in list_events()
+    >>> "firms_adjust_price" in list_events()
     True
 
     See Also
@@ -184,7 +184,7 @@ def get_event(name: str) -> type[Event]:
     if name not in _EVENT_REGISTRY:
         available = ", ".join(sorted(_EVENT_REGISTRY.keys()))
         raise KeyError(
-            f"Event '{name}' not found in registry. " f"Available events: {available}"
+            f"Event '{name}' not found in registry. Available events: {available}"
         )
     return _EVENT_REGISTRY[name]
 
@@ -220,7 +220,7 @@ def get_relationship(name: str) -> type[Relationship]:
     ...     lender_idx=0,
     ...     borrower_indices=np.array([1, 2]),
     ...     amount=np.array([100.0, 200.0]),
-    ...     rate=np.array([0.05, 0.05])
+    ...     rate=np.array([0.05, 0.05]),
     ... )
     >>> loans.size
     2
@@ -247,9 +247,9 @@ def list_roles() -> list[str]:
     --------
     >>> from bamengine.core.registry import list_roles
     >>> roles = list_roles()
-    >>> 'Producer' in roles
+    >>> "Producer" in roles
     True
-    >>> 'Worker' in roles
+    >>> "Worker" in roles
     True
     """
     return sorted(_ROLE_REGISTRY.keys())
@@ -270,7 +270,7 @@ def list_events() -> list[str]:
     >>> events = list_events()
     >>> len(events)  # Should be 39 BAM events + any custom
     39
-    >>> 'firms_adjust_price' in events
+    >>> "firms_adjust_price" in events
     True
     """
     return sorted(_EVENT_REGISTRY.keys())
@@ -289,7 +289,7 @@ def list_relationships() -> list[str]:
     --------
     >>> from bamengine.core.registry import list_relationships
     >>> rels = list_relationships()
-    >>> 'LoanBook' in rels
+    >>> "LoanBook" in rels
     True
     """
     return sorted(_RELATIONSHIP_REGISTRY.keys())

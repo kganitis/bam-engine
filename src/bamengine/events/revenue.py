@@ -259,7 +259,9 @@ class FirmsPayDividends:
     Unprofitable firms retain all losses:
 
     >>> unprofitable = sim.bor.net_profit <= 0
-    >>> np.allclose(sim.bor.retained_profit[unprofitable], sim.bor.net_profit[unprofitable])
+    >>> np.allclose(
+    ...     sim.bor.retained_profit[unprofitable], sim.bor.net_profit[unprofitable]
+    ... )
     True
 
     Notes

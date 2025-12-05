@@ -16,9 +16,11 @@ Quick Example
    from bamengine import relationship, get_role
    from bamengine.typing import Float, Int
 
+
    @relationship(source=get_role("Worker"), target=get_role("Employer"))
    class Employment:
        """Employment relationship between workers and firms."""
+
        wage: Float
        contract_duration: Int
        start_period: Int
