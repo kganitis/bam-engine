@@ -78,9 +78,9 @@ class TestSimulationInvariants:
 
         # Production is non-negative
         assert (sim.prod.production >= 0).all(), "Production must be non-negative"
-        assert (
-            sim.prod.desired_production >= 0
-        ).all(), "Desired production non-negative"
+        assert (sim.prod.desired_production >= 0).all(), (
+            "Desired production non-negative"
+        )
 
         # No NaN or Inf values
         assert np.isfinite(sim.prod.price).all(), "Prices must be finite"
@@ -88,9 +88,9 @@ class TestSimulationInvariants:
 
         # Employment constraints
         assert (sim.emp.current_labor >= 0).all(), "Labor must be non-negative"
-        assert (
-            sim.emp.current_labor <= n_households
-        ).all(), "Can't employ more than population"
+        assert (sim.emp.current_labor <= n_households).all(), (
+            "Can't employ more than population"
+        )
 
     @given(
         n_firms=n_firms_strategy,
@@ -118,17 +118,17 @@ class TestSimulationInvariants:
 
             # Prices should remain positive and finite
             assert (sim.prod.price > 0).all(), f"Non-positive price at period {period}"
-            assert np.isfinite(
-                sim.prod.price
-            ).all(), f"Infinite price at period {period}"
+            assert np.isfinite(sim.prod.price).all(), (
+                f"Infinite price at period {period}"
+            )
 
             # Production should be non-negative and finite
-            assert (
-                sim.prod.production >= 0
-            ).all(), f"Negative production at period {period}"
-            assert np.isfinite(
-                sim.prod.production
-            ).all(), f"Infinite production at period {period}"
+            assert (sim.prod.production >= 0).all(), (
+                f"Negative production at period {period}"
+            )
+            assert np.isfinite(sim.prod.production).all(), (
+                f"Infinite production at period {period}"
+            )
 
             # No mass unemployment (at least some employed)
             employed_count = sim.wrk.employed.sum()
@@ -204,9 +204,9 @@ class TestLaborMarketInvariants:
 
         # Each firm's labor cannot exceed population
         assert (sim.emp.current_labor >= 0).all(), "Negative labor"
-        assert (
-            sim.emp.current_labor <= n_households
-        ).all(), "Firm employs more than population"
+        assert (sim.emp.current_labor <= n_households).all(), (
+            "Firm employs more than population"
+        )
 
         # Sum of firm labor should match employed workers
         total_firm_labor = sim.emp.current_labor.sum()
@@ -233,9 +233,9 @@ class TestLaborMarketInvariants:
             employed_mask = sim.wrk.employed
             if employed_mask.any():
                 employed_wages = sim.wrk.wage[employed_mask]
-                assert (
-                    employed_wages >= sim.ec.min_wage
-                ).all(), "Employed wage below minimum"
+                assert (employed_wages >= sim.ec.min_wage).all(), (
+                    "Employed wage below minimum"
+                )
 
 
 @pytest.mark.invariants
@@ -275,9 +275,9 @@ class TestFinancialInvariants:
 
             # Banks that survive must have positive equity
             # (bankrupt banks are replaced)
-            assert (
-                sim.lend.equity_base > 0
-            ).all(), "Bank with non-positive equity survived"
+            assert (sim.lend.equity_base > 0).all(), (
+                "Bank with non-positive equity survived"
+            )
 
 
 @pytest.mark.invariants

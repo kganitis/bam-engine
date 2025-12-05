@@ -111,6 +111,6 @@ def test_all_event_names_lowercase_snake_case():
         assert event_name.islower(), f"Event {event_name} not lowercase"
         # Should use underscores (no hyphens or camelCase)
         assert "-" not in event_name, f"Event {event_name} contains hyphen"
-        assert not any(
-            c.isupper() for c in event_name
-        ), f"Event {event_name} has uppercase"
+        assert not any(c.isupper() for c in event_name), (
+            f"Event {event_name} has uppercase"
+        )
