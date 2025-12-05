@@ -109,9 +109,9 @@ class TestLongRunningStability:
         # Unemployment should be reasonable
         employed = sim.wrk.employed.sum()
         unemployment_rate = 1.0 - (employed / sim.n_households)
-        assert (
-            0.0 <= unemployment_rate <= 0.9
-        ), f"Unemployment unreasonable: {unemployment_rate:.2%}"
+        assert 0.0 <= unemployment_rate <= 0.9, (
+            f"Unemployment unreasonable: {unemployment_rate:.2%}"
+        )
 
         # Total production should be reasonable (positive and finite)
         total_production = sim.prod.production.sum()
@@ -182,9 +182,9 @@ class TestCumulativeErrors:
             # Employment should match across roles
             total_employed = sim.wrk.employed.sum()
             total_firm_labor = sim.emp.current_labor.sum()
-            assert (
-                abs(total_employed - total_firm_labor) <= 1
-            ), "Labor accounting mismatch"
+            assert abs(total_employed - total_firm_labor) <= 1, (
+                "Labor accounting mismatch"
+            )
 
 
 class TestStressConditions:
@@ -297,9 +297,9 @@ class TestDeterminism:
         final_prices2 = sim2.prod.price.copy()
 
         # Results should be identical
-        assert (
-            final_production1 == final_production2
-        ), "Total production not deterministic"
+        assert final_production1 == final_production2, (
+            "Total production not deterministic"
+        )
         np.testing.assert_array_equal(
             final_prices1, final_prices2, err_msg="Prices not deterministic"
         )
