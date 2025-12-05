@@ -70,7 +70,6 @@ test = [
     "snakeviz>=2.2.0",
 ]
 lint = [
-    "black>=24.1",
     "ruff>=0.4",
     "mypy>=1.9",
     "types-PyYAML>=6.0",
@@ -99,7 +98,6 @@ test = [
     "pandas>=2.0",
 ]
 lint = [
-    "black>=24.1",
     "ruff>=0.4",
     "mypy>=1.9",
     "types-PyYAML>=6.0",
@@ -152,7 +150,7 @@ exclude = [
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "NPY", "B", "UP", "PT", "SIM", "RUF"]
 ignore = [
-    "E501",   # Black handles line length
+    "E501",   # Ruff format handles line length
     "W505",   # Doc line too long (math equations in docstrings)
     "B008",   # Allow function calls in defaults (make_rng() pattern for testing)
     "B024",   # Allow abstract base class without abstract methods (marker classes)
@@ -218,20 +216,6 @@ enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
 [[tool.mypy.overrides]]
 module = "bamengine.simulation"
 disable_error_code = ["call-arg"]
-
-[tool.black]
-line-length = 88
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-    asv_benchmarks/env
-    | docs/_build
-    | docs/auto_examples
-    | \.venv
-    | build
-    | dist
-)/
-'''
 
 [tool.pytest.ini_options]
 minversion = "8.0"

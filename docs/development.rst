@@ -26,8 +26,7 @@ Code Style
 
 BAM Engine uses the following tools for code quality:
 
-* `Black <https://github.com/psf/black>`_ for code formatting
-* `Ruff <https://github.com/astral-sh/ruff>`_ for linting
+* `Ruff <https://github.com/astral-sh/ruff>`_ for formatting and linting
 * `Mypy <http://mypy-lang.org/>`_ for type checking
 
 Run all code quality checks:
@@ -35,7 +34,7 @@ Run all code quality checks:
 .. code-block:: bash
 
    # Format code (auto-fixes)
-   black .
+   ruff format .
 
    # Lint code (auto-fixes when possible)
    ruff check --fix .
@@ -44,7 +43,7 @@ Run all code quality checks:
    mypy src/
 
    # All checks in one command
-   black . && ruff check --fix . && mypy src/
+   ruff format . && ruff check --fix . && mypy src/
 
 The configuration in ``pyproject.toml`` automatically includes ``src/``, ``tests/``,
 ``benchmarks/``, ``examples/``, and ``docs/conf.py`` while excluding generated files.
@@ -169,7 +168,7 @@ When contributions are open:
 2. Create a feature branch (``git checkout -b feature/my-feature``)
 3. Make changes and add tests
 4. Run the full test suite (``pytest``)
-5. Run code quality checks (``black . && ruff check --fix . && mypy src/``)
+5. Run code quality checks (``ruff format . && ruff check --fix . && mypy src/``)
 6. Commit with a descriptive message
 7. Push and open a pull request
 

@@ -9,8 +9,7 @@
 [![Benchmarks](https://img.shields.io/badge/benchmarks-asv-brightgreen)](https://kganitis.github.io/bam-engine/)
 
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/kganitis/bam-engine/main.svg)](https://results.pre-commit.ci/latest/github/kganitis/bam-engine/main)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Linter: Ruff](https://img.shields.io/badge/linter-ruff-black)](https://github.com/astral-sh/ruff)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Type Checked](https://img.shields.io/badge/type%20checked-mypy-black)](http://mypy-lang.org/)
 
 # BAM Engine
