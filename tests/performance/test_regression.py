@@ -85,7 +85,7 @@ def test_no_performance_regression_small():
     assert elapsed < threshold, (
         f"Performance regression detected (Small config): "
         f"{elapsed:.3f}s > {threshold:.3f}s threshold "
-        f"(baseline: {BASELINE_SMALL:.3f}s, +{(elapsed/BASELINE_SMALL - 1)*100:.1f}%)"
+        f"(baseline: {BASELINE_SMALL:.3f}s, +{(elapsed / BASELINE_SMALL - 1) * 100:.1f}%)"
     )
 
     # Print performance info (even on success)
@@ -107,7 +107,7 @@ def test_no_performance_regression_medium():
     assert elapsed < threshold, (
         f"Performance regression detected (Medium config): "
         f"{elapsed:.3f}s > {threshold:.3f}s threshold "
-        f"(baseline: {BASELINE_MEDIUM:.3f}s, +{(elapsed/BASELINE_MEDIUM - 1)*100:.1f}%)"
+        f"(baseline: {BASELINE_MEDIUM:.3f}s, +{(elapsed / BASELINE_MEDIUM - 1) * 100:.1f}%)"
     )
 
     # Print performance info (even on success)
@@ -129,7 +129,7 @@ def test_no_performance_regression_large():
     assert elapsed < threshold, (
         f"Performance regression detected (Large config): "
         f"{elapsed:.3f}s > {threshold:.3f}s threshold "
-        f"(baseline: {BASELINE_LARGE:.3f}s, +{(elapsed/BASELINE_LARGE - 1)*100:.1f}%)"
+        f"(baseline: {BASELINE_LARGE:.3f}s, +{(elapsed / BASELINE_LARGE - 1) * 100:.1f}%)"
     )
 
     # Print performance info (even on success)

@@ -37,7 +37,8 @@ Use decorators for simplified syntax:
 >>>
 >>> @event
 ... class MyEvent:
-...     def execute(self, sim): pass
+...     def execute(self, sim):
+...         pass
 
 Access registry:
 
@@ -55,7 +56,8 @@ See Also
 :mod:`bamengine.core.registry` : Registry functions
 """
 
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 from bamengine.core.agent import Agent, AgentType
 from bamengine.core.decorators import event as event_decorator

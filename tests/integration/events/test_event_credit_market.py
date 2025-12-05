@@ -126,7 +126,7 @@ def test_credit_market_post_state_consistency(tiny_sched: Simulation) -> None:
 
     # exhausted banks have flushed queues
     mask_exhausted = sch.lend.credit_supply < 1e-9
-    assert np.all((sch.lend.recv_loan_apps_head[mask_exhausted] == -1))
+    assert np.all(sch.lend.recv_loan_apps_head[mask_exhausted] == -1)
 
     # LoanBook capacity >= size
     assert sch.lb.capacity >= sch.lb.size

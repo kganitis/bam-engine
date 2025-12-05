@@ -16,12 +16,7 @@ Create a simulation with :meth:`~bamengine.Simulation.init`:
    sim = bam.Simulation.init(seed=42)
 
    # Custom agent counts
-   sim = bam.Simulation.init(
-       n_firms=200,
-       n_households=1000,
-       n_banks=15,
-       seed=42
-   )
+   sim = bam.Simulation.init(n_firms=200, n_households=1000, n_banks=15, seed=42)
 
 Running Periods
 ---------------

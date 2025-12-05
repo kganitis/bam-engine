@@ -72,7 +72,7 @@ def update_avg_mkt_price(
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
-            f"  Price update parameters: alpha={alpha:.3f}, " f"trim_pct={trim_pct:.3f}"
+            f"  Price update parameters: alpha={alpha:.3f}, trim_pct={trim_pct:.3f}"
         )
 
     # calculate trimmed weighted mean

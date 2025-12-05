@@ -34,8 +34,6 @@ Notes
 - Top-k selection uses argpartition for O(n) performance vs O(n log n) for sort
 """
 
-from typing import Optional
-
 import numpy as np
 from numpy.random import Generator, default_rng
 
@@ -104,7 +102,7 @@ def trim_mean(values: Float1D, trim_pct: float = 0.05) -> float:
 
 def trimmed_weighted_mean(
     values: Float1D,
-    weights: Optional[Float1D] = None,
+    weights: Float1D | None = None,
     trim_pct: float = 0.05,
     min_weight: float = 1e-3,
 ) -> float:
@@ -237,7 +235,7 @@ def sample_beta_with_mean(
     low, high : float or None, optional
         Bounds of the target interval.  If either is None, it is derived as::
 
-            low  = mean * (1 - relative_margin)
+            low = mean * (1 - relative_margin)
             high = mean * (1 + relative_margin)
 
         making the mean the midpoint of the interval.  A tiny eps is added
@@ -341,9 +339,9 @@ def select_top_k_indices_sorted(
     - Handles empty input arrays and `k <= 0` by returning appropriately
       shaped empty index arrays.
     """
-    # Ensure input is a NumPy array.
-    if not isinstance(values, np.ndarray):  # TODO Branch uncovered by tests
-        values = np.array(values, dtype=float)
+    # Ensure input is a NumPy array (defensive: accepts list input at runtime).
+    if not isinstance(values, np.ndarray):
+        values = np.array(values, dtype=float)  # type: ignore[unreachable]
 
     # Ensure values is at least 1D for consistent axis=-1 operations.
     if values.ndim == 0:  # TODO Branch uncovered by tests

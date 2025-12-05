@@ -103,7 +103,8 @@ numpy : Underlying array library
 from __future__ import annotations
 
 import builtins
-from typing import TYPE_CHECKING, Any, Optional, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -169,7 +170,7 @@ __all__ = [
 # === Arithmetic Operations ===
 
 
-def add(a: Float, b: float | Float, out: Optional[Float] = None) -> Float:
+def add(a: Float, b: float | Float, out: Float | None = None) -> Float:
     """
     Add two arrays or array and scalar.
 
@@ -201,7 +202,7 @@ def add(a: Float, b: float | Float, out: Optional[Float] = None) -> Float:
     return out
 
 
-def subtract(a: Float, b: float | Float, out: Optional[Float] = None) -> Float:
+def subtract(a: Float, b: float | Float, out: Float | None = None) -> Float:
     """
     Subtract two arrays or array and scalar.
 
@@ -233,7 +234,7 @@ def subtract(a: Float, b: float | Float, out: Optional[Float] = None) -> Float:
     return out
 
 
-def multiply(a: Float, b: float | Float, out: Optional[Float] = None) -> Float:
+def multiply(a: Float, b: float | Float, out: Float | None = None) -> Float:
     """
     Multiply two arrays or array and scalar.
 
@@ -265,7 +266,7 @@ def multiply(a: Float, b: float | Float, out: Optional[Float] = None) -> Float:
     return out
 
 
-def divide(a: Float, b: float | Float, out: Optional[Float] = None) -> Float:
+def divide(a: Float, b: float | Float, out: Float | None = None) -> Float:
     """
     Divide two arrays or array and scalar (safe - avoids division by zero).
 
@@ -479,7 +480,7 @@ def where(condition: Bool, true_val: float | Float, false_val: float | Float) ->
     >>> price = ops.where(
     ...     inventory > 0,
     ...     base_price * 0.95,  # 5% discount
-    ...     base_price * 1.05   # 5% premium
+    ...     base_price * 1.05,  # 5% premium
     ... )
     >>> # price: [95, 105, 95]
     """
@@ -529,7 +530,7 @@ def select(
     ...         current_prod * 1.1,  # Increase 10%
     ...         current_prod * 0.9,  # Decrease 10%
     ...     ],
-    ...     default=current_prod  # Keep same
+    ...     default=current_prod,  # Keep same
     ... )
     >>> # new_prod: [110, 90, 100]
     """
@@ -595,9 +596,7 @@ def minimum(a: Float, b: float | Float) -> Float:
     return np.minimum(a, b)
 
 
-def clip(
-    a: Float, min_val: float, max_val: float, out: Optional[Float] = None
-) -> Float:
+def clip(a: Float, min_val: float, max_val: float, out: Float | None = None) -> Float:
     """
     Clip (limit) values to range [min_val, max_val].
 
@@ -635,9 +634,7 @@ def clip(
 
 
 # noinspection PyShadowingBuiltins
-def sum(
-    a: Float, axis: int | None = None, where: Optional[Bool] = None
-) -> float | Float:
+def sum(a: Float, axis: int | None = None, where: Bool | None = None) -> float | Float:
     """
     Sum array elements, optionally over axis or subset.
 
@@ -674,9 +671,7 @@ def sum(
     return float(np.sum(a[where]))
 
 
-def mean(
-    a: Float, axis: int | None = None, where: Optional[Bool] = None
-) -> float | Float:
+def mean(a: Float, axis: int | None = None, where: Bool | None = None) -> float | Float:
     """
     Calculate mean, optionally over axis or subset.
 
@@ -711,9 +706,7 @@ def mean(
     return float(np.mean(a[where]))
 
 
-def std(
-    a: Float, axis: int | None = None, where: Optional[Bool] = None
-) -> float | Float:
+def std(a: Float, axis: int | None = None, where: Bool | None = None) -> float | Float:
     """
     Calculate standard deviation, optionally over axis or subset.
 
@@ -1053,7 +1046,7 @@ def log(a: Float) -> Float:
 # === Utility Operations ===
 
 
-def unique(a: Union[Float, Int, Agent]) -> Union[Float, Int, Agent]:
+def unique(a: Float | Int | Agent) -> Float | Int | Agent:
     """
     Find unique elements in array.
 
@@ -1078,7 +1071,7 @@ def unique(a: Union[Float, Int, Agent]) -> Union[Float, Int, Agent]:
     return result  # type: ignore[return-value]
 
 
-def bincount(a: Union[Int, Agent], minlength: int = 0) -> Int:
+def bincount(a: Int | Agent, minlength: int = 0) -> Int:
     """
     Count occurrences of each value in array of non-negative ints.
 
@@ -1106,9 +1099,7 @@ def bincount(a: Union[Int, Agent], minlength: int = 0) -> Int:
     return np.bincount(a, minlength=minlength)
 
 
-def isin(
-    element: Union[Float, Int, Agent], test_elements: Union[Float, Int, Agent]
-) -> Bool:
+def isin(element: Float | Int | Agent, test_elements: Float | Int | Agent) -> Bool:
     """
     Test whether each element is in test_elements.
 

@@ -87,8 +87,7 @@ class Role(ABC):
     >>> from bamengine.core.registry import get_role
     >>> prod_cls = get_role("Producer")
     >>> instance = prod_cls(
-    ...     price=np.array([1.0, 1.2]),
-    ...     production=np.array([100.0, 120.0])
+    ...     price=np.array([1.0, 1.2]), production=np.array([100.0, 120.0])
     ... )
 
     Notes
@@ -178,7 +177,7 @@ class Role(ABC):
         ...     price=np.array([1.0]),
         ...     production=np.array([100.0]),
         ...     inventory=np.array([0.0]),
-        ...     labor_productivity=np.array([2.0])
+        ...     labor_productivity=np.array([2.0]),
         ... )
         >>> repr(prod)
         'Producer(fields=4)'

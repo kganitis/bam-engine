@@ -29,10 +29,7 @@ Configure per-event log levels:
 >>> import bamengine as be
 >>> log_config = {
 ...     "default_level": "INFO",
-...     "events": {
-...         "firms_adjust_price": "DEBUG",
-...         "workers_send_one_round": "WARNING"
-...     }
+...     "events": {"firms_adjust_price": "DEBUG", "workers_send_one_round": "WARNING"},
 ... }
 >>> sim = be.Simulation.init(logging=log_config)
 

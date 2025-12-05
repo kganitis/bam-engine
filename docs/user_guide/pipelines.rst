@@ -16,10 +16,7 @@ Quick Example
    import bamengine as bam
 
    # Use custom pipeline
-   sim = bam.Simulation.init(
-       pipeline_path="custom_pipeline.yml",
-       seed=42
-   )
+   sim = bam.Simulation.init(pipeline_path="custom_pipeline.yml", seed=42)
 
    # Or modify the default pipeline
    sim.pipeline.insert_after("firms_adjust_price", "my_custom_event")

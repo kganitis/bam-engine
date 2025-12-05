@@ -183,7 +183,7 @@ if "Producer" in full_results.role_data:
 # Note: pandas is an optional dependency.
 
 try:
-    import pandas  # noqa: F401 - check if pandas is installed
+    import pandas
 
     # Run a new simulation for DataFrame export
     df_results = bam.Simulation.init(n_firms=100, n_households=500, seed=42).run(

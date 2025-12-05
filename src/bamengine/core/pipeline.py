@@ -37,8 +37,7 @@ Load and execute the default pipeline:
 Load a custom pipeline from YAML:
 
 >>> from bamengine.core import Pipeline
->>> pipeline = Pipeline.from_yaml("my_custom_pipeline.yml",
-...                                max_M=5, max_H=3, max_Z=2)
+>>> pipeline = Pipeline.from_yaml("my_custom_pipeline.yml", max_M=5, max_H=3, max_Z=2)
 
 Modify an existing pipeline:
 
@@ -49,8 +48,7 @@ Modify an existing pipeline:
 >>> pipeline.remove("workers_send_one_round_0")
 >>>
 >>> # Replace an event with custom implementation
->>> pipeline.replace("firms_decide_desired_production",
-...                  "my_production_rule")
+>>> pipeline.replace("firms_decide_desired_production", "my_production_rule")
 
 See Also
 --------
@@ -162,24 +160,24 @@ class Pipeline:
 
     >>> from bamengine.core import Pipeline
     >>> sim = Simulation.init(n_firms=100, seed=42)
-    >>> pipeline = Pipeline.from_event_list([
-    ...     "firms_decide_desired_production",
-    ...     "firms_adjust_price",
-    ...     "workers_send_one_round_0",
-    ... ])
+    >>> pipeline = Pipeline.from_event_list(
+    ...     [
+    ...         "firms_decide_desired_production",
+    ...         "firms_adjust_price",
+    ...         "workers_send_one_round_0",
+    ...     ]
+    ... )
     >>> pipeline.execute(sim)
 
     Load pipeline from YAML:
 
-    >>> pipeline = Pipeline.from_yaml("custom_pipeline.yml",
-    ...                                max_M=5, max_H=3, max_Z=2)
+    >>> pipeline = Pipeline.from_yaml("custom_pipeline.yml", max_M=5, max_H=3, max_Z=2)
 
     Modify pipeline after creation:
 
     >>> pipeline.insert_after("firms_adjust_price", "my_custom_event")
     >>> pipeline.remove("workers_send_one_round_0")
-    >>> pipeline.replace("firms_decide_desired_production",
-    ...                  "my_production_rule")
+    >>> pipeline.replace("firms_decide_desired_production", "my_production_rule")
 
     Notes
     -----

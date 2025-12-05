@@ -217,9 +217,9 @@ add_employment_record(
 
 print("\nAfter adding records:")
 print(f"  Size: {employment.size}")
-print(f"  Workers: {employment.source_ids[:employment.size]}")
-print(f"  Employers: {employment.target_ids[:employment.size]}")
-print(f"  Wages: {employment.wage[:employment.size]}")
+print(f"  Workers: {employment.source_ids[: employment.size]}")
+print(f"  Employers: {employment.target_ids[: employment.size]}")
+print(f"  Wages: {employment.wage[: employment.size]}")
 
 # %%
 # Querying Relationships
@@ -277,8 +277,8 @@ for i in range(n_edges):
 demo_emp.size = n_edges
 
 print(f"\nDemo employment network: {demo_emp.size} edges")
-print(f"  Workers: 0-{n_workers-1}")
-print(f"  Employers: 0-{n_employers-1}")
+print(f"  Workers: 0-{n_workers - 1}")
+print(f"  Employers: 0-{n_employers - 1}")
 
 # Aggregate total wages by employer
 wages_by_employer = demo_emp.aggregate_by_target(
@@ -290,7 +290,9 @@ for i, w in enumerate(wages_by_employer):
 
 # Count workers per employer
 workers_per_employer = demo_emp.aggregate_by_target(
-    demo_emp.wage, func="count", n_targets=n_employers  # Any array works for count
+    demo_emp.wage,
+    func="count",
+    n_targets=n_employers,  # Any array works for count
 )
 print(f"\nWorkers per employer: {workers_per_employer.astype(int)}")
 

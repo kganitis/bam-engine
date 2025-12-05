@@ -6,7 +6,6 @@ Each firm (agent) produces consumer goods using labor and sells them at a price.
 """
 
 from dataclasses import field
-from typing import Optional
 
 from bamengine.core.decorators import role
 from bamengine.typing import Bool1D, Float1D
@@ -98,7 +97,7 @@ class Producer:
     price: Float1D
 
     # Scratch buffers (optional for performance)
-    prod_shock: Optional[Float1D] = field(default=None, repr=False)
-    prod_mask_up: Optional[Bool1D] = field(default=None, repr=False)
-    prod_mask_dn: Optional[Bool1D] = field(default=None, repr=False)
-    price_shock: Optional[Float1D] = field(default=None, repr=False)
+    prod_shock: Float1D | None = field(default=None, repr=False)
+    prod_mask_up: Bool1D | None = field(default=None, repr=False)
+    prod_mask_dn: Bool1D | None = field(default=None, repr=False)
+    price_shock: Float1D | None = field(default=None, repr=False)

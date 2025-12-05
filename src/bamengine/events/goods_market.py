@@ -261,7 +261,7 @@ class ConsumersDecideFirmsToVisit:
     >>> consumers_with_budget = np.where(has_budget)[0]
     >>> if len(consumers_with_budget) > 0:
     ...     j = consumers_with_budget[0]
-    ...     firm_ids = sim.con.shop_targets[j, :sim.config.max_Z]
+    ...     firm_ids = sim.con.shop_targets[j, : sim.config.max_Z]
     ...     firm_ids = firm_ids[firm_ids >= 0]
     ...     prices = sim.prod.price[firm_ids]
     ...     np.all(prices[:-1] <= prices[1:])  # Prices non-decreasing

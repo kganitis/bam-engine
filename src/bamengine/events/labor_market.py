@@ -578,10 +578,7 @@ class FirmsHireWorkers:
     Check labor counts match:
 
     >>> # Worker count should match firm labor count
-    >>> worker_counts = np.bincount(
-    ...     sim.wrk.employer[sim.wrk.employed],
-    ...     minlength=100
-    ... )
+    >>> worker_counts = np.bincount(sim.wrk.employer[sim.wrk.employed], minlength=100)
     >>> np.array_equal(worker_counts, sim.emp.current_labor)
     True
 

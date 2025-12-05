@@ -5,8 +5,10 @@
 
 [![Tests](https://github.com/kganitis/bam-engine/actions/workflows/test.yml/badge.svg)](https://github.com/kganitis/bam-engine/actions/workflows/test.yml)
 [![codecov](https://codecov.io/github/kganitis/bam-engine/graph/badge.svg?token=YIG31U3OR3?color=brightgreen)](https://codecov.io/github/kganitis/bam-engine)
+[![Repo-Review](https://github.com/kganitis/bam-engine/actions/workflows/repo-review.yml/badge.svg)](https://github.com/kganitis/bam-engine/actions/workflows/repo-review.yml)
 [![Benchmarks](https://img.shields.io/badge/benchmarks-asv-brightgreen)](https://kganitis.github.io/bam-engine/)
 
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/kganitis/bam-engine/main.svg)](https://results.pre-commit.ci/latest/github/kganitis/bam-engine/main)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Linter: Ruff](https://img.shields.io/badge/linter-ruff-black)](https://github.com/astral-sh/ruff)
 [![Type Checked](https://img.shields.io/badge/type%20checked-mypy-black)](http://mypy-lang.org/)
@@ -55,13 +57,13 @@ df = results.to_dataframe()
 
 BAM Engine uses an **ECS (Entity-Component-System)** architecture:
 
-| Concept | Description |
-|---------|-------------|
-| **Agents** | Lightweight entities with immutable IDs and types (FIRM, HOUSEHOLD, BANK) |
-| **Roles** | Dataclasses storing agent state as NumPy arrays (Producer, Worker, Lender, etc.) |
-| **Events** | Pure functions operating on roles, executed in pipeline order |
-| **Relationships** | Many-to-many connections with sparse COO format (e.g., LoanBook) |
-| **Pipeline** | YAML-configurable event execution with repeat/interleave syntax |
+| Concept           | Description                                                                      |
+| ----------------- | -------------------------------------------------------------------------------- |
+| **Agents**        | Lightweight entities with immutable IDs and types (FIRM, HOUSEHOLD, BANK)        |
+| **Roles**         | Dataclasses storing agent state as NumPy arrays (Producer, Worker, Lender, etc.) |
+| **Events**        | Pure functions operating on roles, executed in pipeline order                    |
+| **Relationships** | Many-to-many connections with sparse COO format (e.g., LoanBook)                 |
+| **Pipeline**      | YAML-configurable event execution with repeat/interleave syntax                  |
 
 ### Agent Roles
 
@@ -115,7 +117,7 @@ See the [development guide](docs/development.rst) for more commands including li
 If you use BAM Engine in your research, please cite:
 
 1. **This software** - Use [`CITATION.cff`](CITATION.cff) or GitHub's "Cite this repository"
-2. **The original BAM model** - Delli Gatti, D., Desiderio, S., Gaffeo, E., Cirillo, P., & Gallegati, M. (2011). *Macroeconomics from the Bottom-up*. Springer. DOI: [10.1007/978-88-470-1971-3](https://doi.org/10.1007/978-88-470-1971-3)
+1. **The original BAM model** - Delli Gatti, D., Desiderio, S., Gaffeo, E., Cirillo, P., & Gallegati, M. (2011). *Macroeconomics from the Bottom-up*. Springer. DOI: [10.1007/978-88-470-1971-3](https://doi.org/10.1007/978-88-470-1971-3)
 
 ## License
 

@@ -78,11 +78,19 @@ class Config:
 
     >>> from bamengine.config import Config
     >>> cfg = Config(
-    ...     h_rho=0.1, h_xi=0.1, h_phi=0.1, h_eta=0.1,
-    ...     max_M=4, max_H=2, max_Z=3,
-    ...     theta=3, beta=2.5, delta=0.4,
-    ...     r_bar=0.02, v=0.1,
-    ...     cap_factor=None
+    ...     h_rho=0.1,
+    ...     h_xi=0.1,
+    ...     h_phi=0.1,
+    ...     h_eta=0.1,
+    ...     max_M=4,
+    ...     max_H=2,
+    ...     max_Z=3,
+    ...     theta=3,
+    ...     beta=2.5,
+    ...     delta=0.4,
+    ...     r_bar=0.02,
+    ...     v=0.1,
+    ...     cap_factor=None,
     ... )
     >>> cfg.beta
     2.5

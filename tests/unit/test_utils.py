@@ -1,4 +1,4 @@
-from typing import Callable
+from collections.abc import Callable
 
 import numpy as np
 import pytest
@@ -29,22 +29,22 @@ def test_select_top_k_indices_sorted_descending_2d() -> None:
     # Check first row
     selected_vals_row0_desc = vals[0, idx_desc[0]]
     expected_vals_row0_desc = np.array([8.0, 5.0, 4.0])
-    assert set(selected_vals_row0_desc) == set(
-        expected_vals_row0_desc
-    ), "Selected elements are not the k largest for row 0"
-    assert np.array_equal(
-        selected_vals_row0_desc, expected_vals_row0_desc
-    ), "Selected elements are not sorted descending for row 0"
+    assert set(selected_vals_row0_desc) == set(expected_vals_row0_desc), (
+        "Selected elements are not the k largest for row 0"
+    )
+    assert np.array_equal(selected_vals_row0_desc, expected_vals_row0_desc), (
+        "Selected elements are not sorted descending for row 0"
+    )
 
     # Check second row
     selected_vals_row1_desc = vals[1, idx_desc[1]]
     expected_vals_row1_desc = np.array([80.0, 50.0, 20.0])
-    assert set(selected_vals_row1_desc) == set(
-        expected_vals_row1_desc
-    ), "Selected elements are not the k largest for row 1"
-    assert np.array_equal(
-        selected_vals_row1_desc, expected_vals_row1_desc
-    ), "Selected elements are not sorted descending for row 1"
+    assert set(selected_vals_row1_desc) == set(expected_vals_row1_desc), (
+        "Selected elements are not the k largest for row 1"
+    )
+    assert np.array_equal(selected_vals_row1_desc, expected_vals_row1_desc), (
+        "Selected elements are not sorted descending for row 1"
+    )
 
 
 def test_select_top_k_indices_sorted_ascending_1d() -> None:
@@ -63,12 +63,12 @@ def test_select_top_k_indices_sorted_ascending_1d() -> None:
 
     selected_vals_asc = vals[idx_asc]
     expected_vals_asc = np.array([5, 10, 20])
-    assert set(selected_vals_asc) == set(
-        expected_vals_asc
-    ), "Selected elements are not the k smallest"
-    assert np.array_equal(
-        selected_vals_asc, expected_vals_asc
-    ), "Selected elements are not sorted ascending"
+    assert set(selected_vals_asc) == set(expected_vals_asc), (
+        "Selected elements are not the k smallest"
+    )
+    assert np.array_equal(selected_vals_asc, expected_vals_asc), (
+        "Selected elements are not sorted ascending"
+    )
 
 
 @pytest.mark.parametrize("descending", [True, False])

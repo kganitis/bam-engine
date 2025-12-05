@@ -4,7 +4,7 @@ Labor-market events internal implementation unit tests.
 
 from __future__ import annotations
 
-from typing import List, Tuple, cast
+from typing import cast
 
 import numpy as np
 import pytest
@@ -203,7 +203,7 @@ def test_prepare_applications_basic() -> None:
 
     rows = heads // M
     targets = wrk.job_apps_targets[rows]
-    assert ((0 <= targets) & (targets < emp.wage_offer.size)).all()
+    assert ((targets >= 0) & (targets < emp.wage_offer.size)).all()
 
 
 def test_prepare_applications_no_unemployed() -> None:
@@ -215,7 +215,7 @@ def test_prepare_applications_no_unemployed() -> None:
     )
     wrk = mock_worker(n=3, employer=np.array([0, 1, 2], dtype=np.intp))  # all employed
     workers_decide_firms_to_apply(wrk, emp, max_M=2, rng=make_rng(0))
-    assert np.all((wrk.job_apps_head == -1))
+    assert np.all(wrk.job_apps_head == -1)
 
 
 def test_prepare_applications_loyalty_to_employer() -> None:
@@ -300,7 +300,7 @@ def test_prepare_applications_one_trial() -> None:
     M = 1
     wrk.job_apps_targets = np.full((wrk.employed.size, M), -1, dtype=np.intp)
     workers_decide_firms_to_apply(wrk, emp, max_M=M, rng=rng)
-    assert np.all((wrk.job_apps_head[~wrk.employed] % M == 0))  # buffer still valid
+    assert np.all(wrk.job_apps_head[~wrk.employed] % M == 0)  # buffer still valid
 
 
 def test_prepare_applications_large_unemployment() -> None:
@@ -371,7 +371,7 @@ def test_workers_send_one_round_queue_bounds() -> None:
     rather than overflow the buffer. Also ensure heads remain within
     [-1, capacity-1] across all firms.
     """
-    emp, wrk, _, M = _mini_state()
+    emp, wrk, _, _M = _mini_state()
     cap = emp.recv_job_apps.shape[1]
 
     # Fill firm-0 queue to capacity (head points at the last valid slot)
@@ -416,7 +416,7 @@ def test_worker_with_empty_list_is_skipped() -> None:
     wrk.job_apps_head[0] = -1
     workers_send_one_round(wrk, emp)
     # queue heads unchanged
-    assert np.all((emp.recv_job_apps_head == -1))
+    assert np.all(emp.recv_job_apps_head == -1)
 
 
 def test_firm_queue_full_drops_application() -> None:
@@ -427,7 +427,7 @@ def test_firm_queue_full_drops_application() -> None:
     workers_send_one_round(wrk, emp)
     # still full, nothing overwritten
     assert emp.recv_job_apps_head[0] == M - 1
-    assert np.all((emp.recv_job_apps[0] == 99))
+    assert np.all(emp.recv_job_apps[0] == 99)
 
 
 def test_workers_send_one_round_exhausted_target() -> None:
@@ -599,14 +599,14 @@ def test_firms_hire_workers_basic() -> None:
 
     # worker-side checks
     assert wrk.employed[[0, 1]].all()  # both hired
-    assert np.all((wrk.employer[[0, 1]] == 0))  # employer set
+    assert np.all(wrk.employer[[0, 1]] == 0)  # employer set
 
     # contract length: same scalar for both hires
     expected_periods = theta + expected_extra
     assert np.all(wrk.periods_left[[0, 1]] == expected_periods)
 
     # queues cleared for those workers
-    assert np.all((wrk.job_apps_head[[0, 1]] == -1))
+    assert np.all(wrk.job_apps_head[[0, 1]] == -1)
 
 
 def test_firms_hire_no_vacancies() -> None:
@@ -646,7 +646,7 @@ def test_firms_hire_exact_fit() -> None:
 
     assert emp.n_vacancies[0] == 0
     assert emp.current_labor[0] == start[0] + 2
-    assert np.all((emp.recv_job_apps[0] == -1))
+    assert np.all(emp.recv_job_apps[0] == -1)
     assert wrk.employed[[0, 2]].sum() == 2  # both hired
 
 
@@ -683,7 +683,7 @@ def _queues_with_dupes(
     n_firms: int,
     M: int,
     n_workers: int,
-) -> st.SearchStrategy[List[List[int]]]:
+) -> st.SearchStrategy[list[list[int]]]:
     """
     Strategy: per firm build a raw queue (list[int]) of length ≤ M that may
     contain duplicates, cross–firm overlaps and “-1” sentinels.
@@ -722,7 +722,7 @@ def _queues_with_dupes(
     )
 )
 def test_hire_invariants_with_duplicates(
-    random_case: Tuple[int, int, NDArray[np.int64], int, List[List[int]]],
+    random_case: tuple[int, int, NDArray[np.int64], int, list[list[int]]],
 ) -> None:
     """
     After `firms_hire_workers` :
@@ -750,7 +750,7 @@ def test_hire_invariants_with_duplicates(
 
     # load raw queues into the employer buffers
     for i in range(n_firms):
-        q: List[int] = q_raw[i]
+        q: list[int] = q_raw[i]
         q_arr: NDArray[np.intp] = np.asarray(q[:M], dtype=np.intp)  # trim to M
         emp.recv_job_apps_head[i] = q_arr.size - 1  # −1 ⇒ empty
         if q_arr.size:
@@ -807,7 +807,7 @@ def test_full_round() -> None:
     assert (emp.n_vacancies >= 0).all()
     assert wrk.employed.any()
     assert emp.current_labor.sum() >= start_total_labor
-    assert np.all((wrk.job_apps_head[wrk.employed] == -1))
+    assert np.all(wrk.job_apps_head[wrk.employed] == -1)
 
 
 def test_firms_calc_wage_bill_basic() -> None:

@@ -11,7 +11,7 @@ import numpy as np
 from bamengine.simulation import Simulation
 
 
-def assert_basic_invariants(sch: Simulation) -> None:  # noqa: C901  (flat, long)
+def assert_basic_invariants(sch: Simulation) -> None:
     """
     Raise ``AssertionError`` if *any* fundamental cross-component relationship
     is violated after a full period.
@@ -77,15 +77,15 @@ def assert_basic_invariants(sch: Simulation) -> None:  # noqa: C901  (flat, long
 
     # Propensity bounded (0,1] whenever present
     if hasattr(sch.con, "propensity"):
-        assert ((0 < sch.con.propensity) & (sch.con.propensity <= 1)).all()
+        assert ((sch.con.propensity > 0) & (sch.con.propensity <= 1)).all()
 
     # Revenue event bookkeeping
     # -------------------------
     # gross_profit = revenue – wage_bill  (checked indirectly: retained/net set)
     # retained ≤ net_profit   and   dividends ≥ 0
     pos = sch.bor.net_profit > 0
-    assert np.all((sch.bor.retained_profit[~pos] == sch.bor.net_profit[~pos]))
-    assert np.all((sch.bor.retained_profit[pos] < sch.bor.net_profit[pos] + 1e-12))
+    assert np.all(sch.bor.retained_profit[~pos] == sch.bor.net_profit[~pos])
+    assert np.all(sch.bor.retained_profit[pos] < sch.bor.net_profit[pos] + 1e-12)
 
     # Exit & entry
     # ------------
@@ -98,6 +98,6 @@ def assert_basic_invariants(sch: Simulation) -> None:  # noqa: C901  (flat, long
         assert not np.isin(
             sch.lb.borrower[: sch.lb.size], sch.ec.exiting_firms
         ).any(), "ledger row still references exited firm"
-        assert not np.isin(
-            sch.lb.lender[: sch.lb.size], sch.ec.exiting_banks
-        ).any(), "ledger row still references exited bank"
+        assert not np.isin(sch.lb.lender[: sch.lb.size], sch.ec.exiting_banks).any(), (
+            "ledger row still references exited bank"
+        )

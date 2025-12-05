@@ -92,8 +92,7 @@ def firms_decide_desired_production(
 
     prod.desired_production[:] = prod.expected_demand
     log.info(
-        f"  Total Desired Production for economy: "
-        f"{prod.desired_production.sum():,.2f}"
+        f"  Total Desired Production for economy: {prod.desired_production.sum():,.2f}"
     )
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
@@ -303,8 +302,7 @@ def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
     if invalid_mask.any():
         n_invalid = np.sum(invalid_mask)
         log.warning(
-            f"  Found and clamped {n_invalid} firms "
-            f"with invalid labor productivity."
+            f"  Found and clamped {n_invalid} firms with invalid labor productivity."
         )
         prod.labor_productivity[invalid_mask] = EPS
 

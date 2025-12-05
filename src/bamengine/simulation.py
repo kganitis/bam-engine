@@ -61,16 +61,19 @@ Step-by-step execution with intermediate analysis:
 >>> for period in range(100):
 ...     sim.step()
 ...     if period % 10 == 0:
-...         print(f"Period {period}: Unemployment = {sim.ec.unemp_rate_history[-1]:.2%}")
+...         print(
+...             f"Period {period}: Unemployment = {sim.ec.unemp_rate_history[-1]:.2%}"
+...         )
 """
 
 from __future__ import annotations
 
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import yaml
@@ -100,7 +103,7 @@ log = logging.getLogger(__name__)
 
 # helpers
 # ---------------------------------------------------------------------------
-def _read_yaml(obj: str | Path | Mapping[str, Any] | None) -> Dict[str, Any]:
+def _read_yaml(obj: str | Path | Mapping[str, Any] | None) -> dict[str, Any]:
     """
     Load configuration from YAML file, dict, or None.
 
@@ -131,7 +134,7 @@ def _read_yaml(obj: str | Path | Mapping[str, Any] | None) -> Dict[str, Any]:
     return dict(data)
 
 
-def _package_defaults() -> Dict[str, Any]:
+def _package_defaults() -> dict[str, Any]:
     """
     Load default configuration from bamengine/config/defaults.yml.
 
@@ -176,8 +179,7 @@ def _validate_float1d(
     arr = np.asarray(arr)
     if arr.ndim != 1 or arr.shape[0] != expected_len:
         raise ValueError(
-            f"{name!s} must be length-{expected_len} 1-D array "
-            f"(got shape={arr.shape})"
+            f"{name!s} must be length-{expected_len} 1-D array (got shape={arr.shape})"
         )
     return arr
 
@@ -241,12 +243,7 @@ class Simulation:
 
     Override configuration parameters:
 
-    >>> sim = bam.Simulation.init(
-    ...     n_firms=200,
-    ...     n_households=1000,
-    ...     n_banks=15,
-    ...     seed=42
-    ... )
+    >>> sim = bam.Simulation.init(n_firms=200, n_households=1000, n_banks=15, seed=42)
     >>> sim.step()  # Single period
     >>> sim.t
     1
@@ -267,10 +264,7 @@ class Simulation:
 
     Custom pipeline:
 
-    >>> sim = bam.Simulation.init(
-    ...     pipeline_path="custom_pipeline.yml",
-    ...     seed=42
-    ... )
+    >>> sim = bam.Simulation.init(pipeline_path="custom_pipeline.yml", seed=42)
     >>> sim.run(n_periods=100)
 
     Notes
@@ -386,7 +380,7 @@ class Simulation:
         return self.config.v
 
     @property
-    def cap_factor(self) -> Optional[float]:
+    def cap_factor(self) -> float | None:
         """Breakeven price cap factor."""
         return self.config.cap_factor
 
@@ -397,7 +391,7 @@ class Simulation:
         cls,
         config: str | Path | Mapping[str, Any] | None = None,
         **overrides: Any,  # anything here wins last
-    ) -> "Simulation":
+    ) -> Simulation:
         """
         Create a new Simulation instance with validated configuration.
 
@@ -448,10 +442,7 @@ class Simulation:
         Override population sizes:
 
         >>> sim = bam.Simulation.init(
-        ...     n_firms=200,
-        ...     n_households=1000,
-        ...     n_banks=15,
-        ...     seed=42
+        ...     n_firms=200, n_households=1000, n_banks=15, seed=42
         ... )
         >>> sim.n_firms
         200
@@ -463,16 +454,13 @@ class Simulation:
         Combine file config with overrides:
 
         >>> sim = bam.Simulation.init(  # doctest: +SKIP
-        ...     config="base_config.yml",
-        ...     seed=42,
-        ...     n_firms=150
+        ...     config="base_config.yml", seed=42, n_firms=150
         ... )
 
         Custom pipeline:
 
         >>> sim = bam.Simulation.init(
-        ...     pipeline_path="custom_pipeline.yml",
-        ...     seed=42
+        ...     pipeline_path="custom_pipeline.yml", seed=42
         ... )  # doctest: +SKIP
 
         Configure logging:
@@ -481,8 +469,8 @@ class Simulation:
         ...     "default_level": "DEBUG",
         ...     "events": {
         ...         "firms_adjust_price": "INFO",
-        ...         "workers_send_one_round": "WARNING"
-        ...     }
+        ...         "workers_send_one_round": "WARNING",
+        ...     },
         ... }
         >>> sim = bam.Simulation.init(logging=log_config, seed=42)
 
@@ -502,7 +490,7 @@ class Simulation:
         :class:`bamengine.core.Pipeline` : Event pipeline configuration
         """
         # 1 + 2 + 3 → one merged dict
-        cfg_dict: Dict[str, Any] = _package_defaults()
+        cfg_dict: dict[str, Any] = _package_defaults()
         cfg_dict.update(_read_yaml(config))
         cfg_dict.update(overrides)
 
@@ -564,7 +552,7 @@ class Simulation:
         )
 
     @staticmethod
-    def _configure_logging(log_config: Dict[str, Any]) -> None:
+    def _configure_logging(log_config: dict[str, Any]) -> None:
         """
         Configure logging levels for bamengine loggers.
 
@@ -605,7 +593,7 @@ class Simulation:
             logging.getLogger(logger_name).setLevel(level_value)
 
     @classmethod
-    def _from_params(cls, *, rng: Rng, **p: Any) -> "Simulation":  # noqa: C901
+    def _from_params(cls, *, rng: Rng, **p: Any) -> Simulation:
         """
         Internal factory method to construct Simulation from validated config dict.
 
@@ -636,7 +624,7 @@ class Simulation:
         init : Public factory method for creating Simulation instances
         """
 
-        # Vector initilization
+        # Vector initialization
 
         # finance
         net_worth = np.full(p["n_firms"], fill_value=p["net_worth_init"])
@@ -834,9 +822,9 @@ class Simulation:
     # ---------------------------------------------------------------------
     def run(
         self,
-        n_periods: Optional[int] = None,
-        collect: Union[bool, Dict[str, Any]] = False,
-    ) -> Optional["SimulationResults"]:
+        n_periods: int | None = None,
+        collect: bool | dict[str, Any] = False,
+    ) -> SimulationResults | None:
         """
         Run the simulation for multiple periods.
 
@@ -890,11 +878,13 @@ class Simulation:
 
         Custom data collection:
 
-        >>> results = sim.run(collect={
-        ...     'roles': ['Producer'],
-        ...     'variables': {'Producer': ['price', 'inventory']},
-        ...     'aggregate': None,  # full per-agent data
-        ... })
+        >>> results = sim.run(
+        ...     collect={
+        ...         "roles": ["Producer"],
+        ...         "variables": {"Producer": ["price", "inventory"]},
+        ...         "aggregate": None,  # full per-agent data
+        ...     }
+        ... )
 
         Notes
         -----
@@ -952,9 +942,7 @@ class Simulation:
 
         return None
 
-    def _create_collector(
-        self, collect: Union[bool, Dict[str, Any]]
-    ) -> "_DataCollector":
+    def _create_collector(self, collect: bool | dict[str, Any]) -> _DataCollector:
         """
         Create data collector from collect parameter.
 
@@ -1061,8 +1049,8 @@ class Simulation:
         # Execute pipeline
         self.pipeline.execute(self)
 
-        if self.ec.destroyed:
-            log.info("SIMULATION TERMINATED")
+        if self.ec.destroyed:  # May be set during pipeline.execute()
+            log.info("SIMULATION TERMINATED")  # type: ignore[unreachable]
 
     def get_role(self, name: str) -> Any:
         """

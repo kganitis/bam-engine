@@ -50,7 +50,7 @@ Check loan book after credit provision:
 
 >>> sim.lb.size  # doctest: +SKIP
 45
->>> sim.lb.principal[:sim.lb.size].sum()  # doctest: +SKIP
+>>> sim.lb.principal[: sim.lb.size].sum()  # doctest: +SKIP
 1250.0
 
 See Also
@@ -370,7 +370,9 @@ class FirmsCalcCreditMetrics:
 
     >>> # For firms with positive net worth
     >>> pos_net_worth = sim.bor.net_worth > 0
-    >>> leverage = sim.bor.credit_demand[pos_net_worth] / sim.bor.net_worth[pos_net_worth]
+    >>> leverage = (
+    ...     sim.bor.credit_demand[pos_net_worth] / sim.bor.net_worth[pos_net_worth]
+    ... )
     >>> expected_fragility = sim.bor.rnd_intensity[pos_net_worth] * leverage
     >>> actual_fragility = sim.bor.projected_fragility[pos_net_worth]
     >>> np.allclose(actual_fragility, expected_fragility)
@@ -466,7 +468,7 @@ class FirmsPrepareLoanApplications:
 
     >>> if len(firm_ids) > 0:
     ...     firm_id = firm_ids[0]
-    ...     bank_ids = sim.bor.loan_apps_targets[firm_id, :sim.config.max_H]
+    ...     bank_ids = sim.bor.loan_apps_targets[firm_id, : sim.config.max_H]
     ...     bank_ids = bank_ids[bank_ids >= 0]  # Exclude -1 (padding)
     ...     rates = sim.lend.interest_rate[bank_ids]
     ...     # Check rates are non-decreasing
@@ -619,17 +621,17 @@ class BanksProvideLoans:
 
     >>> sim.lb.size  # doctest: +SKIP
     15
-    >>> sim.lb.principal[:sim.lb.size].sum()  # doctest: +SKIP
+    >>> sim.lb.principal[: sim.lb.size].sum()  # doctest: +SKIP
     425.0
 
     Verify loan book arithmetic:
 
     >>> import numpy as np
     >>> loans = sim.lb
-    >>> p = loans.principal[:loans.size]
-    >>> r = loans.rate[:loans.size]
-    >>> interest = loans.interest[:loans.size]
-    >>> debt = loans.debt[:loans.size]
+    >>> p = loans.principal[: loans.size]
+    >>> r = loans.rate[: loans.size]
+    >>> interest = loans.interest[: loans.size]
+    >>> debt = loans.debt[: loans.size]
     >>> np.allclose(interest, p * r)
     True
     >>> np.allclose(debt, p * (1 + r))

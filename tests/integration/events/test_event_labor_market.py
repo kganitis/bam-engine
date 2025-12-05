@@ -84,7 +84,7 @@ def test_event_labor_market(tiny_sched: Simulation) -> None:
     vac_reduction = original_vacancies.sum() - sch.emp.n_vacancies.sum()
     assert hires == vac_reduction
 
-    assert np.all((sch.wrk.job_apps_head[sch.wrk.employed == 1] == -1))
+    assert np.all(sch.wrk.job_apps_head[sch.wrk.employed == 1] == -1)
 
 
 def test_labor_market_post_state_consistency(tiny_sched: Simulation) -> None:
@@ -121,4 +121,4 @@ def test_labor_market_post_state_consistency(tiny_sched: Simulation) -> None:
     # inbound queues: any firm that still has vacancies must have
     # an empty queue; firms with zero vacancies may retain stale pointers
     mask_vac = sch.emp.n_vacancies > 0
-    assert np.all((sch.emp.recv_job_apps_head[mask_vac] == -1))
+    assert np.all(sch.emp.recv_job_apps_head[mask_vac] == -1)
