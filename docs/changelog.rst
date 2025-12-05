@@ -10,6 +10,25 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 
    Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.
 
+[0.1.2] - 2025-12-05
+--------------------
+
+Added
+~~~~~
+
+* **Documentation**: New section for API reference, Examples, Performance & Profiling, available on `Read the Docs <https://bam-engine.readthedocs.io>`_
+* **Examples**: Basic and advanced examples using Sphinx Gallery format
+* **Benchmarking**: ASV benchmarking workflow with `GitHub Pages deployment <https://kganitis.github.io/bam-engine/#/>`_
+* **CI/CD**: `sp-repo-review <https://github.com/scientific-python/cookie>`_ compliance for Scientific Python standards
+* **CI/CD**: pre-commit.ci and Dependabot integration
+
+Changed
+~~~~~~~
+
+* Replaced black formatter with ruff-format
+* Refactored all examples to use ``bam.ops`` instead of raw NumPy operations
+* Improved docstrings throughout codebase for Sphinx compatibility
+
 [0.1.1] - 2024-11-14
 --------------------
 
