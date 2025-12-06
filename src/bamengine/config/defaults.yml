@@ -20,7 +20,6 @@
 # - bamengine.config.schema.Config : Configuration dataclass
 # - bamengine.config.validator.ConfigValidator : Validation logic
 # - bamengine.simulation.Simulation.init : Initialize simulation
-# - notes/CALIBRATION.md : Rationale for parameter choices
 #
 # ==============================================================================
 
