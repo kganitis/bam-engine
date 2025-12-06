@@ -67,7 +67,6 @@
 # --------
 # - bamengine.core.pipeline.Pipeline : Pipeline parser and executor
 # - bamengine.events : All event class definitions
-# - notes/PLAN.md : ECS migration plan with pipeline architecture details
 # - tests/integration/test_pipeline_golden_master.py : Pipeline validation tests
 #
 # ==============================================================================
