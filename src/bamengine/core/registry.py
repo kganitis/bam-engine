@@ -76,6 +76,10 @@ _ROLE_REGISTRY: dict[str, type[Role]] = {}
 _EVENT_REGISTRY: dict[str, type[Event]] = {}
 _RELATIONSHIP_REGISTRY: dict[str, type[Relationship]] = {}
 
+# Event hook storage for pipeline positioning
+# Structure: {event_name: {"after": target, "before": target, "replace": target}}
+_EVENT_HOOKS: dict[str, dict[str, str | None]] = {}
+
 
 def get_role(name: str) -> type[Role]:
     """
@@ -295,12 +299,98 @@ def list_relationships() -> list[str]:
     return sorted(_RELATIONSHIP_REGISTRY.keys())
 
 
+def register_event_hook(
+    event_name: str,
+    *,
+    after: str | None = None,
+    before: str | None = None,
+    replace: str | None = None,
+) -> None:
+    """
+    Register a pipeline hook for an event.
+
+    Hooks define where an event should be positioned in the pipeline
+    relative to another event. Only one hook type can be specified per event.
+
+    Parameters
+    ----------
+    event_name : str
+        Name of the event to position (snake_case).
+    after : str, optional
+        Insert this event immediately after the target event.
+    before : str, optional
+        Insert this event immediately before the target event.
+    replace : str, optional
+        Replace the target event with this event.
+
+    Raises
+    ------
+    ValueError
+        If more than one hook type is specified.
+
+    Examples
+    --------
+    Register an event to be inserted after another:
+
+    >>> register_event_hook("my_custom_event", after="firms_pay_dividends")
+
+    The hook will be applied when a pipeline is created via
+    ``Pipeline.from_yaml()`` or ``Pipeline.from_event_list()``.
+
+    See Also
+    --------
+    :func:`get_event_hooks` : Retrieve all registered hooks
+    :func:`bamengine.event` : Decorator that can register hooks automatically
+    """
+    hooks_specified = sum(x is not None for x in [after, before, replace])
+    if hooks_specified > 1:
+        raise ValueError(
+            f"Event '{event_name}' specifies multiple hook types. "
+            "Only one of 'after', 'before', or 'replace' can be used."
+        )
+
+    if hooks_specified == 0:
+        return  # No hook to register
+
+    _EVENT_HOOKS[event_name] = {
+        "after": after,
+        "before": before,
+        "replace": replace,
+    }
+
+
+def get_event_hooks() -> dict[str, dict[str, str | None]]:
+    """
+    Retrieve all registered event hooks.
+
+    Returns
+    -------
+    dict[str, dict[str, str | None]]
+        Dictionary mapping event names to their hook specifications.
+        Each hook spec has keys: 'after', 'before', 'replace' (one non-None).
+
+    Examples
+    --------
+    >>> hooks = get_event_hooks()
+    >>> for event_name, hook_spec in hooks.items():
+    ...     if hook_spec.get("after"):
+    ...         print(f"{event_name} inserts after {hook_spec['after']}")
+
+    See Also
+    --------
+    :func:`register_event_hook` : Register a hook for an event
+    """
+    return _EVENT_HOOKS.copy()
+
+
 def clear_registry() -> None:
     """
     Clear all registrations (useful for testing).
 
     WARNING: This is a destructive operation. Only use in test teardown.
+    Clears roles, events, relationships, and event hooks.
     """
     _ROLE_REGISTRY.clear()
     _EVENT_REGISTRY.clear()
     _RELATIONSHIP_REGISTRY.clear()
+    _EVENT_HOOKS.clear()

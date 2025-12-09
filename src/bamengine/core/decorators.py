@@ -179,6 +179,9 @@ def event(
     cls: type[T] | None = None,
     *,
     name: str | None = None,
+    after: str | None = None,
+    before: str | None = None,
+    replace: str | None = None,
     **dataclass_kwargs: Any,
 ) -> type[T] | Callable[[type[T]], type[T]]:
     """
@@ -188,6 +191,7 @@ def event(
     1. Making the class inherit from Event (if not already)
     2. Applying @dataclass(slots=True)
     3. Handling registration automatically
+    4. Optionally registering pipeline hooks for automatic positioning
 
     Parameters
     ----------
@@ -195,6 +199,13 @@ def event(
         The class to decorate (provided automatically when used without parens)
     name : str | None
         Optional custom name for the event. If None, uses class name (snake_case).
+    after : str | None
+        Insert this event immediately after the target event in the pipeline.
+        Hooks are applied automatically when pipelines are created.
+    before : str | None
+        Insert this event immediately before the target event in the pipeline.
+    replace : str | None
+        Replace the target event with this event in the pipeline.
     **dataclass_kwargs : Any
         Additional keyword arguments to pass to @dataclass.
         By default, slots=True is set.
@@ -203,6 +214,11 @@ def event(
     -------
     type | Callable
         The decorated class or a decorator function
+
+    Raises
+    ------
+    ValueError
+        If more than one of ``after``, ``before``, or ``replace`` is specified.
 
     Examples
     --------
@@ -220,9 +236,53 @@ def event(
     ... class Planning:
     ...     def execute(self, sim: Simulation) -> None:
     ...         pass  # implementation
+
+    With pipeline hook (inserted after another event):
+
+    >>> @event(after="firms_pay_dividends")
+    ... class MyCustomEvent:
+    ...     def execute(self, sim: Simulation) -> None:
+    ...         pass  # This event auto-inserts after firms_pay_dividends
+
+    With pipeline hook (inserted before another event):
+
+    >>> @event(before="firms_adjust_price")
+    ... class PrePricingCheck:
+    ...     def execute(self, sim: Simulation) -> None:
+    ...         pass  # This event auto-inserts before firms_adjust_price
+
+    With pipeline hook (replaces another event):
+
+    >>> @event(replace="firms_decide_desired_production")
+    ... class CustomProductionRule:
+    ...     def execute(self, sim: Simulation) -> None:
+    ...         pass  # This event replaces the original
+
+    Notes
+    -----
+    Pipeline hooks are applied automatically when ``Pipeline.from_yaml()``
+    or ``Pipeline.from_event_list()`` is called. Events must be imported
+    before ``Simulation.init()`` for hooks to take effect.
+
+    Multiple events can target the same hook point. They are inserted in
+    registration order (first registered = closest to target event).
+
+    See Also
+    --------
+    :class:`~bamengine.core.Pipeline` : Pipeline that applies hooks
+    :func:`~bamengine.core.registry.register_event_hook` : Low-level hook registration
     """
     # Import here to avoid circular imports
     from bamengine.core.event import Event
+    from bamengine.core.registry import register_event_hook
+
+    # Validate hook parameters: at most one hook type allowed
+    hooks_specified = sum(x is not None for x in [after, before, replace])
+    if hooks_specified > 1:
+        raise ValueError(
+            "Only one of 'after', 'before', or 'replace' can be specified. "
+            f"Got: after={after!r}, before={before!r}, replace={replace!r}"
+        )
 
     # Set default slots=True unless explicitly overridden
     dataclass_kwargs.setdefault("slots", True)
@@ -253,6 +313,16 @@ def event(
 
         # Apply dataclass decorator
         cls = dataclass(**dataclass_kwargs)(cls)
+
+        # Register pipeline hook if specified
+        # cls.name is now set (either custom or auto-generated from __init_subclass__)
+        if hooks_specified > 0:
+            register_event_hook(
+                cls.name,  # type: ignore[attr-defined]
+                after=after,
+                before=before,
+                replace=replace,
+            )
 
         return cls
 

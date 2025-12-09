@@ -19,4 +19,6 @@ Functions
    list_roles
    list_events
    list_relationships
+   register_event_hook
+   get_event_hooks
    clear_registry

@@ -56,10 +56,10 @@ This example demonstrates:
 
 - Defining custom roles with the ``@role`` decorator
 - Creating custom events with the ``@event`` decorator
+- Using pipeline hooks via ``@event(after=...)`` for automatic event positioning
 - Attaching custom roles to simulations via ``sim.use_role()``
 - Passing extension parameters to ``Simulation.init()``
 - Accessing extension parameters directly as ``sim.param_name``
-- Using ``pipeline.insert_after()`` with a list of events
 - Collecting custom role data in simulation results
 - Using ``results.get_array()`` for easy data access
 """
@@ -123,7 +123,7 @@ print(f"Custom {RnD.name} role defined!")
 # 3. ``FirmsDeductRnDExpenditure``: Adjust retained profits for R&D spending
 
 
-@event
+@event(after="firms_pay_dividends")
 class FirmsComputeRnDIntensity:
     """Compute R&D share and intensity for firms.
 
@@ -134,6 +134,9 @@ class FirmsComputeRnDIntensity:
 
     Requires extension parameters: sigma_min, sigma_max, sigma_decay
     Firms with non-positive profits have sigma = 0 (no R&D).
+
+    Note: This event is automatically inserted after 'firms_pay_dividends'
+    via the ``@event(after=...)`` hook.
     """
 
     def execute(self, sim: bam.Simulation) -> None:
@@ -177,7 +180,7 @@ class FirmsComputeRnDIntensity:
         ops.assign(rnd.rnd_intensity, mu)
 
 
-@event
+@event(after="firms_compute_rn_d_intensity")
 class FirmsApplyProductivityGrowth:
     """Apply productivity growth based on R&D.
 
@@ -186,6 +189,9 @@ class FirmsApplyProductivityGrowth:
     - Update: labor_productivity += z
 
     This implements equation 3.15 from Macroeconomics from the Bottom-up.
+
+    Note: This event is automatically inserted after 'firms_compute_rn_d_intensity'
+    via the ``@event(after=...)`` hook.
     """
 
     def execute(self, sim: bam.Simulation) -> None:
@@ -216,7 +222,7 @@ class FirmsApplyProductivityGrowth:
         ops.assign(prod.labor_productivity, new_productivity)
 
 
-@event
+@event(after="firms_apply_productivity_growth")
 class FirmsDeductRnDExpenditure:
     """Adjust retained profits for R&D expenditure.
 
@@ -225,6 +231,9 @@ class FirmsDeductRnDExpenditure:
 
     This implements the (1-sigma) factor in equation 3.16,
     ensuring retained profits account for R&D spending.
+
+    Note: This event is automatically inserted after 'firms_apply_productivity_growth'
+    via the ``@event(after=...)`` hook.
     """
 
     def execute(self, sim: bam.Simulation) -> None:
@@ -277,28 +286,6 @@ print(
 
 # Verify role is accessible via get_role() too
 assert sim.get_role("RnD") is rnd
-
-# %%
-# Modify Pipeline
-# ---------------
-#
-# Insert the Growth+ events after dividend payment.
-# This timing ensures R&D decisions are made with current period profits.
-
-sim.pipeline.insert_after(
-    "firms_pay_dividends",
-    [
-        FirmsComputeRnDIntensity.name,
-        FirmsApplyProductivityGrowth.name,
-        FirmsDeductRnDExpenditure.name,
-    ],
-)
-
-print("\nPipeline modified - Growth+ events inserted after 'firms_pay_dividends':")
-# Show the relevant section of the pipeline
-for i, evt in enumerate(sim.pipeline.events):
-    if "dividend" in evt.name or "rn_d" in evt.name or "productivity" in evt.name:
-        print(f"  [{i}] {evt.name}")
 
 # %%
 # Run Growth+ Simulation
