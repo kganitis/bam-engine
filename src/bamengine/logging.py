@@ -104,7 +104,7 @@ logging.basicConfig(
 )
 
 
-def getLogger(name: str | None = None) -> BamLogger:
+def getLogger(name: str = "bamengine") -> BamLogger:
     """
     Get a BamLogger instance.
 
@@ -113,8 +113,8 @@ def getLogger(name: str | None = None) -> BamLogger:
 
     Parameters
     ----------
-    name : str, optional
-        Logger name. If None, returns root logger.
+    name : str, optional, default="bamengine"
+        Logger name. If None, returns bamengine logger.
 
     Returns
     -------

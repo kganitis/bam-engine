@@ -380,6 +380,27 @@ class TestArrayCreation:
         np.testing.assert_array_equal(result, [1.0, 2.0, 3.0])
         assert result.dtype == np.float64
 
+    def test_array_from_list(self):
+        """Test array creates from list."""
+        result = ops.array([1.0, 2.0, 3.0])
+        np.testing.assert_array_equal(result, [1.0, 2.0, 3.0])
+        assert result.dtype == np.float64
+
+    def test_array_creates_copy(self):
+        """Test array always creates a copy (not a view)."""
+        original = np.array([1.0, 2.0, 3.0])
+        result = ops.array(original)
+        np.testing.assert_array_equal(result, original)
+        # Modify copy should not affect original
+        result[0] = 999.0
+        assert original[0] == 1.0  # Original unchanged
+
+    def test_array_converts_int_to_float(self):
+        """Integer lists are converted to float64."""
+        result = ops.array([1, 2, 3])
+        np.testing.assert_array_equal(result, [1.0, 2.0, 3.0])
+        assert result.dtype == np.float64
+
 
 class TestMathematical:
     """Test mathematical operations."""
@@ -393,6 +414,25 @@ class TestMathematical:
         a = np.array([100.0, 1000.0, 10000.0])
         result = ops.log(a)
         expected = np.log(a)
+        np.testing.assert_array_almost_equal(result, expected)
+
+    def test_exp_basic(self):
+        """Test exp(0)=1, exp(1)=e."""
+        a = np.array([0.0, 1.0, 2.0])
+        result = ops.exp(a)
+        np.testing.assert_array_almost_equal(result, [1.0, np.e, np.e**2])
+
+    def test_exp_negative(self):
+        """Test exp(-1) = 1/e."""
+        a = np.array([-1.0, -2.0])
+        result = ops.exp(a)
+        np.testing.assert_array_almost_equal(result, [1 / np.e, 1 / np.e**2])
+
+    def test_exp_array(self):
+        """Test exp matches numpy for arbitrary values."""
+        a = np.array([0.1, 0.5, 1.0, 2.0])
+        result = ops.exp(a)
+        expected = np.exp(a)
         np.testing.assert_array_almost_equal(result, expected)
 
 

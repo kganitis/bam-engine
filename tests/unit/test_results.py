@@ -328,3 +328,147 @@ class TestDataCollector:
         results = collector.finalize(config={}, metadata={})
         assert results.role_data == {}
         assert results.economy_data == {}
+
+
+class TestDataProperty:
+    """Tests for data property."""
+
+    def test_data_combines_role_and_economy(self):
+        """Test data property combines role_data and economy_data."""
+        results = SimulationResults(
+            role_data={
+                "Producer": {"price": np.array([1.0, 2.0])},
+                "Worker": {"wage": np.array([50.0, 51.0])},
+            },
+            economy_data={
+                "unemployment_rate": np.array([0.05, 0.06]),
+            },
+        )
+        data = results.data
+        assert "Producer" in data
+        assert "Worker" in data
+        assert "Economy" in data
+        np.testing.assert_array_equal(data["Producer"]["price"], [1.0, 2.0])
+        np.testing.assert_array_equal(
+            data["Economy"]["unemployment_rate"], [0.05, 0.06]
+        )
+
+    def test_data_empty_economy(self):
+        """Test data property with no economy data."""
+        results = SimulationResults(
+            role_data={"Producer": {"price": np.array([1.0, 2.0])}},
+        )
+        data = results.data
+        assert "Producer" in data
+        assert "Economy" not in data
+
+    def test_data_empty_role(self):
+        """Test data property with only economy data."""
+        results = SimulationResults(
+            economy_data={"unemployment_rate": np.array([0.05, 0.06])},
+        )
+        data = results.data
+        assert "Economy" in data
+        assert len(data) == 1
+
+
+class TestGetArray:
+    """Tests for get_array method."""
+
+    def test_get_array_role_data(self):
+        """Test get_array retrieves role data."""
+        data_2d = np.array([[1.0, 2.0], [3.0, 4.0]])
+        results = SimulationResults(
+            role_data={"Producer": {"price": data_2d}},
+        )
+        arr = results.get_array("Producer", "price")
+        np.testing.assert_array_equal(arr, data_2d)
+
+    def test_get_array_economy_data(self):
+        """Test get_array retrieves economy data."""
+        unemp = np.array([0.05, 0.06, 0.04])
+        results = SimulationResults(
+            economy_data={"unemployment_rate": unemp},
+        )
+        arr = results.get_array("Economy", "unemployment_rate")
+        np.testing.assert_array_equal(arr, unemp)
+
+    def test_get_array_with_aggregation_mean(self):
+        """Test get_array with mean aggregation."""
+        data_2d = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        results = SimulationResults(
+            role_data={"Producer": {"price": data_2d}},
+        )
+        arr = results.get_array("Producer", "price", aggregate="mean")
+        np.testing.assert_array_almost_equal(arr, [2.0, 5.0])
+
+    def test_get_array_with_aggregation_sum(self):
+        """Test get_array with sum aggregation."""
+        data_2d = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        results = SimulationResults(
+            role_data={"Producer": {"price": data_2d}},
+        )
+        arr = results.get_array("Producer", "price", aggregate="sum")
+        np.testing.assert_array_almost_equal(arr, [6.0, 15.0])
+
+    def test_get_array_with_aggregation_std(self):
+        """Test get_array with std aggregation."""
+        data_2d = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        results = SimulationResults(
+            role_data={"Producer": {"price": data_2d}},
+        )
+        arr = results.get_array("Producer", "price", aggregate="std")
+        expected = np.std(data_2d, axis=1)
+        np.testing.assert_array_almost_equal(arr, expected)
+
+    def test_get_array_with_aggregation_median(self):
+        """Test get_array with median aggregation."""
+        data_2d = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        results = SimulationResults(
+            role_data={"Producer": {"price": data_2d}},
+        )
+        arr = results.get_array("Producer", "price", aggregate="median")
+        np.testing.assert_array_almost_equal(arr, [2.0, 5.0])
+
+    def test_get_array_role_not_found(self):
+        """Test get_array raises KeyError for missing role."""
+        results = SimulationResults(
+            role_data={"Producer": {"price": np.array([1.0, 2.0])}},
+        )
+        with pytest.raises(KeyError, match="Role 'Worker' not found"):
+            results.get_array("Worker", "wage")
+
+    def test_get_array_variable_not_found(self):
+        """Test get_array raises KeyError for missing variable."""
+        results = SimulationResults(
+            role_data={"Producer": {"price": np.array([1.0, 2.0])}},
+        )
+        with pytest.raises(KeyError, match="'inventory' not found in Producer"):
+            results.get_array("Producer", "inventory")
+
+    def test_get_array_economy_variable_not_found(self):
+        """Test get_array raises KeyError for missing economy variable."""
+        results = SimulationResults(
+            economy_data={"unemployment_rate": np.array([0.05])},
+        )
+        with pytest.raises(KeyError, match="'inflation' not found in Economy"):
+            results.get_array("Economy", "inflation")
+
+    def test_get_array_invalid_aggregation(self):
+        """Test get_array raises ValueError for invalid aggregation."""
+        data_2d = np.array([[1.0, 2.0], [3.0, 4.0]])
+        results = SimulationResults(
+            role_data={"Producer": {"price": data_2d}},
+        )
+        with pytest.raises(ValueError, match="Unknown aggregation 'invalid'"):
+            results.get_array("Producer", "price", aggregate="invalid")
+
+    def test_get_array_aggregation_on_1d_data(self):
+        """Test get_array with aggregation on 1D data returns as-is."""
+        data_1d = np.array([1.0, 2.0, 3.0])
+        results = SimulationResults(
+            role_data={"Producer": {"price": data_1d}},
+        )
+        # Aggregation on 1D data should return the data unchanged
+        arr = results.get_array("Producer", "price", aggregate="mean")
+        np.testing.assert_array_equal(arr, data_1d)

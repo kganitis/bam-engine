@@ -83,6 +83,92 @@ def test_pipeline_insert_after_not_found():
         pipeline.insert_after("nonexistent_event", FirmsAdjustPrice)
 
 
+def test_pipeline_insert_after_list():
+    """Can insert multiple events after specified event using a list."""
+    pipeline = Pipeline.from_event_list(
+        [
+            "firms_decide_desired_production",
+            "firms_adjust_price",
+        ]
+    )
+
+    # Insert a list of events
+    pipeline.insert_after(
+        "firms_decide_desired_production",
+        [
+            "firms_calc_breakeven_price",
+            "update_avg_mkt_price",
+        ],
+    )
+
+    assert len(pipeline) == 4
+    # Events should be inserted in order
+    assert pipeline.events[0].name == "firms_decide_desired_production"
+    assert pipeline.events[1].name == "firms_calc_breakeven_price"
+    assert pipeline.events[2].name == "update_avg_mkt_price"
+    assert pipeline.events[3].name == "firms_adjust_price"
+
+
+def test_pipeline_insert_after_list_preserves_order():
+    """insert_after with list maintains the list order."""
+    pipeline = Pipeline.from_event_list(
+        [
+            "firms_decide_desired_production",
+        ]
+    )
+
+    # Insert multiple events
+    pipeline.insert_after(
+        "firms_decide_desired_production",
+        [
+            "firms_calc_breakeven_price",
+            "firms_adjust_price",
+            "update_avg_mkt_price",
+        ],
+    )
+
+    # All events should be in the exact order specified
+    assert pipeline.events[1].name == "firms_calc_breakeven_price"
+    assert pipeline.events[2].name == "firms_adjust_price"
+    assert pipeline.events[3].name == "update_avg_mkt_price"
+
+
+def test_pipeline_insert_after_empty_list():
+    """insert_after with empty list is a no-op."""
+    pipeline = Pipeline.from_event_list(
+        [
+            "firms_decide_desired_production",
+            "firms_adjust_price",
+        ]
+    )
+
+    # Insert empty list
+    pipeline.insert_after("firms_decide_desired_production", [])
+
+    # Pipeline should be unchanged
+    assert len(pipeline) == 2
+    assert pipeline.events[0].name == "firms_decide_desired_production"
+    assert pipeline.events[1].name == "firms_adjust_price"
+
+
+def test_pipeline_insert_after_single_event_still_works():
+    """insert_after with single event (not list) still works (regression)."""
+    pipeline = Pipeline.from_event_list(
+        [
+            "firms_decide_desired_production",
+            "firms_adjust_price",
+        ]
+    )
+
+    # Single event, not a list
+    pipeline.insert_after(
+        "firms_decide_desired_production", "firms_calc_breakeven_price"
+    )
+
+    assert len(pipeline) == 3
+    assert pipeline.events[1].name == "firms_calc_breakeven_price"
+
+
 def test_pipeline_remove():
     """Can remove event from pipeline."""
     pipeline = Pipeline.from_event_list(

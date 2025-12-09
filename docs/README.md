@@ -40,6 +40,6 @@ The following are generated during build and should not be edited manually:
 
 ## Adding Content
 
-- **Examples**: Add `.py` files to `examples/basic/`, `examples/advanced/`, or `examples/research/`
+- **Examples**: Add `.py` files to `examples/basic/`, `examples/advanced/`, or `examples/extensions/`
 - **API docs**: Add docstrings to source code; autosummary generates pages
 - **User guide**: Edit `.rst` files in `user_guide/`

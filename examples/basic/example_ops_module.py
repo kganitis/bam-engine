@@ -228,11 +228,30 @@ print(f"  arange(0, 5, 1): {periods}")
 time_axis = ops.arange(0, 1, 0.25)
 print(f"  arange(0, 1, 0.25): {time_axis}")
 
+# array: create array from Python list (always copies)
+data_list = [1.0, 2.0, 3.0, 4.0]
+arr = ops.array(data_list)
+print(f"\n  array({data_list}): {arr}")
+
+# array always creates a copy, even from existing arrays
+original = np.array([10.0, 20.0, 30.0])
+copy = ops.array(original)
+copy[0] = 999  # Modifying copy
+print(f"  array() creates copy: original={original}, copy={copy}")
+
+# asarray: creates view when possible (no copy for compatible arrays)
+view = ops.asarray(original)
+print(f"  asarray() may create view: shares memory? {np.shares_memory(original, view)}")
+
+# Key difference: array always copies, asarray may reuse memory
+# Use array when you need a fresh copy
+# Use asarray when you want to avoid unnecessary copies
+
 # %%
 # Mathematical Functions
 # ----------------------
 #
-# Logarithm and other math operations.
+# Logarithm, exponential, and other math operations.
 
 gdp = np.array([100.0, 110.0, 121.0, 133.1])
 
@@ -246,6 +265,21 @@ print(f"  log(gdp): {log_gdp.round(3)}")
 # Log differences approximate growth rates
 log_diff = np.diff(log_gdp)
 print(f"  log differences (≈ growth rates): {log_diff.round(3)}")
+
+# Exponential function (e^x)
+# Useful for reversing log transform or modeling exponential decay
+growth_rates = np.array([0.0, 0.05, 0.10, -0.05])
+print(f"\n  growth_rates: {growth_rates}")
+growth_factors = ops.exp(growth_rates)
+print(f"  exp(growth_rates): {growth_factors.round(4)}")
+
+# Common pattern: calculate probability-like decays
+# sigma = 0.1 * exp(-fragility), where higher fragility reduces investment
+fragility = np.array([0.0, 0.5, 1.0, 2.0])
+investment_share = ops.multiply(0.1, ops.exp(ops.multiply(-1.0, fragility)))
+print(f"\n  fragility: {fragility}")
+print(f"  0.1 * exp(-fragility): {investment_share.round(4)}")
+print("  (higher fragility -> lower investment)")
 
 # %%
 # Utility Operations
@@ -489,9 +523,12 @@ ARRAY CREATION
   full(n, val)        - Array of constant value
   empty(n)            - Uninitialized array
   arange(start, stop) - Evenly spaced values
+  array(data)         - Create array (always copies)
+  asarray(data)       - Convert to array (may share memory)
 
 MATHEMATICAL
   log(a)              - Natural logarithm
+  exp(a)              - Exponential (e^x)
 
 UTILITIES
   unique(a)           - Unique sorted values
@@ -515,4 +552,6 @@ print(reference)
 # - ``ops.sum/mean`` support ``where`` parameter for filtered aggregation
 # - ``ops.assign`` for in-place array updates
 # - ``ops.uniform`` for random numbers (requires ``sim.rng``)
+# - ``ops.exp`` for exponential decay patterns (e.g., R&D investment)
+# - ``ops.array`` for creating copies, ``ops.asarray`` for memory-efficient views
 # - All operations can be combined for complex economic logic

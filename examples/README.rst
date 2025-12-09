@@ -7,4 +7,4 @@ The examples are organized into three sections:
 
 - **Basic**: Getting started tutorials for new users
 - **Advanced**: Custom components and pipeline modifications
-- **Research**: Scenarios from the BAM literature
+- **Extensions**: Scenarios from the BAM literature

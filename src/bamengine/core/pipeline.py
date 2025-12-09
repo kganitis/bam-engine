@@ -367,34 +367,58 @@ class Pipeline:
         for event in self.events:
             event.execute(sim)
 
-    def insert_after(self, after: str, event: Event | str) -> None:
+    def insert_after(self, after: str, events: Event | str | list[Event | str]) -> None:
         """
-        Insert event after specified event.
+        Insert event(s) after specified event.
 
         Parameters
         ----------
         after : str
             Event name to insert after.
-        event : Event | str
-            Event instance or event name to insert.
+        events : Event | str | list[Event | str]
+            Event instance, event name, or list of events to insert.
+            If a list is provided, events are inserted in order.
 
         Raises
         ------
         ValueError
             If 'after' event not found in pipeline.
+
+        Examples
+        --------
+        Insert a single event:
+
+        >>> pipeline.insert_after("firms_pay_dividends", "custom_event")
+
+        Insert multiple events:
+
+        >>> pipeline.insert_after(
+        ...     "firms_pay_dividends",
+        ...     [
+        ...         "event_a",
+        ...         "event_b",
+        ...         "event_c",
+        ...     ],
+        ... )
         """
         if after not in self._event_map:
             raise ValueError(f"Event '{after}' not found in pipeline")
 
-        # Instantiate if name provided
-        if isinstance(event, str):
-            event_cls = get_event(event)
-            event = event_cls()
+        # Convert single event to list
+        event_list = events if isinstance(events, list) else [events]
 
         # Find insertion point
         idx = self.events.index(self._event_map[after])
-        self.events.insert(idx + 1, event)
-        self._event_map[event.name] = event
+
+        # Insert events in reverse order to maintain list order
+        for event in reversed(event_list):
+            # Instantiate if name provided
+            if isinstance(event, str):
+                event_cls = get_event(event)
+                event = event_cls()
+
+            self.events.insert(idx + 1, event)
+            self._event_map[event.name] = event
 
     def remove(self, event_name: str) -> None:
         """

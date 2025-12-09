@@ -13,6 +13,7 @@ Install with: pip install bamengine[pandas] or pip install pandas
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -401,6 +402,110 @@ class SimulationResults:
         df = pd.DataFrame(self.economy_data)
         df.index.name = "period"
         return df
+
+    @property
+    def data(self) -> dict[str, dict[str, NDArray[Any]]]:
+        """
+        Unified access to all data (roles + economy).
+
+        Economy data is accessible under the "Economy" key.
+
+        Returns
+        -------
+        dict
+            Combined role and economy data. Keys are role names
+            (plus "Economy" for economy metrics).
+
+        Examples
+        --------
+        >>> results.data["Producer"]["price"]
+        >>> results.data["Economy"]["unemployment_rate"]
+        """
+        combined: dict[str, dict[str, NDArray[Any]]] = dict(self.role_data)
+        if self.economy_data:
+            combined["Economy"] = self.economy_data
+        return combined
+
+    def get_array(
+        self,
+        role_name: str,
+        variable_name: str,
+        aggregate: str | None = None,
+    ) -> NDArray[Any]:
+        """
+        Get a variable as a numpy array directly.
+
+        This provides a convenient way to access simulation data without
+        needing to navigate nested dictionaries.
+
+        Parameters
+        ----------
+        role_name : str
+            Role name ("Producer", "Worker", "Economy", etc.)
+        variable_name : str
+            Variable name ("price", "unemployment_rate", etc.)
+        aggregate : {'mean', 'sum', 'std', 'median'}, optional
+            Aggregation method for 2D data. If provided, reduces
+            (n_periods, n_agents) to (n_periods,).
+
+        Returns
+        -------
+        NDArray
+            1D array (n_periods,) or 2D array (n_periods, n_agents).
+
+        Raises
+        ------
+        KeyError
+            If role or variable not found.
+
+        Examples
+        --------
+        >>> productivity = results.get_array("Producer", "labor_productivity")
+        >>> avg_prod = results.get_array(
+        ...     "Producer", "labor_productivity", aggregate="mean"
+        ... )
+        >>> unemployment = results.get_array("Economy", "unemployment_rate")
+        """
+        # Handle Economy data specially
+        if role_name == "Economy":
+            if variable_name not in self.economy_data:
+                available = list(self.economy_data.keys())
+                raise KeyError(
+                    f"'{variable_name}' not found in Economy. Available: {available}"
+                )
+            return self.economy_data[variable_name]
+
+        # Handle role data
+        if role_name not in self.role_data:
+            available = list(self.role_data.keys())
+            raise KeyError(f"Role '{role_name}' not found. Available: {available}")
+
+        role_dict = self.role_data[role_name]
+        if variable_name not in role_dict:
+            available = list(role_dict.keys())
+            raise KeyError(
+                f"'{variable_name}' not found in {role_name}. Available: {available}"
+            )
+
+        data = role_dict[variable_name]
+
+        # Apply aggregation if requested and data is 2D
+        if aggregate and data.ndim == 2:
+            AggFunc = Callable[[NDArray[Any], int], NDArray[Any]]
+            agg_funcs: dict[str, AggFunc] = {
+                "mean": np.mean,
+                "sum": np.sum,
+                "std": np.std,
+                "median": np.median,
+            }
+            if aggregate not in agg_funcs:
+                raise ValueError(
+                    f"Unknown aggregation '{aggregate}'. "
+                    f"Use one of: {list(agg_funcs.keys())}"
+                )
+            return agg_funcs[aggregate](data, 1)
+
+        return data
 
     @property
     def summary(self) -> pd.DataFrame:
