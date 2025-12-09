@@ -23,6 +23,7 @@ def clean_registry():
     """
     # noinspection PyProtectedMember
     from bamengine.core.registry import (
+        _EVENT_HOOKS,
         _EVENT_REGISTRY,
         _RELATIONSHIP_REGISTRY,
         _ROLE_REGISTRY,
@@ -32,6 +33,7 @@ def clean_registry():
     saved_roles = dict(_ROLE_REGISTRY)
     saved_events = dict(_EVENT_REGISTRY)
     saved_relationships = dict(_RELATIONSHIP_REGISTRY)
+    saved_hooks = dict(_EVENT_HOOKS)
 
     # Clear for test
     clear_registry()
@@ -45,6 +47,8 @@ def clean_registry():
     _EVENT_REGISTRY.update(saved_events)
     _RELATIONSHIP_REGISTRY.clear()
     _RELATIONSHIP_REGISTRY.update(saved_relationships)
+    _EVENT_HOOKS.clear()
+    _EVENT_HOOKS.update(saved_hooks)
 
 
 @pytest.fixture

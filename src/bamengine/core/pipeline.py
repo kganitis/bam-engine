@@ -204,6 +204,7 @@ class Pipeline:
         event_names: list[str],
         *,
         repeats: dict[str, int] | None = None,
+        apply_hooks: bool = True,
     ) -> Pipeline:
         """
         Build pipeline from ordered list of event names.
@@ -218,11 +219,15 @@ class Pipeline:
         repeats : dict[str, int], optional
             Events that should repeat multiple times.
             Format: {event_name: n_repeats}
+        apply_hooks : bool, default True
+            Whether to automatically apply registered event hooks.
+            Hooks are registered via the ``@event(after=..., before=..., replace=...)``
+            decorator. Set to False to skip hook application (useful for testing).
 
         Returns
         -------
         Pipeline
-            Pipeline with events in the order specified.
+            Pipeline with events in the order specified, plus any hooked events.
 
         Raises
         ------
@@ -233,6 +238,10 @@ class Pipeline:
         -----
         The order of events is critical for correct simulation behavior.
         Use the default pipeline as a reference for the required ordering.
+
+        When ``apply_hooks=True`` (default), any events registered with pipeline
+        hooks via ``@event(after=..., before=..., replace=...)`` are automatically
+        inserted into the pipeline at their specified positions.
         """
         repeats = repeats or {}
 
@@ -250,12 +259,20 @@ class Pipeline:
 
             event_instances.append(event)
 
-        return cls(events=event_instances)
+        pipeline = cls(events=event_instances)
+
+        # Apply registered hooks
+        if apply_hooks:
+            pipeline._apply_hooks()
+
+        return pipeline
 
     @classmethod
     def from_yaml(
         cls,
         yaml_path: str | Path,
+        *,
+        apply_hooks: bool = True,
         **params: int,
     ) -> Pipeline:
         """
@@ -273,13 +290,17 @@ class Pipeline:
         ----------
         yaml_path : str | Path
             Path to YAML configuration file.
+        apply_hooks : bool, default True
+            Whether to automatically apply registered event hooks.
+            Hooks are registered via the ``@event(after=..., before=..., replace=...)``
+            decorator. Set to False to skip hook application (useful for testing).
         **params : int
             Parameters to substitute in the YAML (e.g., max_M=5, max_H=3, max_Z=2).
 
         Returns
         -------
         Pipeline
-            Pipeline with events parsed from YAML.
+            Pipeline with events parsed from YAML, plus any hooked events.
 
         Raises
         ------
@@ -310,7 +331,7 @@ class Pipeline:
             # Parse the spec
             event_names.extend(cls._parse_event_spec(spec))
 
-        return cls.from_event_list(event_names)
+        return cls.from_event_list(event_names, apply_hooks=apply_hooks)
 
     @staticmethod
     def _parse_event_spec(spec: str) -> list[str]:
@@ -420,6 +441,61 @@ class Pipeline:
             self.events.insert(idx + 1, event)
             self._event_map[event.name] = event
 
+    def insert_before(
+        self, before: str, events: Event | str | list[Event | str]
+    ) -> None:
+        """
+        Insert event(s) before specified event.
+
+        Parameters
+        ----------
+        before : str
+            Event name to insert before.
+        events : Event | str | list[Event | str]
+            Event instance, event name, or list of events to insert.
+            If a list is provided, events are inserted in order.
+
+        Raises
+        ------
+        ValueError
+            If 'before' event not found in pipeline.
+
+        Examples
+        --------
+        Insert a single event:
+
+        >>> pipeline.insert_before("firms_adjust_price", "pre_pricing_check")
+
+        Insert multiple events:
+
+        >>> pipeline.insert_before(
+        ...     "firms_adjust_price",
+        ...     [
+        ...         "event_a",
+        ...         "event_b",
+        ...         "event_c",
+        ...     ],
+        ... )
+        """
+        if before not in self._event_map:
+            raise ValueError(f"Event '{before}' not found in pipeline")
+
+        # Convert single event to list
+        event_list = events if isinstance(events, list) else [events]
+
+        # Find insertion point
+        idx = self.events.index(self._event_map[before])
+
+        # Insert events in reverse order to maintain list order
+        for event in reversed(event_list):
+            # Instantiate if name provided
+            if isinstance(event, str):
+                event_cls = get_event(event)
+                event = event_cls()
+
+            self.events.insert(idx, event)
+            self._event_map[event.name] = event
+
     def remove(self, event_name: str) -> None:
         """
         Remove event from pipeline.
@@ -472,6 +548,65 @@ class Pipeline:
         # Update mapping
         del self._event_map[old_name]
         self._event_map[new_event.name] = new_event
+
+    def _apply_hooks(self) -> None:
+        """
+        Apply all registered hooks to the pipeline.
+
+        Hooks are applied in registration order for deterministic behavior.
+        Multiple events targeting the same hook point are inserted in
+        registration order (first registered = closest to target).
+
+        This method is called automatically by ``from_event_list()`` and
+        ``from_yaml()`` unless ``apply_hooks=False`` is specified.
+
+        Notes
+        -----
+        - Replace hooks are applied first
+        - Then before/after hooks are applied
+        - If target event not in pipeline, hook is silently skipped
+        - If event already in pipeline, hook is silently skipped
+        """
+        from bamengine.core.registry import get_event_hooks
+
+        hooks = get_event_hooks()
+
+        # Apply replace hooks first (order matters less for replace)
+        for event_name, hook_spec in hooks.items():
+            if hook_spec.get("replace"):
+                target = hook_spec["replace"]
+                # Skip if target not in pipeline or event already in pipeline
+                if target in self._event_map and event_name not in self._event_map:
+                    self.replace(target, event_name)
+
+        # Apply after/before hooks in registration order
+        # Track insertion points so multiple hooks targeting the same event
+        # are inserted in registration order (first registered = closest to target)
+        after_insertion_points: dict[str, str] = {}
+        before_insertion_points: dict[str, str] = {}
+
+        for event_name, hook_spec in hooks.items():
+            # Skip if event already in pipeline (from replace or previous hook)
+            if event_name in self._event_map:
+                continue
+
+            if hook_spec.get("after"):
+                target = hook_spec["after"]
+                if target in self._event_map:
+                    # Use tracked insertion point if available, else use target
+                    insertion_point = after_insertion_points.get(target, target)
+                    self.insert_after(insertion_point, event_name)
+                    # Update insertion point for next hook targeting same target
+                    after_insertion_points[target] = event_name
+
+            elif hook_spec.get("before"):
+                target = hook_spec["before"]
+                if target in self._event_map:
+                    # Use tracked insertion point if available, else use target
+                    insertion_point = before_insertion_points.get(target, target)
+                    self.insert_before(insertion_point, event_name)
+                    # Update insertion point for next hook targeting same target
+                    before_insertion_points[target] = event_name
 
     def __len__(self) -> int:
         """Return number of events in pipeline."""

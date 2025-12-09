@@ -169,6 +169,98 @@ def test_pipeline_insert_after_single_event_still_works():
     assert pipeline.events[1].name == "firms_calc_breakeven_price"
 
 
+def test_pipeline_insert_before():
+    """Can insert event before specified event."""
+    pipeline = Pipeline.from_event_list(
+        [
+            "firms_decide_desired_production",
+            "firms_adjust_price",
+        ],
+        apply_hooks=False,
+    )
+
+    pipeline.insert_before("firms_adjust_price", FirmsCalcBreakevenPrice)
+
+    assert len(pipeline) == 3
+    assert pipeline.events[0].name == "firms_decide_desired_production"
+    assert pipeline.events[1].name == "firms_calc_breakeven_price"
+    assert pipeline.events[2].name == "firms_adjust_price"
+
+
+def test_pipeline_insert_before_by_name():
+    """Can insert event by name before specified event."""
+    pipeline = Pipeline.from_event_list(
+        [
+            "firms_decide_desired_production",
+            "firms_adjust_price",
+        ],
+        apply_hooks=False,
+    )
+
+    pipeline.insert_before("firms_adjust_price", "firms_calc_breakeven_price")
+
+    assert len(pipeline) == 3
+    assert pipeline.events[1].name == "firms_calc_breakeven_price"
+
+
+def test_pipeline_insert_before_not_found():
+    """insert_before raises error if target event not found."""
+    pipeline = Pipeline.from_event_list(
+        ["firms_decide_desired_production"],
+        apply_hooks=False,
+    )
+
+    with pytest.raises(ValueError, match="not found in pipeline"):
+        pipeline.insert_before("nonexistent_event", FirmsAdjustPrice)
+
+
+def test_pipeline_insert_before_list():
+    """Can insert multiple events before specified event using a list."""
+    pipeline = Pipeline.from_event_list(
+        [
+            "firms_decide_desired_production",
+            "firms_adjust_price",
+        ],
+        apply_hooks=False,
+    )
+
+    # Insert a list of events before firms_adjust_price
+    pipeline.insert_before(
+        "firms_adjust_price",
+        [
+            "firms_calc_breakeven_price",
+            "update_avg_mkt_price",
+        ],
+    )
+
+    assert len(pipeline) == 4
+    # Events should be inserted in order before the target
+    assert pipeline.events[0].name == "firms_decide_desired_production"
+    assert pipeline.events[1].name == "firms_calc_breakeven_price"
+    assert pipeline.events[2].name == "update_avg_mkt_price"
+    assert pipeline.events[3].name == "firms_adjust_price"
+
+
+def test_pipeline_insert_before_at_start():
+    """Can insert event before the first event in pipeline."""
+    pipeline = Pipeline.from_event_list(
+        [
+            "firms_decide_desired_production",
+            "firms_adjust_price",
+        ],
+        apply_hooks=False,
+    )
+
+    pipeline.insert_before(
+        "firms_decide_desired_production", "firms_calc_breakeven_price"
+    )
+
+    assert len(pipeline) == 3
+    assert pipeline.events[0].name == "firms_calc_breakeven_price"
+    assert pipeline.events[1].name == "firms_decide_desired_production"
+    assert pipeline.events[2].name == "firms_adjust_price"
+
+
 def test_pipeline_remove():
     """Can remove event from pipeline."""
     pipeline = Pipeline.from_event_list(
