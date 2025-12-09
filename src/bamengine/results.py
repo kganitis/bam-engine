@@ -15,7 +15,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -61,27 +61,41 @@ class _DataCollector:
 
     Parameters
     ----------
-    roles : list of str
-        Role names to capture (e.g., ['Producer', 'Worker']).
-    variables : dict or None
-        Mapping of role name to list of variables to capture.
-        If None, captures all variables for each role.
-    include_economy : bool
-        Whether to capture economy-wide metrics.
-    aggregate : str or None
+    variables : dict
+        Mapping of role/component name to variables to capture.
+        Keys are role names (e.g., 'Producer', 'Worker') or 'Economy'.
+        Values are either:
+        - list[str]: specific variables to capture
+        - True: capture all variables for that role/component
+    aggregate : str or None, default='mean'
         Aggregation method ('mean', 'median', 'sum', 'std') or None for full data.
+
+    Examples
+    --------
+    Collect all variables from Producer and Worker, economy metrics:
+
+    >>> collector = _DataCollector(
+    ...     variables={"Producer": True, "Worker": True, "Economy": True},
+    ...     aggregate="mean",
+    ... )
+
+    Collect specific variables:
+
+    >>> collector = _DataCollector(
+    ...     variables={"Producer": ["price", "inventory"], "Economy": ["avg_price"]},
+    ...     aggregate=None,  # Full per-agent data
+    ... )
     """
+
+    # Available economy metrics
+    ECONOMY_METRICS = ["avg_price", "unemployment_rate", "inflation"]
 
     def __init__(
         self,
-        roles: list[str],
-        variables: dict[str, list[str]] | None,
-        include_economy: bool,
-        aggregate: str | None,
+        variables: dict[str, list[str] | Literal[True]],
+        aggregate: str | None = "mean",
     ) -> None:
-        self.roles = roles
         self.variables = variables
-        self.include_economy = include_economy
         self.aggregate = aggregate
         # Storage: role_data[role_name][var_name] = list of arrays/scalars
         self.role_data: dict[str, dict[str, list[Any]]] = defaultdict(
@@ -98,61 +112,79 @@ class _DataCollector:
         sim : Simulation
             Simulation instance to capture data from.
         """
-        # Capture role data
-        for role_name in self.roles:
-            try:
-                role = sim.get_role(role_name)
-            except KeyError:
+        for name, var_spec in self.variables.items():
+            if name == "Economy":
+                # Handle Economy as a pseudo-role
+                self._capture_economy(sim, var_spec)
+            else:
+                # Handle regular roles
+                self._capture_role(sim, name, var_spec)
+
+    def _capture_role(
+        self, sim: Simulation, role_name: str, var_spec: list[str] | Literal[True]
+    ) -> None:
+        """Capture data from a single role."""
+        try:
+            role = sim.get_role(role_name)
+        except KeyError:
+            return
+
+        # Determine which variables to capture
+        if var_spec is True:
+            # Capture all public fields (those not starting with underscore)
+            var_names = [f for f in role.__dataclass_fields__ if not f.startswith("_")]
+        else:
+            var_names = var_spec
+
+        for var_name in var_names:
+            if not hasattr(role, var_name):
                 continue
 
-            # Get variables to capture for this role
-            if self.variables and role_name in self.variables:
-                var_names = self.variables[role_name]
-            else:
-                # Capture all public fields (those not starting with underscore)
-                var_names = [
-                    f for f in role.__dataclass_fields__ if not f.startswith("_")
-                ]
+            data = getattr(role, var_name)
+            if not isinstance(data, np.ndarray):
+                continue
 
-            for var_name in var_names:
-                if not hasattr(role, var_name):
-                    continue
-
-                data = getattr(role, var_name)
-                if not isinstance(data, np.ndarray):
-                    continue
-
-                # Apply aggregation if requested
-                if self.aggregate:
-                    if self.aggregate == "mean":
-                        value = float(np.mean(data))
-                    elif self.aggregate == "median":
-                        value = float(np.median(data))
-                    elif self.aggregate == "sum":
-                        value = float(np.sum(data))
-                    elif self.aggregate == "std":
-                        value = float(np.std(data))
-                    else:
-                        value = float(np.mean(data))  # fallback
-                    self.role_data[role_name][var_name].append(value)
+            # Apply aggregation if requested
+            if self.aggregate:
+                if self.aggregate == "mean":
+                    value = float(np.mean(data))
+                elif self.aggregate == "median":
+                    value = float(np.median(data))
+                elif self.aggregate == "sum":
+                    value = float(np.sum(data))
+                elif self.aggregate == "std":
+                    value = float(np.std(data))
                 else:
-                    # Store full array (copy to avoid mutation issues)
-                    self.role_data[role_name][var_name].append(data.copy())
+                    value = float(np.mean(data))  # fallback
+                self.role_data[role_name][var_name].append(value)
+            else:
+                # Store full array (copy to avoid mutation issues)
+                self.role_data[role_name][var_name].append(data.copy())
 
-        # Capture economy metrics
-        if self.include_economy:
-            ec = sim.ec
-            # Capture the latest values from history arrays
-            if len(ec.avg_mkt_price_history) > 0:
-                self.economy_data["avg_price"].append(
-                    float(ec.avg_mkt_price_history[-1])
-                )
-            if len(ec.unemp_rate_history) > 0:
-                self.economy_data["unemployment_rate"].append(
-                    float(ec.unemp_rate_history[-1])
-                )
-            if len(ec.inflation_history) > 0:
-                self.economy_data["inflation"].append(float(ec.inflation_history[-1]))
+    def _capture_economy(
+        self, sim: Simulation, var_spec: list[str] | Literal[True]
+    ) -> None:
+        """Capture economy metrics."""
+        ec = sim.ec
+
+        # Determine which metrics to capture
+        if var_spec is True:
+            metrics_to_capture = self.ECONOMY_METRICS
+        else:
+            metrics_to_capture = var_spec
+
+        # Map metric names to history arrays
+        metric_sources = {
+            "avg_price": ec.avg_mkt_price_history,
+            "unemployment_rate": ec.unemp_rate_history,
+            "inflation": ec.inflation_history,
+        }
+
+        for metric_name in metrics_to_capture:
+            if metric_name in metric_sources:
+                history = metric_sources[metric_name]
+                if len(history) > 0:
+                    self.economy_data[metric_name].append(float(history[-1]))
 
     def finalize(
         self, config: dict[str, Any], metadata: dict[str, Any]

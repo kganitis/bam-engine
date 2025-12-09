@@ -257,25 +257,31 @@ class TestPandasOptionalImport:
 class TestDataCollector:
     """Tests for _DataCollector class."""
 
-    def test_init(self):
-        """Test collector initialization."""
+    def test_init_all_variables(self):
+        """Test collector initialization with True for all variables."""
         collector = _DataCollector(
-            roles=["Producer"],
-            variables=None,
-            include_economy=True,
+            variables={"Producer": True, "Economy": True},
             aggregate="mean",
         )
-        assert collector.roles == ["Producer"]
-        assert collector.variables is None
-        assert collector.include_economy is True
+        assert collector.variables == {"Producer": True, "Economy": True}
         assert collector.aggregate == "mean"
+
+    def test_init_specific_variables(self):
+        """Test collector initialization with specific variables."""
+        collector = _DataCollector(
+            variables={"Producer": ["price", "inventory"], "Economy": ["avg_price"]},
+            aggregate=None,
+        )
+        assert collector.variables == {
+            "Producer": ["price", "inventory"],
+            "Economy": ["avg_price"],
+        }
+        assert collector.aggregate is None
 
     def test_finalize_with_aggregated_data(self):
         """Test finalize with aggregated data."""
         collector = _DataCollector(
-            roles=["Producer"],
-            variables=None,
-            include_economy=True,
+            variables={"Producer": True, "Economy": True},
             aggregate="mean",
         )
         # Manually add data (simulating captures)
@@ -301,9 +307,7 @@ class TestDataCollector:
     def test_finalize_with_full_data(self):
         """Test finalize with full (non-aggregated) data."""
         collector = _DataCollector(
-            roles=["Producer"],
-            variables=None,
-            include_economy=False,
+            variables={"Producer": True},
             aggregate=None,
         )
         # Manually add array data (simulating captures without aggregation)
@@ -320,14 +324,18 @@ class TestDataCollector:
     def test_finalize_empty(self):
         """Test finalize with no data."""
         collector = _DataCollector(
-            roles=["Producer"],
-            variables=None,
-            include_economy=True,
+            variables={"Producer": True, "Economy": True},
             aggregate="mean",
         )
         results = collector.finalize(config={}, metadata={})
         assert results.role_data == {}
         assert results.economy_data == {}
+
+    def test_economy_metrics_constant(self):
+        """Test that ECONOMY_METRICS contains expected metrics."""
+        assert "avg_price" in _DataCollector.ECONOMY_METRICS
+        assert "unemployment_rate" in _DataCollector.ECONOMY_METRICS
+        assert "inflation" in _DataCollector.ECONOMY_METRICS
 
 
 class TestDataProperty:

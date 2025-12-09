@@ -77,28 +77,28 @@ class TestRunWithCollect:
                 f"Economy {metric_name} has wrong shape: {data.shape}"
             )
 
-    def test_run_collect_custom_roles(self):
-        """Test custom role selection."""
+    def test_run_collect_list_form(self):
+        """Test list form of collect parameter."""
         sim = Simulation.init(n_firms=10, n_households=50, seed=42)
         results = sim.run(
             n_periods=5,
-            collect={"roles": ["Producer", "Worker"]},
+            collect=["Producer", "Worker", "Economy"],
         )
 
         assert "Producer" in results.role_data
         assert "Worker" in results.role_data
+        assert "avg_price" in results.economy_data
         # Other roles should not be captured
         assert "Employer" not in results.role_data
         assert "Borrower" not in results.role_data
 
     def test_run_collect_custom_variables(self):
-        """Test custom variable selection."""
+        """Test custom variable selection with new dict API."""
         sim = Simulation.init(n_firms=10, n_households=50, seed=42)
         results = sim.run(
             n_periods=5,
             collect={
-                "roles": ["Producer"],
-                "variables": {"Producer": ["price", "inventory"]},
+                "Producer": ["price", "inventory"],
             },
         )
 
@@ -116,8 +116,7 @@ class TestRunWithCollect:
         results = sim.run(
             n_periods=n_periods,
             collect={
-                "roles": ["Producer"],
-                "variables": {"Producer": ["price"]},
+                "Producer": ["price"],
                 "aggregate": None,
             },
         )
@@ -134,22 +133,60 @@ class TestRunWithCollect:
             results = sim.run(
                 n_periods=3,
                 collect={
-                    "roles": ["Producer"],
-                    "variables": {"Producer": ["price"]},
+                    "Producer": ["price"],
                     "aggregate": agg_method,
                 },
             )
             assert results.role_data["Producer"]["price"].shape == (3,)
 
     def test_run_collect_no_economy(self):
-        """Test disabling economy metrics collection."""
+        """Test collecting without economy by not including Economy key."""
         sim = Simulation.init(n_firms=10, n_households=50, seed=42)
         results = sim.run(
             n_periods=5,
-            collect={"economy": False},
+            collect={"Producer": True},  # No Economy key = no economy data
         )
 
         assert results.economy_data == {}
+
+    def test_run_collect_mixed_true_and_list(self):
+        """Test mixing True and list values in collect dict."""
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+        results = sim.run(
+            n_periods=5,
+            collect={
+                "Producer": ["price", "inventory"],  # Specific variables
+                "Worker": True,  # All Worker variables
+                "Economy": True,  # All economy metrics
+            },
+        )
+
+        # Producer should have only specified variables
+        assert "price" in results.role_data["Producer"]
+        assert "inventory" in results.role_data["Producer"]
+        assert "production" not in results.role_data["Producer"]
+
+        # Worker should have all variables
+        assert "wage" in results.role_data["Worker"]
+        assert "employer" in results.role_data["Worker"]
+
+        # Economy should have all metrics
+        assert "avg_price" in results.economy_data
+        assert "unemployment_rate" in results.economy_data
+
+    def test_run_collect_specific_economy_metrics(self):
+        """Test collecting specific economy metrics."""
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+        results = sim.run(
+            n_periods=5,
+            collect={
+                "Economy": ["unemployment_rate"],  # Only this metric
+            },
+        )
+
+        assert "unemployment_rate" in results.economy_data
+        assert "avg_price" not in results.economy_data
+        assert "inflation" not in results.economy_data
 
     def test_run_collect_config_in_results(self):
         """Test that config is stored in results."""
