@@ -300,13 +300,10 @@ print("\nRunning Growth+ simulation...")
 
 results = sim.run(
     collect={
-        "roles": ["Producer", "Worker", "Borrower"],
-        "variables": {
-            "Producer": ["labor_productivity", "production", "price"],
-            "Worker": ["wage", "employed"],
-            "Borrower": ["net_worth", "net_profit"],
-        },
-        "include_economy": True,
+        "Producer": ["labor_productivity", "production", "price"],
+        "Worker": ["wage", "employed"],
+        "Borrower": ["net_worth", "net_profit"],
+        "Economy": True,
     }
 )
 

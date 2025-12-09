@@ -107,10 +107,8 @@ full_data_sim = bam.Simulation.init(n_firms=50, n_households=250, seed=42)
 full_data_results = full_data_sim.run(
     n_periods=20,
     collect={
-        "roles": ["Producer"],
-        "variables": {"Producer": ["price"]},
+        "Producer": ["price"],  # Specific variables for Producer
         "aggregate": None,  # Full per-agent data
-        "economy": False,
     },
 )
 
@@ -197,13 +195,16 @@ plt.show()
 # ----------------------
 #
 # Use a dictionary to specify exactly what data to collect.
+# Keys are role names (or "Economy"), values are ``True`` for all variables
+# or a list of specific variable names.
 
 # Collect only specific roles and economy metrics
 custom_results = bam.Simulation.init(n_firms=100, n_households=500, seed=42).run(
     n_periods=30,
     collect={
-        "roles": ["Producer", "Worker"],  # Only these roles
-        "economy": True,  # Include economy metrics
+        "Producer": True,  # All Producer variables
+        "Worker": True,  # All Worker variables
+        "Economy": True,  # All economy metrics
         "aggregate": "mean",  # Average across agents
     },
 )
@@ -221,10 +222,8 @@ print(f"  Roles collected: {list(custom_results.role_data.keys())}")
 full_results = bam.Simulation.init(n_firms=50, n_households=250, seed=42).run(
     n_periods=20,
     collect={
-        "roles": ["Producer"],  # Just one role to limit memory
-        "variables": {"Producer": ["price", "production"]},  # Specific variables
+        "Producer": ["price", "production"],  # Specific variables only
         "aggregate": None,  # Full per-agent data
-        "economy": False,  # Skip economy metrics
     },
 )
 
@@ -347,7 +346,9 @@ if all_unemployment:
 # -------------
 #
 # - Use ``collect=True`` for basic data collection with aggregated means
-# - Use ``collect={...}`` for custom collection specifications
+# - Use ``collect=["Producer", "Worker", "Economy"]`` for specific roles
+# - Use ``collect={"Producer": ["price"], "Economy": True}`` for specific variables
+# - Use ``True`` for all variables: ``{"Worker": True}``
 # - Access raw data via ``results.economy_data`` and ``results.role_data``
 # - Use ``results.get_array()`` for cleaner access: ``get_array("Producer", "price")``
 # - Use ``results.get_array("Economy", "metric")`` for economy data

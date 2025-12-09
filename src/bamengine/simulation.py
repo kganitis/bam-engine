@@ -73,7 +73,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import yaml
@@ -917,7 +917,7 @@ class Simulation:
     def run(
         self,
         n_periods: int | None = None,
-        collect: bool | dict[str, Any] = False,
+        collect: bool | list[str] | dict[str, Any] = False,
     ) -> SimulationResults | None:
         """
         Run the simulation for multiple periods.
@@ -931,16 +931,17 @@ class Simulation:
         n_periods : int, optional
             Number of periods to simulate. If None (default), uses the n_periods
             value passed at initialization via `Simulation.init()`.
-        collect : bool or dict, default=False
+        collect : bool, list, or dict, default=False
             Whether to collect and return simulation results.
 
             - False: No collection, returns None (default)
-            - True: Collect all roles (aggregated means) + economy metrics
-            - dict: Custom collection config with keys:
-                - 'roles': list of role names or None for all
-                - 'variables': dict mapping role -> list of variables
-                - 'aggregate': 'mean', 'median', 'sum', 'std', or None for full
-                - 'economy': bool, include economy metrics (default True)
+            - True: Collect all roles and economy with all variables (aggregated)
+            - list[str]: Collect specified roles/economy with all their variables
+              Example: ``["Producer", "Worker", "Economy"]``
+            - dict: Specify variables per role/economy:
+                - Keys: role names ('Producer', 'Worker', etc.) or 'Economy'
+                - Values: ``True`` for all variables, or list of variable names
+                - Optional 'aggregate' key: 'mean', 'median', 'sum', 'std', or None
 
         Returns
         -------
@@ -963,21 +964,30 @@ class Simulation:
         >>> sim = be.Simulation.init(n_periods=50, seed=42)
         >>> sim.run()  # Runs for 50 periods
 
-        Collect results with default settings:
+        Collect all data with default settings:
 
         >>> sim = be.Simulation.init(seed=42)
         >>> results = sim.run(n_periods=100, collect=True)
         >>> df = results.to_dataframe()
         >>> results.economy_metrics.plot()
 
-        Custom data collection:
+        Collect specific roles with all their variables:
 
         >>> results = sim.run(
+        ...     n_periods=100,
+        ...     collect=["Producer", "Worker", "Economy"],
+        ... )
+
+        Custom data collection with specific variables:
+
+        >>> results = sim.run(
+        ...     n_periods=100,
         ...     collect={
-        ...         "roles": ["Producer"],
-        ...         "variables": {"Producer": ["price", "inventory"]},
-        ...         "aggregate": None,  # full per-agent data
-        ...     }
+        ...         "Producer": ["price", "inventory"],  # Specific variables
+        ...         "Worker": True,  # All Worker variables
+        ...         "Economy": True,  # All economy metrics
+        ...         "aggregate": None,  # Full per-agent data
+        ...     },
         ... )
 
         Notes
@@ -986,6 +996,7 @@ class Simulation:
         - State is mutated in-place regardless of collect parameter
         - Simulation halts early if economy is destroyed (all firms/banks bankrupt)
         - For step-by-step execution with custom logic, use `step()` instead
+        - Available economy metrics: 'avg_price', 'unemployment_rate', 'inflation'
 
         See Also
         --------
@@ -1036,42 +1047,73 @@ class Simulation:
 
         return None
 
-    def _create_collector(self, collect: bool | dict[str, Any]) -> _DataCollector:
+    def _create_collector(
+        self, collect: bool | list[str] | dict[str, Any]
+    ) -> _DataCollector:
         """
         Create data collector from collect parameter.
 
         Parameters
         ----------
-        collect : bool or dict
-            Collection configuration (True for defaults, dict for custom).
+        collect : bool, list, or dict
+            Collection configuration:
+            - True: collect all roles and economy with all variables
+            - list[str]: collect specified roles/economy with all variables
+            - dict: role/economy names as keys, variables as values
 
         Returns
         -------
         _DataCollector
             Configured data collector instance.
+
+        Examples
+        --------
+        >>> # All roles and economy
+        >>> collector = sim._create_collector(True)
+
+        >>> # Specific roles with all their variables
+        >>> collector = sim._create_collector(["Producer", "Worker", "Economy"])
+
+        >>> # Specific variables per role
+        >>> collector = sim._create_collector(
+        ...     {
+        ...         "Producer": ["price", "inventory"],
+        ...         "Worker": True,  # All Worker variables
+        ...         "Economy": True,  # All economy metrics
+        ...         "aggregate": "mean",
+        ...     }
+        ... )
         """
         from bamengine.results import _DataCollector
 
-        # Get all role names
+        # All available role names
         all_roles = ["Producer", "Worker", "Employer", "Borrower", "Lender", "Consumer"]
 
         if collect is True:
-            # Default: all roles, aggregated means, include economy
-            return _DataCollector(
-                roles=all_roles,
-                variables=None,
-                include_economy=True,
-                aggregate="mean",
-            )
-        else:
-            # Custom configuration (collect must be a dict at this point)
-            assert isinstance(collect, dict)
-            return _DataCollector(
-                roles=collect.get("roles") or all_roles,
-                variables=collect.get("variables"),
-                include_economy=collect.get("economy", True),
-                aggregate=collect.get("aggregate", "mean"),
-            )
+            # Default: all roles + Economy with all variables, aggregated
+            variables: dict[str, list[str] | Literal[True]] = {
+                role: True for role in all_roles
+            }
+            variables["Economy"] = True
+            return _DataCollector(variables=variables, aggregate="mean")
+
+        if isinstance(collect, list):
+            # List form: specified roles with all their variables
+            list_vars: dict[str, list[str] | Literal[True]] = {
+                name: True for name in collect
+            }
+            return _DataCollector(variables=list_vars, aggregate="mean")
+
+        # Dict form: parse variables and extract aggregate
+        assert isinstance(collect, dict)
+        aggregate = collect.get("aggregate", "mean")
+
+        # Build variables dict (exclude 'aggregate' key)
+        dict_vars: dict[str, list[str] | Literal[True]] = {
+            k: v for k, v in collect.items() if k != "aggregate"
+        }
+
+        return _DataCollector(variables=dict_vars, aggregate=aggregate)
 
     def step(self) -> None:
         """

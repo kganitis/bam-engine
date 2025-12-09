@@ -52,13 +52,10 @@ print(f"  - {sim.n_banks} banks")
 
 results = sim.run(
     collect={
-        "roles": ["Producer", "Worker", "Employer"],
-        "variables": {
-            "Producer": ["production", "labor_productivity"],
-            "Worker": ["wage", "employed"],
-            "Employer": ["n_vacancies"],
-        },
-        "include_economy": True,
+        "Producer": ["production", "labor_productivity"],
+        "Worker": ["wage", "employed"],
+        "Employer": ["n_vacancies"],
+        "Economy": True,  # Capture all economy metrics
         "aggregate": None,  # Keep full per-agent data for wages
     }
 )
