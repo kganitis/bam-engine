@@ -159,12 +159,12 @@ sphinx_gallery_conf = {
     "min_reported_time": 0.1,  # Minimum time to report for example execution
     "show_memory": False,  # Don't show memory usage
     "junit": "",  # Don't generate JUnit XML
-    # Order subsections: basic first, then advanced, then research
+    # Order subsections: basic first, then advanced, then extensions
     "subsection_order": ExplicitOrder(
         [
             "../examples/basic",
             "../examples/advanced",
-            "../examples/research",
+            "../examples/extensions",
         ]
     ),
     # Order examples within each subsection

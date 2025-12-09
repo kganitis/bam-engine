@@ -8,6 +8,8 @@ using the ``SimulationResults`` class. Learn how to:
 
 - Collect data during simulation runs
 - Access role and economy time series
+- Use ``get_array()`` for cleaner data access
+- Use the ``data`` property for unified access
 - Export data to pandas DataFrames
 - Generate summary statistics
 
@@ -77,6 +79,68 @@ if "Producer" in results.role_data:
         avg_prices = producer_data["price"]
         print(f"  Average price shape: {avg_prices.shape}")
         print(f"  Price trend (first 5): {avg_prices[:5].round(3)}")
+
+# %%
+# Easy Data Access with get_array()
+# ---------------------------------
+#
+# Use ``get_array()`` for cleaner data access without navigating nested dicts.
+# This method also supports aggregation on-the-fly.
+
+# get_array() for role data - cleaner than results.role_data["Producer"]["price"]
+if "Producer" in results.role_data and "price" in results.role_data["Producer"]:
+    prices_via_get_array = results.get_array("Producer", "price")
+    print("\nUsing get_array():")
+    print(
+        f"  results.get_array('Producer', 'price').shape: {prices_via_get_array.shape}"
+    )
+
+# get_array() for economy data - use "Economy" as the role name
+if len(unemployment) > 0:
+    unemp_via_get_array = results.get_array("Economy", "unemployment_rate")
+    print(
+        f"  results.get_array('Economy', 'unemployment_rate').shape: {unemp_via_get_array.shape}"
+    )
+
+# Aggregation on-the-fly (useful when you have full per-agent data)
+full_data_sim = bam.Simulation.init(n_firms=50, n_households=250, seed=42)
+full_data_results = full_data_sim.run(
+    n_periods=20,
+    collect={
+        "roles": ["Producer"],
+        "variables": {"Producer": ["price"]},
+        "aggregate": None,  # Full per-agent data
+        "economy": False,
+    },
+)
+
+if "Producer" in full_data_results.role_data:
+    # Get full 2D data (periods x firms)
+    prices_2d = full_data_results.get_array("Producer", "price")
+    print(f"\n  Full data shape: {prices_2d.shape}")
+
+    # Get mean aggregated on-the-fly
+    prices_mean = full_data_results.get_array("Producer", "price", aggregate="mean")
+    print(f"  With aggregate='mean': {prices_mean.shape}")
+
+# %%
+# Unified Data Access with data Property
+# --------------------------------------
+#
+# The ``data`` property combines role_data and economy_data into one dict.
+# Economy data is accessible under the "Economy" key.
+
+print("\nUsing results.data property:")
+all_data = results.data
+print(f"  Available keys: {list(all_data.keys())}")
+
+# Access role data
+if "Producer" in all_data:
+    print(f"  Producer variables: {list(all_data['Producer'].keys())}")
+
+# Access economy data via "Economy" key
+if "Economy" in all_data:
+    print(f"  Economy variables: {list(all_data['Economy'].keys())}")
 
 # %%
 # Visualizing Results
@@ -285,5 +349,8 @@ if all_unemployment:
 # - Use ``collect=True`` for basic data collection with aggregated means
 # - Use ``collect={...}`` for custom collection specifications
 # - Access raw data via ``results.economy_data`` and ``results.role_data``
+# - Use ``results.get_array()`` for cleaner access: ``get_array("Producer", "price")``
+# - Use ``results.get_array("Economy", "metric")`` for economy data
+# - Use ``results.data`` for unified access (includes "Economy" key)
 # - Export to pandas with ``to_dataframe()`` for further analysis
 # - Get quick statistics with ``results.summary``

@@ -70,7 +70,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -229,6 +229,10 @@ class Simulation:
         Default run length for run() method.
     t : int
         Current period (starts at 0).
+    extra_params : dict[str, Any]
+        Dictionary of extension-specific parameters passed to ``init()``
+        that are not core configuration fields. Access directly as
+        attributes: ``sim.param_name``.
 
     Examples
     --------
@@ -314,6 +318,12 @@ class Simulation:
     n_periods: int  # run length
     t: int  # current period
 
+    # Role instances storage (built-in + custom roles)
+    _role_instances: dict[str, Any] = field(default_factory=dict)
+
+    # Extension parameters (user-defined kwargs not in core Config)
+    extra_params: dict[str, Any] = field(default_factory=dict)
+
     # Backward-compatible properties (delegate to config)
     @property
     def h_rho(self) -> float:
@@ -383,6 +393,57 @@ class Simulation:
     def cap_factor(self) -> float | None:
         """Breakeven price cap factor."""
         return self.config.cap_factor
+
+    @property
+    def _custom_roles(self) -> dict[str, Any]:
+        """Backward-compatible alias for _role_instances.
+
+        .. deprecated::
+            Use :attr:`_role_instances` directly instead.
+        """
+        return self._role_instances
+
+    def __getattr__(self, name: str) -> Any:
+        """Allow access to extra_params via attribute syntax.
+
+        Parameters
+        ----------
+        name : str
+            Attribute name to look up.
+
+        Returns
+        -------
+        Any
+            Value from extra_params if found.
+
+        Raises
+        ------
+        AttributeError
+            If attribute not found in extra_params.
+
+        Examples
+        --------
+        >>> sim = bam.Simulation.init(seed=42, sigma_min=0.0, sigma_max=0.1)
+        >>> sim.sigma_min
+        0.0
+        >>> sim.sigma_max
+        0.1
+        """
+        # Don't intercept private attributes
+        if name.startswith("_"):
+            raise AttributeError(
+                f"'{type(self).__name__}' object has no attribute '{name}'"
+            )
+        # Check extra_params
+        try:
+            extra = object.__getattribute__(self, "extra_params")
+            if name in extra:
+                return extra[name]
+        except AttributeError:
+            pass
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{name}'"
+        )
 
     # Constructor
     # ---------------------------------------------------------------------
@@ -629,7 +690,6 @@ class Simulation:
         # finance
         net_worth = np.full(p["n_firms"], fill_value=p["net_worth_init"])
         total_funds = net_worth.copy()
-        rnd_intensity = np.ones(p["n_firms"])
         gross_profit = np.zeros_like(net_worth)
         net_profit = np.zeros_like(net_worth)
         retained_profit = np.zeros_like(net_worth)
@@ -737,7 +797,6 @@ class Simulation:
             total_funds=total_funds,
             wage_bill=wage_bill,
             credit_demand=credit_demand,
-            rnd_intensity=rnd_intensity,
             gross_profit=gross_profit,
             net_profit=net_profit,
             retained_profit=retained_profit,
@@ -779,6 +838,29 @@ class Simulation:
             cap_factor=p.get("cap_factor"),
         )
 
+        # Collect extra parameters not used by core Config
+        # Derive known keys dynamically from Config's dataclass fields
+        config_fields = set(Config.__dataclass_fields__.keys())
+        # Add keys used by Simulation but not in Config
+        simulation_keys = {
+            "n_firms",
+            "n_households",
+            "n_banks",
+            "n_periods",
+            "net_worth_init",
+            "production_init",
+            "price_init",
+            "wage_offer_init",
+            "savings_init",
+            "equity_base_init",
+            "pipeline_path",
+            "logging",
+            "min_wage",
+            "min_wage_rev_period",
+        }
+        known_keys = config_fields | simulation_keys
+        extra_params = {k: v for k, v in p.items() if k not in known_keys}
+
         # Create event pipeline (default or custom)
         pipeline_path = p.get("pipeline_path")
         if pipeline_path is not None:
@@ -799,6 +881,16 @@ class Simulation:
         if "logging" in p:
             cls._configure_logging(p["logging"])
 
+        # Store all role instances in unified dict
+        role_instances = {
+            "Producer": prod,
+            "Worker": wrk,
+            "Employer": emp,
+            "Borrower": bor,
+            "Lender": lend,
+            "Consumer": con,
+        }
+
         return cls(
             ec=ec,
             prod=prod,
@@ -816,6 +908,8 @@ class Simulation:
             n_periods=p["n_periods"],
             t=0,
             rng=rng,
+            _role_instances=role_instances,
+            extra_params=extra_params,
         )
 
     # public API
@@ -1060,7 +1154,7 @@ class Simulation:
         ----------
         name : str
             Role name (case-insensitive): 'Producer', 'Worker', 'Employer',
-            'Borrower', 'Lender', 'Consumer'.
+            'Borrower', 'Lender', 'Consumer', or any custom role name.
 
         Returns
         -------
@@ -1078,42 +1172,105 @@ class Simulation:
         >>> prod = sim.get_role("Producer")
         >>> assert prod is sim.prod
         """
+        # Exact match first
+        if name in self._role_instances:
+            return self._role_instances[name]
+
+        # Case-insensitive match
+        name_lower = name.lower()
+        for role_name, instance in self._role_instances.items():
+            if role_name.lower() == name_lower:
+                return instance
+
+        # Check if role is registered but no instance found
         from bamengine.core.registry import get_role as get_role_class
         from bamengine.core.registry import list_roles
 
-        # Try to get the role class from registry (case-sensitive first)
         try:
-            # First try exact match
             role_cls = get_role_class(name)
-        except KeyError:
-            # Try case-insensitive match
-            name_title = name.title()  # Convert to TitleCase
-            try:
-                role_cls = get_role_class(name_title)
-            except KeyError:
-                # Provide helpful error message
-                available = list_roles()
-                raise KeyError(
-                    f"Role '{name}' not found. Available roles: {available}"
-                ) from None
-
-        # Map role class to instance
-        instance_map: dict[type, Any] = {
-            Producer: self.prod,
-            Worker: self.wrk,
-            Employer: self.emp,
-            Borrower: self.bor,
-            Lender: self.lend,
-            Consumer: self.con,
-        }
-
-        if role_cls not in instance_map:
-            # This shouldn't happen unless new roles are added without updating Simulation
             raise KeyError(
-                f"Role '{role_cls.__name__}' is registered but not available in simulation"
+                f"Role '{role_cls.__name__}' is registered but no instance found. "
+                f"Use sim.use_role({role_cls.__name__}) to attach it."
             )
+        except KeyError:
+            # Role not registered at all
+            available = list(self._role_instances.keys())
+            registered = list_roles()
+            raise KeyError(
+                f"Role '{name}' not found. "
+                f"Available instances: {available}. "
+                f"Registered roles: {registered}"
+            ) from None
 
-        return instance_map[role_cls]
+    def use_role(self, role_cls: type) -> Any:
+        """
+        Instantiate and attach a custom role to the simulation.
+
+        Creates a role instance with zeroed arrays sized for n_firms and
+        stores it in the simulation. If the role is already attached,
+        returns the existing instance.
+
+        Parameters
+        ----------
+        role_cls : type
+            Role class to instantiate (decorated with @role).
+
+        Returns
+        -------
+        Role instance
+            The newly created or existing instance, attached to simulation.
+
+        Examples
+        --------
+        >>> from bamengine import role, Float
+        >>> @role
+        ... class RnD:
+        ...     sigma: Float
+        ...     rnd_intensity: Float
+        >>> sim = bam.Simulation.init(n_firms=100, seed=42)
+        >>> rnd = sim.use_role(RnD)
+        >>> rnd.sigma.shape
+        (100,)
+
+        Notes
+        -----
+        Role instances are created with zeroed arrays of size n_firms.
+        For household-level roles (requiring n_households arrays), you
+        should instantiate and attach manually via get_role().
+        """
+        role_name = getattr(role_cls, "name", None) or role_cls.__name__
+
+        # Return existing instance if already attached
+        if role_name in self._role_instances:
+            return self._role_instances[role_name]
+
+        # Create instance with zeroed arrays
+        instance = self._create_role_instance(role_cls, self.n_firms)
+        self._role_instances[role_name] = instance
+        return instance
+
+    def _create_role_instance(self, role_cls: type, n_agents: int) -> Any:
+        """
+        Create a role instance with zeroed arrays.
+
+        Parameters
+        ----------
+        role_cls : type
+            Role class to instantiate.
+        n_agents : int
+            Number of agents (array size).
+
+        Returns
+        -------
+        Role instance
+            New instance with zeroed arrays for all fields.
+        """
+        kwargs = {}
+        annotations = getattr(role_cls, "__annotations__", {})
+        for field_name in annotations:
+            if not field_name.startswith("_"):
+                kwargs[field_name] = np.zeros(n_agents, dtype=np.float64)
+        return role_cls(**kwargs)
 
     def get_event(self, name: str) -> Any:
         """

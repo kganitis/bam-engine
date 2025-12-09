@@ -316,29 +316,25 @@ class FirmsCalcCreditMetrics:
     """
     Firms calculate financial fragility metric for credit evaluation.
 
-    The fragility metric combines leverage (debt-to-equity) with firm-specific
-    R&D intensity. Higher fragility indicates greater default risk. Banks may
-    use this metric (implicitly via net worth ranking) to assess creditworthiness.
+    The fragility metric is the leverage ratio (debt-to-equity). Higher fragility
+    indicates greater default risk. Banks may use this metric (implicitly via
+    net worth ranking) to assess creditworthiness.
 
     Algorithm
     ---------
     For each firm i:
 
     1. Calculate leverage: :math:`l_i = B_i / A_i` (if :math:`A_i > 0`, else :math:`l_i = 0`)
-    2. Calculate fragility: :math:`f_i = \\mu_i \\times l_i`
+    2. Cap leverage at :math:`B_i` to prevent explosion for small :math:`A_i`
 
     Mathematical Notation
     ---------------------
     .. math::
-        l_i = \\frac{B_i}{A_i}
-
-        f_i = \\mu_i \\times l_i
+        f_i = \\frac{B_i}{A_i}
 
     where:
 
-    - :math:`l_i`: leverage (credit demand relative to net worth)
-    - :math:`f_i`: projected financial fragility
-    - :math:`\\mu_i`: R&D intensity parameter (firm-specific)
+    - :math:`f_i`: projected financial fragility (leverage)
     - :math:`B_i`: credit demand
     - :math:`A_i`: net worth
 
@@ -373,7 +369,8 @@ class FirmsCalcCreditMetrics:
     >>> leverage = (
     ...     sim.bor.credit_demand[pos_net_worth] / sim.bor.net_worth[pos_net_worth]
     ... )
-    >>> expected_fragility = sim.bor.rnd_intensity[pos_net_worth] * leverage
+    >>> # Fragility is capped at credit_demand
+    >>> expected_fragility = np.minimum(leverage, sim.bor.credit_demand[pos_net_worth])
     >>> actual_fragility = sim.bor.projected_fragility[pos_net_worth]
     >>> np.allclose(actual_fragility, expected_fragility)
     True
@@ -394,7 +391,7 @@ class FirmsCalcCreditMetrics:
     --------
     FirmsDecideCreditDemand : Calculates credit_demand used in leverage
     BanksProvideLoans : Banks evaluate creditworthiness (by net worth)
-    Borrower : Financial state with rnd_intensity, credit_demand, net_worth
+    Borrower : Financial state with credit_demand, net_worth
     bamengine.events._internal.credit_market.firms_calc_credit_metrics : Implementation
     """
 

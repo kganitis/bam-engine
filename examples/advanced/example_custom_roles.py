@@ -13,6 +13,7 @@ You'll learn to:
 - Use type annotations for NumPy arrays
 - Handle optional fields with defaults
 - Register and retrieve custom roles
+- Attach custom roles using ``sim.use_role()``
 - Integrate roles with simulations
 """
 
@@ -283,6 +284,44 @@ print(f"  Is subclass of Role: {issubclass(TraditionalInventory, Role)}")
 # The @role decorator is recommended for cleaner code
 
 # %%
+# Attaching Roles with use_role()
+# -------------------------------
+#
+# The ``use_role()`` method provides a clean way to attach custom roles
+# to a simulation. It automatically creates zeroed arrays of the correct size.
+
+
+@role
+class RnDState:
+    """R&D state role for demonstrating use_role()."""
+
+    sigma: Float  # R&D share of profits
+    rnd_intensity: Float  # Expected productivity gain (mu)
+    productivity_increment: Float  # Actual increment (z)
+    fragility: Float  # Financial fragility W/A
+
+
+# Create simulation
+demo_sim = bam.Simulation.init(n_firms=50, n_households=250, seed=42)
+
+# use_role() creates the instance with zeroed arrays automatically
+rnd_state = demo_sim.use_role(RnDState)
+
+print("\nUsing use_role() to attach custom roles:")
+print(f"  Created {RnDState.name} with {demo_sim.n_firms} firms")
+print("  All arrays initialized to zeros:")
+print(f"    sigma: {rnd_state.sigma[:3]}... (shape: {rnd_state.sigma.shape})")
+print(f"    rnd_intensity: {rnd_state.rnd_intensity[:3]}...")
+
+# use_role() returns the same instance if called again
+rnd_state_again = demo_sim.use_role(RnDState)
+print(f"  Same instance on repeat call: {rnd_state is rnd_state_again}")
+
+# The role is accessible via get_role() too
+rnd_via_get = demo_sim.get_role("RnDState")
+print(f"  Accessible via get_role(): {rnd_via_get is rnd_state}")
+
+# %%
 # Visualizing Role Data
 # ---------------------
 #
@@ -294,9 +333,9 @@ import matplotlib.pyplot as plt
 n_periods = 20
 n_firms = 10
 
-# Initialize
-stock = np.full(n_firms, 100.0)
-reorder_point = np.full(n_firms, 30.0)
+# Initialize using ops.full for consistency
+stock = ops.full(n_firms, 100.0)
+reorder_point = ops.full(n_firms, 30.0)
 stock_history = [stock.copy()]
 
 # Simulate consumption and reorder
@@ -399,4 +438,5 @@ print(f"  Firm with highest tech: Firm {np.argmax(rd.tech_level)}")
 # - Use Optional and field() for optional/default values
 # - Roles can include helper methods
 # - Roles are registered automatically and retrievable via ``get_role()``
+# - Use ``sim.use_role(RoleClass)`` to attach custom roles with auto-zeroed arrays
 # - Traditional syntax (explicit @dataclass + Role inheritance) also works

@@ -1,5 +1,5 @@
-Research Examples
-=================
+Extension Examples
+==================
 
 Examples demonstrating extensions from the original BAM model
 (Delli Gatti et al., 2011).

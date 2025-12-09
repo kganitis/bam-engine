@@ -83,7 +83,6 @@ def _borrower_defaults(n: int, *, queue_h: int) -> dict[str, Any]:
         total_funds=np.full(n, 10.0, dtype=np.float64),
         wage_bill=np.zeros(n, dtype=np.float64),
         credit_demand=np.zeros(n, dtype=np.float64),
-        rnd_intensity=np.ones(n, dtype=np.float64),
         projected_fragility=np.zeros(n, dtype=np.float64),
         gross_profit=np.zeros(n, dtype=np.float64),
         net_profit=np.zeros(n, dtype=np.float64),

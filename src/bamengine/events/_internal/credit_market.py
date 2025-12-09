@@ -172,9 +172,6 @@ def firms_calc_credit_metrics(bor: Borrower) -> None:
         )
     np.minimum(frag, bor.credit_demand, out=frag)
 
-    # Final adjustment by R&D intensity (μ)
-    np.multiply(frag, bor.rnd_intensity, out=frag)
-
     # Logging
     valid_frag = frag[np.isfinite(frag)]
     avg_fragility = valid_frag.mean() if valid_frag.size > 0 else 0.0

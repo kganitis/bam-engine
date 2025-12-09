@@ -89,6 +89,8 @@ BAM Operations
    full
    empty
    arange
+   array
+   asarray
 
 **Mathematical**
 
@@ -97,6 +99,7 @@ BAM Operations
    :nosignatures:
 
    log
+   exp
 
 **Utilities**
 

@@ -22,8 +22,8 @@ Operation Categories
 - **Conditional**: where (if-then-else), select (switch-case)
 - **Element-wise**: maximum, minimum, clip
 - **Aggregation**: sum, mean, any, all
-- **Array creation**: zeros, ones, full, empty, arange
-- **Mathematical**: log
+- **Array creation**: zeros, ones, full, empty, arange, asarray, array
+- **Mathematical**: log, exp
 - **Utilities**: unique, bincount, isin, argsort, sort
 - **Random**: uniform (requires RNG)
 - **Assignment**: assign (in-place array modification)
@@ -154,8 +154,10 @@ __all__ = [
     "empty",
     "arange",
     "asarray",
+    "array",
     # Mathematical
     "log",
+    "exp",
     # Utilities
     "unique",
     "bincount",
@@ -1016,6 +1018,39 @@ def asarray(data: Sequence[Any] | Float) -> Float:
     return np.asarray(data, dtype=np.float64)
 
 
+def array(data: Sequence[Any] | Float) -> Float:
+    """
+    Create a new numpy array from input data.
+
+    Unlike :func:`asarray`, this always creates a copy of the data.
+    Returns float64 dtype.
+
+    Parameters
+    ----------
+    data : list, tuple, or array
+        Input data to convert.
+
+    Returns
+    -------
+    array
+        NumPy array with float64 dtype (always a new copy).
+
+    Examples
+    --------
+    >>> import bamengine.ops as ops
+    >>> original = [1.0, 2.0, 3.0]
+    >>> arr = ops.array(original)  # Creates a new array
+    >>> # arr: [1.0, 2.0, 3.0]
+
+    Notes
+    -----
+    Use :func:`asarray` when you don't need a copy (more efficient).
+    Use :func:`array` when you need to ensure modifications don't
+    affect the original data.
+    """
+    return np.array(data, dtype=np.float64)
+
+
 # === Mathematical Functions ===
 
 
@@ -1041,6 +1076,30 @@ def log(a: Float) -> Float:
     >>> # log_gdp: [4.605, 4.700, 4.796]
     """
     return np.log(a)
+
+
+def exp(a: Float) -> Float:
+    """
+    Exponential of array elements (e^x).
+
+    Parameters
+    ----------
+    a : array
+        Input array.
+
+    Returns
+    -------
+    array
+        Exponential of each element.
+
+    Examples
+    --------
+    >>> import bamengine.ops as ops
+    >>> growth_rates = np.array([0.0, 0.1, 0.2])
+    >>> growth_factors = ops.exp(growth_rates)
+    >>> # growth_factors: [1.0, 1.105, 1.221]
+    """
+    return np.exp(a)
 
 
 # === Utility Operations ===

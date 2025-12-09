@@ -132,10 +132,10 @@ def test_calc_credit_metrics_fragility() -> None:
         queue_h=1,
         credit_demand=np.array([5.0, 8.0, 0.0]),
         net_worth=np.array([10.0, 0.0, 5.0]),  # second firm zero ⇒ CAP_FRAG
-        rnd_intensity=np.array([1.0, 0.5, 2.0]),
     )
     firms_calc_credit_metrics(bor)
-    expected = np.array([0.5, 4.0, 0.0])
+    # fragility = min(B/A, B): [5/10=0.5, capped to B=8, 0/5=0]
+    expected = np.array([0.5, 8.0, 0.0])
     np.testing.assert_allclose(bor.projected_fragility, expected, rtol=1e-12)
 
 
@@ -149,7 +149,6 @@ def test_calc_credit_metrics_allocates_buffer() -> None:
         queue_h=1,
         credit_demand=np.array([4.0, 6.0]),
         net_worth=np.array([8.0, 2.0]),
-        rnd_intensity=np.array([1.0, 2.0]),
     )
     # give it the wrong shape so the allocation branch triggers
     bor.projected_fragility = np.empty(0, dtype=np.float64)
@@ -157,8 +156,9 @@ def test_calc_credit_metrics_allocates_buffer() -> None:
     firms_calc_credit_metrics(bor)
 
     assert bor.projected_fragility is not None
+    # fragility = min(B/A, B): [4/8=0.5, 6/2=3.0]
     np.testing.assert_allclose(
-        bor.projected_fragility, np.array([0.5, 6.0]), rtol=1e-12
+        bor.projected_fragility, np.array([0.5, 3.0]), rtol=1e-12
     )
     # buffer has correct shape & is writable
     assert bor.projected_fragility.shape == bor.net_worth.shape
@@ -677,18 +677,18 @@ def test_decide_credit_supply_clips_negative_equity_to_zero() -> None:
 def test_calc_credit_metrics_general_cap_for_tiny_positive_net_worth() -> None:
     """
     When A is tiny but positive ⇒ B/A very large; function must cap fragility to B, then
-    multiply by μ. Here B=1, A=1e-12 ⇒ raw l≈1e12 ⇒ capped to B=1 ⇒ f = μ * 1.
+    Here B=1, A=1e-12 ⇒ raw l≈1e12 ⇒ capped to B=1 ⇒ f = 1.
     """
     bor = mock_borrower(
         n=1,
         queue_h=1,
         credit_demand=np.array([1.0]),  # B
         net_worth=np.array([1e-12]),  # tiny positive A
-        rnd_intensity=np.array([0.3]),  # μ
     )
     firms_calc_credit_metrics(bor)
     assert bor.projected_fragility is not None
-    np.testing.assert_allclose(bor.projected_fragility, np.array([0.3]), atol=1e-12)
+    # fragility = min(B/A, B) capped to B=1
+    np.testing.assert_allclose(bor.projected_fragility, np.array([1.0]), atol=1e-12)
 
 
 def test_prepare_applications_no_lenders_early_exit() -> None:

@@ -19,8 +19,6 @@ class Borrower:
 
     Parameters
     ----------
-    rnd_intensity : Float1D
-        R&D intensity parameter (μ), controls financial fragility.
     net_worth : Float1D
         Firm equity/net worth (A = assets - liabilities).
     total_funds : Float1D
@@ -30,7 +28,7 @@ class Borrower:
     credit_demand : Float1D
         Amount of credit requested from banks (B).
     projected_fragility : Float1D
-        Financial fragility metric (μ · B / A).
+        Financial fragility metric (B / A, leverage).
     gross_profit : Float1D
         Revenue before debt service.
     net_profit : Float1D
@@ -93,8 +91,6 @@ class Borrower:
     :mod:`bamengine.events._internal.credit_market` : Credit market logic
     :mod:`bamengine.events._internal.revenue` : Revenue collection logic
     """
-
-    rnd_intensity: Float1D
 
     # Finance
     net_worth: Float1D
