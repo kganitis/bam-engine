@@ -300,10 +300,12 @@ print("\nRunning Growth+ simulation...")
 
 results = sim.run(
     collect={
-        "Producer": ["labor_productivity", "production", "price"],
+        "Producer": ["labor_productivity", "production"],
         "Worker": ["wage", "employed"],
         "Borrower": ["net_worth", "net_profit"],
-        "Economy": True,
+        "Employer": ["n_vacancies"],
+        "Economy": True,  # Capture all economy metrics
+        "aggregate": None,  # Keep full per-agent data for wages
     }
 )
 
@@ -316,18 +318,36 @@ print(f"Runtime: {results.metadata['runtime_seconds']:.2f} seconds")
 #
 # Compare productivity growth over time using ``get_array()`` for easy data access.
 
+import numpy as np
+
 # Get productivity data using get_array() - cleaner than navigating nested dicts
 productivity = results.get_array("Producer", "labor_productivity")
 production = results.get_array("Producer", "production")
-price = results.get_array("Producer", "price")
 net_worth = results.get_array("Borrower", "net_worth")
 wages = results.get_array("Worker", "wage")
 employed = results.get_array("Worker", "employed")
+n_vacancies = results.get_array("Employer", "n_vacancies")
 
 # Economy data - use "Economy" as role name
-unemployment = results.get_array("Economy", "unemployment_rate")
+unemployment_raw = results.get_array("Economy", "unemployment_rate")
 inflation = results.get_array("Economy", "inflation")
 avg_price = results.get_array("Economy", "avg_price")
+
+# Apply smoothing based on unemployment_calc_method config setting
+# - "raw": use raw unemployment rate directly
+# - "simple_ma": apply 4-quarter moving average for seasonal adjustment
+if sim.config.unemployment_calc_method == "simple_ma":
+    window = 4
+    kernel = np.ones(window) / window
+    # 'valid' mode gives output only where full window fits
+    unemployment_sa_valid = np.convolve(unemployment_raw, kernel, mode="valid")
+    # Pad the beginning with raw values (not enough history for MA)
+    unemployment = np.concatenate(
+        [unemployment_raw[: window - 1], unemployment_sa_valid]
+    )
+else:
+    # Use raw rate directly
+    unemployment = unemployment_raw
 
 print("Data shapes:")
 print(f"  productivity: {productivity.shape}")
@@ -344,6 +364,25 @@ else:
     avg_productivity = productivity
     gdp = production
     total_net_worth = net_worth
+
+# Calculate average wage for EMPLOYED workers only per period
+# (unemployed workers have wage=0, which would skew the average)
+employed_wages_sum = ops.sum(ops.where(employed, wages, 0.0), axis=1)
+employed_count = ops.sum(employed, axis=1)
+avg_employed_wage = ops.where(
+    ops.greater(employed_count, 0),
+    ops.divide(employed_wages_sum, employed_count),
+    0.0,
+)
+
+# Calculate Productivity / Real Wage Ratio
+# Real wage = nominal wage / price level
+real_wage = ops.divide(avg_employed_wage, avg_price)
+prod_wage_ratio = ops.where(
+    ops.greater(real_wage, 0),
+    ops.divide(avg_productivity, real_wage),
+    0.0,
+)
 
 # Calculate productivity growth rate
 prod_growth = ops.divide(
@@ -362,52 +401,156 @@ print(
 )
 
 # %%
+# Calculate Metrics for Macroeconomic Curves
+# ------------------------------------------
+#
+# Prepare data for Phillips, Okun, Beveridge curves and firm size distribution.
+
+# Phillips Curve: Wage inflation (period-over-period)
+wage_inflation = ops.divide(
+    avg_employed_wage[1:] - avg_employed_wage[:-1],
+    ops.where(ops.greater(avg_employed_wage[:-1], 0), avg_employed_wage[:-1], 1.0),
+)
+
+# Okun Curve: GDP growth rate and unemployment growth rate
+gdp_growth = ops.divide(gdp[1:] - gdp[:-1], gdp[:-1])
+unemployment_growth = ops.divide(
+    unemployment[1:] - unemployment[:-1],
+    ops.where(ops.greater(unemployment[:-1], 0), unemployment[:-1], 1.0),
+)
+
+# Beveridge Curve: Vacancy rate
+total_vacancies = ops.sum(n_vacancies, axis=1)
+vacancy_rate = ops.divide(total_vacancies, sim.n_households)
+
+# Firm size distribution: Production at final period
+final_production = production[-1]
+
+print(f"\nCollected {len(gdp)} periods of data")
+print(f"Economy metrics: {list(results.economy_data.keys())}")
+
+# %%
+# Prepare Data for Visualization
+# ------------------------------
+#
+# Apply a burn-in period to focus on steady-state dynamics
+# (excluding initial transients).
+
+burn_in = 500  # Exclude first 500 periods
+
+# Apply burn-in and create time axis
+periods = ops.arange(burn_in, len(gdp))
+# Index GDP to initial period = 100, then take natural log
+gdp_indexed = ops.divide(gdp, gdp[0]) * 100
+log_gdp = ops.log(gdp_indexed[burn_in:])
+inflation_pct = inflation[burn_in:] * 100  # Convert to percentage
+prod_wage_ratio_trimmed = prod_wage_ratio[burn_in:]
+
+# Unemployment: apply burn-in
+unemployment_pct = unemployment[burn_in:] * 100  # Convert to percentage
+
+# Apply burn-in to curve data
+# For Phillips curve: wage_inflation has length n-1, so burn_in-1 aligns with period burn_in
+wage_inflation_trimmed = wage_inflation[burn_in - 1 :]
+unemployment_phillips = unemployment[burn_in:]
+
+# For Okun curve: align GDP growth with unemployment growth
+gdp_growth_trimmed = gdp_growth[burn_in - 1 :]
+unemployment_growth_trimmed = unemployment_growth[burn_in - 1 :]
+
+# For Beveridge curve
+vacancy_rate_trimmed = vacancy_rate[burn_in:]
+unemployment_beveridge = unemployment[burn_in:]
+
+print(f"Plotting {len(periods)} periods (after {burn_in}-period burn-in)")
+
+# %%
 # Visualization
 # -------------
 #
-# Plot the key Growth+ dynamics.
+# Create a 4x2 figure: time series in the top two rows (productivity, GDP,
+# unemployment, inflation) and macroeconomic curves in the bottom two rows
+# (Phillips, Okun, Beveridge, firm size distribution).
 
 import matplotlib.pyplot as plt
 
-fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+fig, axes = plt.subplots(4, 2, figsize=(14, 20))
+fig.suptitle(
+    "Growth+ Model Results (Section 3.8) - Endogenous Productivity Growth",
+    fontsize=16,
+    y=0.995,
+)
 
-# Apply burn-in
-burn_in = min(500, len(avg_productivity) // 2)  # Ensure burn_in is valid
-periods = range(burn_in, len(avg_productivity))
+# Top 2x2: Time series panels
+# ---------------------------
 
-# 1. Productivity Evolution
-ax1 = axes[0, 0]
-ax1.plot(periods, avg_productivity[burn_in:], "b-", linewidth=1)
-ax1.set_xlabel("Period")
-ax1.set_ylabel("Average Labor Productivity")
-ax1.set_title("Endogenous Productivity Growth")
-ax1.grid(True, alpha=0.3)
+# Panel (0,0): Endogenous Productivity Growth
+axes[0, 0].plot(periods, avg_productivity[burn_in:], linewidth=1.5, color="#2E86AB")
+axes[0, 0].set_title("Endogenous Productivity Growth", fontsize=12, fontweight="bold")
+axes[0, 0].set_xlabel("Time (periods)")
+axes[0, 0].set_ylabel("Average Labor Productivity")
+axes[0, 0].grid(True, linestyle="--", alpha=0.6)
 
-# 2. Log GDP (indexed to initial period = 100)
-ax2 = axes[0, 1]
-gdp_indexed = ops.divide(gdp, gdp[0]) * 100
-log_gdp = ops.log(gdp_indexed[burn_in:])
-ax2.plot(periods, log_gdp, "g-", linewidth=1)
-ax2.set_xlabel("Period")
-ax2.set_ylabel("Log GDP (indexed)")
-ax2.set_title("Log Real GDP")
-ax2.grid(True, alpha=0.3)
+# Panel (0,1): Log Real GDP
+axes[0, 1].plot(periods, log_gdp, linewidth=1.5, color="#A23B72")
+axes[0, 1].set_title("Log Real GDP", fontsize=12, fontweight="bold")
+axes[0, 1].set_xlabel("Time (periods)")
+axes[0, 1].set_ylabel("Log Output")
+axes[0, 1].grid(True, linestyle="--", alpha=0.6)
 
-# 3. Unemployment Rate
-ax3 = axes[1, 0]
-ax3.plot(periods, unemployment[burn_in:] * 100, "r-", linewidth=1)
-ax3.set_xlabel("Period")
-ax3.set_ylabel("Unemployment Rate (%)")
-ax3.set_title("Unemployment")
-ax3.grid(True, alpha=0.3)
+# Panel (1,0): Unemployment Rate
+axes[1, 0].plot(periods, unemployment_pct, linewidth=1.5, color="#F18F01")
+axes[1, 0].set_title("Unemployment Rate (%)", fontsize=12, fontweight="bold")
+axes[1, 0].set_xlabel("Time (periods)")
+axes[1, 0].set_ylabel("Unemployment Rate (%)")
+axes[1, 0].grid(True, linestyle="--", alpha=0.6)
 
-# 4. Inflation Rate
-ax4 = axes[1, 1]
-ax4.plot(periods, inflation[burn_in:] * 100, "purple", linewidth=1)
-ax4.set_xlabel("Period")
-ax4.set_ylabel("Annual Inflation Rate (%)")
-ax4.set_title("Inflation")
-ax4.grid(True, alpha=0.3)
+# Panel (1,1): Annual Inflation Rate
+axes[1, 1].plot(periods, inflation_pct, linewidth=1.5, color="#6A994E")
+axes[1, 1].axhline(0, color="black", linewidth=0.8, linestyle="--", alpha=0.5)
+axes[1, 1].set_title("Annual Inflation Rate (%)", fontsize=12, fontweight="bold")
+axes[1, 1].set_xlabel("Time (periods)")
+axes[1, 1].set_ylabel("Inflation Rate (%)")
+axes[1, 1].grid(True, linestyle="--", alpha=0.6)
+
+# Bottom 2x2: Macroeconomic curves
+# --------------------------------
+
+# Panel (2,0): Phillips Curve
+axes[2, 0].scatter(
+    unemployment_phillips, wage_inflation_trimmed, s=10, alpha=0.5, color="#2E86AB"
+)
+axes[2, 0].set_title("Phillips Curve", fontsize=12, fontweight="bold")
+axes[2, 0].set_xlabel("Unemployment Rate")
+axes[2, 0].set_ylabel("Wage Inflation Rate")
+axes[2, 0].grid(True, linestyle="--", alpha=0.6)
+
+# Panel (2,1): Okun Curve
+axes[2, 1].scatter(
+    unemployment_growth_trimmed, gdp_growth_trimmed, s=10, alpha=0.5, color="#A23B72"
+)
+axes[2, 1].set_title("Okun Curve", fontsize=12, fontweight="bold")
+axes[2, 1].set_xlabel("Unemployment Growth Rate")
+axes[2, 1].set_ylabel("Output Growth Rate")
+axes[2, 1].grid(True, linestyle="--", alpha=0.6)
+
+# Panel (3,0): Beveridge Curve
+axes[3, 0].scatter(
+    unemployment_beveridge, vacancy_rate_trimmed, s=10, alpha=0.5, color="#F18F01"
+)
+axes[3, 0].set_title("Beveridge Curve", fontsize=12, fontweight="bold")
+axes[3, 0].set_xlabel("Unemployment Rate")
+axes[3, 0].set_ylabel("Vacancy Rate")
+axes[3, 0].grid(True, linestyle="--", alpha=0.6)
+
+# Panel (3,1): Firm Size Distribution
+axes[3, 1].hist(
+    final_production, bins=20, edgecolor="black", alpha=0.7, color="#6A994E"
+)
+axes[3, 1].set_title("Firm Size Distribution", fontsize=12, fontweight="bold")
+axes[3, 1].set_xlabel("Production")
+axes[3, 1].set_ylabel("Frequency")
+axes[3, 1].grid(True, linestyle="--", alpha=0.6)
 
 plt.tight_layout()
 plt.savefig("growth_plus_dynamics.png", dpi=150, bbox_inches="tight")
@@ -419,34 +562,69 @@ print("\nFigure saved as 'growth_plus_dynamics.png'")
 # Summary Statistics
 # ------------------
 #
-# Report key statistics from the Growth+ simulation.
+# Display summary statistics for the key indicators (post burn-in period).
 
-# Post burn-in statistics
-post_burn = burn_in
-
-print("\n" + "=" * 50)
-print("Growth+ Model Summary Statistics")
-print("=" * 50)
-print("\nProductivity:")
-print(f"  Start (period {burn_in}): {avg_productivity[post_burn]:.4f}")
+print("\n" + "=" * 60)
+print("SUMMARY STATISTICS (Post Burn-In)")
+print("=" * 60)
+print("\nProductivity (Growth+ Key Metric):")
+print(f"  Start (period {burn_in}): {avg_productivity[burn_in]:.4f}")
 print(f"  End (period {len(avg_productivity) - 1}): {avg_productivity[-1]:.4f}")
 print(
-    f"  Total growth: {(avg_productivity[-1] / avg_productivity[post_burn] - 1) * 100:.1f}%"
+    f"  Total growth: {(avg_productivity[-1] / avg_productivity[burn_in] - 1) * 100:.1f}%"
+)
+print(
+    f"  Mean growth rate: {float(ops.mean(prod_growth[burn_in - 1 :])) * 100:.4f}% per period"
 )
 
-print("\nOutput (GDP):")
-print(f"  Mean: {float(ops.mean(gdp[post_burn:])):.1f}")
-print(f"  Std Dev: {float(ops.std(gdp[post_burn:])):.1f}")
+print("\nReal GDP (log scale):")
+print(f"  Mean:   {log_gdp.mean():.4f}")
+print(f"  Std:    {log_gdp.std():.4f}")
+print(f"  Min:    {log_gdp.min():.4f}")
+print(f"  Max:    {log_gdp.max():.4f}")
 
 print("\nUnemployment Rate:")
-print(f"  Mean: {float(ops.mean(unemployment[post_burn:])) * 100:.1f}%")
-print(f"  Std Dev: {float(ops.std(unemployment[post_burn:])) * 100:.2f}%")
+print(f"  Mean:   {unemployment_pct.mean():.2f}%")
+print(f"  Std:    {unemployment_pct.std():.2f}%")
+print(f"  Min:    {unemployment_pct.min():.2f}%")
+print(f"  Max:    {unemployment_pct.max():.2f}%")
 
-print("\nInflation Rate:")
-print(f"  Mean: {float(ops.mean(inflation[post_burn:])) * 100:.2f}%")
-print(f"  Std Dev: {float(ops.std(inflation[post_burn:])) * 100:.2f}%")
+print("\nAnnual Inflation Rate:")
+print(f"  Mean:   {inflation_pct.mean():.2f}%")
+print(f"  Std:    {inflation_pct.std():.2f}%")
+print(f"  Min:    {inflation_pct.min():.2f}%")
+print(f"  Max:    {inflation_pct.max():.2f}%")
 
-print("\n" + "=" * 50)
-print("Growth+ extension demonstrates endogenous productivity")
+print("\nProductivity / Real Wage Ratio:")
+print(f"  Mean:   {prod_wage_ratio_trimmed.mean():.4f}")
+print(f"  Std:    {prod_wage_ratio_trimmed.std():.4f}")
+print(f"  Min:    {prod_wage_ratio_trimmed.min():.4f}")
+print(f"  Max:    {prod_wage_ratio_trimmed.max():.4f}")
+
+print("\nWage Inflation Rate (period-over-period):")
+print(f"  Mean:   {wage_inflation_trimmed.mean():.4f}")
+print(f"  Std:    {wage_inflation_trimmed.std():.4f}")
+print(f"  Min:    {wage_inflation_trimmed.min():.4f}")
+print(f"  Max:    {wage_inflation_trimmed.max():.4f}")
+
+print("\nGDP Growth Rate:")
+print(f"  Mean:   {gdp_growth_trimmed.mean():.4f}")
+print(f"  Std:    {gdp_growth_trimmed.std():.4f}")
+print(f"  Min:    {gdp_growth_trimmed.min():.4f}")
+print(f"  Max:    {gdp_growth_trimmed.max():.4f}")
+
+print("\nVacancy Rate:")
+print(f"  Mean:   {vacancy_rate_trimmed.mean():.4f}")
+print(f"  Std:    {vacancy_rate_trimmed.std():.4f}")
+print(f"  Min:    {vacancy_rate_trimmed.min():.4f}")
+print(f"  Max:    {vacancy_rate_trimmed.max():.4f}")
+
+print("\nFirm Production (final period):")
+print(f"  Mean:   {final_production.mean():.4f}")
+print(f"  Std:    {final_production.std():.4f}")
+print(f"  Min:    {final_production.min():.4f}")
+print(f"  Max:    {final_production.max():.4f}")
+print("=" * 60)
+print("\nGrowth+ extension demonstrates endogenous productivity")
 print("growth through R&D investment by financially healthy firms.")
-print("=" * 50)
+print("=" * 60)
