@@ -281,6 +281,10 @@ class TestFinancialInvariants:
         for _ in range(5):
             sim.step()
 
+            # If economy is destroyed (all banks failed), stop checking
+            if sim.ec.destroyed:
+                break
+
             # Banks that survive must have positive equity
             # (bankrupt banks are replaced)
             assert (sim.lend.equity_base > 0).all(), (
