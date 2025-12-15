@@ -363,6 +363,11 @@ class Simulation:
         return self.config.max_Z
 
     @property
+    def labor_productivity(self) -> float:
+        """Labor productivity (goods per worker)."""
+        return self.config.labor_productivity
+
+    @property
     def theta(self) -> int:
         """Job contract length θ."""
         return self.config.theta
@@ -700,7 +705,7 @@ class Simulation:
         inventory = np.zeros_like(production)
         expected_demand = np.ones_like(production)
         desired_production = np.zeros_like(production)
-        labor_productivity = np.ones(p["n_firms"])
+        labor_productivity = np.full(p["n_firms"], p["labor_productivity"])
         breakeven_price = price.copy()
 
         # employer
@@ -830,12 +835,27 @@ class Simulation:
             max_M=p["max_M"],
             max_H=p["max_H"],
             max_Z=p["max_Z"],
+            labor_productivity=p["labor_productivity"],
             theta=p["theta"],
             beta=p["beta"],
             delta=p["delta"],
             r_bar=p["r_bar"],
             v=p["v"],
             cap_factor=p.get("cap_factor"),
+            # Implementation variants
+            contract_poisson_mean=p["contract_poisson_mean"],
+            loan_priority_method=p["loan_priority_method"],
+            firing_method=p["firing_method"],
+            price_cut_allow_increase=p["price_cut_allow_increase"],
+            fragility_cap_method=p["fragility_cap_method"],
+            zero_production_bankrupt=p["zero_production_bankrupt"],
+            loanbook_clear_on_repay=p["loanbook_clear_on_repay"],
+            # Unemployment calculation parameters
+            unemployment_calc_method=p["unemployment_calc_method"],
+            unemployment_calc_after=p["unemployment_calc_after"],
+            # New firm entry parameters
+            new_firm_scale_factor=p["new_firm_scale_factor"],
+            new_firm_price_markup=p["new_firm_price_markup"],
         )
 
         # Collect extra parameters not used by core Config
@@ -876,6 +896,19 @@ class Simulation:
             pipeline = create_default_pipeline(
                 max_M=p["max_M"], max_H=p["max_H"], max_Z=p["max_Z"]
             )
+
+        # Move calc_unemployment_rate if config specifies different position
+        default_unemp_position = "spawn_replacement_banks"
+        unemp_after = p.get("unemployment_calc_after", default_unemp_position)
+        if unemp_after != default_unemp_position:
+            try:
+                pipeline.remove("calc_unemployment_rate")
+                pipeline.insert_after(unemp_after, "calc_unemployment_rate")
+            except ValueError as e:
+                raise ValueError(
+                    f"Cannot place calc_unemployment_rate after '{unemp_after}': "
+                    f"event not found in pipeline. Original error: {e}"
+                ) from e
 
         # Configure logging (if specified)
         if "logging" in p:

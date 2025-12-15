@@ -288,6 +288,7 @@ class FirmsAdjustPrice:
             sim.prod,
             p_avg=sim.ec.avg_mkt_price,
             h_eta=sim.config.h_eta,
+            price_cut_allow_increase=sim.config.price_cut_allow_increase,
             rng=sim.rng,
         )
 

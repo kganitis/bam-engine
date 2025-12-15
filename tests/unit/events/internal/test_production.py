@@ -156,6 +156,17 @@ def test_calc_unemployment_rate_appends_to_history() -> None:
     np.testing.assert_allclose(ec.unemp_rate_history[-2:], [0.5, 0.5], rtol=1e-12)
 
 
+def test_calc_unemployment_rate_validates_method() -> None:
+    """Test that invalid method raises ValueError."""
+    ec = mock_economy()
+    wrk = mock_worker(n=5, employer=np.array([0, 1, -1, -1, -1], dtype=np.intp))
+
+    import pytest
+
+    with pytest.raises(ValueError, match="Unknown unemployment_calc_method"):
+        calc_unemployment_rate(ec, wrk, method="invalid")
+
+
 def test_update_avg_mkt_price_appends_series() -> None:
     ec = mock_economy()
     prod = mock_producer(n=3, price=np.array([1.0, 2.0, 3.0]))

@@ -383,12 +383,14 @@ ax1.set_ylabel("Average Labor Productivity")
 ax1.set_title("Endogenous Productivity Growth")
 ax1.grid(True, alpha=0.3)
 
-# 2. GDP (Real Output)
+# 2. Log GDP (indexed to initial period = 100)
 ax2 = axes[0, 1]
-ax2.plot(periods, gdp[burn_in:], "g-", linewidth=1)
+gdp_indexed = ops.divide(gdp, gdp[0]) * 100
+log_gdp = ops.log(gdp_indexed[burn_in:])
+ax2.plot(periods, log_gdp, "g-", linewidth=1)
 ax2.set_xlabel("Period")
-ax2.set_ylabel("Total Production (GDP)")
-ax2.set_title("Real GDP")
+ax2.set_ylabel("Log GDP (indexed)")
+ax2.set_title("Log Real GDP")
 ax2.grid(True, alpha=0.3)
 
 # 3. Unemployment Rate

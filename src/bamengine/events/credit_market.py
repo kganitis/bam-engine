@@ -398,7 +398,10 @@ class FirmsCalcCreditMetrics:
     def execute(self, sim: Simulation) -> None:
         from bamengine.events._internal.credit_market import firms_calc_credit_metrics
 
-        firms_calc_credit_metrics(sim.bor)
+        firms_calc_credit_metrics(
+            sim.bor,
+            fragility_cap_method=sim.config.fragility_cap_method,
+        )
 
 
 @event
@@ -665,6 +668,7 @@ class BanksProvideLoans:
             sim.lend,
             r_bar=sim.r_bar,
             h_phi=sim.config.h_phi,
+            loan_priority_method=sim.config.loan_priority_method,
         )
 
 
@@ -765,4 +769,9 @@ class FirmsFireWorkers:
     def execute(self, sim: Simulation) -> None:
         from bamengine.events._internal.credit_market import firms_fire_workers
 
-        firms_fire_workers(sim.emp, sim.wrk, rng=sim.rng)
+        firms_fire_workers(
+            sim.emp,
+            sim.wrk,
+            method=sim.config.firing_method,
+            rng=sim.rng,
+        )

@@ -52,7 +52,8 @@ class Economy:
     avg_mkt_price_history : Float1D
         Time series of average market prices, shape (t+1,).
     unemp_rate_history : Float1D
-        Time series of unemployment rates, shape (t+1,).
+        Time series of raw unemployment rates, shape (t+1,).
+        Apply rolling mean for smoothing if needed.
     inflation_history : Float1D
         Time series of inflation rates, shape (t+1,).
     exiting_firms : Idx1D
@@ -101,7 +102,7 @@ class Economy:
 
     # time-series
     avg_mkt_price_history: Float1D  # shape  (t+1,)
-    unemp_rate_history: Float1D  # shape  (t+1,)
+    unemp_rate_history: Float1D  # shape  (t+1,) -- raw unemployment rate
     inflation_history: Float1D  # shape  (t+1,)
 
     # transient exit lists (flushed each Entry event)

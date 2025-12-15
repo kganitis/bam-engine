@@ -9,9 +9,9 @@ the fundamental dynamics of the model with standard parameter values.
 
 The BAM (Bottom-Up Adaptive Macroeconomics) model simulates three types of
 agents (firms, households, banks) interacting in three markets (labor, credit,
-consumption goods). We visualize four key macroeconomic indicators that
-characterize the baseline dynamics: real GDP, unemployment rate, annual
-inflation rate, and the productivity to real wage ratio.
+consumption goods). We visualize eight panels: four time series (real GDP,
+unemployment rate, inflation rate, productivity/real wage ratio) and four
+macroeconomic curves (Phillips, Okun, Beveridge, and firm size distribution).
 
 This example demonstrates using SimulationResults to collect time series data.
 """
@@ -32,7 +32,8 @@ sim = bam.Simulation.init(
     n_households=500,
     n_banks=10,
     n_periods=1000,
-    seed=0,
+    seed=12345,
+    logging={"default_level": "ERROR"},
 )
 
 print("Initialized baseline scenario with:")
@@ -42,13 +43,13 @@ print(f"  - {sim.n_banks} banks")
 
 # %%
 # Run the simulation and collect data using SimulationResults.
-# We collect:
+# We collect per-agent data (no aggregation) to compute metrics manually:
 #
-# 1. **Real GDP**: Total production across all firms (sum aggregation)
-# 2. **Unemployment Rate**: From economy metrics (automatically captured)
-# 3. **Annual Inflation Rate**: From economy metrics (automatically captured)
-# 4. **Productivity**: Average labor productivity (mean aggregation)
-# 5. **Wages**: Per-worker wages (no aggregation, to filter employed only)
+# - **Production**: Per-firm output, summed to get Real GDP
+# - **Labor Productivity**: Per-firm productivity, averaged across firms
+# - **Wages/Employed**: Per-worker data, filtered to employed workers only
+# - **Vacancies**: Per-firm vacancies, summed for Beveridge curve
+# - **Economy metrics**: Unemployment rate, inflation, avg price (automatic)
 
 results = sim.run(
     collect={
@@ -71,9 +72,27 @@ print(f"Runtime: {results.metadata['runtime_seconds']:.2f} seconds")
 # Economy-wide metrics are in ``economy_data``, role data in ``role_data``.
 
 # Economy metrics (automatically captured)
-unemployment = results.economy_data["unemployment_rate"]
+unemployment_raw = results.economy_data["unemployment_rate"]
 inflation = results.economy_data["inflation"]
 avg_price = results.economy_data["avg_price"]
+
+# Apply smoothing based on unemployment_calc_method config setting
+# - "raw": use raw unemployment rate directly
+# - "simple_ma": apply 4-quarter moving average for seasonal adjustment
+import numpy as np
+
+if sim.config.unemployment_calc_method == "simple_ma":
+    window = 4
+    kernel = np.ones(window) / window
+    # 'valid' mode gives output only where full window fits
+    unemployment_sa_valid = np.convolve(unemployment_raw, kernel, mode="valid")
+    # Pad the beginning with raw values (not enough history for MA)
+    unemployment = np.concatenate(
+        [unemployment_raw[: window - 1], unemployment_sa_valid]
+    )
+else:
+    # Use raw rate directly
+    unemployment = unemployment_raw
 
 # Role data - shape is (n_periods, n_agents)
 production = results.role_data["Producer"]["production"]  # (1000, 100)
@@ -119,9 +138,12 @@ wage_inflation = ops.divide(
     ops.where(ops.greater(avg_employed_wage[:-1], 0), avg_employed_wage[:-1], 1.0),
 )
 
-# Okun Curve: GDP growth rate and unemployment change
+# Okun Curve: GDP growth rate and unemployment growth rate
 gdp_growth = ops.divide(gdp[1:] - gdp[:-1], gdp[:-1])
-unemployment_change = unemployment[1:] - unemployment[:-1]
+unemployment_growth = ops.divide(
+    unemployment[1:] - unemployment[:-1],
+    ops.where(ops.greater(unemployment[:-1], 0), unemployment[:-1], 1.0),
+)
 
 # Beveridge Curve: Vacancy rate
 total_vacancies = ops.sum(n_vacancies, axis=1)
@@ -145,21 +167,25 @@ burn_in = 500  # Exclude first 500 periods
 
 # Apply burn-in and create time axis
 periods = ops.arange(burn_in, len(gdp))
-log_gdp = ops.log(gdp[burn_in:])
-unemployment_pct = unemployment[burn_in:] * 100  # Convert to percentage
+# Index GDP to initial period = 100, then take natural log
+gdp_indexed = ops.divide(gdp, gdp[0]) * 100
+log_gdp = ops.log(gdp_indexed[burn_in:])
 inflation_pct = inflation[burn_in:] * 100  # Convert to percentage
 prod_wage_ratio_trimmed = prod_wage_ratio[burn_in:]
 
-# Apply burn-in to curve data (note: growth rates lose 1 period due to differencing)
+# Unemployment: apply burn-in
+unemployment_pct = unemployment[burn_in:] * 100  # Convert to percentage
+
+# Apply burn-in to curve data
 # For Phillips curve: wage_inflation has length n-1, so burn_in-1 aligns with period burn_in
 wage_inflation_trimmed = wage_inflation[burn_in - 1 :]
 unemployment_phillips = unemployment[burn_in:]
 
-# For Okun curve: align GDP growth with unemployment change
+# For Okun curve: align GDP growth with unemployment growth
 gdp_growth_trimmed = gdp_growth[burn_in - 1 :]
-unemployment_change_trimmed = unemployment_change[burn_in - 1 :]
+unemployment_growth_trimmed = unemployment_growth[burn_in - 1 :]
 
-# For Beveridge curve: use full series
+# For Beveridge curve
 vacancy_rate_trimmed = vacancy_rate[burn_in:]
 unemployment_beveridge = unemployment[burn_in:]
 
@@ -169,8 +195,9 @@ print(f"Plotting {len(periods)} periods (after {burn_in}-period burn-in)")
 # Visualize Key Economic Indicators
 # ---------------------------------
 #
-# Create a 4x2 figure showing the evolution of macroeconomic indicators
-# over time (top row) and macroeconomic curves (bottom row).
+# Create a 4x2 figure: time series in the top two rows (GDP, unemployment,
+# inflation, productivity/wage ratio) and macroeconomic curves in the bottom
+# two rows (Phillips, Okun, Beveridge, firm size distribution).
 
 import matplotlib.pyplot as plt
 
@@ -225,7 +252,7 @@ axes[2, 0].grid(True, linestyle="--", alpha=0.6)
 
 # Panel (2,1): Okun Curve
 axes[2, 1].scatter(
-    unemployment_change_trimmed, gdp_growth_trimmed, s=10, alpha=0.5, color="#A23B72"
+    unemployment_growth_trimmed, gdp_growth_trimmed, s=10, alpha=0.5, color="#A23B72"
 )
 axes[2, 1].set_title("Okun Curve", fontsize=12, fontweight="bold")
 axes[2, 1].set_xlabel("Unemployment Growth Rate")

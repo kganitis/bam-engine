@@ -104,7 +104,7 @@ For more complex configurations, you can use a YAML file:
    n_firms: 200
    n_households: 1000
    n_banks: 15
-   h_rho: 0.9  # demand shock persistence
+   h_rho: 0.10  # production growth shock cap
 
 .. code-block:: python
 

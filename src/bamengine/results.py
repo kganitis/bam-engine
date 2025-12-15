@@ -88,7 +88,11 @@ class _DataCollector:
     """
 
     # Available economy metrics
-    ECONOMY_METRICS = ["avg_price", "unemployment_rate", "inflation"]
+    ECONOMY_METRICS = [
+        "avg_price",
+        "unemployment_rate",
+        "inflation",
+    ]
 
     def __init__(
         self,

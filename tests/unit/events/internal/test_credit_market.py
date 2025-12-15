@@ -784,7 +784,9 @@ def test_clean_queue_sorts_by_net_worth_when_enabled() -> None:
     # Queue with borrowers [1, 2, 3, 4] (exclude 0)
     raw_queue = np.array([1, 2, 3, 4], dtype=np.int64)
 
-    result = _clean_queue(raw_queue, bor, bank_idx_for_log=0, sort_by_net_worth=True)
+    result = _clean_queue(
+        raw_queue, bor, bank_idx_for_log=0, priority_method="by_net_worth"
+    )
 
     # Should be sorted by net worth descending: [1(50), 4(40), 2(30), 3(20)]
     expected = np.array([1, 4, 2, 3], dtype=np.int64)
@@ -792,7 +794,7 @@ def test_clean_queue_sorts_by_net_worth_when_enabled() -> None:
 
 
 def test_clean_queue_preserves_order_when_disabled() -> None:
-    """Test _clean_queue preserves order when sort_by_net_worth=False."""
+    """Test _clean_queue preserves order when priority_method='by_appearance'."""
     bor = mock_borrower(
         n=5,
         net_worth=np.array([10.0, 50.0, 30.0, 20.0, 40.0]),
@@ -802,7 +804,9 @@ def test_clean_queue_preserves_order_when_disabled() -> None:
     # Queue with borrowers [1, 2, 3, 4] (exclude 0)
     raw_queue = np.array([1, 2, 3, 4], dtype=np.int64)
 
-    result = _clean_queue(raw_queue, bor, bank_idx_for_log=0, sort_by_net_worth=False)
+    result = _clean_queue(
+        raw_queue, bor, bank_idx_for_log=0, priority_method="by_appearance"
+    )
 
     # Should preserve order: [1, 2, 3, 4]
     expected = np.array([1, 2, 3, 4], dtype=np.int64)
@@ -822,7 +826,7 @@ def test_clean_queue_filters_negative_sentinels() -> None:
 
     # With sorting
     result_sorted = _clean_queue(
-        raw_queue, bor, bank_idx_for_log=0, sort_by_net_worth=True
+        raw_queue, bor, bank_idx_for_log=0, priority_method="by_net_worth"
     )
     # Should be [3(30), 2(20), 1(10)] - no -1s
     assert -1 not in result_sorted
@@ -830,7 +834,7 @@ def test_clean_queue_filters_negative_sentinels() -> None:
 
     # Without sorting
     result_unsorted = _clean_queue(
-        raw_queue, bor, bank_idx_for_log=0, sort_by_net_worth=False
+        raw_queue, bor, bank_idx_for_log=0, priority_method="by_appearance"
     )
     # Should be [1, 2, 3] - no -1s, order preserved
     assert -1 not in result_unsorted
@@ -849,7 +853,9 @@ def test_clean_queue_filters_zero_credit_demand() -> None:
 
     raw_queue = np.array([0, 1, 2, 3, 4], dtype=np.int64)
 
-    result = _clean_queue(raw_queue, bor, bank_idx_for_log=0, sort_by_net_worth=False)
+    result = _clean_queue(
+        raw_queue, bor, bank_idx_for_log=0, priority_method="by_appearance"
+    )
 
     # Should only include borrowers with positive demand: [0, 2, 4]
     expected = np.array([0, 2, 4], dtype=np.int64)
@@ -867,7 +873,9 @@ def test_clean_queue_removes_duplicates() -> None:
     # Queue with duplicates
     raw_queue = np.array([1, 2, 1, 3, 2], dtype=np.int64)
 
-    result = _clean_queue(raw_queue, bor, bank_idx_for_log=0, sort_by_net_worth=False)
+    result = _clean_queue(
+        raw_queue, bor, bank_idx_for_log=0, priority_method="by_appearance"
+    )
 
     # Should keep only first occurrence of each: [1, 2, 3]
     expected = np.array([1, 2, 3], dtype=np.int64)
@@ -884,7 +892,9 @@ def test_clean_queue_empty_after_filtering() -> None:
 
     raw_queue = np.array([0, 1, 2], dtype=np.int64)
 
-    result = _clean_queue(raw_queue, bor, bank_idx_for_log=0, sort_by_net_worth=True)
+    result = _clean_queue(
+        raw_queue, bor, bank_idx_for_log=0, priority_method="by_net_worth"
+    )
 
     # Should be empty
     assert result.size == 0

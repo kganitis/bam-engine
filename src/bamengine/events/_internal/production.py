@@ -24,9 +24,25 @@ log = logging.getLogger(__name__)
 def calc_unemployment_rate(
     ec: Economy,
     wrk: Worker,
+    method: str = "raw",
 ) -> None:
     """
     Calculate unemployment rate from worker employment status.
+
+    The raw unemployment rate is calculated and stored in history. The method
+    parameter affects logging but the history always stores raw rates. Users
+    can apply smoothing (e.g., rolling mean) to the history post-hoc if needed.
+
+    Parameters
+    ----------
+    ec : Economy
+        Economy object (stores unemployment rate history).
+    wrk : Worker
+        Worker role (contains employment status for all workers).
+    method : str, default "raw"
+        Calculation method (affects logging):
+        - "raw": Log raw unemployment rate only
+        - "simple_ma": Also log 4-quarter moving average
 
     See Also
     --------
@@ -44,10 +60,23 @@ def calc_unemployment_rate(
             f"out of {n_workers} total workers"
         )
 
-    log.info(f"  Current unemployment rate: {rate * 100:.2f}%")
+    log.info(f"  Unemployment rate: {rate * 100:.2f}%")
 
-    # update economy state
+    # Validate method parameter
+    if method not in ("raw", "simple_ma"):
+        raise ValueError(
+            f"Unknown unemployment_calc_method: '{method}'. "
+            f"Must be 'raw' or 'simple_ma'."
+        )
+
+    # Store raw rate in history
     ec.unemp_rate_history = np.append(ec.unemp_rate_history, rate)
+
+    # Log smoothed rate if method is simple_ma
+    if method == "simple_ma" and log.isEnabledFor(logging.DEBUG):
+        if ec.unemp_rate_history.size >= 4:
+            smoothed = ec.unemp_rate_history[-4:].mean()
+            log.debug(f"  4-quarter MA unemployment rate: {smoothed * 100:.2f}%")
 
     log.info("--- Unemployment Rate Calculation complete ---")
 

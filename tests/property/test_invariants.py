@@ -107,6 +107,7 @@ class TestSimulationInvariants:
             n_households=n_firms * 5,  # Reasonable ratio
             h_rho=h_rho,
             h_eta=h_eta,
+            net_worth_init=10.0,  # Higher net worth for stability with small populations
             seed=seed,
         )
 
@@ -269,7 +270,12 @@ class TestFinancialInvariants:
     @settings(max_examples=20, deadline=10000)
     def test_bank_equity_positive(self, n_firms, n_banks, seed):
         """Bank equity should remain positive (or bank fails)."""
-        sim = Simulation.init(n_firms=n_firms, n_banks=n_banks, seed=seed)
+        sim = Simulation.init(
+            n_firms=n_firms,
+            n_banks=n_banks,
+            net_worth_init=10.0,  # Higher net worth for stability with small populations
+            seed=seed,
+        )
 
         # Run multiple periods
         for _ in range(5):

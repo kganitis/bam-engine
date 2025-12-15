@@ -127,6 +127,7 @@ class MarkBankruptFirms:
             sim.prod,
             sim.wrk,
             sim.lb,
+            zero_production_bankrupt=sim.config.zero_production_bankrupt,
         )
 
 
@@ -187,6 +188,9 @@ class SpawnReplacementFirms:
             sim.prod,
             sim.emp,
             sim.bor,
+            labor_productivity=sim.labor_productivity,
+            new_firm_scale_factor=sim.config.new_firm_scale_factor,
+            new_firm_price_markup=sim.config.new_firm_price_markup,
             rng=sim.rng,
         )
 

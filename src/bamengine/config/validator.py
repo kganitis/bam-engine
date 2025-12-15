@@ -250,6 +250,7 @@ class ConfigValidator:
             "max_Z",
             "theta",
             "min_wage_rev_period",
+            "contract_poisson_mean",
         ]
 
         # Float parameters (scalars only)
@@ -258,11 +259,14 @@ class ConfigValidator:
             "h_xi",
             "h_phi",
             "h_eta",
+            "labor_productivity",
             "beta",
             "delta",
             "v",
             "r_bar",
             "min_wage",
+            "new_firm_scale_factor",
+            "new_firm_price_markup",
         ]
 
         # Vector parameters (can be scalar or 1D array)
@@ -317,6 +321,38 @@ class ConfigValidator:
                 raise ValueError(
                     f"Config parameter 'cap_factor' must be float or None, "
                     f"got {type(val).__name__}"
+                )
+
+        # Check boolean implementation variant parameters
+        bool_params = [
+            "price_cut_allow_increase",
+            "zero_production_bankrupt",
+            "loanbook_clear_on_repay",
+        ]
+        for key in bool_params:
+            if key not in cfg:
+                continue
+            val = cfg[key]
+            if not isinstance(val, bool):
+                raise ValueError(
+                    f"Config parameter '{key}' must be bool, got {type(val).__name__}"
+                )
+
+        # Check string enum implementation variant parameters
+        str_enum_params = [
+            "loan_priority_method",
+            "firing_method",
+            "fragility_cap_method",
+            "unemployment_calc_method",
+            "unemployment_calc_after",
+        ]
+        for key in str_enum_params:
+            if key not in cfg:
+                continue
+            val = cfg[key]
+            if not isinstance(val, str):
+                raise ValueError(
+                    f"Config parameter '{key}' must be str, got {type(val).__name__}"
                 )
 
         # Check pipeline_path (str or None)
@@ -402,6 +438,8 @@ class ConfigValidator:
             "max_M": (1, None),
             "max_H": (1, None),
             "max_Z": (1, None),
+            # Labor productivity (positive)
+            "labor_productivity": (0.0, None),
             # Contract length (positive)
             "theta": (1, None),
             # Consumption propensity exponent (positive)
@@ -425,6 +463,18 @@ class ConfigValidator:
             "savings_init": (0.0, None),
             "wage_offer_init": (0.0, None),
             "equity_base_init": (0.0, None),
+            # Implementation variant parameters
+            "contract_poisson_mean": (0, None),
+            "new_firm_scale_factor": (0.0, None),
+            "new_firm_price_markup": (0.0, None),
+        }
+
+        # Valid values for string enum parameters
+        valid_enums = {
+            "loan_priority_method": {"by_net_worth", "by_leverage", "by_appearance"},
+            "firing_method": {"random", "expensive"},
+            "fragility_cap_method": {"credit_demand", "none"},
+            "unemployment_calc_method": {"raw", "simple_ma"},
         }
 
         # Vector parameters (validated separately by _validate_float1d)
@@ -462,6 +512,29 @@ class ConfigValidator:
                 raise ValueError(
                     f"Config parameter '{key}' must be <= {max_val}, got {val}"
                 )
+
+        # Validate string enum parameters
+        for key, valid_values in valid_enums.items():
+            if key not in cfg:
+                continue
+            val = cfg[key]
+            if val not in valid_values:
+                raise ValueError(
+                    f"Config parameter '{key}' must be one of {valid_values}, got '{val}'"
+                )
+
+        # Validate unemployment_calc_after is a registered event name
+        if "unemployment_calc_after" in cfg:
+            val = cfg["unemployment_calc_after"]
+            if val is not None:
+                from bamengine.core.registry import list_events
+
+                registered_events = set(list_events())
+                if val not in registered_events:
+                    raise ValueError(
+                        f"unemployment_calc_after '{val}' is not a registered event. "
+                        f"Available events: {sorted(registered_events)}"
+                    )
 
     @staticmethod
     def _validate_relationships(cfg: dict[str, Any]) -> None:
