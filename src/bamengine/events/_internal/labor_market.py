@@ -517,6 +517,7 @@ def firms_hire_workers(
     emp: Employer,
     *,
     theta: int,
+    contract_poisson_mean: int = 10,
     rng: Rng = make_rng(),
 ) -> None:
     """
@@ -596,7 +597,10 @@ def firms_hire_workers(
         log.debug(f"      Updating state for {final_hires.size} newly hired workers.")
         wrk.employer[final_hires] = i
         wrk.wage[final_hires] = emp.wage_offer[i]
-        wrk.periods_left[final_hires] = theta + rng.poisson(10)
+        if contract_poisson_mean > 0:
+            wrk.periods_left[final_hires] = theta + rng.poisson(contract_poisson_mean)
+        else:
+            wrk.periods_left[final_hires] = theta
         wrk.contract_expired[final_hires] = 0
         wrk.fired[final_hires] = 0
         wrk.job_apps_head[final_hires] = -1

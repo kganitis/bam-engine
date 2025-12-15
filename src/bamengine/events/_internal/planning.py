@@ -171,7 +171,12 @@ def firms_calc_breakeven_price(
 
 
 def firms_adjust_price(
-    prod: Producer, *, p_avg: float, h_eta: float, rng: Rng = make_rng()
+    prod: Producer,
+    *,
+    p_avg: float,
+    h_eta: float,
+    price_cut_allow_increase: bool = True,
+    rng: Rng = make_rng(),
 ) -> None:
     """
     Adjust prices based on inventory and market position.
@@ -248,7 +253,15 @@ def firms_adjust_price(
     # cut prices
     if n_dn > 0:
         np.multiply(prod.price, 1.0 - shock, out=prod.price, where=mask_dn)
-        np.maximum(prod.price, prod.breakeven_price, out=prod.price, where=mask_dn)
+
+        if price_cut_allow_increase:
+            # Allow price to increase due to breakeven floor (current behavior)
+            np.maximum(prod.price, prod.breakeven_price, out=prod.price, where=mask_dn)
+        else:
+            # Don't allow price increase when trying to cut - cap at old price
+            # Apply breakeven floor but not above old price
+            floor_price = np.minimum(old_prices_for_log, prod.breakeven_price)
+            np.maximum(prod.price, floor_price, out=prod.price, where=mask_dn)
 
         price_changes = prod.price[mask_dn] - old_prices_for_log[mask_dn]
         num_floored = np.sum(

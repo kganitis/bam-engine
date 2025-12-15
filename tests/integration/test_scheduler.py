@@ -60,7 +60,11 @@ def test_scheduler_step_properties(
     hold *regardless of parameter values*.
     """
     sch = Simulation.init(
-        n_firms=n_firms, n_households=n_households, n_banks=n_banks, seed=seed
+        n_firms=n_firms,
+        n_households=n_households,
+        n_banks=n_banks,
+        net_worth_init=10.0,  # Higher net worth for stability with small populations
+        seed=seed,
     )
     sch.step()
     assert_basic_invariants(sch)

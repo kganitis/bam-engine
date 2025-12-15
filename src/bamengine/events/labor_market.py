@@ -612,6 +612,7 @@ class FirmsHireWorkers:
             wrk=sim.wrk,
             emp=sim.emp,
             theta=sim.config.theta,
+            contract_poisson_mean=sim.config.contract_poisson_mean,
             rng=sim.rng,
         )
 

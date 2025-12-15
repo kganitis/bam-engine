@@ -117,6 +117,7 @@ events:
                                        # Firms send ≤1 application per round
                                        # Banks process and approve/reject applications
   - firms_fire_workers                 # Lay off workers if credit insufficient
+#  - calc_unemployment_rate             # Calculate/record unemployment rate
 
   # ────────────────────────────────────────────────────────────────────────────
   # PHASE 4: PRODUCTION (4 events)
@@ -127,6 +128,7 @@ events:
   - workers_receive_wage               # Workers receive wages into income
   - firms_run_production               # Production execution (goods added to inventory)
   - workers_update_contracts           # Decrement contract duration, handle expiration
+#  - calc_unemployment_rate             # Calculate/record unemployment rate
 
   # ────────────────────────────────────────────────────────────────────────────
   # PHASE 5: GOODS MARKET (3 + max_Z + 1 = 6 events with default max_Z=2)

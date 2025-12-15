@@ -65,6 +65,8 @@ def mark_bankrupt_firms(
     prod: Producer,
     wrk: Worker,
     lb: LoanBook,
+    *,
+    zero_production_bankrupt: bool = True,
 ) -> None:
     """
     Detect insolvent firms and remove them from the economy.
@@ -75,13 +77,16 @@ def mark_bankrupt_firms(
     """
     # A firm is marked as bankrupt if either:
     #     • net-worth (A) < 0
-    #     • current production (Y) <= 0
+    #     • current production (Y) <= 0 (if zero_production_bankrupt=True)
     #
     # For bankrupt firms, all workers are fired and loans are purged.
     log.info("--- Marking Bankrupt Firms ---")
 
     # detect bankruptcies
-    bankrupt_mask = (bor.net_worth < EPS) | (prod.production <= EPS)
+    if zero_production_bankrupt:
+        bankrupt_mask = (bor.net_worth < EPS) | (prod.production <= EPS)
+    else:
+        bankrupt_mask = bor.net_worth < EPS
     bankrupt_indices = np.where(bankrupt_mask)[0]
 
     ec.exiting_firms = bankrupt_indices.astype(np.int64)
@@ -167,7 +172,15 @@ def mark_bankrupt_banks(ec: Economy, lend: Lender, lb: LoanBook) -> None:
 
 
 def spawn_replacement_firms(
-    ec: Economy, prod: Producer, emp: Employer, bor: Borrower, rng: Rng = make_rng()
+    ec: Economy,
+    prod: Producer,
+    emp: Employer,
+    bor: Borrower,
+    *,
+    labor_productivity: float = 0.5,
+    new_firm_scale_factor: float = 0.8,
+    new_firm_price_markup: float = 1.26,
+    rng: Rng = make_rng(),
 ) -> None:
     """
     Create new firms to replace bankrupt ones.
@@ -205,7 +218,7 @@ def spawn_replacement_firms(
     )
 
     # initialize new firms
-    s = 0.8  # New firms start smaller than the mean of survivors
+    s = new_firm_scale_factor
     for i in exiting_indices:
         # Reset Borrower component
         bor.net_worth[i] = mean_net * s
@@ -221,8 +234,8 @@ def spawn_replacement_firms(
         prod.inventory[i] = 0.0
         prod.expected_demand[i] = 0.0
         prod.desired_production[i] = 0.0
-        prod.labor_productivity[i] = 1.0
-        prod.price[i] = ec.avg_mkt_price * 1.26
+        prod.labor_productivity[i] = labor_productivity
+        prod.price[i] = ec.avg_mkt_price * new_firm_price_markup
 
         # Reset Employer component
         emp.current_labor[i] = 0

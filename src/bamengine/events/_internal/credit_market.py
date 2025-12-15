@@ -130,7 +130,11 @@ def firms_decide_credit_demand(bor: Borrower) -> None:
     log.info("--- Credit Demand Decision complete ---")
 
 
-def firms_calc_credit_metrics(bor: Borrower) -> None:
+def firms_calc_credit_metrics(
+    bor: Borrower,
+    *,
+    fragility_cap_method: str = "credit_demand",
+) -> None:
     """
     Calculate firm financial fragility metrics for loan applications.
 
@@ -160,17 +164,21 @@ def firms_calc_credit_metrics(bor: Borrower) -> None:
         )
         frag[zero_nw_mask] = bor.credit_demand[zero_nw_mask]
 
-    # Apply a global fragility cap for all borrowers.
+    # Apply a global fragility cap for all borrowers (if enabled).
     # This handles borrowers whose fragility may have exploded due to
     # very small (but positive) net worth, capping them at amount B.
-    general_cap_mask = frag > bor.credit_demand
-    if np.any(general_cap_mask):
-        num_generally_capped = np.sum(general_cap_mask)
-        log.warning(
-            f"  Capping fragility for {num_generally_capped} borrower(s) "
-            f"whose calculated fragility exceeded the allowed limit."
-        )
-    np.minimum(frag, bor.credit_demand, out=frag)
+    if fragility_cap_method == "credit_demand":
+        general_cap_mask = frag > bor.credit_demand
+        if np.any(general_cap_mask):
+            num_generally_capped = np.sum(general_cap_mask)
+            log.warning(
+                f"  Capping fragility for {num_generally_capped} borrower(s) "
+                f"whose calculated fragility exceeded the allowed limit."
+            )
+        np.minimum(frag, bor.credit_demand, out=frag)
+    else:
+        # fragility_cap_method == "none" - skip global cap
+        log.info("  Fragility cap disabled (fragility_cap_method='none').")
 
     # Logging
     valid_frag = frag[np.isfinite(frag)]
@@ -383,7 +391,7 @@ def _clean_queue(
     bor: Borrower,
     bank_idx_for_log: int,
     *,
-    sort_by_net_worth: bool = True,
+    priority_method: str = "by_net_worth",
 ) -> Idx1D:  # pragma: no cover
     """
     Return a queue (Idx1D) of *unique* borrower ids that still demand credit
@@ -397,9 +405,12 @@ def _clean_queue(
         Borrower role with credit_demand and net_worth
     bank_idx_for_log : int
         Bank index for logging purposes
-    sort_by_net_worth : bool, default True
-        If True, sort queue by borrower net worth (descending).
-        If False, preserve application order (first-come-first-served).
+    priority_method : str, default "by_net_worth"
+        Sorting method for the queue:
+        - "by_net_worth": Sort by net worth (descending) - safest borrowers first
+        - "by_leverage": Sort by leverage (ascending) - least leveraged first
+          (uses projected_fragility as proxy for leverage)
+        - "by_appearance": Preserve application order (first-come-first-served)
 
     Returns
     -------
@@ -446,8 +457,13 @@ def _clean_queue(
             )
         return filtered_queue
 
-    # Optionally sort by net worth (descending)
-    if sort_by_net_worth:
+    # Sort queue based on priority method
+    # TODO: Introduce a separate `leverage` variable for Borrower role.
+    # Currently we use projected_fragility as a proxy for leverage. In future
+    # variations, projected_fragility will be calculated as rnd_intensity * leverage,
+    # but we will still need only leverage for loan applicant sorting.
+    if priority_method == "by_net_worth":
+        # Sort by net worth (descending) - safest borrowers first
         sort_idx = np.argsort(-bor.net_worth[filtered_queue])
         ordered_queue = filtered_queue[sort_idx]
         if log.isEnabledFor(logging.TRACE):
@@ -456,8 +472,19 @@ def _clean_queue(
                 f"Final cleaned queue (net_worth-desc): {ordered_queue}"
             )
         return ordered_queue
+    elif priority_method == "by_leverage":
+        # Sort by leverage (ascending) - least leveraged first
+        # Uses projected_fragility as proxy for leverage
+        sort_idx = np.argsort(bor.projected_fragility[filtered_queue])
+        ordered_queue = filtered_queue[sort_idx]
+        if log.isEnabledFor(logging.TRACE):
+            log.trace(
+                f"    Bank {bank_idx_for_log}: "
+                f"Final cleaned queue (leverage-asc): {ordered_queue}"
+            )
+        return ordered_queue
     else:
-        # Preserve application order (first-come-first-served)
+        # by_appearance: Preserve application order (first-come-first-served)
         if log.isEnabledFor(logging.TRACE):
             log.trace(
                 f"    Bank {bank_idx_for_log}: "
@@ -473,6 +500,7 @@ def banks_provide_loans(
     *,
     r_bar: float,
     h_phi: float,
+    loan_priority_method: str = "by_net_worth",
 ) -> None:
     """
     Banks process applications and provide loans ranked by net worth.
@@ -508,7 +536,9 @@ def banks_provide_loans(
                 f"({n_recv} applications): {raw_queue}"
             )
 
-        queue = _clean_queue(raw_queue, bor, bank_idx_for_log=k)
+        queue = _clean_queue(
+            raw_queue, bor, bank_idx_for_log=k, priority_method=loan_priority_method
+        )
 
         if queue.size == 0:
             if log.isEnabledFor(logging.DEBUG):

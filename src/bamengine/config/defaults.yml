@@ -56,31 +56,34 @@ max_Z:                2          # Shops a household can visit/period
 # ── ECONOMY-WIDE STRUCTURAL PARAMETERS ────────────────────────────────────────
 # Behavioral and policy parameters affecting all agents.
 
+labor_productivity:   0.50       # Labor productivity (goods/worker)
 theta:                8          # Job contract base length (periods)
-                                 # Actual duration: θ + Poisson(10)
+                                 # Actual duration: θ + Poisson(contract_poisson_mean)
 beta:                 2.50       # Consumption propensity exponent
                                  # Controls how strongly savings affect spending:
-                                 #   π_j = 1 / (1 + tanh(SA_j / SA_avg)^β)
+                                 #   c_j = 1 / (1 + tanh(SA_j / SA_avg)^β)
                                  # Higher β = stronger response to savings
-delta:                0.40       # Dividend payout ratio (share of profits)
+delta:                0.10       # Dividend payout ratio (share of profits)
                                  # Fraction of positive profits paid as dividends
-v:                    0.06       # Bank capital requirement coefficient
-                                 # Max leverage = 1/v (default: ~16.7x)
+v:                    0.10       # Bank capital requirement coefficient
+                                 # Max leverage = 1/v
 r_bar:                0.02       # Baseline interest rate (quarterly)
                                  # Policy rate used in bank interest calculations
-min_wage:             0.6        # Initial minimum wage floor
+min_wage:             0.5        # Initial minimum wage floor
 min_wage_rev_period:  4          # Periods between min wage adjustments
-                                 # Adjusts with inflation every 4 quarters (1 year)
+cap_factor:           2.00       # Multiplier limiting price increases
+                                 # Prevents extreme price jumps when production is very
+                                 # low (which would lead to very high breakeven prices)
 
 # ── INITIAL CONDITIONS ────────────────────────────────────────────────────────
 # Balance sheet values at t=0. Can be scalars (broadcast to all agents) or
 # arrays of length n_firms/n_households for heterogeneous initialization.
 
-net_worth_init:      12.0        # Firm net worth at t=0 (money units)
-production_init:      4.0        # Firm production at t=0 (goods units)
-price_init:           1.0        # Goods price at t=0 (money/goods)
+net_worth_init:       1.0        # Firm net worth at t=0 (money units)
+production_init:      2.0        # Firm production at t=0 (goods units)
+price_init:           1.5        # Goods price at t=0 (money/goods)
 savings_init:         3.0        # Household savings at t=0 (money units)
-wage_offer_init:      0.9        # Wage offer at t=0 (money/period)
+wage_offer_init:      1.0        # Wage offer at t=0 (money/period)
 equity_base_init:     5.0        # Bank equity at t=0 (money units)
 
 # ── RANDOM NUMBER GENERATION ──────────────────────────────────────────────────
@@ -107,3 +110,50 @@ logging:
                                  #   workers_send_one_round: WARNING
                                  #   firms_hire_workers: DEBUG
                                  #   firms_adjust_price: TRACE
+
+# ── IMPLEMENTATION VARIANTS ─────────────────────────────────────────────────
+# Control specific behavioral details. These parameters allow experimenting
+# with different implementation choices to match reference model results.
+
+contract_poisson_mean: 10            # Poisson mean added to theta for contract duration
+                                     # Set to 0 for exact theta-only contracts
+                                     # Actual duration: θ + Poisson(contract_poisson_mean)
+
+loan_priority_method: by_leverage    # How banks rank loan applicants
+                                     # "by_net_worth" = sort by net worth (desc)
+                                     # "by_leverage" = sort by leverage (asc)
+                                     # "by_appearance" = first-come-first-served
+
+firing_method: expensive             # How firms select workers to fire
+                                     # "random" = random selection
+                                     # "expensive" = highest wage first
+
+price_cut_allow_increase: true       # Allow price increase when trying to cut
+                                     # (due to breakeven floor being higher than cut price)
+
+fragility_cap_method: credit_demand  # How to cap financial fragility
+                                     # "credit_demand" = cap at B (credit demand)
+                                     # "none" = no cap (may cause instability)
+
+zero_production_bankrupt: true       # Mark firms bankrupt if production <= EPS
+                                     # If false, only net worth triggers bankruptcy
+
+loanbook_clear_on_repay: true       # Clear loans immediately after repayment
+                                     # If false, carry over to next period
+
+unemployment_calc_method: simple_ma  # Seasonal adjustment method for unemployment rate
+                                     # "raw" = no seasonal adjustment
+                                     # "simple_ma" = 4-quarter moving average (default)
+
+unemployment_calc_after: spawn_replacement_banks
+                                     # Event after which to calculate unemployment rate
+                                     # Controls when in the pipeline the calculation occurs
+
+# ── NEW FIRM ENTRY PARAMETERS ───────────────────────────────────────────────
+# Control how replacement firms are initialized after bankruptcy.
+
+new_firm_scale_factor: 0.8    # New firms start at this fraction of survivor mean
+                              # Affects net_worth, wage_offer initialization
+
+new_firm_price_markup: 1.0    # New firm price = avg_mkt_price * markup
+                              # Higher values help new firms recover costs

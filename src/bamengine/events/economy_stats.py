@@ -62,6 +62,12 @@ class CalcUnemploymentRate:
     Unemployment rate = (unemployed workers / total workers). Tracked in
     economy history for analysis.
 
+    The calculation method is controlled by the ``unemployment_calc_method``
+    configuration parameter:
+
+    - ``"raw"``: No seasonal adjustment (raw rate equals adjusted rate)
+    - ``"simple_ma"``: 4-quarter simple moving average (default)
+
     Examples
     --------
     >>> import bamengine as be
@@ -80,4 +86,8 @@ class CalcUnemploymentRate:
     def execute(self, sim: Simulation) -> None:
         from bamengine.events._internal.production import calc_unemployment_rate
 
-        calc_unemployment_rate(sim.ec, sim.wrk)
+        calc_unemployment_rate(
+            sim.ec,
+            sim.wrk,
+            method=sim.config.unemployment_calc_method,
+        )

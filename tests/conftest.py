@@ -70,6 +70,8 @@ def tiny_sched() -> Simulation:
         theta=8,
         beta=0.87,
         delta=0.15,
+        # Higher net_worth for stability with small populations
+        net_worth_init=10.0,
     )
 
 

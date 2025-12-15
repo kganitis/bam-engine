@@ -72,8 +72,8 @@ print(f"  Contract duration (theta): {sim_low_friction.config.theta}")
 sim_wealthy_firms = bam.Simulation.init(
     n_firms=100,
     n_households=500,
-    net_worth_init=200.0,  # All firms start with 200 (default: 12.0)
-    price_init=2.0,  # Higher initial prices (default: 1.0)
+    net_worth_init=200.0,  # All firms start with 200 (default: 1.0)
+    price_init=2.0,  # Higher initial prices (default: 1.5)
     savings_init=5.0,  # Households start with more savings (default: 3.0)
     seed=42,
 )
@@ -189,8 +189,9 @@ print("=" * 60)
 #   - max_M (job applications), max_H (loan applications), max_Z (shopping rounds)
 #
 # **Structural parameters:**
-#   - theta (contract duration), beta (consumption propensity), delta (dividend rate)
-#   - v (bank capital requirement), r_bar (baseline interest rate)
+#   - theta (contract duration), beta (consumption propensity exponent)
+#   - delta (dividend rate), v (bank capital coefficient)
+#   - r_bar (baseline interest rate)
 #
 # **Initial conditions:**
 #   - price_init, net_worth_init, wage_offer_init, savings_init, etc.

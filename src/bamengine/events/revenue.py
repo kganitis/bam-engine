@@ -193,7 +193,12 @@ class FirmsValidateDebtCommitments:
     def execute(self, sim: Simulation) -> None:
         from bamengine.events._internal import firms_validate_debt_commitments
 
-        firms_validate_debt_commitments(sim.bor, sim.lend, sim.lb)
+        firms_validate_debt_commitments(
+            sim.bor,
+            sim.lend,
+            sim.lb,
+            loanbook_clear_on_repay=sim.config.loanbook_clear_on_repay,
+        )
 
 
 @event

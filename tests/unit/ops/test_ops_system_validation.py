@@ -462,7 +462,8 @@ class TestFullEventReimplementation:
                 ops.assign(prod.price, final_price)
 
         # Test the event
-        sim = Simulation.init(n_firms=50, seed=123)
+        # Use higher net_worth_init for stability with small populations
+        sim = Simulation.init(n_firms=50, net_worth_init=10.0, seed=123)
 
         # Run a few steps with default events
         for _ in range(3):
