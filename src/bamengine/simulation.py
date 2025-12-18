@@ -592,9 +592,6 @@ class Simulation:
         cfg_dict["net_worth_init"] = _validate_float1d(
             "net_worth_init", cfg_dict.get("net_worth_init", 10.0), n_firms
         )
-        cfg_dict["production_init"] = _validate_float1d(
-            "production_init", cfg_dict.get("production_init", 1.0), n_firms
-        )
         cfg_dict["price_init"] = _validate_float1d(
             "price_init", cfg_dict.get("price_init", 1.5), n_firms
         )
@@ -701,7 +698,8 @@ class Simulation:
 
         # producer
         price = np.full(p["n_firms"], fill_value=p["price_init"])
-        production = np.full(p["n_firms"], fill_value=p["production_init"])
+        production_init = p["n_households"] * p["labor_productivity"] / p["n_firms"]
+        production = np.full(p["n_firms"], fill_value=production_init)
         inventory = np.zeros_like(production)
         expected_demand = np.ones_like(production)
         desired_production = np.zeros_like(production)
@@ -848,13 +846,10 @@ class Simulation:
             firing_method=p["firing_method"],
             price_cut_allow_increase=p["price_cut_allow_increase"],
             fragility_cap_method=p["fragility_cap_method"],
-            zero_production_bankrupt=p["zero_production_bankrupt"],
-            loanbook_clear_on_repay=p["loanbook_clear_on_repay"],
-            # Unemployment calculation parameters
-            unemployment_calc_method=p["unemployment_calc_method"],
-            unemployment_calc_after=p["unemployment_calc_after"],
             # New firm entry parameters
-            new_firm_scale_factor=p["new_firm_scale_factor"],
+            new_firm_size_factor=p["new_firm_size_factor"],
+            new_firm_production_factor=p["new_firm_production_factor"],
+            new_firm_wage_factor=p["new_firm_wage_factor"],
             new_firm_price_markup=p["new_firm_price_markup"],
         )
 
@@ -868,7 +863,6 @@ class Simulation:
             "n_banks",
             "n_periods",
             "net_worth_init",
-            "production_init",
             "price_init",
             "wage_offer_init",
             "savings_init",
@@ -896,19 +890,6 @@ class Simulation:
             pipeline = create_default_pipeline(
                 max_M=p["max_M"], max_H=p["max_H"], max_Z=p["max_Z"]
             )
-
-        # Move calc_unemployment_rate if config specifies different position
-        default_unemp_position = "spawn_replacement_banks"
-        unemp_after = p.get("unemployment_calc_after", default_unemp_position)
-        if unemp_after != default_unemp_position:
-            try:
-                pipeline.remove("calc_unemployment_rate")
-                pipeline.insert_after(unemp_after, "calc_unemployment_rate")
-            except ValueError as e:
-                raise ValueError(
-                    f"Cannot place calc_unemployment_rate after '{unemp_after}': "
-                    f"event not found in pipeline. Original error: {e}"
-                ) from e
 
         # Configure logging (if specified)
         if "logging" in p:
@@ -1041,15 +1022,30 @@ class Simulation:
 
         # Set up collector if requested
         collector = None
+        use_timed_capture = False
         if collect:
             collector = self._create_collector(collect)
+            # Set up pipeline callbacks for timed capture if configured
+            if collector._use_timed_capture:
+                collector.setup_pipeline_callbacks(self.pipeline)
+                use_timed_capture = True
 
         # Run simulation
         start_time = time.time()
         for _ in range(int(n)):
             self.step()
             if collector:
-                collector.capture(self)
+                if use_timed_capture:
+                    # Callbacks captured at specific events during step()
+                    # Now capture any remaining variables not captured by callbacks
+                    collector.capture_remaining(self)
+                else:
+                    # Non-timed capture: capture all at end of period
+                    collector.capture(self)
+
+        # Clear callbacks after run (so pipeline can be reused)
+        if use_timed_capture:
+            self.pipeline.clear_callbacks()
 
         # Return results if collecting
         if collector:
@@ -1122,31 +1118,55 @@ class Simulation:
         # All available role names
         all_roles = ["Producer", "Worker", "Employer", "Borrower", "Lender", "Consumer"]
 
+        # Default capture timing - there are 2 options (comment/uncomment one)
+        # OPTION 1: Capture data after net worth is updated but
+        # before bankruptcy processing, ensuring accurate data for bankrupt firms
+        # default_capture_after = "firms_update_net_worth"
+        # OPTION 2: Capture data at the very end of the period, but then new spawned
+        # firms will appear with initial values, skewing averages.
+        default_capture_after = None
+
         if collect is True:
             # Default: all roles + Economy with all variables, aggregated
             variables: dict[str, list[str] | Literal[True]] = {
                 role: True for role in all_roles
             }
             variables["Economy"] = True
-            return _DataCollector(variables=variables, aggregate="mean")
+            return _DataCollector(
+                variables=variables,
+                aggregate="mean",
+                capture_after=default_capture_after,
+            )
 
         if isinstance(collect, list):
             # List form: specified roles with all their variables
             list_vars: dict[str, list[str] | Literal[True]] = {
                 name: True for name in collect
             }
-            return _DataCollector(variables=list_vars, aggregate="mean")
+            return _DataCollector(
+                variables=list_vars,
+                aggregate="mean",
+                capture_after=default_capture_after,
+            )
 
-        # Dict form: parse variables and extract aggregate
+        # Dict form: parse variables and extract options
         assert isinstance(collect, dict)
         aggregate = collect.get("aggregate", "mean")
+        capture_after = collect.get("capture_after", default_capture_after)
+        capture_timing = collect.get("capture_timing")
 
-        # Build variables dict (exclude 'aggregate' key)
+        # Build variables dict (exclude option keys)
+        option_keys = {"aggregate", "capture_after", "capture_timing"}
         dict_vars: dict[str, list[str] | Literal[True]] = {
-            k: v for k, v in collect.items() if k != "aggregate"
+            k: v for k, v in collect.items() if k not in option_keys
         }
 
-        return _DataCollector(variables=dict_vars, aggregate=aggregate)
+        return _DataCollector(
+            variables=dict_vars,
+            aggregate=aggregate,
+            capture_after=capture_after,
+            capture_timing=capture_timing,
+        )
 
     def step(self) -> None:
         """

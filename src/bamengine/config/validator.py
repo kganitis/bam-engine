@@ -265,14 +265,15 @@ class ConfigValidator:
             "v",
             "r_bar",
             "min_wage",
-            "new_firm_scale_factor",
+            "new_firm_size_factor",
+            "new_firm_production_factor",
+            "new_firm_wage_factor",
             "new_firm_price_markup",
         ]
 
         # Vector parameters (can be scalar or 1D array)
         vector_params = [
             "net_worth_init",
-            "production_init",
             "price_init",
             "savings_init",
             "wage_offer_init",
@@ -326,8 +327,6 @@ class ConfigValidator:
         # Check boolean implementation variant parameters
         bool_params = [
             "price_cut_allow_increase",
-            "zero_production_bankrupt",
-            "loanbook_clear_on_repay",
         ]
         for key in bool_params:
             if key not in cfg:
@@ -343,8 +342,6 @@ class ConfigValidator:
             "loan_priority_method",
             "firing_method",
             "fragility_cap_method",
-            "unemployment_calc_method",
-            "unemployment_calc_after",
         ]
         for key in str_enum_params:
             if key not in cfg:
@@ -458,14 +455,15 @@ class ConfigValidator:
             "min_wage_rev_period": (1, None),
             # Initial values (must be positive)
             "net_worth_init": (0.0, None),
-            "production_init": (0.0, None),
             "price_init": (0.0, None),
             "savings_init": (0.0, None),
             "wage_offer_init": (0.0, None),
             "equity_base_init": (0.0, None),
             # Implementation variant parameters
             "contract_poisson_mean": (0, None),
-            "new_firm_scale_factor": (0.0, None),
+            "new_firm_size_factor": (0.0, None),
+            "new_firm_production_factor": (0.0, None),
+            "new_firm_wage_factor": (0.0, None),
             "new_firm_price_markup": (0.0, None),
         }
 
@@ -474,13 +472,11 @@ class ConfigValidator:
             "loan_priority_method": {"by_net_worth", "by_leverage", "by_appearance"},
             "firing_method": {"random", "expensive"},
             "fragility_cap_method": {"credit_demand", "none"},
-            "unemployment_calc_method": {"raw", "simple_ma"},
         }
 
         # Vector parameters (validated separately by _validate_float1d)
         vector_params = {
             "net_worth_init",
-            "production_init",
             "price_init",
             "savings_init",
             "wage_offer_init",
@@ -522,19 +518,6 @@ class ConfigValidator:
                 raise ValueError(
                     f"Config parameter '{key}' must be one of {valid_values}, got '{val}'"
                 )
-
-        # Validate unemployment_calc_after is a registered event name
-        if "unemployment_calc_after" in cfg:
-            val = cfg["unemployment_calc_after"]
-            if val is not None:
-                from bamengine.core.registry import list_events
-
-                registered_events = set(list_events())
-                if val not in registered_events:
-                    raise ValueError(
-                        f"unemployment_calc_after '{val}' is not a registered event. "
-                        f"Available events: {sorted(registered_events)}"
-                    )
 
     @staticmethod
     def _validate_relationships(cfg: dict[str, Any]) -> None:

@@ -133,8 +133,9 @@ def test_spawn_replacement_firms_restores_positive_equity() -> None:
         net_worth=np.array([-5.0, 8.0, -1.0]),
         total_funds=np.array([-5.0, 8.0, -1.0]),
     )
+    wrk = mock_worker(5)  # Need workers to calculate mean wage
 
-    spawn_replacement_firms(ec, prod, emp, bor, rng=rng)
+    spawn_replacement_firms(ec, prod, emp, bor, wrk, rng=rng)
 
     # exiting list cleared
     assert ec.exiting_firms.size == 0

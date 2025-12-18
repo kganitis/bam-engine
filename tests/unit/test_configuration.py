@@ -144,13 +144,13 @@ def test_default_pipeline_when_no_custom_path():
     """Default pipeline is used when pipeline_path is None."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
 
-    # Should have default pipeline (52 events with default max_M=4, max_H=2, max_Z=2)
-    expected_length = 34 + 2 * 4 + 2 * 2 + 2
+    # Should have default pipeline (33 base + market rounds with default max_M=4, max_H=2, max_Z=2)
+    expected_length = 33 + 2 * 4 + 2 * 2 + 2
     assert len(sim.pipeline) == expected_length
 
     # Check first and last events
     assert sim.pipeline.events[0].name == "firms_decide_desired_production"
-    assert sim.pipeline.events[-1].name == "calc_unemployment_rate"
+    assert sim.pipeline.events[-1].name == "spawn_replacement_banks"
 
 
 def test_logging_default_level():
