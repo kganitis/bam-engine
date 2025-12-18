@@ -161,7 +161,8 @@ def test_default_pipeline_loads_from_yaml():
     # Should create a valid pipeline
     assert len(pipeline) > 0
     assert pipeline.events[0].name == "firms_decide_desired_production"
-    assert pipeline.events[-1].name == "calc_unemployment_rate"
+    # calc_unemployment_rate deprecated, last event is spawn_replacement_banks
+    assert pipeline.events[-1].name == "spawn_replacement_banks"
 
 
 def test_user_custom_pipeline_example():

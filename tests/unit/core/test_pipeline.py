@@ -492,3 +492,93 @@ def test_pipeline_repeated_events_preserve_order():
     # Both should be repeated
     assert isinstance(pipeline.events[0], RepeatedEvent)
     assert isinstance(pipeline.events[1], RepeatedEvent)
+
+
+# ============================================================================
+# After-Event Callback Tests
+# ============================================================================
+
+
+def test_pipeline_register_after_event_callback():
+    """Can register callback to run after specific event."""
+    pipeline = Pipeline.from_event_list(
+        [
+            "firms_decide_desired_production",
+            "firms_calc_breakeven_price",
+        ]
+    )
+
+    callback_calls = []
+
+    def my_callback(sim):
+        callback_calls.append("called")
+
+    pipeline.register_after_event("firms_decide_desired_production", my_callback)
+
+    # Verify callback is registered
+    assert "firms_decide_desired_production" in pipeline._after_event_callbacks
+    assert len(pipeline._after_event_callbacks["firms_decide_desired_production"]) == 1
+
+
+def test_pipeline_clear_callbacks():
+    """Can clear all registered callbacks."""
+    pipeline = Pipeline.from_event_list(
+        [
+            "firms_decide_desired_production",
+        ]
+    )
+
+    def my_callback(sim):
+        pass
+
+    pipeline.register_after_event("firms_decide_desired_production", my_callback)
+    assert len(pipeline._after_event_callbacks) > 0
+
+    pipeline.clear_callbacks()
+    assert len(pipeline._after_event_callbacks) == 0
+
+
+def test_pipeline_multiple_callbacks_same_event():
+    """Can register multiple callbacks for same event."""
+    pipeline = Pipeline.from_event_list(
+        [
+            "firms_decide_desired_production",
+        ]
+    )
+
+    def callback1(sim):
+        pass
+
+    def callback2(sim):
+        pass
+
+    pipeline.register_after_event("firms_decide_desired_production", callback1)
+    pipeline.register_after_event("firms_decide_desired_production", callback2)
+
+    callbacks = pipeline._after_event_callbacks["firms_decide_desired_production"]
+    assert len(callbacks) == 2
+
+
+def test_pipeline_callbacks_fire_during_execute():
+    """Callbacks fire during pipeline.execute()."""
+    from bamengine.simulation import Simulation
+
+    sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+
+    callback_results = []
+
+    def capture_production(s):
+        prod = s.get_role("Producer")
+        callback_results.append(prod.production.sum())
+
+    sim.pipeline.register_after_event("firms_run_production", capture_production)
+
+    # Execute one step
+    sim.step()
+
+    # Callback should have been called
+    assert len(callback_results) == 1
+    assert callback_results[0] > 0
+
+    # Clean up
+    sim.pipeline.clear_callbacks()
