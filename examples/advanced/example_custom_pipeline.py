@@ -30,7 +30,7 @@ You'll learn to:
 # 5. **Goods Market**: Shopping and consumption
 # 6. **Revenue**: Sales revenue, debt repayment
 # 7. **Bankruptcy**: Insolvency detection and exit
-# 8. **Entry & Statistics**: New firms, unemployment rate
+# 8. **Entry**: New firms/banks spawning
 
 import tempfile
 from pathlib import Path
@@ -45,7 +45,6 @@ print("  - firms_decide_desired_production")
 print("  - workers_send_one_round (repeated max_M times)")
 print("  - firms_hire_workers (interleaved with above)")
 print("  - consumers_shop_one_round (repeated max_Z times)")
-print("  - calc_unemployment_rate")
 
 # %%
 # Pipeline YAML Syntax
@@ -105,8 +104,7 @@ events:
   # Production (simplified)
   - firms_run_production
 
-  # End of period stats
-  - calc_unemployment_rate
+  # Note: calc_unemployment_rate is deprecated - calculate from Worker.employed
 """
 
 # Write to temp file
@@ -190,7 +188,7 @@ events:
   # Entry
   - spawn_replacement_firms
   - spawn_replacement_banks
-  - calc_unemployment_rate
+  # Note: calc_unemployment_rate deprecated - calculate from Worker.employed
 """
 
 # Write and test
@@ -349,7 +347,7 @@ events:
   # Entry
   - spawn_replacement_firms
   - spawn_replacement_banks
-  - calc_unemployment_rate
+  # Note: calc_unemployment_rate deprecated - calculate from Worker.employed
 """
 
 custom_path = config_dir / "custom_events_pipeline.yml"
@@ -366,7 +364,10 @@ sim_custom = bam.Simulation.init(
 print("\nRunning with custom events pipeline...")
 sim_custom.run(n_periods=30)
 print("Completed 30 periods with tax and benefits")
-print(f"Final unemployment: {sim_custom.ec.unemp_rate_history[-1]:.2%}")
+# Calculate unemployment from Worker.employed (calc_unemployment_rate deprecated)
+wrk_custom = sim_custom.get_role("Worker")
+unemployment_custom = 1 - bam.ops.mean(wrk_custom.employed.astype(float))
+print(f"Final unemployment: {unemployment_custom:.2%}")
 
 # %%
 # Interleaved Events Explained
@@ -461,7 +462,7 @@ events:
   - mark_bankrupt_banks
   - spawn_replacement_firms
   - spawn_replacement_banks
-  - calc_unemployment_rate
+  # Note: calc_unemployment_rate deprecated - calculate from Worker.employed
 """
 
 friction_path = config_dir / "friction_pipeline.yml"
@@ -494,11 +495,16 @@ n_periods = 50
 unemp_low = []
 unemp_high = []
 
+# Get worker roles for unemployment calculation
+wrk_low = sim_low_friction.get_role("Worker")
+wrk_high = sim_high_friction.get_role("Worker")
+
 for _ in range(n_periods):
     sim_low_friction.step()
     sim_high_friction.step()
-    unemp_low.append(sim_low_friction.ec.unemp_rate_history[-1])
-    unemp_high.append(sim_high_friction.ec.unemp_rate_history[-1])
+    # Calculate unemployment from Worker.employed (calc_unemployment_rate deprecated)
+    unemp_low.append(1 - bam.ops.mean(wrk_low.employed.astype(float)))
+    unemp_high.append(1 - bam.ops.mean(wrk_high.employed.astype(float)))
 
 # Plot
 fig, ax = plt.subplots(figsize=(10, 6))
