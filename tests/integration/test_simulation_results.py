@@ -55,8 +55,11 @@ class TestRunWithCollect:
         results = sim.run(n_periods=5, collect=True)
 
         assert "avg_price" in results.economy_data
-        assert "unemployment_rate" in results.economy_data
         assert "inflation" in results.economy_data
+        # Note: unemployment_rate removed from default economy metrics
+        # Calculate from Worker.employed instead:
+        # employed = results.get_array("Worker", "employed")
+        # unemployment_rate = 1 - np.mean(employed, axis=1)
 
     def test_run_collect_true_correct_shapes(self):
         """Test that collected data has correct shapes."""
@@ -172,7 +175,7 @@ class TestRunWithCollect:
 
         # Economy should have all metrics
         assert "avg_price" in results.economy_data
-        assert "unemployment_rate" in results.economy_data
+        assert "inflation" in results.economy_data
 
     def test_run_collect_specific_economy_metrics(self):
         """Test collecting specific economy metrics."""
@@ -180,12 +183,11 @@ class TestRunWithCollect:
         results = sim.run(
             n_periods=5,
             collect={
-                "Economy": ["unemployment_rate"],  # Only this metric
+                "Economy": ["avg_price"],  # Only this metric
             },
         )
 
-        assert "unemployment_rate" in results.economy_data
-        assert "avg_price" not in results.economy_data
+        assert "avg_price" in results.economy_data
         assert "inflation" not in results.economy_data
 
     def test_run_collect_config_in_results(self):
@@ -212,7 +214,8 @@ class TestRunWithCollect:
 
         econ_df = results.economy_metrics
         assert isinstance(econ_df, pd.DataFrame)
-        assert "unemployment_rate" in econ_df.columns
+        assert "avg_price" in econ_df.columns
+        assert "inflation" in econ_df.columns
         assert len(econ_df) == 10
 
     def test_results_get_role_data(self):
@@ -255,8 +258,8 @@ class TestRunWithCollect:
 
         # Results should be identical
         np.testing.assert_array_almost_equal(
-            results1.economy_data["unemployment_rate"],
-            results2.economy_data["unemployment_rate"],
+            results1.economy_data["avg_price"],
+            results2.economy_data["avg_price"],
         )
 
     def test_repr_with_real_results(self):
@@ -281,3 +284,105 @@ class TestSimulationResultsExport:
     def test_simulation_results_in_all(self):
         """Test that SimulationResults is in __all__."""
         assert "SimulationResults" in bam.__all__
+
+
+class TestCaptureTiming:
+    """Tests for configurable capture timing feature."""
+
+    def test_capture_after_basic(self):
+        """Test basic capture_after functionality."""
+        n_periods = 5
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+        results = sim.run(
+            n_periods=n_periods,
+            collect={
+                "Producer": ["production"],
+                "aggregate": None,
+                "capture_after": "firms_run_production",
+            },
+        )
+
+        # Should have collected data
+        production = results.role_data["Producer"]["production"]
+        assert production.shape == (n_periods, 10)
+
+    def test_capture_timing_per_variable(self):
+        """Test per-variable capture timing configuration."""
+        n_periods = 5
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+        results = sim.run(
+            n_periods=n_periods,
+            collect={
+                "Producer": ["production"],
+                "Worker": ["employed"],
+                "aggregate": None,
+                "capture_after": "firms_update_net_worth",
+                "capture_timing": {
+                    "Producer.production": "firms_run_production",
+                    "Worker.employed": "workers_update_contracts",
+                },
+            },
+        )
+
+        # Both should be collected
+        production = results.role_data["Producer"]["production"]
+        employed = results.role_data["Worker"]["employed"]
+        assert production.shape == (n_periods, 10)
+        assert employed.shape == (n_periods, 50)
+
+    def test_capture_timing_with_economy(self):
+        """Test capture timing with economy metrics."""
+        n_periods = 5
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+        results = sim.run(
+            n_periods=n_periods,
+            collect={
+                "Economy": True,
+                "capture_after": "firms_run_production",
+            },
+        )
+
+        # Economy metrics should be captured
+        assert "avg_price" in results.economy_data
+        assert results.economy_data["avg_price"].shape == (n_periods,)
+
+    def test_no_capture_timing_backward_compatible(self):
+        """Test that collect without capture timing still works."""
+        n_periods = 5
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+        results = sim.run(
+            n_periods=n_periods,
+            collect={
+                "Producer": ["production"],
+                "aggregate": "mean",
+            },
+        )
+
+        # Should use default end-of-step capture
+        production = results.role_data["Producer"]["production"]
+        assert production.shape == (n_periods,)
+
+    def test_capture_callbacks_cleared_after_run(self):
+        """Test that pipeline callbacks are cleared after run."""
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+
+        # First run with capture timing
+        sim.run(
+            n_periods=3,
+            collect={
+                "Producer": ["production"],
+                "capture_after": "firms_run_production",
+            },
+        )
+
+        # Pipeline should have no callbacks registered
+        assert len(sim.pipeline._after_event_callbacks) == 0
+
+        # Second run should work normally
+        results = sim.run(
+            n_periods=3,
+            collect={
+                "Producer": ["production"],
+            },
+        )
+        assert "Producer" in results.role_data

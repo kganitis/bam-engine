@@ -334,8 +334,10 @@ class TestDataCollector:
     def test_economy_metrics_constant(self):
         """Test that ECONOMY_METRICS contains expected metrics."""
         assert "avg_price" in _DataCollector.ECONOMY_METRICS
-        assert "unemployment_rate" in _DataCollector.ECONOMY_METRICS
         assert "inflation" in _DataCollector.ECONOMY_METRICS
+        # Note: unemployment_rate is no longer in ECONOMY_METRICS by default.
+        # Unemployment should now be calculated from Worker.employed data.
+        assert "unemployment_rate" not in _DataCollector.ECONOMY_METRICS
 
 
 class TestDataProperty:
