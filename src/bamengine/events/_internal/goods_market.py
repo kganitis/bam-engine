@@ -151,7 +151,10 @@ def consumers_decide_firms_to_visit(
     rng: Rng = make_rng(),
 ) -> None:
     """
-    Consumers select firms to visit, sorted by price.
+    Consumers select firms to visit and set loyalty BEFORE shopping.
+
+    The loyalty (largest_prod_prev) is updated here based on the largest
+    producer in the consideration set, BEFORE any shopping occurs.
 
     See Also
     --------
@@ -184,6 +187,7 @@ def consumers_decide_firms_to_visit(
 
     # Track loyalty statistics
     loyalty_applied = 0
+    loyalty_updates = 0
     total_selections_made = 0
     consumers_processed = 0
 
@@ -214,15 +218,15 @@ def consumers_decide_firms_to_visit(
             choices = avail if not loyal else avail[avail != prev]
             if choices.size >= n_draw:
                 sample = rng.choice(choices, size=n_draw, replace=False)
-                # Sort by price (cheapest first) for optimal shopping order
+                # Sort by price (cheapest first)
                 order = np.argsort(prod.price[sample])
                 row[filled : filled + n_draw] = sample[order]
                 filled += n_draw
 
                 if log.isEnabledFor(logging.TRACE):
                     log.trace(
-                        f"    Consumer {h}: Added {n_draw} firms, "
-                        f"sorted by price: {sample[order]}"
+                        f"    Consumer {h}: Added {n_draw} firms "
+                        f"(sorted by price): {sample[order]}"
                     )
 
         # Defensive loyalty enforcement (should never trigger in practice)
@@ -236,12 +240,19 @@ def consumers_decide_firms_to_visit(
             con.shop_visits_head[h] = h * stride
             total_selections_made += filled
 
+            # Update loyalty to largest producer in consideration set
+            # This happens BEFORE shopping, regardless of which firm consumer buys from
+            selected_firms = row[:filled]
+            valid_firms = selected_firms[selected_firms >= 0]
+            if valid_firms.size > 0:
+                largest_idx = valid_firms[np.argmax(prod.production[valid_firms])]
+                con.largest_prod_prev[h] = largest_idx
+                loyalty_updates += 1
+
             if log.isEnabledFor(logging.DEBUG) and h < 10:  # Log first 10 consumers
-                selected_firms = row[:filled]
-                prices = prod.price[selected_firms[selected_firms >= 0]]
                 log.debug(
-                    f"    Consumer {h}: Selected {filled} firms: {selected_firms}, "
-                    f"Prices: {np.array2string(prices, precision=2)}"
+                    f"    Consumer {h}: Selected {filled} firms: {valid_firms}, "
+                    f"loyalty -> firm {con.largest_prod_prev[h]}"
                 )
 
     # Summary statistics
@@ -262,6 +273,10 @@ def consumers_decide_firms_to_visit(
     log.info(
         f"  Loyalty rule applied: "
         f"{loyalty_applied:,} times ({loyalty_rate:.1%} of consumers)"
+    )
+    log.info(
+        f"  Loyalty updated (pre-shopping): "
+        f"{loyalty_updates:,} consumers set loyalty to largest in consideration set"
     )
 
     if log.isEnabledFor(logging.DEBUG):
@@ -331,7 +346,6 @@ def consumers_shop_one_round(
     consumers_exhausted_budget = 0
     consumers_exhausted_queue = 0
     firms_sold_out = 0
-    loyalty_updates = 0
 
     for h in buyers_indices:
         ptr = con.shop_visits_head[h]
@@ -351,6 +365,7 @@ def consumers_shop_one_round(
         # Check if firm still has inventory
         if prod.inventory[firm_idx] <= EPS:
             # Firm sold out - skip but advance pointer
+            # Note: Loyalty was already set BEFORE shopping in consumers_decide_firms_to_visit
             con.shop_visits_head[h] = ptr + 1
             con.shop_visits_targets[row, col] = -1
             if log.isEnabledFor(logging.TRACE):
@@ -372,11 +387,8 @@ def consumers_shop_one_round(
         if prod.inventory[firm_idx] <= EPS:
             firms_sold_out += 1
 
-        # Update loyalty tracking
-        prev = con.largest_prod_prev[h]
-        if (prev < 0) or (prod.production[firm_idx] > prod.production[prev]):
-            con.largest_prod_prev[h] = firm_idx
-            loyalty_updates += 1
+        # Note: Loyalty is NOT updated here - it was set BEFORE shopping
+        # in consumers_decide_firms_to_visit based on the consideration set
 
         # Update statistics
         successful_purchases += 1
@@ -426,9 +438,6 @@ def consumers_shop_one_round(
             f"{consumers_exhausted_queue:,} exhausted firm queue"
         )
         log.debug(f"  Firm outcomes: {firms_sold_out:,} firms sold out completely")
-        log.debug(
-            f"  Loyalty updates: {loyalty_updates:,} consumers updated largest producer"
-        )
 
         # Validation check
         if abs(budget_spent - total_revenue) > EPS:
