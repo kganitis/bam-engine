@@ -69,6 +69,12 @@ class _DataCollector:
         - True: capture all variables for that role/component
     aggregate : str or None, default='mean'
         Aggregation method ('mean', 'median', 'sum', 'std') or None for full data.
+    capture_after : str or None, default=None
+        Default event name after which to capture data. If None, captures
+        at end of period (after all events).
+    capture_timing : dict or None, default=None
+        Per-variable capture timing overrides. Maps "RoleName.var_name" to
+        event name. Variables not in this dict use capture_after default.
 
     Examples
     --------
@@ -79,18 +85,22 @@ class _DataCollector:
     ...     aggregate="mean",
     ... )
 
-    Collect specific variables:
+    Collect specific variables with custom capture timing:
 
     >>> collector = _DataCollector(
-    ...     variables={"Producer": ["price", "inventory"], "Economy": ["avg_price"]},
-    ...     aggregate=None,  # Full per-agent data
+    ...     variables={"Producer": ["production"], "Worker": ["employed", "wage"]},
+    ...     aggregate=None,
+    ...     capture_after="firms_update_net_worth",  # Default capture event
+    ...     capture_timing={
+    ...         "Producer.production": "firms_run_production",  # Before bankruptcy
+    ...         "Worker.wage": "workers_receive_wage",
+    ...     },
     ... )
     """
 
-    # Available economy metrics
+    # Available economy metrics (unemployment_rate removed - calculate from Worker.employed)
     ECONOMY_METRICS = [
         "avg_price",
-        "unemployment_rate",
         "inflation",
     ]
 
@@ -98,18 +108,217 @@ class _DataCollector:
         self,
         variables: dict[str, list[str] | Literal[True]],
         aggregate: str | None = "mean",
+        capture_after: str | None = None,
+        capture_timing: dict[str, str] | None = None,
     ) -> None:
         self.variables = variables
         self.aggregate = aggregate
+        self.capture_after = capture_after
+        self.capture_timing = capture_timing or {}
         # Storage: role_data[role_name][var_name] = list of arrays/scalars
         self.role_data: dict[str, dict[str, list[Any]]] = defaultdict(
             lambda: defaultdict(list)
         )
         self.economy_data: dict[str, list[float]] = defaultdict(list)
+        # Track which variables have been captured this period
+        self._captured_this_period: set[str] = set()
+        # Flag to indicate if timed capture is active
+        self._use_timed_capture = bool(capture_after or capture_timing)
+
+    def setup_pipeline_callbacks(self, pipeline: Any) -> None:
+        """
+        Register capture callbacks with the pipeline for timed data capture.
+
+        This method groups variables by their capture event and registers
+        callbacks that will fire after each relevant event during pipeline
+        execution.
+
+        Parameters
+        ----------
+        pipeline : Pipeline
+            The pipeline to register callbacks with.
+
+        Notes
+        -----
+        This method should be called before starting the simulation run.
+        The callbacks will capture data at the appropriate events, and
+        `capture_remaining()` should be called at end-of-period to capture
+        any variables that weren't captured by callbacks.
+        """
+        from bamengine.core import Pipeline
+
+        if not isinstance(pipeline, Pipeline):
+            raise TypeError(f"Expected Pipeline, got {type(pipeline)}")
+
+        # Group variables by their capture event
+        event_to_vars: dict[str, list[tuple[str, str]]] = defaultdict(list)
+
+        for role_name, var_spec in self.variables.items():
+            if role_name == "Economy":
+                # Economy uses capture_after for all metrics
+                if self.capture_after:
+                    if var_spec is True:
+                        vars_to_capture = self.ECONOMY_METRICS
+                    else:
+                        vars_to_capture = var_spec
+                    for var_name in vars_to_capture:
+                        event_to_vars[self.capture_after].append(("Economy", var_name))
+            else:
+                # Role data
+                try:
+                    # Can't check variables until we have sim, so skip validation
+                    if var_spec is True:
+                        # Will capture all at runtime
+                        if self.capture_after:
+                            event_to_vars[self.capture_after].append((role_name, "*"))
+                    else:
+                        for var_name in var_spec:
+                            key = f"{role_name}.{var_name}"
+                            event = self.capture_timing.get(key, self.capture_after)
+                            if event:
+                                event_to_vars[event].append((role_name, var_name))
+                except Exception:
+                    pass  # Will capture at end-of-period
+
+        # Register callbacks for each event
+        for event_name, vars_list in event_to_vars.items():
+            # Create callback with closure over vars_list
+            def make_callback(
+                vars_to_capture: list[tuple[str, str]],
+            ) -> Callable[[Simulation], None]:
+                def callback(sim: Simulation) -> None:
+                    for role_name, var_name in vars_to_capture:
+                        if var_name == "*":
+                            # Capture all variables from this role
+                            self._capture_role_all(sim, role_name)
+                        elif role_name == "Economy":
+                            self._capture_economy_single(sim, var_name)
+                        else:
+                            self._capture_role_single(sim, role_name, var_name)
+
+                return callback
+
+            pipeline.register_after_event(event_name, make_callback(vars_list))
+
+    def _capture_role_single(
+        self, sim: Simulation, role_name: str, var_name: str
+    ) -> None:
+        """Capture a single variable from a role."""
+        key = f"{role_name}.{var_name}"
+        if key in self._captured_this_period:
+            return  # Already captured
+
+        try:
+            role = sim.get_role(role_name)
+        except KeyError:
+            return
+
+        if not hasattr(role, var_name):
+            return
+
+        data = getattr(role, var_name)
+        if not isinstance(data, np.ndarray):
+            return
+
+        # Apply aggregation if requested
+        if self.aggregate:
+            if self.aggregate == "mean":
+                value = float(np.mean(data))
+            elif self.aggregate == "median":
+                value = float(np.median(data))
+            elif self.aggregate == "sum":
+                value = float(np.sum(data))
+            elif self.aggregate == "std":
+                value = float(np.std(data))
+            else:
+                value = float(np.mean(data))  # fallback
+            self.role_data[role_name][var_name].append(value)
+        else:
+            # Store full array (copy to avoid mutation issues)
+            self.role_data[role_name][var_name].append(data.copy())
+
+        self._captured_this_period.add(key)
+
+    def _capture_role_all(self, sim: Simulation, role_name: str) -> None:
+        """Capture all variables from a role."""
+        try:
+            role = sim.get_role(role_name)
+        except KeyError:
+            return
+
+        var_names = [f for f in role.__dataclass_fields__ if not f.startswith("_")]
+        for var_name in var_names:
+            self._capture_role_single(sim, role_name, var_name)
+
+    def _capture_economy_single(self, sim: Simulation, metric_name: str) -> None:
+        """Capture a single economy metric."""
+        key = f"Economy.{metric_name}"
+        if key in self._captured_this_period:
+            return  # Already captured
+
+        ec = sim.ec
+
+        metric_sources = {
+            "avg_price": ec.avg_mkt_price_history,
+            "inflation": ec.inflation_history,
+        }
+
+        if metric_name in metric_sources:
+            history = metric_sources[metric_name]
+            if len(history) > 0:
+                self.economy_data[metric_name].append(float(history[-1]))
+                self._captured_this_period.add(key)
+
+    def capture_remaining(self, sim: Simulation) -> None:
+        """
+        Capture any variables not yet captured this period.
+
+        This is called at the end of each period to capture variables that
+        weren't captured by timed callbacks (either because they have no
+        capture_timing specified, or timed capture is not being used).
+
+        After capturing, resets the captured tracking set for the next period.
+
+        Parameters
+        ----------
+        sim : Simulation
+            Simulation instance to capture data from.
+        """
+        for name, var_spec in self.variables.items():
+            if name == "Economy":
+                # Capture remaining economy metrics
+                if var_spec is True:
+                    metrics = self.ECONOMY_METRICS
+                else:
+                    metrics = var_spec
+                for metric in metrics:
+                    key = f"Economy.{metric}"
+                    if key not in self._captured_this_period:
+                        self._capture_economy_single(sim, metric)
+            else:
+                # Capture remaining role variables
+                if var_spec is True:
+                    self._capture_role_all(sim, name)
+                else:
+                    for var_name in var_spec:
+                        key = f"{name}.{var_name}"
+                        if key not in self._captured_this_period:
+                            self._capture_role_single(sim, name, var_name)
+
+        # Reset for next period
+        self._captured_this_period.clear()
 
     def capture(self, sim: Simulation) -> None:
         """
         Capture one period of data from simulation.
+
+        This is the original capture method for non-timed capture (when
+        capture_after and capture_timing are not specified). All data is
+        captured at the same point (end of period).
+
+        For timed capture (when capture_after or capture_timing are specified),
+        use `setup_pipeline_callbacks()` before the run and `capture_remaining()`
+        at the end of each period instead.
 
         Parameters
         ----------
