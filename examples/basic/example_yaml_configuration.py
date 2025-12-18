@@ -57,7 +57,6 @@ v: 0.08          # Bank capital requirement
 
 # Initial conditions
 net_worth_init: 15.0     # Firm initial net worth
-production_init: 5.0     # Firm initial production
 price_init: 1.0          # Initial price level
 savings_init: 4.0        # Household initial savings
 wage_offer_init: 0.85    # Initial wage offer
@@ -245,7 +244,6 @@ print(
 # **Initial conditions:**
 #
 # - ``net_worth_init``: Initial firm net worth
-# - ``production_init``: Initial firm production
 # - ``price_init``: Initial goods price
 # - ``savings_init``: Initial household savings
 #
