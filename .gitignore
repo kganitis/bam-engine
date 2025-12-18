@@ -36,7 +36,7 @@ asv_benchmarks/env/
 asv_benchmarks/__pycache__/
 
 # Calibration outputs
-tools/calibration/output/
+calibration/output/
 
 # IDEs
 .idea/
