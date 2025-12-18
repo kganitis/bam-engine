@@ -23,7 +23,7 @@ Design Notes
 - Events operate on consumer and producer roles (Consumer, Producer)
 - Propensity to consume: c = 1 / (1 + tanh(SA/SA_avg)^β)
 - Loyalty rule: consumers visit previous largest producer first (if inventory available)
-- Consumers sorted by price (ascending) to prefer cheaper goods
+- Remaining Z-1 firms selected randomly (preferential attachment mechanism)
 - Shopping order randomized each round for fairness
 
 Examples
@@ -221,22 +221,28 @@ class ConsumersDecideIncomeToSpend:
 @event
 class ConsumersDecideFirmsToVisit:
     """
-    Consumers select firms to visit, sorted by price (cheapest first).
+    Consumers select firms to visit and set loyalty BEFORE shopping.
 
-    Consumers with spending budget build a shopping queue by sampling firms
-    with inventory and sorting them by price. Loyalty rule: consumers prioritize
-    the firm they bought most from last period (if inventory available).
+    Consumers with spending budget build a shopping queue by:
+    1. Placing their loyalty firm (previous largest producer) in slot 0
+    2. Randomly sampling Z-1 additional firms from those with inventory
+    3. Sorting the randomly sampled firms by price (cheapest first)
+    4. Setting loyalty to the LARGEST producer in the consideration set
+
+    This implements the book's preferential attachment (PA) mechanism matching
+    the NetLogo reference implementation. The key insight is that loyalty is
+    updated BEFORE shopping based on the consideration set, not during shopping
+    based on purchases. This allows the "rich get richer" dynamics to emerge.
 
     Algorithm
     ---------
     For each consumer j with B_j > 0 (spending budget):
 
-    1. Sample min(max_Z, n_firms_with_inventory) firms randomly
-    2. Sort sampled firms by price (ascending - prefer cheaper)
-    3. Apply loyalty rule:
-       - If prev_largest_producer has inventory:
-         Move it to position 0 (top priority)
-    4. Store sorted shopping queue
+    1. Apply loyalty rule first:
+       - If prev_largest_producer has inventory: place in slot 0
+    2. Sample remaining slots randomly from firms with inventory
+    3. Sort sampled firms by price (cheapest first) for shopping order
+    4. Update loyalty to largest producer in consideration set (BEFORE shopping)
 
     Examples
     --------
@@ -255,26 +261,19 @@ class ConsumersDecideFirmsToVisit:
     >>> has_budget.sum()  # doctest: +SKIP
     480
 
-    Verify firms sorted by price:
-
-    >>> # Check one consumer's queue
-    >>> consumers_with_budget = np.where(has_budget)[0]
-    >>> if len(consumers_with_budget) > 0:
-    ...     j = consumers_with_budget[0]
-    ...     firm_ids = sim.con.shop_targets[j, : sim.config.max_Z]
-    ...     firm_ids = firm_ids[firm_ids >= 0]
-    ...     prices = sim.prod.price[firm_ids]
-    ...     np.all(prices[:-1] <= prices[1:])  # Prices non-decreasing
-    True
-
     Notes
     -----
     This event must execute after ConsumersDecideIncomeToSpend (need spending budget).
 
     Only consumers with positive spending budget prepare shopping queues.
 
-    Loyalty rule implements realistic consumer behavior: stick with previous
-    main supplier if they still have goods available.
+    The preferential attachment mechanism works as follows:
+    - Consumers track the "largest producer" in their consideration set
+    - Loyalty is updated BEFORE shopping to the largest in consideration set
+    - This firm is visited first (if it has inventory), minimizing rationing risk
+    - Even if consumer buys from cheap small firms, they track the large firm
+    - Over time, large firms accumulate more loyal customers, creating "rich get richer" dynamics
+    - This leads to emergent firm size heterogeneity and business cycle fluctuations
 
     See Also
     --------
@@ -304,6 +303,10 @@ class ConsumersShopOneRound:
     and attempt to purchase goods. Shopping order is randomized for fairness.
     This event is repeated max_Z times to allow multiple firm visits.
 
+    Note: Loyalty (largest_prod_prev) is NOT updated during shopping. It was
+    already set BEFORE shopping in ConsumersDecideFirmsToVisit based on the
+    consideration set. This matches the NetLogo reference implementation.
+
     Algorithm
     ---------
     1. Randomize consumer shopping order
@@ -312,8 +315,6 @@ class ConsumersShopOneRound:
        - Calculate purchase: :math:`Q = \\min(B_j / P_i, S_i)`
        - Update spending: :math:`B_j \\leftarrow B_j - (Q \\times P_i)`
        - Update inventory: :math:`S_i \\leftarrow S_i - Q`
-       - Track purchase for loyalty: :math:`\\text{total\\_spent}_j \\mathrel{+}= (Q \\times P_i)`
-       - If :math:`Q > 0`: update prev_largest_producer if this is biggest purchase
        - Advance queue pointer: :math:`\\text{head}_j \\mathrel{+}= 1`
 
     Examples
