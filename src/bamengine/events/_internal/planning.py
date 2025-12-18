@@ -125,7 +125,8 @@ def firms_calc_breakeven_price(
 
     # Breakeven calculation
     interest = lb.interest_per_borrower(prod.production.size)
-    breakeven = (emp.wage_bill + interest) / np.maximum(prod.production, EPS)
+    projected_production = prod.labor_productivity * emp.current_labor
+    breakeven = (emp.wage_bill + interest) / np.maximum(projected_production, EPS)
     log.info(
         f"  Total Wage Bill for calc: {emp.wage_bill.sum():,.2f}. "
         f"Total Interest for calc: {interest.sum():,.2f}"
