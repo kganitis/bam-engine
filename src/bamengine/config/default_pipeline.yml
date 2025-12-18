@@ -73,25 +73,21 @@
 
 events:
   # ────────────────────────────────────────────────────────────────────────────
-  # PHASE 1: PLANNING (7 events)
+  # PHASE 1: PLANNING (3 events)
   # ────────────────────────────────────────────────────────────────────────────
-  # Firms decide production targets, calculate costs, adjust prices based on
-  # inventory and market conditions. Economy-wide statistics updated.
+  # Firms decide production targets, labor needs, and post vacancies.
 
   - firms_decide_desired_production    # Set production targets based on demand/inventory
-  - firms_calc_breakeven_price         # Calculate minimum profitable price
-  - firms_adjust_price                 # Adjust price based on inventory levels
-  - update_avg_mkt_price               # Update economy-wide average price
-  - calc_annual_inflation_rate         # Calculate annual inflation rate
   - firms_decide_desired_labor         # Calculate labor needs from production targets
-  - firms_decide_vacancies             # Post vacancies for labor shortfalls
+  - firms_decide_vacancies             # Post vacancies to meet labor needs
 
   # ────────────────────────────────────────────────────────────────────────────
-  # PHASE 2: LABOR MARKET (2 + 2×max_M + 1 = 11 events with default max_M=4)
+  # PHASE 2: LABOR MARKET (3 + 2×max_M + 1 = 12 events with default max_M=4)
   # ────────────────────────────────────────────────────────────────────────────
   # Minimum wage adjustment, firms set wages, unemployed workers search for jobs,
   # sequential matching rounds (max_M), then wage bill calculation.
 
+  - calc_annual_inflation_rate         # Calculate annual inflation rate
   - adjust_minimum_wage                # Adjust min wage based on inflation
   - firms_decide_wage_offer            # Firms set wage offers for vacancies
   - workers_decide_firms_to_apply      # Unemployed workers select firms to apply to
@@ -117,24 +113,25 @@ events:
                                        # Firms send ≤1 application per round
                                        # Banks process and approve/reject applications
   - firms_fire_workers                 # Lay off workers if credit insufficient
-#  - calc_unemployment_rate             # Calculate/record unemployment rate
 
   # ────────────────────────────────────────────────────────────────────────────
-  # PHASE 4: PRODUCTION (4 events)
+  # PHASE 4: PRODUCTION (7 events)
   # ────────────────────────────────────────────────────────────────────────────
-  # Firms pay wages to workers, production occurs, contracts updated.
+  # Firms pay wages to workers, adjust prices, run production, update worker contracts.
 
   - firms_pay_wages                    # Firms transfer wages to workers
   - workers_receive_wage               # Workers receive wages into income
+  - firms_calc_breakeven_price         # Calculate minimum profitable price
+  - firms_adjust_price                 # Adjust price based on inventory levels
+  - update_avg_mkt_price               # Update economy-wide average price
   - firms_run_production               # Production execution (goods added to inventory)
   - workers_update_contracts           # Decrement contract duration, handle expiration
-#  - calc_unemployment_rate             # Calculate/record unemployment rate
 
   # ────────────────────────────────────────────────────────────────────────────
   # PHASE 5: GOODS MARKET (3 + max_Z + 1 = 6 events with default max_Z=2)
   # ────────────────────────────────────────────────────────────────────────────
   # Households decide spending based on income/savings, select firms to visit,
-  # sequential shopping rounds (max_Z), then finalize purchases.
+  # sequential shopping rounds (max_Z), then save any unspent income.
 
   - consumers_calc_propensity          # Calculate consumption propensity from savings
   - consumers_decide_income_to_spend   # Allocate income for consumption
@@ -161,10 +158,9 @@ events:
   - mark_bankrupt_banks                # Detect/remove bankrupt banks (equity < 0)
 
   # ────────────────────────────────────────────────────────────────────────────
-  # PHASE 8: ENTRY & STATISTICS (3 events)
+  # PHASE 8: ENTRY (2 events)
   # ────────────────────────────────────────────────────────────────────────────
-  # Replace bankrupt agents, calculate end-of-period unemployment rate.
+  # Replace bankrupt firms/banks
 
   - spawn_replacement_firms            # Create new firms to replace bankrupt ones
   - spawn_replacement_banks            # Create new banks to replace bankrupt ones
-  - calc_unemployment_rate             # Calculate/record unemployment rate
