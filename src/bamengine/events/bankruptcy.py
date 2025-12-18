@@ -127,7 +127,6 @@ class MarkBankruptFirms:
             sim.prod,
             sim.wrk,
             sim.lb,
-            zero_production_bankrupt=sim.config.zero_production_bankrupt,
         )
 
 
@@ -164,7 +163,7 @@ class SpawnReplacementFirms:
     """
     Create new firms to replace bankrupt ones.
 
-    Replacement firms inherit attributes (price, productivity, net worth) from
+    Replacement firms inherit attributes (price, wage, net worth) from
     trimmed mean of survivors × scale factor (smaller than average).
 
     Examples
@@ -188,8 +187,10 @@ class SpawnReplacementFirms:
             sim.prod,
             sim.emp,
             sim.bor,
-            labor_productivity=sim.labor_productivity,
-            new_firm_scale_factor=sim.config.new_firm_scale_factor,
+            sim.wrk,
+            new_firm_size_factor=sim.config.new_firm_size_factor,
+            new_firm_production_factor=sim.config.new_firm_production_factor,
+            new_firm_wage_factor=sim.config.new_firm_wage_factor,
             new_firm_price_markup=sim.config.new_firm_price_markup,
             rng=sim.rng,
         )

@@ -56,7 +56,7 @@ max_Z:                2          # Shops a household can visit/period
 # ── ECONOMY-WIDE STRUCTURAL PARAMETERS ────────────────────────────────────────
 # Behavioral and policy parameters affecting all agents.
 
-labor_productivity:   0.50       # Labor productivity (goods/worker)
+labor_productivity:   0.50       # Labor productivity (good units per worker)
 theta:                8          # Job contract base length (periods)
                                  # Actual duration: θ + Poisson(contract_poisson_mean)
 beta:                 2.50       # Consumption propensity exponent
@@ -80,10 +80,9 @@ cap_factor:           2.00       # Multiplier limiting price increases
 # arrays of length n_firms/n_households for heterogeneous initialization.
 
 net_worth_init:       1.0        # Firm net worth at t=0 (money units)
-production_init:      2.0        # Firm production at t=0 (goods units)
-price_init:           1.5        # Goods price at t=0 (money/goods)
+price_init:           1.5        # Goods price at t=0 (money unit per good unit)
 savings_init:         3.0        # Household savings at t=0 (money units)
-wage_offer_init:      1.0        # Wage offer at t=0 (money/period)
+wage_offer_init:      1.0        # Wage offer at t=0 (money units per period)
 equity_base_init:     5.0        # Bank equity at t=0 (money units)
 
 # ── RANDOM NUMBER GENERATION ──────────────────────────────────────────────────
@@ -121,10 +120,10 @@ contract_poisson_mean: 10            # Poisson mean added to theta for contract 
 
 loan_priority_method: by_leverage    # How banks rank loan applicants
                                      # "by_net_worth" = sort by net worth (desc)
-                                     # "by_leverage" = sort by leverage (asc)
+                                     # "by_leverage" = sort by leverage (asc), book value
                                      # "by_appearance" = first-come-first-served
 
-firing_method: expensive             # How firms select workers to fire
+firing_method: random                # How firms select workers to fire
                                      # "random" = random selection
                                      # "expensive" = highest wage first
 
@@ -135,25 +134,22 @@ fragility_cap_method: credit_demand  # How to cap financial fragility
                                      # "credit_demand" = cap at B (credit demand)
                                      # "none" = no cap (may cause instability)
 
-zero_production_bankrupt: true       # Mark firms bankrupt if production <= EPS
-                                     # If false, only net worth triggers bankruptcy
-
-loanbook_clear_on_repay: true       # Clear loans immediately after repayment
-                                     # If false, carry over to next period
-
-unemployment_calc_method: simple_ma  # Seasonal adjustment method for unemployment rate
-                                     # "raw" = no seasonal adjustment
-                                     # "simple_ma" = 4-quarter moving average (default)
-
-unemployment_calc_after: spawn_replacement_banks
-                                     # Event after which to calculate unemployment rate
-                                     # Controls when in the pipeline the calculation occurs
-
 # ── NEW FIRM ENTRY PARAMETERS ───────────────────────────────────────────────
 # Control how replacement firms are initialized after bankruptcy.
+# New firms inherit attributes from the trimmed mean (10%) of surviving firms,
+# scaled by these factors. This follows Delli Gatti et al. (2011) where new
+# entrants start "below the average size of incumbent firms".
 
-new_firm_scale_factor: 0.8    # New firms start at this fraction of survivor mean
-                              # Affects net_worth, wage_offer initialization
+new_firm_size_factor: 0.5           # Net worth = survivor_mean × factor
+                                    # Core "size at entry" measure
 
-new_firm_price_markup: 1.0    # New firm price = avg_mkt_price * markup
-                              # Higher values help new firms recover costs
+new_firm_production_factor: 1.0     # Production = survivor_mean × factor
+                                    # Initial output capacity
+
+new_firm_wage_factor: 0.8           # Wage offer = survivor_mean × factor (floored at min_wage)
+                                    # Higher values help attract workers
+                                    # Lower values reduce initial costs
+
+new_firm_price_markup: 1.15         # Price = avg_mkt_price × markup
+                                    # Slight markup helps cover startup costs
+                                    # Lower values help competitiveness

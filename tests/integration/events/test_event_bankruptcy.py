@@ -52,7 +52,7 @@ def _run_bankruptcy_entry_event(sch: Simulation) -> dict[str, Any]:
     mark_bankrupt_banks(sch.ec, sch.lend, sch.lb)
 
     # Event-8
-    spawn_replacement_firms(sch.ec, sch.prod, sch.emp, sch.bor, rng=sch.rng)
+    spawn_replacement_firms(sch.ec, sch.prod, sch.emp, sch.bor, sch.wrk, rng=sch.rng)
     spawn_replacement_banks(sch.ec, sch.lend, rng=sch.rng)
 
     # fill the “after” snapshots

@@ -80,8 +80,6 @@ def firms_validate_debt_commitments(
     bor: Borrower,
     lend: Lender,
     lb: LoanBook,
-    *,
-    loanbook_clear_on_repay: bool = True,
 ) -> None:
     """
     Repay debts or write off if insufficient funds.
@@ -193,18 +191,12 @@ def firms_validate_debt_commitments(
                     f"to {lend.equity_base[lender_idx]:.2f}"
                 )
 
-        # remove repaid loans from loan book (if enabled)
-        if loanbook_clear_on_repay:
-            removed = lb.drop_rows(row_sel)
-            log.debug(
-                f"  Compacting loan book: removed {removed} repaid loans. "
-                f"New size={lb.size}"
-            )
-        else:
-            log.info(
-                "  Loan clearing disabled (loanbook_clear_on_repay=False). "
-                "Repaid loans will carry over to next period."
-            )
+        # remove repaid loans from loan book
+        removed = lb.drop_rows(row_sel)
+        log.debug(
+            f"  Compacting loan book: removed {removed} repaid loans. "
+            f"New size={lb.size}"
+        )
 
     # process bad-debt write-offs
     bad_firms = np.where(unable_mask & (total_debt > EPS))[0]

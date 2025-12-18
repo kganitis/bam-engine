@@ -17,7 +17,7 @@ from bamengine import Rng, logging, make_rng
 from bamengine.economy import Economy
 from bamengine.relationships import LoanBook
 from bamengine.roles import Borrower, Employer, Lender, Producer, Worker
-from bamengine.utils import EPS, trim_mean
+from bamengine.utils import EPS, trim_mean, trimmed_weighted_mean
 
 log = logging.getLogger(__name__)
 
@@ -65,8 +65,6 @@ def mark_bankrupt_firms(
     prod: Producer,
     wrk: Worker,
     lb: LoanBook,
-    *,
-    zero_production_bankrupt: bool = True,
 ) -> None:
     """
     Detect insolvent firms and remove them from the economy.
@@ -77,16 +75,13 @@ def mark_bankrupt_firms(
     """
     # A firm is marked as bankrupt if either:
     #     • net-worth (A) < 0
-    #     • current production (Y) <= 0 (if zero_production_bankrupt=True)
+    #     • current production (Y) <= 0
     #
     # For bankrupt firms, all workers are fired and loans are purged.
     log.info("--- Marking Bankrupt Firms ---")
 
     # detect bankruptcies
-    if zero_production_bankrupt:
-        bankrupt_mask = (bor.net_worth < EPS) | (prod.production <= EPS)
-    else:
-        bankrupt_mask = bor.net_worth < EPS
+    bankrupt_mask = (bor.net_worth < EPS) | (prod.production <= EPS)
     bankrupt_indices = np.where(bankrupt_mask)[0]
 
     ec.exiting_firms = bankrupt_indices.astype(np.int64)
@@ -176,10 +171,12 @@ def spawn_replacement_firms(
     prod: Producer,
     emp: Employer,
     bor: Borrower,
+    wrk: Worker,
     *,
-    labor_productivity: float = 0.5,
-    new_firm_scale_factor: float = 0.8,
-    new_firm_price_markup: float = 1.26,
+    new_firm_size_factor: float = 0.5,
+    new_firm_production_factor: float = 0.8,
+    new_firm_wage_factor: float = 0.9,
+    new_firm_price_markup: float = 1.1,
     rng: Rng = make_rng(),
 ) -> None:
     """
@@ -201,7 +198,7 @@ def spawn_replacement_firms(
 
     # handle full market collapse
     if num_exiting == bor.net_worth.size:  # pragma: no cover - catastrophic edge case
-        log.critical("!!! ALL FIRMS ARE BANKRUPT !!! SIMULATION ENDING.")
+        log.warning("!!! ALL FIRMS ARE BANKRUPT !!! SIMULATION ENDING.")
         ec.destroyed = True
         return
 
@@ -211,17 +208,21 @@ def spawn_replacement_firms(
     )
     mean_net = trim_mean(bor.net_worth[survivors])
     mean_prod = trim_mean(prod.production[survivors])
-    mean_wage = trim_mean(emp.wage_offer[survivors])
+    mean_wage = trim_mean(wrk.wage[wrk.employed])
+    mean_labor_prod = trimmed_weighted_mean(
+        prod.labor_productivity[survivors], weights=prod.production[survivors]
+    )
+
     log.info(
         f"  New firms will be initialized based on survivor averages: "
-        f"mean_net={mean_net:.2f}, mean_prod={mean_prod:.2f}, mean_wage={mean_wage:.2f}"
+        f"mean_net={mean_net:.2f}, mean_prod={mean_prod:.2f}, "
+        f"mean_wage={mean_wage:.2f}, mean_labor_prod={mean_labor_prod:.4f}"
     )
 
     # initialize new firms
-    s = new_firm_scale_factor
     for i in exiting_indices:
         # Reset Borrower component
-        bor.net_worth[i] = mean_net * s
+        bor.net_worth[i] = mean_net * new_firm_size_factor
         bor.total_funds[i] = bor.net_worth[i]
         bor.gross_profit[i] = 0.0
         bor.net_profit[i] = 0.0
@@ -230,17 +231,17 @@ def spawn_replacement_firms(
         bor.projected_fragility[i] = 0.0
 
         # Reset Producer component
-        prod.production[i] = mean_prod
+        prod.production[i] = mean_prod * new_firm_production_factor
         prod.inventory[i] = 0.0
         prod.expected_demand[i] = 0.0
         prod.desired_production[i] = 0.0
-        prod.labor_productivity[i] = labor_productivity
+        prod.labor_productivity[i] = mean_labor_prod
         prod.price[i] = ec.avg_mkt_price * new_firm_price_markup
 
         # Reset Employer component
         emp.current_labor[i] = 0
         emp.desired_labor[i] = 0
-        emp.wage_offer[i] = max(mean_wage * s, ec.min_wage)
+        emp.wage_offer[i] = max(mean_wage * new_firm_wage_factor, ec.min_wage)
         emp.n_vacancies[i] = 0
         emp.total_funds[i] = bor.total_funds[i]
         emp.wage_bill[i] = 0.0
@@ -284,7 +285,7 @@ def spawn_replacement_banks(
         np.arange(lend.equity_base.size), exiting_indices, assume_unique=True
     )
     if not alive.size:
-        log.critical("!!! ALL BANKS ARE BANKRUPT !!! SIMULATION ENDING.")
+        log.warning("!!! ALL BANKS ARE BANKRUPT !!! SIMULATION ENDING.")
         ec.destroyed = True
         return
 

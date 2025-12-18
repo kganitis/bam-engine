@@ -24,14 +24,9 @@ log = logging.getLogger(__name__)
 def calc_unemployment_rate(
     ec: Economy,
     wrk: Worker,
-    method: str = "raw",
 ) -> None:
     """
-    Calculate unemployment rate from worker employment status.
-
-    The raw unemployment rate is calculated and stored in history. The method
-    parameter affects logging but the history always stores raw rates. Users
-    can apply smoothing (e.g., rolling mean) to the history post-hoc if needed.
+    Calculate unemployment rate from worker employment status and store in history.
 
     Parameters
     ----------
@@ -39,10 +34,6 @@ def calc_unemployment_rate(
         Economy object (stores unemployment rate history).
     wrk : Worker
         Worker role (contains employment status for all workers).
-    method : str, default "raw"
-        Calculation method (affects logging):
-        - "raw": Log raw unemployment rate only
-        - "simple_ma": Also log 4-quarter moving average
 
     See Also
     --------
@@ -62,21 +53,8 @@ def calc_unemployment_rate(
 
     log.info(f"  Unemployment rate: {rate * 100:.2f}%")
 
-    # Validate method parameter
-    if method not in ("raw", "simple_ma"):
-        raise ValueError(
-            f"Unknown unemployment_calc_method: '{method}'. "
-            f"Must be 'raw' or 'simple_ma'."
-        )
-
     # Store raw rate in history
     ec.unemp_rate_history = np.append(ec.unemp_rate_history, rate)
-
-    # Log smoothed rate if method is simple_ma
-    if method == "simple_ma" and log.isEnabledFor(logging.DEBUG):
-        if ec.unemp_rate_history.size >= 4:
-            smoothed = ec.unemp_rate_history[-4:].mean()
-            log.debug(f"  4-quarter MA unemployment rate: {smoothed * 100:.2f}%")
 
     log.info("--- Unemployment Rate Calculation complete ---")
 
@@ -84,7 +62,6 @@ def calc_unemployment_rate(
 def update_avg_mkt_price(
     ec: Economy,
     prod: Producer,
-    alpha: float = 1.0,
     trim_pct: float = 0.0,
 ) -> None:
     """
@@ -96,16 +73,10 @@ def update_avg_mkt_price(
     """
     log.info("--- Updating Average Market Price ---")
 
-    if not (0.0 <= alpha <= 1.0):
-        raise ValueError(f"alpha must be in [0, 1], got {alpha}")
-
-    if log.isEnabledFor(logging.DEBUG):
-        log.debug(
-            f"  Price update parameters: alpha={alpha:.3f}, trim_pct={trim_pct:.3f}"
-        )
-
-    # calculate trimmed weighted mean
-    p_avg_trimmed = trimmed_weighted_mean(prod.price, trim_pct=trim_pct)
+    # calculate average market price by weighting firm prices by production output
+    p_avg_trimmed = trimmed_weighted_mean(
+        prod.price, trim_pct=trim_pct, weights=prod.production
+    )
     previous_price = ec.avg_mkt_price
 
     if log.isEnabledFor(logging.DEBUG):
@@ -115,7 +86,7 @@ def update_avg_mkt_price(
         )
 
     # update economy state
-    ec.avg_mkt_price = alpha * p_avg_trimmed + (1.0 - alpha) * ec.avg_mkt_price
+    ec.avg_mkt_price = p_avg_trimmed
     ec.avg_mkt_price_history = np.append(ec.avg_mkt_price_history, ec.avg_mkt_price)
 
     log.info(f"  Average market price updated: {ec.avg_mkt_price:.4f}")

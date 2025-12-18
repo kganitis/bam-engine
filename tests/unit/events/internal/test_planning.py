@@ -211,16 +211,17 @@ def test_labor_and_vacancy_properties(data) -> None:  # type: ignore[no-untyped-
 def test_breakeven_no_cap_equals_raw() -> None:
     """
     If no cap_factor is provided (or cap_factor <= 1), the breakeven floor
-    equals raw (wage_bill + interest) / max(production, _EPS).
+    equals raw (wage_bill + interest) / max(projected_production, _EPS).
+    projected_production = labor_productivity * current_labor.
     """
     n = 3
     prod = mock_producer(n=n)
-    # Set explicit values we control
-    prod.production[:] = np.array([10.0, 5.0, 2.0])
     prod.price[:] = 1.0  # irrelevant when no cap
+    # labor_productivity defaults to 1.0, so projected_production = current_labor
 
     emp = mock_employer(n=n)
     emp.wage_bill[:] = np.array([10.0, 5.0, 8.0])
+    emp.current_labor[:] = np.array([10, 5, 2], dtype=np.int64)  # projected_production
 
     class DummyLoanBook:
         @staticmethod
@@ -233,8 +234,10 @@ def test_breakeven_no_cap_equals_raw() -> None:
     # noinspection PyTypeChecker
     firms_calc_breakeven_price(prod, emp, lb, cap_factor=None)
 
+    # projected_production = labor_productivity * current_labor = 1.0 * [10, 5, 2]
+    projected_production = prod.labor_productivity * emp.current_labor
     expected = (emp.wage_bill + np.array([1.0, 0.0, 1.0])) / np.maximum(
-        prod.production, EPS
+        projected_production, EPS
     )
     np.testing.assert_allclose(prod.breakeven_price, expected, rtol=1e-12, atol=0.0)
 
@@ -242,14 +245,18 @@ def test_breakeven_no_cap_equals_raw() -> None:
 def test_breakeven_capped_by_price_times_factor() -> None:
     """
     With a cap_factor > 1, breakeven is min(raw_breakeven, price * cap_factor).
+    projected_production = labor_productivity * current_labor.
     """
     n = 3
     prod = mock_producer(n=n)
-    prod.production[:] = 1.0
     prod.price[:] = np.array([2.0, 1.0, 0.5])  # caps: [4.0, 2.0, 1.0]
+    # labor_productivity defaults to 1.0, so projected_production = current_labor
 
     emp = mock_employer(n=n)
-    emp.wage_bill[:] = np.array([100.0, 1.0, 1.0])  # raw: [100, 1, 1]
+    emp.wage_bill[:] = np.array([100.0, 1.0, 1.0])  # raw: [100, 1, 1] when proj_prod=1
+    emp.current_labor[:] = np.array(
+        [1, 1, 1], dtype=np.int64
+    )  # projected_production = 1
 
     class DummyLoanBook:
         @staticmethod
@@ -261,7 +268,9 @@ def test_breakeven_capped_by_price_times_factor() -> None:
     # noinspection PyTypeChecker
     firms_calc_breakeven_price(prod, emp, lb, cap_factor=2)
 
-    raw = (emp.wage_bill + 0.0) / np.maximum(prod.production, EPS)
+    # projected_production = labor_productivity * current_labor = 1.0 * [1, 1, 1]
+    projected_production = prod.labor_productivity * emp.current_labor
+    raw = (emp.wage_bill + 0.0) / np.maximum(projected_production, EPS)
     cap = prod.price * 2
     expected = np.minimum(raw, cap)
 

@@ -79,21 +79,14 @@ class Config:
     fragility_cap_method : str, optional
         How to cap financial fragility: "credit_demand" (cap at B) or
         "none" (no cap). Default: "credit_demand".
-    zero_production_bankrupt : bool, optional
-        Whether to mark firms bankrupt if production <= EPS. Default: True.
-    loanbook_clear_on_repay : bool, optional
-        Whether to clear loans immediately after repayment. Default: True.
-    unemployment_calc_method : str, optional
-        Method for unemployment calculation: "raw" (simple ratio) or
-        "simple_ma" (moving average). Default: "simple_ma".
-    unemployment_calc_after : str, optional
-        Event after which to calculate unemployment rate each period. Options:
-        "spawn_replacement_banks", "repay_loans", etc. Default:
-        "spawn_replacement_banks".
-    new_firm_scale_factor : float, optional
-        Scale factor for new firm entry relative to survivor mean. Default: 0.8.
+    new_firm_size_factor : float, optional
+        Scale factor for new firm net worth vs survivor mean. Default: 0.5.
+    new_firm_production_factor : float, optional
+        Scale factor for new firm production vs survivor mean. Default: 0.8.
+    new_firm_wage_factor : float, optional
+        Scale factor for new firm wage offer vs survivor mean. Default: 0.9.
     new_firm_price_markup : float, optional
-        Price markup for new firms vs avg market price. Default: 1.0.
+        Price markup for new firms vs avg market price. Default: 1.1.
 
     Examples
     --------
@@ -179,13 +172,9 @@ class Config:
     firing_method: str = "expensive"  # "random" or "expensive"
     price_cut_allow_increase: bool = True  # Allow price increase when cutting
     fragility_cap_method: str = "credit_demand"  # "credit_demand" or "none"
-    zero_production_bankrupt: bool = True  # Mark bankrupt if production <= EPS
-    loanbook_clear_on_repay: bool = True  # Clear loans immediately after repayment
-
-    # Unemployment calculation parameters
-    unemployment_calc_method: str = "simple_ma"  # "raw" or "simple_ma"
-    unemployment_calc_after: str = "spawn_replacement_banks"  # Event to insert after
 
     # New firm entry parameters
-    new_firm_scale_factor: float = 0.8  # Scale factor vs survivor mean
-    new_firm_price_markup: float = 1.0  # Price = avg_mkt_price * markup
+    new_firm_size_factor: float = 0.5  # Net worth scale factor vs survivor mean
+    new_firm_production_factor: float = 0.8  # Production scale factor vs survivor mean
+    new_firm_wage_factor: float = 0.9  # Wage offer scale factor vs survivor mean
+    new_firm_price_markup: float = 1.1  # Price = avg_mkt_price * markup

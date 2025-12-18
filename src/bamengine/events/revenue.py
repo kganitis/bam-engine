@@ -197,7 +197,6 @@ class FirmsValidateDebtCommitments:
             sim.bor,
             sim.lend,
             sim.lb,
-            loanbook_clear_on_repay=sim.config.loanbook_clear_on_repay,
         )
 
 
