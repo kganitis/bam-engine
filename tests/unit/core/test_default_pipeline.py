@@ -9,10 +9,11 @@ def test_create_default_pipeline():
     max_M, max_H, max_Z = 5, 3, 2
     pipeline = create_default_pipeline(max_M=max_M, max_H=max_H, max_Z=max_Z)
 
-    # Should have base events (34) + interleaved market rounds
+    # Should have base events (33) + interleaved market rounds
     # Market rounds: 2*max_M + 2*max_H + max_Z
-    expected_length = 34 + 2 * max_M + 2 * max_H + max_Z
-    assert len(pipeline) == expected_length  # 34 + 2*5 + 2*3 + 2 = 52
+    # Note: calc_unemployment_rate removed from default pipeline (deprecated)
+    expected_length = 33 + 2 * max_M + 2 * max_H + max_Z
+    assert len(pipeline) == expected_length  # 33 + 2*5 + 2*3 + 2 = 51
 
 
 def test_default_pipeline_interleaved_market_rounds():
@@ -46,8 +47,8 @@ def test_default_pipeline_order_matches_simulation():
     # First event should be planning
     assert pipeline.events[0].name == "firms_decide_desired_production"
 
-    # Last event should be unemployment calc
-    assert pipeline.events[-1].name == "calc_unemployment_rate"
+    # Last event should be spawn_replacement_banks (calc_unemployment_rate deprecated)
+    assert pipeline.events[-1].name == "spawn_replacement_banks"
 
 
 def test_default_pipeline_first_event():
@@ -97,7 +98,7 @@ def test_default_pipeline_contains_all_phases():
     assert "consumers_shop_one_round" in event_names  # Goods
     assert "firms_collect_revenue" in event_names  # Revenue
     assert "mark_bankrupt_firms" in event_names  # Bankruptcy
-    assert "calc_unemployment_rate" in event_names  # End of period
+    assert "spawn_replacement_banks" in event_names  # Entry (end of period)
 
 
 def test_default_pipeline_executes_without_error():

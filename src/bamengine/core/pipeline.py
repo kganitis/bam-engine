@@ -60,6 +60,8 @@ See Also
 from __future__ import annotations
 
 import re
+from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
@@ -193,10 +195,16 @@ class Pipeline:
 
     events: list[Event] = field(default_factory=list)
     _event_map: dict[str, Event] = field(default_factory=dict, init=False, repr=False)
+    _after_event_callbacks: dict[str, list[Callable[[Simulation], None]]] = field(
+        default_factory=lambda: defaultdict(list), init=False, repr=False
+    )
 
     def __post_init__(self) -> None:
-        """Build internal event mapping."""
+        """Build internal event mapping and initialize callbacks."""
         self._event_map = {event.name: event for event in self.events}
+        # Ensure _after_event_callbacks is a defaultdict (in case of copy/pickle)
+        if not isinstance(self._after_event_callbacks, defaultdict):
+            self._after_event_callbacks = defaultdict(list, self._after_event_callbacks)
 
     @classmethod
     def from_event_list(
@@ -373,7 +381,7 @@ class Pipeline:
 
     def execute(self, sim: Simulation) -> None:
         """
-        Execute all events in pipeline order.
+        Execute all events in pipeline order, firing callbacks after each event.
 
         Parameters
         ----------
@@ -384,9 +392,67 @@ class Pipeline:
         -------
         None
             All mutations are in-place.
+
+        Notes
+        -----
+        Callbacks registered via ``register_after_event()`` are fired after
+        each event completes. This is used for data capture timing in
+        SimulationResults.
         """
         for event in self.events:
             event.execute(sim)
+            # Fire registered callbacks for this event (for data capture timing)
+            for callback in self._after_event_callbacks.get(event.name, []):
+                callback(sim)
+
+    def register_after_event(
+        self, event_name: str, callback: Callable[[Simulation], None]
+    ) -> None:
+        """
+        Register a callback to run after a specific event.
+
+        This is used by SimulationResults for configurable data capture timing.
+        Callbacks are fired in the order they were registered.
+
+        Parameters
+        ----------
+        event_name : str
+            Name of the event after which to run the callback.
+        callback : Callable[[Simulation], None]
+            Function to call after the event executes.
+            Receives the Simulation instance as its only argument.
+
+        Notes
+        -----
+        This callback system is separate from the event hook system
+        (``@event(after=..., before=..., replace=...)``). Event hooks are
+        for inserting new events into the pipeline at initialization time.
+        This callback system is for running arbitrary code (like data capture)
+        after events during execution.
+
+        Examples
+        --------
+        >>> def capture_production(sim):
+        ...     print(f"Production: {sim.prod.production.sum()}")
+        >>> pipeline.register_after_event("firms_run_production", capture_production)
+        >>> pipeline.execute(sim)  # Prints production after firms_run_production
+        """
+        self._after_event_callbacks[event_name].append(callback)
+
+    def clear_callbacks(self) -> None:
+        """
+        Clear all registered after-event callbacks.
+
+        This should be called after a simulation run to ensure the pipeline
+        can be reused without accumulating callbacks from previous runs.
+
+        Examples
+        --------
+        >>> pipeline.register_after_event("firms_run_production", my_callback)
+        >>> pipeline.execute(sim)
+        >>> pipeline.clear_callbacks()  # Remove all callbacks for reuse
+        """
+        self._after_event_callbacks.clear()
 
     def insert_after(self, after: str, events: Event | str | list[Event | str]) -> None:
         """
