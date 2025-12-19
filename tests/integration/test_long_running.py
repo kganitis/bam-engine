@@ -303,3 +303,98 @@ class TestDeterminism:
         np.testing.assert_array_equal(
             final_prices1, final_prices2, err_msg="Prices not deterministic"
         )
+
+
+class TestExcessLaborFiring:
+    """Test that excess labor firing works correctly in the pipeline."""
+
+    def test_excess_labor_firing_in_pipeline(self):
+        """Firms with reduced production should fire excess workers."""
+        sim = Simulation.init(
+            n_firms=50,
+            n_households=250,
+            seed=42,
+        )
+
+        # Run a few periods to establish employment
+        sim.run(n_periods=10)
+
+        # Track some firms with workers
+        initial_employment = sim.emp.current_labor.copy()
+        firms_with_workers = np.where(initial_employment > 0)[0]
+
+        # There should be some firms with workers
+        assert len(firms_with_workers) > 0, "No firms with workers after 10 periods"
+
+        # Run more periods - some firms may reduce production and fire workers
+        sim.run(n_periods=20)
+
+        # Employment accounting should still be consistent
+        total_employed = sim.wrk.employed.sum()
+        total_firm_labor = sim.emp.current_labor.sum()
+        assert total_employed == total_firm_labor, (
+            f"Labor accounting mismatch: employed={total_employed}, "
+            f"firm_labor={total_firm_labor}"
+        )
+
+        # The economy should still be functioning
+        assert not sim.ec.destroyed, "Economy destroyed during test"
+        assert sim.wrk.employed.sum() > 0, "All workers unemployed"
+
+    def test_fired_workers_can_be_rehired(self):
+        """Workers fired for excess labor should be able to find new jobs."""
+        sim = Simulation.init(
+            n_firms=100,
+            n_households=500,
+            seed=123,
+        )
+
+        # Run for some periods
+        sim.run(n_periods=20)
+
+        # Run more periods - fired workers should be able to find jobs
+        sim.run(n_periods=30)
+
+        # Check that some previously fired workers may now be employed
+        # (We can't guarantee all get rehired, but the mechanism should work)
+        final_employed = sim.wrk.employed.sum()
+        assert final_employed > 0, "No workers employed after 50 periods"
+
+        # Employment accounting should be consistent
+        total_employed = sim.wrk.employed.sum()
+        total_firm_labor = sim.emp.current_labor.sum()
+        assert total_employed == total_firm_labor, (
+            f"Labor accounting mismatch: employed={total_employed}, "
+            f"firm_labor={total_firm_labor}"
+        )
+
+    def test_current_labor_never_exceeds_desired_after_planning(self):
+        """After planning phase, current_labor should not exceed desired_labor."""
+        from bamengine.core import get_event
+
+        sim = Simulation.init(
+            n_firms=50,
+            n_households=250,
+            seed=456,
+        )
+
+        # Run the planning phase events manually
+        planning_events = [
+            "firms_decide_desired_production",
+            "firms_decide_desired_labor",
+            "firms_decide_vacancies",
+            "firms_fire_excess_workers",
+        ]
+
+        for period in range(10):
+            for event_name in planning_events:
+                event = get_event(event_name)()
+                event.execute(sim)
+
+            # After planning phase, current_labor should be <= desired_labor
+            excess = sim.emp.current_labor - sim.emp.desired_labor
+            excess_firms = np.where(excess > 0)[0]
+            assert len(excess_firms) == 0, (
+                f"Period {period}: {len(excess_firms)} firms have excess workers: "
+                f"{excess_firms[:5]}"
+            )

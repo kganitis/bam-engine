@@ -17,9 +17,10 @@ from bamengine.events._internal.planning import (
     firms_decide_desired_labor,
     firms_decide_desired_production,
     firms_decide_vacancies,
+    firms_fire_excess_workers,
 )
 from bamengine.typing import FloatA
-from tests.helpers.factories import mock_employer, mock_producer
+from tests.helpers.factories import mock_employer, mock_producer, mock_worker
 
 
 @pytest.mark.parametrize(
@@ -339,3 +340,161 @@ def test_price_adjust_noop_when_masks_empty() -> None:
     firms_adjust_price(prod, p_avg=2.0, h_eta=0.1, rng=rng)
 
     np.testing.assert_array_equal(prod.price, old)
+
+
+# ============================================================================
+# FirmsFireExcessWorkers Tests
+# ============================================================================
+
+
+def test_fire_excess_workers_fires_correct_number() -> None:
+    """Firms with excess workers fire until current_labor == desired_labor."""
+    n_firms = 3
+    n_workers = 10
+
+    emp = mock_employer(
+        n=n_firms,
+        desired_labor=np.array([2, 3, 1], dtype=np.int64),
+        current_labor=np.array([4, 3, 3], dtype=np.int64),  # excess: [2, 0, 2]
+    )
+    wrk = mock_worker(n=n_workers)
+    # Assign workers to firms: workers 0-3 to firm 0, 4-6 to firm 1, 7-9 to firm 2
+    wrk.employer[:] = np.array([0, 0, 0, 0, 1, 1, 1, 2, 2, 2], dtype=np.intp)
+    wrk.wage[:] = np.array([1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 1.0, 2.0, 3.0])
+
+    # employed is a computed property based on employer >= 0, no need to set it
+
+    firms_fire_excess_workers(emp, wrk, method="random", rng=make_rng(42))
+
+    # Check that current_labor now equals desired_labor
+    np.testing.assert_array_equal(emp.current_labor, emp.desired_labor)
+
+    # Verify total fired is 4 (2 from firm 0, 0 from firm 1, 2 from firm 2)
+    assert wrk.fired.sum() == 4
+
+
+def test_fire_excess_workers_expensive_first() -> None:
+    """With method='expensive', highest-wage workers are fired first."""
+    n_firms = 1
+    n_workers = 4
+
+    emp = mock_employer(
+        n=n_firms,
+        desired_labor=np.array([2], dtype=np.int64),
+        current_labor=np.array([4], dtype=np.int64),  # excess: 2
+    )
+    wrk = mock_worker(n=n_workers)
+    wrk.employer[:] = np.array([0, 0, 0, 0], dtype=np.intp)
+    wrk.wage[:] = np.array([1.0, 4.0, 2.0, 3.0])  # worker 1 and 3 are most expensive
+
+    # employed is a computed property based on employer >= 0, no need to set it
+
+    firms_fire_excess_workers(emp, wrk, method="expensive", rng=make_rng(42))
+
+    # Workers 1 (wage=4.0) and 3 (wage=3.0) should be fired
+    assert wrk.fired[1] == 1  # highest wage
+    assert wrk.fired[3] == 1  # second highest wage
+    assert wrk.fired[0] == 0  # lowest wage - kept
+    assert wrk.fired[2] == 0  # second lowest - kept
+
+
+def test_fire_excess_workers_no_excess() -> None:
+    """Firms with current_labor <= desired_labor don't fire anyone."""
+    n_firms = 2
+    n_workers = 6
+
+    emp = mock_employer(
+        n=n_firms,
+        desired_labor=np.array([3, 4], dtype=np.int64),
+        current_labor=np.array([2, 4], dtype=np.int64),  # no excess
+    )
+    wrk = mock_worker(n=n_workers)
+    wrk.employer[:] = np.array([0, 0, 1, 1, 1, 1], dtype=np.intp)
+    wrk.wage[:] = np.ones(n_workers)
+
+    # employed is a computed property based on employer >= 0, no need to set it
+
+    firms_fire_excess_workers(emp, wrk, method="random", rng=make_rng(42))
+
+    # No workers should be fired
+    assert wrk.fired.sum() == 0
+    np.testing.assert_array_equal(emp.current_labor, [2, 4])
+
+
+def test_fire_excess_workers_updates_worker_state() -> None:
+    """Fired workers have correct state: employer=-1, fired=1, wage=0, periods_left=0."""
+    n_firms = 1
+    n_workers = 3
+
+    emp = mock_employer(
+        n=n_firms,
+        desired_labor=np.array([1], dtype=np.int64),
+        current_labor=np.array([3], dtype=np.int64),  # excess: 2
+    )
+    wrk = mock_worker(n=n_workers)
+    wrk.employer[:] = np.array([0, 0, 0], dtype=np.intp)
+    wrk.wage[:] = np.array([1.0, 2.0, 3.0])
+    wrk.periods_left[:] = np.array([5, 10, 15], dtype=np.int64)
+
+    # employed is a computed property based on employer >= 0, no need to set it
+
+    firms_fire_excess_workers(emp, wrk, method="expensive", rng=make_rng(42))
+
+    # Workers 1 and 2 (highest wages) should be fired
+    fired_mask = wrk.fired == 1
+
+    # Verify all fired workers have correct state
+    assert (wrk.employer[fired_mask] == -1).all()
+    assert (wrk.wage[fired_mask] == 0.0).all()
+    assert (wrk.periods_left[fired_mask] == 0).all()
+
+    # Remaining worker (worker 0) should be unchanged
+    assert wrk.employer[0] == 0
+    assert wrk.wage[0] == 1.0
+    assert wrk.periods_left[0] == 5
+
+
+def test_fire_excess_workers_updates_firm_state() -> None:
+    """Firm's current_labor is decremented correctly after firing."""
+    n_firms = 2
+    n_workers = 7
+
+    emp = mock_employer(
+        n=n_firms,
+        desired_labor=np.array([1, 2], dtype=np.int64),
+        current_labor=np.array([3, 4], dtype=np.int64),  # excess: [2, 2]
+    )
+    wrk = mock_worker(n=n_workers)
+    wrk.employer[:] = np.array([0, 0, 0, 1, 1, 1, 1], dtype=np.intp)
+    wrk.wage[:] = np.ones(n_workers)
+
+    # employed is a computed property based on employer >= 0, no need to set it
+
+    firms_fire_excess_workers(emp, wrk, method="random", rng=make_rng(42))
+
+    # Check current_labor matches desired_labor after firing
+    np.testing.assert_array_equal(emp.current_labor, [1, 2])
+
+
+def test_fire_excess_workers_sets_employer_prev() -> None:
+    """Fired workers have employer_prev set to their former employer."""
+    n_firms = 1
+    n_workers = 3
+
+    emp = mock_employer(
+        n=n_firms,
+        desired_labor=np.array([1], dtype=np.int64),
+        current_labor=np.array([3], dtype=np.int64),
+    )
+    wrk = mock_worker(n=n_workers)
+    wrk.employer[:] = np.array([0, 0, 0], dtype=np.intp)
+    wrk.employer_prev[:] = np.array([-1, -1, -1], dtype=np.intp)
+    wrk.wage[:] = np.array([1.0, 2.0, 3.0])
+
+    # employed is a computed property based on employer >= 0, no need to set it
+
+    firms_fire_excess_workers(emp, wrk, method="expensive", rng=make_rng(42))
+
+    # Fired workers should have employer_prev = 0 (their former employer)
+    fired_mask = wrk.fired == 1
+    assert (wrk.employer_prev[fired_mask] == 0).all()

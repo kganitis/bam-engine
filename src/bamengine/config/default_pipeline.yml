@@ -54,7 +54,7 @@
 # ---------------
 # The pipeline is organized into 8 sequential phases matching the BAM model:
 #
-#   1. Planning: Production targets, pricing, labor needs
+#   1. Planning: Production targets, labor needs, vacancies, excess labor firing
 #   2. Labor Market: Wage setting, job search, hiring (max_M rounds)
 #   3. Credit Market: Loan supply/demand, matching (max_H rounds), firing
 #   4. Production: Wage payments, production execution, contract updates
@@ -73,13 +73,14 @@
 
 events:
   # ────────────────────────────────────────────────────────────────────────────
-  # PHASE 1: PLANNING (3 events)
+  # PHASE 1: PLANNING (4 events)
   # ────────────────────────────────────────────────────────────────────────────
   # Firms decide production targets, labor needs, and post vacancies.
 
   - firms_decide_desired_production    # Set production targets based on demand/inventory
   - firms_decide_desired_labor         # Calculate labor needs from production targets
   - firms_decide_vacancies             # Post vacancies to meet labor needs
+  - firms_fire_excess_workers          # Fire workers when desired_labor < current_labor
 
   # ────────────────────────────────────────────────────────────────────────────
   # PHASE 2: LABOR MARKET (3 + 2×max_M + 1 = 12 events with default max_M=4)

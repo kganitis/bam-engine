@@ -50,6 +50,13 @@ def test_firms_decide_vacancies_executes():
     event.execute(sim)  # Should not crash
 
 
+def test_firms_fire_excess_workers_executes():
+    """FirmsFireExcessWorkers executes without error."""
+    sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+    event = get_event("firms_fire_excess_workers")()
+    event.execute(sim)  # Should not crash
+
+
 # ============================================================================
 # Event Chain Test
 # ============================================================================
@@ -66,6 +73,7 @@ def test_planning_event_chain_executes():
         "firms_adjust_price",
         "firms_decide_desired_labor",
         "firms_decide_vacancies",
+        "firms_fire_excess_workers",
     ]
 
     for e in events:

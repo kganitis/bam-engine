@@ -380,3 +380,78 @@ class FirmsDecideVacancies:
         from bamengine.events._internal.planning import firms_decide_vacancies
 
         firms_decide_vacancies(sim.emp)
+
+
+@event
+class FirmsFireExcessWorkers:
+    """
+    Fire workers when current labor exceeds desired labor.
+
+    Firms with more workers than needed (due to reduced production targets)
+    lay off the excess workers. By default, firms fire workers randomly,
+    but can be configured to fire the most expensive workers first.
+
+    Algorithm
+    ---------
+    For each firm i with :math:`L_i > L^d_i` (current labor exceeds desired):
+
+    1. Calculate excess: :math:`E_i = L_i - L^d_i`
+    2. Select :math:`E_i` workers to fire (by method: random or expensive first)
+    3. Fire selected workers:
+       - Set worker's employer = -1 (unemployed)
+       - Set worker's wage = 0
+       - Set worker's fired flag = True
+       - Decrement firm's current_labor
+
+    Mathematical Notation
+    ---------------------
+    For firm i with :math:`L_i > L^d_i`:
+
+    .. math::
+        E_i = L_i - L^d_i
+
+    Fire :math:`E_i` workers so that:
+
+    .. math::
+        L_i \\leftarrow L^d_i
+
+    Examples
+    --------
+    Execute this event:
+
+    >>> import bamengine as be
+    >>> sim = be.Simulation.init(n_firms=100, n_households=500, seed=42)
+    >>> event = sim.get_event("firms_fire_excess_workers")
+    >>> event.execute(sim)
+
+    Check that firms now have current_labor <= desired_labor:
+
+    >>> (sim.emp.current_labor <= sim.emp.desired_labor).all()
+    True
+
+    Notes
+    -----
+    This event executes in the Planning phase after vacancies are calculated.
+    Workers fired here have their `fired` flag set to True, which affects
+    their job search behavior (loyalty rule does not apply).
+
+    The firing method is controlled by `sim.config.firing_method`:
+    - "random": Fire random workers (default)
+    - "expensive": Fire highest-wage workers first
+
+    See Also
+    --------
+    FirmsDecideVacancies : Calculate job openings
+    FirmsFireWorkers : Fire workers due to financing gaps (credit market)
+    bamengine.events._internal.planning.firms_fire_excess_workers : Implementation
+    """
+
+    def execute(self, sim: Simulation) -> None:
+        from bamengine.events._internal.planning import firms_fire_excess_workers
+
+        firms_fire_excess_workers(
+            sim.emp,
+            sim.wrk,
+            method=sim.config.firing_method,
+            rng=sim.rng,
+        )
