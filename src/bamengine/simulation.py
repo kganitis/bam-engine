@@ -540,6 +540,14 @@ class Simulation:
         ... }
         >>> sim = bam.Simulation.init(logging=log_config, seed=42)
 
+        Configure logging with file output:
+
+        >>> log_config = {
+        ...     "default_level": "DEBUG",
+        ...     "log_file": "simulation.log",
+        ... }
+        >>> sim = bam.Simulation.init(logging=log_config, seed=42)  # doctest: +SKIP
+
         Notes
         -----
         - All configuration is validated before initialization
@@ -624,13 +632,18 @@ class Simulation:
         log_config : dict
             Logging configuration with keys:
             - default_level: str (e.g., 'INFO', 'DEBUG', 'TRACE')
+            - log_file: str or None (path to log file, None for console only)
             - events: dict[str, str] (per-event overrides)
 
         Notes
         -----
         Supports standard Python logging levels (DEBUG, INFO, WARNING, ERROR,
         CRITICAL) plus custom TRACE level (5) for fine-grained debugging.
+
+        When log_file is specified, logs are written to both console and file.
         """
+        import logging as std_logging
+        from pathlib import Path
 
         # Map level names to numeric values
         # Include standard levels + custom TRACE
@@ -646,7 +659,26 @@ class Simulation:
         # Set default level for bamengine logger
         default_level = log_config.get("default_level", "INFO")
         level_value = level_map.get(default_level, logging.INFO)
-        logging.getLogger("bamengine").setLevel(level_value)
+        bam_logger = logging.getLogger("bamengine")
+        bam_logger.setLevel(level_value)
+
+        # Add file handler if log_file is specified
+        log_file = log_config.get("log_file")
+        if log_file is not None:
+            # Create parent directories if needed
+            log_path = Path(log_file)
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Create file handler
+            file_handler = std_logging.FileHandler(log_path, mode="w")
+            file_handler.setLevel(level_value)
+            file_handler.setFormatter(
+                std_logging.Formatter(
+                    "%(asctime)s [%(levelname)s] %(name)s - %(message)s",
+                    datefmt="%H:%M:%S",
+                )
+            )
+            bam_logger.addHandler(file_handler)
 
         # Set per-event log level overrides
         event_levels = log_config.get("events", {})

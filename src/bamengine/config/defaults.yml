@@ -104,6 +104,7 @@ pipeline_path:      null         # Custom pipeline path (null = use default)
 
 logging:
   default_level:    INFO         # Default log level for all events
+  log_file:         null         # Path to log file (null = console only)
   events:           {}           # Per-event overrides
                                  # Example:
                                  #   workers_send_one_round: WARNING

@@ -605,6 +605,8 @@ class ConfigValidator:
 
             - default_level : str, optional
                 Default log level (e.g., 'INFO', 'DEBUG')
+            - log_file : str or None, optional
+                Path to log file for saving output (None = console only)
             - events : dict[str, str], optional
                 Per-event log level overrides (event_name -> level)
 
@@ -624,6 +626,7 @@ class ConfigValidator:
 
         >>> log_cfg = {
         ...     "default_level": "DEBUG",
+        ...     "log_file": "simulation.log",
         ...     "events": {"workers_send_one_round": "WARNING"},
         ... }
         >>> ConfigValidator._validate_logging(log_cfg)
@@ -657,6 +660,14 @@ class ConfigValidator:
                 raise ValueError(
                     f"Invalid log level '{level}'. "
                     f"Must be one of {ConfigValidator.VALID_LOG_LEVELS}"
+                )
+
+        # Check log_file (optional string path or None)
+        if "log_file" in log_config:
+            log_file = log_config["log_file"]
+            if log_file is not None and not isinstance(log_file, str):
+                raise ValueError(
+                    f"Logging log_file must be str or None, got {type(log_file).__name__}"
                 )
 
         # Check events dictionary
