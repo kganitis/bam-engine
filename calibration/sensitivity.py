@@ -19,11 +19,12 @@ import json
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
+from multiprocessing import Pool
 from pathlib import Path
 from typing import Any
 
 from .config import OAT_PARAM_GRID, get_default_value
-from .runner import run_ensemble
+from .runner import _run_config_worker, run_ensemble
 
 
 @dataclass
@@ -74,6 +75,7 @@ def run_oat_sensitivity_analysis(
     n_seeds: int = 3,
     n_periods: int = 1000,
     burn_in: int = 500,
+    n_workers: int = 1,
     output_dir: Path | None = None,
 ) -> dict[str, SensitivityResult]:
     """
@@ -94,6 +96,8 @@ def run_oat_sensitivity_analysis(
         Simulation length.
     burn_in : int
         Burn-in period to exclude.
+    n_workers : int
+        Number of parallel workers (default: 1 for sequential).
     output_dir : Path, optional
         Directory to save results. Defaults to current directory.
 
@@ -114,50 +118,70 @@ def run_oat_sensitivity_analysis(
     print(f"  Seeds per config: {n_seeds}")
     print(f"  Periods: {n_periods}")
     print(f"  Burn-in: {burn_in}")
+    print(f"  Workers: {n_workers}")
     print(f"  Parameters to test: {len(OAT_PARAM_GRID)}")
 
     # Count total configurations
     total_configs = 1 + sum(len(values) for values in OAT_PARAM_GRID.values())
     print(f"  Total configurations: {total_configs}")
-    print(f"  Estimated time: ~{total_configs} seconds\n")
 
     start_time = time.time()
 
     # Run baseline first (all defaults)
-    print("Running baseline configuration...")
+    print("\nRunning baseline configuration...")
     baseline_scores, _ = run_ensemble({}, n_seeds, n_periods, burn_in)
     baseline_total = baseline_scores["total"]
     print(f"Baseline total score: {baseline_total:.2f}\n")
 
-    results: dict[str, SensitivityResult] = {}
+    # Build list of all (param_name, value) combinations
+    all_tests: list[tuple[str, Any, dict]] = []
+    for param_name, param_values in OAT_PARAM_GRID.items():
+        for value in param_values:
+            test_params = {param_name: value}
+            all_tests.append((param_name, value, test_params))
+
+    # Results storage
+    test_results: dict[str, list[tuple[Any, float, dict]]] = {
+        param_name: [] for param_name in OAT_PARAM_GRID
+    }
+
     completed = 1  # Baseline done
 
-    for param_name, param_values in OAT_PARAM_GRID.items():
-        default_value = get_default_value(param_name)
+    if n_workers > 1:
+        # Parallel execution
+        print(f"Running {len(all_tests)} tests with {n_workers} workers...")
+        args_list = [(test[2], n_seeds, n_periods, burn_in) for test in all_tests]
 
-        result = SensitivityResult(
-            param_name=param_name,
-            default_value=default_value,
-            baseline_score=baseline_total,
-        )
+        with Pool(processes=n_workers) as pool:
+            for params, scores, _seed_totals in pool.imap_unordered(
+                _run_config_worker, args_list
+            ):
+                # Find which test this corresponds to
+                param_name = next(iter(params.keys()))
+                value = params[param_name]
+                total = scores["total"]
+                impact = abs(total - baseline_total)
 
-        print(f"Testing {param_name} ({len(param_values)} values)...")
+                test_results[param_name].append((value, total, scores))
 
-        for value in param_values:
-            # Test single parameter change
-            test_params = {param_name: value}
+                completed += 1
+                elapsed = time.time() - start_time
+                rate = completed / elapsed if elapsed > 0 else 0
+                eta = (total_configs - completed) / rate if rate > 0 else 0
+
+                print(
+                    f"  {param_name}={value}: score={total:.2f}, "
+                    f"impact={impact:.2f} [{completed}/{total_configs}, "
+                    f"ETA: {eta:.0f}s]"
+                )
+    else:
+        # Sequential execution
+        for param_name, value, test_params in all_tests:
             scores, _ = run_ensemble(test_params, n_seeds, n_periods, burn_in)
             total = scores["total"]
             impact = abs(total - baseline_total)
 
-            result.value_results.append(
-                ParameterResult(
-                    value=value,
-                    score=total,
-                    impact=impact,
-                    scores=scores,
-                )
-            )
+            test_results[param_name].append((value, total, scores))
 
             completed += 1
             elapsed = time.time() - start_time
@@ -168,6 +192,28 @@ def run_oat_sensitivity_analysis(
                 f"  {param_name}={value}: score={total:.2f}, "
                 f"impact={impact:.2f} [{completed}/{total_configs}, "
                 f"ETA: {eta:.0f}s]"
+            )
+
+    # Build SensitivityResult objects
+    results: dict[str, SensitivityResult] = {}
+    for param_name in OAT_PARAM_GRID:
+        default_value = get_default_value(param_name)
+
+        result = SensitivityResult(
+            param_name=param_name,
+            default_value=default_value,
+            baseline_score=baseline_total,
+        )
+
+        for value, total, scores in test_results[param_name]:
+            impact = abs(total - baseline_total)
+            result.value_results.append(
+                ParameterResult(
+                    value=value,
+                    score=total,
+                    impact=impact,
+                    scores=scores,
+                )
             )
 
         # Calculate aggregates
