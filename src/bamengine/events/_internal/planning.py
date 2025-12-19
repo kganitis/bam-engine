@@ -15,7 +15,7 @@ import numpy as np
 
 from bamengine import Rng, logging, make_rng
 from bamengine.relationships import LoanBook
-from bamengine.roles import Employer, Producer
+from bamengine.roles import Employer, Producer, Worker
 from bamengine.utils import EPS
 
 log = logging.getLogger(__name__)
@@ -357,3 +357,124 @@ def firms_decide_vacancies(emp: Employer) -> None:
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Final Vacancies:\n{emp.n_vacancies}")
     log.info("--- Vacancy Decision complete ---")
+
+
+def firms_fire_excess_workers(
+    emp: Employer,
+    wrk: Worker,
+    *,
+    method: str = "random",
+    rng: Rng = make_rng(),
+) -> None:
+    """
+    Firms lay off workers when current labor exceeds desired labor.
+
+    See Also
+    --------
+    bamengine.events.planning.FirmsFireExcessWorkers : Full documentation
+    """
+    log.info("--- Firms Firing Excess Workers ---")
+
+    # Find firms with excess labor
+    excess = emp.current_labor - emp.desired_labor
+    firing_ids = np.where(excess > 0)[0]
+    total_excess = excess[excess > 0].sum() if excess.size > 0 else 0
+
+    log.info(
+        f"  {firing_ids.size} firms have excess labor totaling {total_excess:,} "
+        f"workers and need to fire using '{method}' method."
+    )
+
+    total_workers_fired_this_step = 0
+
+    for i in firing_ids:
+        n_to_fire = excess[i]
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug(
+                f"  Processing firm {i} (current_labor: {emp.current_labor[i]}, "
+                f"desired_labor: {emp.desired_labor[i]}, excess: {n_to_fire})"
+            )
+
+        # Validate workforce consistency
+        workforce = np.where((wrk.employed == 1) & (wrk.employer == i))[0]
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug(
+                f"    Firm {i} workforce validation: "
+                f"real={workforce.size}, recorded={emp.current_labor[i]}"
+            )
+
+        if workforce.size != emp.current_labor[i]:
+            log.critical(
+                f"    Firm {i}: Real workforce ({workforce.size}) INCONSISTENT "
+                f"with bookkeeping ({emp.current_labor[i]})."
+            )
+
+        if workforce.size == 0:
+            if log.isEnabledFor(logging.DEBUG):
+                log.debug(f"    Firm {i}: No workers to fire. Skipping.")
+            continue
+
+        # Determine workers to fire
+        worker_wages = wrk.wage[workforce]
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug(
+                f"    Firm {i} worker wages: {worker_wages} "
+                f"(total: {worker_wages.sum():.2f})"
+            )
+
+        if method not in ("random", "expensive"):  # pragma: no cover
+            log.error(
+                f"    Unknown firing method '{method}' specified. "
+                f"Defaulting to 'random'."
+            )
+            method = "random"
+
+        if method == "expensive":
+            # Fire most expensive workers first
+            sorted_indices = np.argsort(worker_wages)[::-1]  # Descending order
+            victims_indices = sorted_indices[:n_to_fire]
+            victims = workforce[victims_indices]
+        else:  # method == "random"
+            # Random firing
+            shuffled_indices = rng.permutation(workforce.size)
+            victims_indices = shuffled_indices[:n_to_fire]
+            victims = workforce[victims_indices]
+
+        fired_wages = wrk.wage[victims]
+        total_fired_wage = fired_wages.sum()
+
+        # Extra validation, should never trigger
+        if victims.size == 0:  # pragma: no cover
+            continue
+
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug(
+                f"    Firm {i} is firing {victims.size} worker(s): "
+                f"{victims.tolist()} (total wage savings: {total_fired_wage:.2f})"
+            )
+        total_workers_fired_this_step += victims.size
+
+        # Worker-side updates
+        log.debug(f"      Updating state for {victims.size} fired workers.")
+        wrk.employer[victims] = -1
+        wrk.employer_prev[victims] = i
+        wrk.wage[victims] = 0.0
+        wrk.periods_left[victims] = 0
+        wrk.contract_expired[victims] = 0
+        wrk.fired[victims] = 1
+
+        # Firm-side updates
+        emp.current_labor[i] -= victims.size
+
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug(
+                f"      Firm {i} state updated: "
+                f"current_labor={emp.current_labor[i]}, "
+                f"desired_labor={emp.desired_labor[i]}"
+            )
+
+    log.info(
+        f"  Total workers fired this step across all firms: "
+        f"{total_workers_fired_this_step}"
+    )
+    log.info("--- Firms Firing Excess Workers complete ---")

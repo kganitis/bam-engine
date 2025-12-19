@@ -9,11 +9,12 @@ def test_create_default_pipeline():
     max_M, max_H, max_Z = 5, 3, 2
     pipeline = create_default_pipeline(max_M=max_M, max_H=max_H, max_Z=max_Z)
 
-    # Should have base events (33) + interleaved market rounds
+    # Should have base events (34) + interleaved market rounds
     # Market rounds: 2*max_M + 2*max_H + max_Z
     # Note: calc_unemployment_rate removed from default pipeline (deprecated)
-    expected_length = 33 + 2 * max_M + 2 * max_H + max_Z
-    assert len(pipeline) == expected_length  # 33 + 2*5 + 2*3 + 2 = 51
+    # Base events increased from 33 to 34 after adding firms_fire_excess_workers
+    expected_length = 34 + 2 * max_M + 2 * max_H + max_Z
+    assert len(pipeline) == expected_length  # 34 + 2*5 + 2*3 + 2 = 52
 
 
 def test_default_pipeline_interleaved_market_rounds():
