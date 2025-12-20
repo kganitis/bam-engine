@@ -124,8 +124,8 @@ events:
   - workers_receive_wage               # Workers receive wages into income
   - firms_calc_breakeven_price         # Calculate minimum profitable price
   - firms_adjust_price                 # Adjust price based on inventory levels
-  - update_avg_mkt_price               # Update economy-wide average price
   - firms_run_production               # Production execution (goods added to inventory)
+  - update_avg_mkt_price               # Update economy-wide average price
   - workers_update_contracts           # Decrement contract duration, handle expiration
 
   # ────────────────────────────────────────────────────────────────────────────
