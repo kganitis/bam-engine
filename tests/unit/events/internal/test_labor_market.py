@@ -96,9 +96,12 @@ def test_adjust_minimum_wage_edges(prices: NDArray[np.float64], direction: str) 
         avg_mkt_price_history=prices,
         min_wage_rev_period=4,
     )
+    wrk = mock_worker(
+        n=2, employer=np.array([0, -1], dtype=np.intp), wage=np.array([1.5, 0.0])
+    )
     old = ec.min_wage
     calc_annual_inflation_rate(ec)
-    adjust_minimum_wage(ec)
+    adjust_minimum_wage(ec, wrk)
     if direction == "up":
         assert ec.min_wage > old
     elif direction == "down":
@@ -116,9 +119,14 @@ def test_adjust_minimum_wage_revision() -> None:
         ),  # t = 4 (len = 5)
         min_wage_rev_period=4,
     )
+    wrk = mock_worker(
+        n=2, employer=np.array([0, -1], dtype=np.intp), wage=np.array([0.9, 0.0])
+    )
     calc_annual_inflation_rate(ec)
-    adjust_minimum_wage(ec)
+    adjust_minimum_wage(ec, wrk)
     assert ec.min_wage == pytest.approx(1.20)  # +20 % inflation
+    # Employed worker wage should be updated to new minimum
+    assert wrk.wage[0] == pytest.approx(1.20)
 
 
 def test_adjust_minimum_wage_from_history_revision() -> None:
@@ -128,8 +136,13 @@ def test_adjust_minimum_wage_from_history_revision() -> None:
         min_wage_rev_period=4,
     )
     ec.inflation_history = np.array([0.10])  # +10%
-    adjust_minimum_wage(ec)
+    wrk = mock_worker(
+        n=2, employer=np.array([0, -1], dtype=np.intp), wage=np.array([0.9, 0.0])
+    )
+    adjust_minimum_wage(ec, wrk)
     assert ec.min_wage == pytest.approx(1.1)
+    # Employed worker wage should be updated to new minimum
+    assert wrk.wage[0] == pytest.approx(1.1)
 
 
 def test_adjust_minimum_wage_skips_when_not_revision() -> None:
@@ -141,9 +154,15 @@ def test_adjust_minimum_wage_skips_when_not_revision() -> None:
         min_wage_rev_period=4,
     )
     ec.inflation_history = np.array([0.25])
+    wrk = mock_worker(
+        n=2, employer=np.array([0, -1], dtype=np.intp), wage=np.array([0.9, 0.0])
+    )
     old = ec.min_wage
-    adjust_minimum_wage(ec)
+    old_wage = wrk.wage[0]
+    adjust_minimum_wage(ec, wrk)
     assert ec.min_wage == pytest.approx(old)
+    # Worker wage should remain unchanged since no revision happened
+    assert wrk.wage[0] == pytest.approx(old_wage)
 
 
 def test_decide_wage_offer_basic() -> None:

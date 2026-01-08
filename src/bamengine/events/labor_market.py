@@ -219,7 +219,7 @@ class AdjustMinimumWage:
     def execute(self, sim: Simulation) -> None:
         from bamengine.events._internal.labor_market import adjust_minimum_wage
 
-        adjust_minimum_wage(sim.ec)
+        adjust_minimum_wage(sim.ec, sim.wrk)
 
 
 @event
