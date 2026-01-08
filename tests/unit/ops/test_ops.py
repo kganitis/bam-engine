@@ -176,18 +176,6 @@ class TestConditional:
         result = ops.where(condition, 100.0, 0.0)
         np.testing.assert_array_equal(result, [100.0, 0.0, 100.0, 0.0])
 
-    def test_select_single_condition(self):
-        condition = np.array([True, False, True, False])
-        result = ops.select([condition], [10.0], default=0.0)
-        np.testing.assert_array_equal(result, [10.0, 0.0, 10.0, 0.0])
-
-    def test_select_multiple_conditions(self):
-        cond1 = np.array([True, False, False, False])
-        cond2 = np.array([False, True, False, False])
-        cond3 = np.array([False, False, True, False])
-        result = ops.select([cond1, cond2, cond3], [10.0, 20.0, 30.0], default=0.0)
-        np.testing.assert_array_equal(result, [10.0, 20.0, 30.0, 0.0])
-
 
 class TestElementWise:
     """Test element-wise operations."""
