@@ -122,9 +122,9 @@ class TestLongRunningStability:
     def test_500_period_stability(self):
         """Simulation should remain stable for 500 periods (marked slow)."""
         sim = Simulation.init(
-            n_firms=50,
-            n_households=250,
-            n_banks=5,
+            n_firms=100,
+            n_households=500,
+            n_banks=10,
             seed=999,
         )
 
