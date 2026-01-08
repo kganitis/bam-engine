@@ -63,7 +63,7 @@ def calc_annual_inflation_rate(ec: Economy) -> None:
     log.info("--- Annual Inflation Calculation complete ---")
 
 
-def adjust_minimum_wage(ec: Economy) -> None:
+def adjust_minimum_wage(ec: Economy, wrk: Worker) -> None:
     """
     Periodically index minimum wage to inflation.
 
@@ -90,6 +90,15 @@ def adjust_minimum_wage(ec: Economy) -> None:
         f"Using most recent annual inflation from history ({inflation:+.3%})."
     )
     log.info(f"  Min wage: {old_min_wage:.3f} → {ec.min_wage:.3f}")
+
+    # Update existing worker wages to meet new minimum
+    employed_mask = wrk.employer >= 0
+    below_min_mask = employed_mask & (wrk.wage < ec.min_wage)
+    if below_min_mask.any():
+        count = int(below_min_mask.sum())
+        wrk.wage[below_min_mask] = ec.min_wage
+        log.info(f"  Updated {count} employed workers to new minimum wage")
+
     log.info("--- Minimum Wage Adjustment complete ---")
 
 
