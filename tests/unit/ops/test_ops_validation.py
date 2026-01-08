@@ -258,45 +258,6 @@ def test_ops_wage_calculation_with_floor():
     np.testing.assert_array_almost_equal(ops_wage, np_wage)
 
 
-def test_ops_multi_condition_select():
-    """
-    Test multi-condition select logic using ops module.
-
-    This validates logic for categorizing firms into different states.
-    """
-    rng = make_rng(42)
-
-    # Setup test data
-    inventory = rng.uniform(0, 50, 50)
-    price = rng.uniform(80, 120, 50)
-    avg_price = 100.0
-
-    # Categorize firms:
-    # - High inventory -> state 1
-    # - No inventory and high price -> state 2
-    # - No inventory and low price -> state 3
-    # - Default -> state 0
-
-    # NumPy implementation
-    np_cond1 = inventory > 20
-    np_cond2 = np.logical_and(inventory == 0, price >= avg_price)
-    np_cond3 = np.logical_and(inventory == 0, price < avg_price)
-    np_state = np.select([np_cond1, np_cond2, np_cond3], [1.0, 2.0, 3.0], default=0.0)
-
-    # ops implementation
-    ops_cond1 = ops.greater(inventory, 20)
-    ops_cond2 = ops.logical_and(
-        ops.equal(inventory, 0), ops.greater_equal(price, avg_price)
-    )
-    ops_cond3 = ops.logical_and(ops.equal(inventory, 0), ops.less(price, avg_price))
-    ops_state = ops.select(
-        [ops_cond1, ops_cond2, ops_cond3], [1.0, 2.0, 3.0], default=0.0
-    )
-
-    # Should match
-    np.testing.assert_array_almost_equal(ops_state, np_state)
-
-
 def test_ops_in_place_operations():
     """
     Test that in-place operations work correctly with ops module.

@@ -19,7 +19,7 @@ Operation Categories
 - **Arithmetic**: add, subtract, multiply, divide
 - **Comparisons**: equal, less, greater, etc.
 - **Logical**: logical_and, logical_or, logical_not
-- **Conditional**: where (if-then-else), select (switch-case)
+- **Conditional**: where (if-then-else)
 - **Element-wise**: maximum, minimum, clip
 - **Aggregation**: sum, mean, any, all
 - **Array creation**: zeros, ones, full, empty, arange, asarray, array
@@ -134,7 +134,6 @@ __all__ = [
     "logical_not",
     # Conditional
     "where",
-    "select",
     # Element-wise
     "maximum",
     "minimum",
@@ -487,56 +486,6 @@ def where(condition: Bool, true_val: float | Float, false_val: float | Float) ->
     >>> # price: [95, 105, 95]
     """
     return np.where(condition, true_val, false_val)
-
-
-def select(
-    conditions: list[Bool], choices: list[float | Float], default: float | Float = 0.0
-) -> Float:
-    """
-    Select from multiple conditions (like switch/case statement).
-
-    Conditions are evaluated in order. First true condition determines result.
-
-    Parameters
-    ----------
-    conditions : list of bool arrays
-        List of conditions to check in order.
-    choices : list of arrays or floats
-        List of values to select from (same length as conditions).
-    default : array or float, optional
-        Default value if no condition matches.
-
-    Returns
-    -------
-    array
-        Selected values.
-
-    Examples
-    --------
-    >>> import bamengine.ops as ops
-    >>> # Production decision with multiple cases
-    >>> inventory = np.array([0, 10, 5])
-    >>> price = np.array([110, 90, 100])
-    >>> current_prod = np.array([100, 100, 100])
-    >>> avg_price = 100
-    >>>
-    >>> # Case 1: No inventory + high price → increase
-    >>> # Case 2: Has inventory + low price → decrease
-    >>> # Default: keep same
-    >>> new_prod = ops.select(
-    ...     conditions=[
-    ...         (inventory == 0) & (price >= avg_price),
-    ...         (inventory > 0) & (price < avg_price),
-    ...     ],
-    ...     choices=[
-    ...         current_prod * 1.1,  # Increase 10%
-    ...         current_prod * 0.9,  # Decrease 10%
-    ...     ],
-    ...     default=current_prod,  # Keep same
-    ... )
-    >>> # new_prod: [110, 90, 100]
-    """
-    return np.select(conditions, choices, default=default)
 
 
 # === Element-wise Operations ===

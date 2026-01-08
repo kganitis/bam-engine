@@ -130,25 +130,6 @@ print(f"  has_inventory: {has_inventory}")
 print(f"  new_price:     {new_price}")
 print("  (discount if inventory > 0, premium otherwise)")
 
-# ops.select: multiple conditions (switch/case)
-# Pricing based on inventory level
-high_stock = ops.greater(inventory, 50)
-medium_stock = ops.logical_and(
-    ops.greater(inventory, 10), ops.less_equal(inventory, 50)
-)
-low_stock = ops.logical_and(ops.greater(inventory, 0), ops.less_equal(inventory, 10))
-
-tiered_price = ops.select(
-    conditions=[high_stock, medium_stock, low_stock],
-    choices=[8.0, 10.0, 12.0],  # Prices for each tier
-    default=15.0,  # No inventory
-)
-
-print("\nConditional with ops.select:")
-print(f"  inventory:    {inventory}")
-print(f"  tiered_price: {tiered_price}")
-print("  (8 for high stock, 10 medium, 12 low, 15 none)")
-
 # %%
 # Element-wise Operations
 # -----------------------
