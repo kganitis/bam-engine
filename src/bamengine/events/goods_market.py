@@ -364,6 +364,70 @@ class ConsumersShopOneRound:
 
 
 @event
+class ConsumersShopSequential:
+    """
+    Execute sequential shopping where each consumer completes all visits.
+
+    Unlike round-robin shopping (ConsumersShopOneRound called max_Z times),
+    this event processes consumers one at a time. Each consumer completes all
+    their Z shopping visits before the next consumer starts.
+
+    This matches NetLogo and ABCredit behavior and makes the goods market
+    less efficient: early consumers can deplete inventory from multiple firms,
+    leaving late consumers with wasted visits on sold-out firms. This results
+    in more unsold inventory overall, which affects production decisions.
+
+    Algorithm
+    ---------
+    1. Randomize consumer order (like NetLogo's `ask workers`)
+    2. For each consumer j with budget:
+       - Visit up to max_Z firms sequentially
+       - At each firm: purchase if inventory available, else wasted visit
+       - Continue until budget exhausted or all Z visits complete
+    3. Move to next consumer
+
+    Key Differences from Round-Robin
+    --------------------------------
+    - Round-robin: All 500 consumers visit their 1st firm, then all visit 2nd, etc.
+      This spreads purchases evenly across firms.
+    - Sequential: Consumer 1 visits all Z firms (may exhaust inventory at several),
+      then Consumer 2 visits (some firms already depleted), etc.
+      This creates more inventory shortages AND more unsold goods at unpopular firms.
+
+    Examples
+    --------
+    >>> import bamengine as be
+    >>> sim = be.Simulation.init(n_firms=100, n_households=500, seed=42)
+    >>> # Prepare shopping
+    >>> sim.get_event("consumers_decide_firms_to_visit")().execute(sim)
+    >>> # Execute sequential shopping (replaces max_Z rounds of shop_one_round)
+    >>> event = sim.get_event("consumers_shop_sequential")
+    >>> event.execute(sim)
+
+    Notes
+    -----
+    This is a single event that replaces `consumers_shop_one_round x max_Z`.
+
+    Early consumers can deplete inventory from multiple firms before later
+    consumers get a chance to shop, creating wasted visits.
+
+    See Also
+    --------
+    ConsumersShopOneRound : Round-robin alternative (one visit per round)
+    ConsumersDecideFirmsToVisit : Prepares shopping queues
+    bamengine.events._internal.goods_market.consumers_shop_sequential : Implementation
+    """
+
+    def execute(self, sim: Simulation) -> None:
+        """Execute sequential shopping where each consumer completes all visits."""
+        from bamengine.events._internal.goods_market import consumers_shop_sequential
+
+        consumers_shop_sequential(
+            sim.con, sim.prod, max_Z=sim.config.max_Z, rng=sim.rng
+        )
+
+
+@event
 class ConsumersFinalizePurchases:
     """
     Return unspent budget to savings after shopping rounds complete.
