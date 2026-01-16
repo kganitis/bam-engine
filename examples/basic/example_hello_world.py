@@ -21,30 +21,23 @@ import bamengine as bam
 sim = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
 
 # Run for 50 periods
-for _ in range(50):
-    sim.step()
+sim.run(n_periods=50)
 
 print(f"Simulation completed! Ran {sim.t} periods.")
-print(f"Final unemployment rate: {sim.ec.unemp_rate_history[-1]:.2%}")
-print(f"Final average price: {sim.ec.avg_mkt_price:.2f}")
 
 # %%
 # Visualize Unemployment
 # ----------------------
 #
-# Plot the unemployment rate over time.
+# Plot the average market price over time.
 
 import matplotlib.pyplot as plt
 
-# Get unemployment history (convert list to array and scale to percentage)
-unemployment_history = bam.ops.multiply(bam.ops.asarray(sim.ec.unemp_rate_history), 100)
-
-# Create simple plot
 plt.figure(figsize=(10, 6))
-plt.plot(unemployment_history, linewidth=2)
+plt.plot(sim.ec.avg_mkt_price_history, linewidth=2)
 plt.xlabel("Period")
-plt.ylabel("Unemployment Rate (%)")
-plt.title("Unemployment Rate Over Time")
+plt.ylabel("Average Market Price")
+plt.title("Average Market Price Over Time")
 plt.grid(True, alpha=0.3)
 plt.tight_layout()
 plt.show()

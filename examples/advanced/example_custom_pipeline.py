@@ -157,7 +157,7 @@ events:
   - banks_decide_credit_supply
   - banks_decide_interest_rate
   - firms_decide_credit_demand
-  - firms_calc_credit_metrics
+  - firms_calc_financial_fragility
   - firms_prepare_loan_applications
   - firms_send_one_loan_app <-> banks_provide_loans x {max_H}
   - firms_fire_workers
@@ -309,7 +309,7 @@ events:
   - banks_decide_credit_supply
   - banks_decide_interest_rate
   - firms_decide_credit_demand
-  - firms_calc_credit_metrics
+  - firms_calc_financial_fragility
   - firms_prepare_loan_applications
   - firms_send_one_loan_app <-> banks_provide_loans x {max_H}
   - firms_fire_workers
@@ -441,7 +441,7 @@ events:
   - banks_decide_credit_supply
   - banks_decide_interest_rate
   - firms_decide_credit_demand
-  - firms_calc_credit_metrics
+  - firms_calc_financial_fragility
   - firms_prepare_loan_applications
   - firms_send_one_loan_app <-> banks_provide_loans x {max_H}
   - firms_fire_workers

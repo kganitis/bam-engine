@@ -194,4 +194,4 @@ print("=" * 60)
 #   - r_bar (baseline interest rate)
 #
 # **Initial conditions:**
-#   - price_init, net_worth_init, wage_offer_init, savings_init, etc.
+#   - price_init, equity_base_init, savings_init, etc.
