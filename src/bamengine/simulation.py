@@ -554,8 +554,6 @@ class Simulation:
         - Invalid parameters raise ValueError with clear error messages
         - Vector parameters (price_init, net_worth_init, etc.) accept scalars
           (broadcast to all agents) or 1D arrays of appropriate length
-        - Random seed ensures reproducible simulations
-        - Default pipeline includes 39 events across 8 economic phases
 
         See Also
         --------
@@ -597,21 +595,20 @@ class Simulation:
         rng: Rng = seed_val if isinstance(seed_val, Rng) else make_rng(seed_val)
 
         # vector params (validate size)
-        cfg_dict["net_worth_init"] = _validate_float1d(
-            "net_worth_init", cfg_dict.get("net_worth_init", 10.0), n_firms
-        )
         cfg_dict["price_init"] = _validate_float1d(
             "price_init", cfg_dict.get("price_init", 1.5), n_firms
         )
-        cfg_dict["wage_offer_init"] = _validate_float1d(
-            "wage_offer_init", cfg_dict.get("wage_offer_init", 1.0), n_firms
-        )
         cfg_dict["savings_init"] = _validate_float1d(
-            "savings_init", cfg_dict.get("savings_init", 1.0), n_households
+            "savings_init", cfg_dict.get("savings_init", 3.0), n_households
         )
         cfg_dict["equity_base_init"] = _validate_float1d(
-            "equity_base_init", cfg_dict.get("equity_base_init", 10_000.0), n_banks
+            "equity_base_init", cfg_dict.get("equity_base_init", 5.0), n_banks
         )
+        # net_worth_init is optional - if not provided, calculated from net_worth_ratio
+        if "net_worth_init" in cfg_dict:
+            cfg_dict["net_worth_init"] = _validate_float1d(
+                "net_worth_init", cfg_dict["net_worth_init"], n_firms
+            )
 
         # delegate to private constructor
         return cls._from_params(
@@ -721,27 +718,39 @@ class Simulation:
 
         # Vector initialization
 
-        # finance
-        net_worth = np.full(p["n_firms"], fill_value=p["net_worth_init"])
-        total_funds = net_worth.copy()
-        gross_profit = np.zeros_like(net_worth)
-        net_profit = np.zeros_like(net_worth)
-        retained_profit = np.zeros_like(net_worth)
-
         # producer
         price = np.full(p["n_firms"], fill_value=p["price_init"])
         production_init = p["n_households"] * p["labor_productivity"] / p["n_firms"]
-        production = np.full(p["n_firms"], fill_value=production_init)
-        inventory = np.zeros_like(production)
+        production_prev = np.full(p["n_firms"], fill_value=production_init)
+        production = np.zeros(p["n_firms"])
+        inventory = np.zeros(p["n_firms"])
         expected_demand = np.ones_like(production)
         desired_production = np.zeros_like(production)
         labor_productivity = np.full(p["n_firms"], p["labor_productivity"])
         breakeven_price = price.copy()
 
+        # finance
+        # Use net_worth_init if provided, otherwise calculate from net_worth_ratio
+        if "net_worth_init" in p:
+            net_worth_init = p["net_worth_init"]
+            if np.isscalar(net_worth_init):
+                net_worth = np.full(p["n_firms"], fill_value=net_worth_init)
+            else:
+                net_worth = np.asarray(net_worth_init).copy()
+        else:
+            net_worth = np.full(
+                p["n_firms"], fill_value=production_init * p["net_worth_ratio"]
+            )
+        total_funds = net_worth.copy()
+        gross_profit = np.zeros_like(net_worth)
+        net_profit = np.zeros_like(net_worth)
+        retained_profit = np.zeros_like(net_worth)
+
         # employer
         current_labor = np.zeros(p["n_firms"], dtype=np.int64)
         desired_labor = np.zeros_like(current_labor)
-        wage_offer = np.full(p["n_firms"], fill_value=p["wage_offer_init"])
+        wage_offer_init = p["price_init"] / 3
+        wage_offer = np.full(p["n_firms"], fill_value=wage_offer_init)
         wage_bill = np.zeros_like(wage_offer)
         n_vacancies = np.zeros_like(desired_labor)
         recv_job_apps_head = np.full(p["n_firms"], -1, dtype=np.int64)
@@ -792,7 +801,7 @@ class Simulation:
         # -----------------------------------------------------------------
         ec = Economy(
             avg_mkt_price=avg_mkt_price,
-            min_wage=p["min_wage"],
+            min_wage=wage_offer_init * p["min_wage_ratio"],
             min_wage_rev_period=p["min_wage_rev_period"],
             avg_mkt_price_history=avg_mkt_price_history,
             unemp_rate_history=unemp_rate_history,
@@ -801,6 +810,7 @@ class Simulation:
         prod = Producer(
             price=price,
             production=production,
+            production_prev=production_prev,
             inventory=inventory,
             expected_demand=expected_demand,
             desired_production=desired_production,
@@ -871,13 +881,15 @@ class Simulation:
             delta=p["delta"],
             r_bar=p["r_bar"],
             v=p["v"],
+            max_loan_to_net_worth=p["max_loan_to_net_worth"],
             cap_factor=p.get("cap_factor"),
             # Implementation variants
             contract_poisson_mean=p["contract_poisson_mean"],
             loan_priority_method=p["loan_priority_method"],
             firing_method=p["firing_method"],
+            matching_method=p["matching_method"],
+            job_search_method=p["job_search_method"],
             price_cut_allow_increase=p["price_cut_allow_increase"],
-            fragility_cap_method=p["fragility_cap_method"],
             # New firm entry parameters
             new_firm_size_factor=p["new_firm_size_factor"],
             new_firm_production_factor=p["new_firm_production_factor"],
@@ -903,6 +915,10 @@ class Simulation:
             "logging",
             "min_wage",
             "min_wage_rev_period",
+            # Ratio parameters used in initialization
+            "min_wage_ratio",
+            "net_worth_ratio",
+            "max_leverage",
         }
         known_keys = config_fields | simulation_keys
         extra_params = {k: v for k, v in p.items() if k not in known_keys}
@@ -964,6 +980,7 @@ class Simulation:
         self,
         n_periods: int | None = None,
         collect: bool | list[str] | dict[str, Any] = False,
+        progress: bool = False,
     ) -> SimulationResults | None:
         """
         Run the simulation for multiple periods.
@@ -988,6 +1005,8 @@ class Simulation:
                 - Keys: role names ('Producer', 'Worker', etc.) or 'Economy'
                 - Values: ``True`` for all variables, or list of variable names
                 - Optional 'aggregate' key: 'mean', 'median', 'sum', 'std', or None
+        progress : bool, default=False
+            If True, log period progress egardless of log level.
 
         Returns
         -------
@@ -1064,7 +1083,9 @@ class Simulation:
 
         # Run simulation
         start_time = time.time()
-        for _ in range(int(n)):
+        for t in range(int(n)):
+            msg = f"{'=' * 40} Period {t + 1} / {n} {'=' * 40}"
+            log.log(level=100 if progress else logging.INFO, msg=msg)
             self.step()
             if collector:
                 if use_timed_capture:

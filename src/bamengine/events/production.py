@@ -167,27 +167,31 @@ class FirmsRunProduction:
     productivity times number of workers. The produced goods are added to
     inventory for sale in the goods market.
 
+    The calculated production is saved to both ``production`` (current period's output)
+    and ``production_prev`` (for use as next period's planning signal).
+
     Algorithm
     ---------
     For each firm i:
 
     1. Calculate output: :math:`Y_i = \\phi_i \\times L_i`
-    2. Add to inventory: :math:`S_i \\leftarrow S_i + Y_i`
-    3. Store production: :math:`\\text{production}_i = Y_i`
+    2. Store production: :math:`\\text{production}_i = Y_i`
+    3. Store for next period's planning: :math:`\\text{production\\_prev}_i = Y_i`
+    4. Add to inventory: :math:`S_i \\leftarrow Y_i`
 
     Mathematical Notation
     ---------------------
     .. math::
         Y_i = \\phi_i \\times L_i
 
-        S_i \\leftarrow S_i + Y_i
+        S_i \\leftarrow Y_i
 
     where:
 
     - :math:`Y_i`: production output for firm i
     - :math:`\\phi_i`: labor productivity (output per worker)
     - :math:`L_i`: current labor force (number of workers)
-    - :math:`S_i`: inventory (accumulated unsold goods)
+    - :math:`S_i`: inventory (replaces previous inventory with current production)
 
     Examples
     --------

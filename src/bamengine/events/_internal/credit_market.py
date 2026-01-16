@@ -100,7 +100,7 @@ def banks_decide_interest_rate(
 
 def firms_decide_credit_demand(bor: Borrower) -> None:
     """
-    Calculate firm credit demand from wage bill and net worth gap.
+    Calculate firm credit demand from wage bill and total funds gap.
 
     See Also
     --------
@@ -109,11 +109,11 @@ def firms_decide_credit_demand(bor: Borrower) -> None:
     log.info("--- Borrowers Deciding Credit Demand ---")
     log.info(
         f"  Inputs: Total Wage Bill={bor.wage_bill.sum():,.2f}  |"
-        f"  Total Net Worth={bor.net_worth.sum():,.2f}"
+        f"  Total Net Worth={bor.total_funds.sum():,.2f}"
     )
 
     # Core Rule
-    np.subtract(bor.wage_bill, bor.net_worth, out=bor.credit_demand)
+    np.subtract(bor.wage_bill, bor.total_funds, out=bor.credit_demand)
     np.maximum(bor.credit_demand, 0.0, out=bor.credit_demand)
 
     # Logging
@@ -171,7 +171,7 @@ def firms_calc_financial_fragility(
         general_cap_mask = frag > bor.credit_demand
         if np.any(general_cap_mask):
             num_generally_capped = np.sum(general_cap_mask)
-            log.warning(
+            log.info(
                 f"  Capping fragility for {num_generally_capped} borrower(s) "
                 f"whose calculated fragility exceeded the allowed limit."
             )
@@ -472,6 +472,7 @@ def _clean_queue(
                 f"Final cleaned queue (net_worth-desc): {ordered_queue}"
             )
         return ordered_queue
+    # TODO Keep only by_leverage method
     elif priority_method == "by_leverage":
         # Sort by leverage (ascending) - least leveraged first
         # Uses projected_fragility as proxy for leverage
@@ -501,6 +502,7 @@ def banks_provide_loans(
     r_bar: float,
     h_phi: float,
     loan_priority_method: str = "by_net_worth",
+    max_loan_to_net_worth: float = 0.0,
 ) -> None:
     """
     Banks process applications and provide loans ranked by net worth.
@@ -559,6 +561,17 @@ def banks_provide_loans(
         cd = bor.credit_demand[queue]
         frag = bor.projected_fragility[queue]
         max_grant = np.minimum(cd, lend.credit_supply[k])
+
+        # Apply loan-to-net-worth cap if configured
+        if max_loan_to_net_worth > 0.0:
+            nw_cap = bor.net_worth[queue] * max_loan_to_net_worth
+            max_grant = np.minimum(max_grant, nw_cap)
+            if log.isEnabledFor(logging.DEBUG):
+                log.debug(
+                    f"    Bank {k}: Applied max_loan_to_net_worth={max_loan_to_net_worth} "
+                    f"cap. nw_cap={nw_cap}, max_grant after cap={max_grant}"
+                )
+
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
                 f"    Bank {k} loan data: credit_demand={cd}, "
@@ -658,7 +671,7 @@ def firms_fire_workers(
     # Find firms with financing gaps
     gaps = emp.wage_bill - emp.total_funds
     firing_ids = np.where(gaps > 0.0)[0]
-    total_gap = gaps[gaps > 0.0].sum() if gaps.size > 0 else 0.0
+    total_gap = gaps[gaps > EPS].sum() if gaps.size > 0 else 0.0
 
     log.info(
         f"  {firing_ids.size} firms have financing gaps totaling {total_gap:,.2f} "

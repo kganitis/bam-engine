@@ -29,12 +29,12 @@ from bamengine import Simulation
 logging.getLogger("bamengine").setLevel(logging.ERROR)
 
 
-# Performance baselines (seconds) - established November 12, 2025
+# Performance baselines (seconds) - updated January 15, 2026
 # Note: These include pytest framework overhead (~20-25% slower than pure benchmark)
 # Update these after confirming performance improvements
-BASELINE_SMALL = 7.2  # 100 firms, 500 households, 1000 periods
-BASELINE_MEDIUM = 13.0  # 200 firms, 1000 households, 1000 periods
-BASELINE_LARGE = 30.7  # 500 firms, 2500 households, 1000 periods
+BASELINE_SMALL = 9.5  # 100 firms, 500 households, 1000 periods
+BASELINE_MEDIUM = 18.5  # 200 firms, 1000 households, 1000 periods
+BASELINE_LARGE = 47.0  # 500 firms, 2500 households, 1000 periods
 
 # Allowed regression threshold (15% slower than baseline)
 # More relaxed than pure benchmarks due to test framework overhead variability

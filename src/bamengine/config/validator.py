@@ -10,11 +10,13 @@ Validation Layers
    (int, float, str, etc.)
 2. **Range Validation**: Ensures parameters are within valid ranges
    (e.g., 0 <= h_rho <= 1)
-3. **Relationship Constraints**: Validates cross-parameter dependencies
+3. **Boolean and Enum Validation**: Ensures implementation variant
+   parameters have valid values
+4. **Relationship Constraints**: Validates cross-parameter dependencies
    (e.g., warns if n_households < n_firms)
-4. **Pipeline Validation**: Validates custom pipeline YAML files
+5. **Pipeline Validation**: Validates custom pipeline YAML files
    (structure, event names, parameter substitution)
-5. **Logging Validation**: Validates log levels and event names
+6. **Logging Validation**: Validates log levels and event names
 
 Benefits
 --------
@@ -264,7 +266,10 @@ class ConfigValidator:
             "delta",
             "v",
             "r_bar",
-            "min_wage",
+            "min_wage_ratio",
+            "net_worth_ratio",
+            "max_loan_to_net_worth",
+            "max_leverage",
             "new_firm_size_factor",
             "new_firm_production_factor",
             "new_firm_wage_factor",
@@ -273,10 +278,8 @@ class ConfigValidator:
 
         # Vector parameters (can be scalar or 1D array)
         vector_params = [
-            "net_worth_init",
             "price_init",
             "savings_init",
-            "wage_offer_init",
             "equity_base_init",
         ]
 
@@ -341,7 +344,8 @@ class ConfigValidator:
         str_enum_params = [
             "loan_priority_method",
             "firing_method",
-            "fragility_cap_method",
+            "matching_method",
+            "job_search_method",
         ]
         for key in str_enum_params:
             if key not in cfg:
@@ -447,20 +451,20 @@ class ConfigValidator:
             "v": (0.0, 1.0),
             # Interest rate (typically small positive)
             "r_bar": (0.0, 1.0),
-            # Cap factor (at least 1.0 if specified)
-            "cap_factor": (1.0, None),
-            # Minimum wage (positive)
-            "min_wage": (0.0, None),
             # Minimum wage revision period (positive)
             "min_wage_rev_period": (1, None),
             # Initial values (must be positive)
-            "net_worth_init": (0.0, None),
             "price_init": (0.0, None),
             "savings_init": (0.0, None),
-            "wage_offer_init": (0.0, None),
             "equity_base_init": (0.0, None),
+            "min_wage_ratio": (0.0, 1.0),
+            "net_worth_ratio": (0.0, None),
             # Implementation variant parameters
             "contract_poisson_mean": (0, None),
+            "max_loan_to_net_worth": (0.0, None),
+            "max_leverage": (1.0, None),
+            "cap_factor": (1.0, None),
+            # New firm parameters (non-negative)
             "new_firm_size_factor": (0.0, None),
             "new_firm_production_factor": (0.0, None),
             "new_firm_wage_factor": (0.0, None),
@@ -471,15 +475,14 @@ class ConfigValidator:
         valid_enums = {
             "loan_priority_method": {"by_net_worth", "by_leverage", "by_appearance"},
             "firing_method": {"random", "expensive"},
-            "fragility_cap_method": {"credit_demand", "none"},
+            "matching_method": {"sequential", "simultaneous"},
+            "job_search_method": {"vacancies_only", "all_firms"},
         }
 
         # Vector parameters (validated separately by _validate_float1d)
         vector_params = {
-            "net_worth_init",
             "price_init",
             "savings_init",
-            "wage_offer_init",
             "equity_base_init",
         }
 

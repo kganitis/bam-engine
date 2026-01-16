@@ -27,8 +27,8 @@
 # Number of agents in each population.
 # Recommendation: n_households >= 5 * n_firms for realistic labor markets.
 
-n_firms:              100        # Producer/Employer agents (firms)
-n_households:         500        # Worker/Consumer agents (households)
+n_firms:              300        # Producer/Employer agents (firms)
+n_households:        3000        # Worker/Consumer agents (households)
 n_banks:               10        # Lender agents (commercial banks)
 
 # ── RUN LENGTH ────────────────────────────────────────────────────────────────
@@ -57,39 +57,45 @@ max_Z:                2          # Shops a household can visit/period
 # Behavioral and policy parameters affecting all agents.
 
 labor_productivity:   0.50       # Labor productivity (good units per worker)
+min_wage_rev_period:  4          # Periods between min wage adjustments
 theta:                8          # Job contract base length (periods)
-                                 # Actual duration: θ + Poisson(contract_poisson_mean)
+v:                    0.10       # Bank capital requirement coefficient
+                                 # Max leverage = 1/v
+r_bar:                0.02       # Baseline interest rate (quarterly)
+                                 # Policy rate used in bank interest calculations
 beta:                 2.50       # Consumption propensity exponent
                                  # Controls how strongly savings affect spending:
                                  #   c_j = 1 / (1 + tanh(SA_j / SA_avg)^β)
                                  # Higher β = stronger response to savings
 delta:                0.10       # Dividend payout ratio (share of profits)
                                  # Fraction of positive profits paid as dividends
-v:                    0.10       # Bank capital requirement coefficient
-                                 # Max leverage = 1/v
-r_bar:                0.02       # Baseline interest rate (quarterly)
-                                 # Policy rate used in bank interest calculations
-min_wage:             0.5        # Initial minimum wage floor
-min_wage_rev_period:  4          # Periods between min wage adjustments
-cap_factor:           2.00       # Multiplier limiting price increases
-                                 # Prevents extreme price jumps when production is very
-                                 # low (which would lead to very high breakeven prices)
 
 # ── INITIAL CONDITIONS ────────────────────────────────────────────────────────
 # Balance sheet values at t=0. Can be scalars (broadcast to all agents) or
 # arrays of length n_firms/n_households for heterogeneous initialization.
 
-net_worth_init:       1.0        # Firm net worth at t=0 (money units)
-price_init:           1.5        # Goods price at t=0 (money unit per good unit)
-savings_init:         3.0        # Household savings at t=0 (money units)
-wage_offer_init:      1.0        # Wage offer at t=0 (money units per period)
+price_init:           1.50       # Goods price at t=0 (money unit per good unit)
+min_wage_ratio:       0.67       # Minimum wage at t=0 (as fraction of mean wage)
+net_worth_ratio:      1.0        # Firm net worth at t=0 (as fraction of production)
 equity_base_init:     5.0        # Bank equity at t=0 (money units)
+savings_init:         3.0        # Household savings at t=0 (money units)
+
+# ── NEW FIRM ENTRY PARAMETERS ───────────────────────────────────────────────
+# Control how replacement firms are initialized after bankruptcy.
+# New firms inherit attributes from the trimmed mean (90%) of surviving firms,
+# scaled by these factors. This follows Delli Gatti et al. (2011) where new
+# entrants start "below the average size of incumbent firms".
+
+new_firm_size_factor: 0.9           # Core "size at entry" measure (as fraction of avg)
+new_firm_production_factor: 0.9     # Initial output capacity as fraction of avg output
+new_firm_wage_factor: 0.5           # Initial wage offer as a fraction of avg wage
+new_firm_price_markup: 1.50         # Initial price markup over average market price
 
 # ── RANDOM NUMBER GENERATION ──────────────────────────────────────────────────
-# Seed for deterministic simulations. Use fixed seed for reproducibility,
-# or set to null for non-deterministic behavior.
+# Seed for deterministic simulations.
+# Set to null for non-deterministic behavior.
 
-seed:               12345        # RNG seed (null = random seed)
+seed:                 0          # RNG seed (null = random seed)
 
 # ── PIPELINE CONFIGURATION ────────────────────────────────────────────────────
 # Path to custom event pipeline YAML. If null, uses config/default_pipeline.yml.
@@ -115,42 +121,36 @@ logging:
 # Control specific behavioral details. These parameters allow experimenting
 # with different implementation choices to match reference model results.
 
-contract_poisson_mean: 10            # Poisson mean added to theta for contract duration
+contract_poisson_mean: 0             # Poisson mean added to theta for contract duration
                                      # Set to 0 for exact theta-only contracts
                                      # Actual duration: θ + Poisson(contract_poisson_mean)
+
+max_loan_to_net_worth: 100           # Max loan as multiple of borrower's net worth
+                                     # Caps individual loans: loan <= X * net_worth
+
+max_leverage: 100                    # Maximum leverage ratio (fragility cap)
+                                     # for interest rate calculation
 
 loan_priority_method: by_leverage    # How banks rank loan applicants
                                      # "by_net_worth" = sort by net worth (desc)
                                      # "by_leverage" = sort by leverage (asc), book value
                                      # "by_appearance" = first-come-first-served
 
-firing_method: random                # How firms select workers to fire
+firing_method: expensive             # How firms select workers to fire
                                      # "random" = random selection
                                      # "expensive" = highest wage first
 
+matching_method: simultaneous        # How workers and firms are matched in labor market
+                                     # "sequential" = workers shuffled, apply one at a time
+                                     # "simultaneous" = all workers apply at once (crowding)
+
+job_search_method: vacancies_only    # How workers sample firms for job applications
+                                     # "vacancies_only" = sample only firms with vacancies
+                                     # "all_firms" = sample from ALL firms (wasted apps)
+
 price_cut_allow_increase: true       # Allow price increase when trying to cut
-                                     # (due to breakeven floor being higher than cut price)
+                                     # (due to breakeven price floor being higher than cut price)
 
-fragility_cap_method: credit_demand  # How to cap financial fragility
-                                     # "credit_demand" = cap at B (credit demand)
-                                     # "none" = no cap (may cause instability)
-
-# ── NEW FIRM ENTRY PARAMETERS ───────────────────────────────────────────────
-# Control how replacement firms are initialized after bankruptcy.
-# New firms inherit attributes from the trimmed mean (10%) of surviving firms,
-# scaled by these factors. This follows Delli Gatti et al. (2011) where new
-# entrants start "below the average size of incumbent firms".
-
-new_firm_size_factor: 0.5           # Net worth = survivor_mean × factor
-                                    # Core "size at entry" measure
-
-new_firm_production_factor: 1.0     # Production = survivor_mean × factor
-                                    # Initial output capacity
-
-new_firm_wage_factor: 0.8           # Wage offer = survivor_mean × factor (floored at min_wage)
-                                    # Higher values help attract workers
-                                    # Lower values reduce initial costs
-
-new_firm_price_markup: 1.15         # Price = avg_mkt_price × markup
-                                    # Slight markup helps cover startup costs
-                                    # Lower values help competitiveness
+cap_factor: 100                      # Multiplier limiting price increases
+                                     # Prevents extreme price jumps when production is very
+                                     # low (which would lead to very high breakeven prices)

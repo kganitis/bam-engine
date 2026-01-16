@@ -60,6 +60,9 @@ class Config:
         Base interest rate (0 to 1).
     v : float
         Bank capital requirement ratio (0 to 1).
+    max_loan_to_net_worth : float, optional
+        Maximum loan as multiple of borrower's net worth (default: 2.0).
+        Caps individual loans at X × net_worth. Set to 0 for no limit.
     cap_factor : float or None, optional
         Cap factor for breakeven price calculation (>= 1.0 if specified).
         If None, no cap is applied.
@@ -168,6 +171,9 @@ class Config:
     delta: float
     r_bar: float
     v: float
+    max_loan_to_net_worth: float = (
+        2.0  # Max loan as multiple of net worth (0 = no limit)
+    )
 
     # Optional parameters
     cap_factor: float | None = None
