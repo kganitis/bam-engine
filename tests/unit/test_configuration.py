@@ -144,9 +144,11 @@ def test_default_pipeline_when_no_custom_path():
     """Default pipeline is used when pipeline_path is None."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
 
-    # Should have default pipeline (34 base + market rounds with default max_M=4, max_H=2, max_Z=2)
+    # Should have default pipeline (35 base + market rounds with default max_M=4, max_H=2)
     # Base events increased from 33 to 34 after adding firms_fire_excess_workers
-    expected_length = 34 + 2 * 4 + 2 * 2 + 2
+    # Base events increased from 34 to 35 after switching to consumers_shop_sequential
+    # (no max_Z multiplier since consumers_shop_sequential is a single event)
+    expected_length = 35 + 2 * 4 + 2 * 2
     assert len(sim.pipeline) == expected_length
 
     # Check first and last events

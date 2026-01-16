@@ -163,12 +163,12 @@ def consumers_decide_firms_to_visit(
     log.info("--- Consumers Deciding Firms to Visit ---")
 
     stride = max_Z
-    avail = np.where(prod.inventory > EPS)[0]
+    avail = np.arange(prod.inventory.size)
     consumers_with_budget = np.sum(con.income_to_spend > EPS)
 
     log.info(
         f"  {consumers_with_budget:,} consumers with spending budget will select"
-        f" up to {max_Z} firms each from {avail.size} firms with inventory."
+        f" up to {max_Z} firms each from {avail.size} firms."
     )
 
     # Initialize/flush all shopping queues
@@ -176,7 +176,7 @@ def consumers_decide_firms_to_visit(
     con.shop_visits_head.fill(-1)
 
     if avail.size == 0:
-        log.info("  No firms have inventory available. All shopping queues cleared.")
+        log.info("  No firms available. All shopping queues cleared.")
         log.info("--- Consumer Firm Selection complete ---")
         return
 
@@ -201,39 +201,47 @@ def consumers_decide_firms_to_visit(
         row = con.shop_visits_targets[h]
         filled = 0
 
-        # Apply loyalty rule for slot 0
+        # Check for loyalty firm
         prev = con.largest_prod_prev[h]
-        loyal = (prev >= 0) and (prod.inventory[prev] > 0.0)
-        if loyal:
-            row[0] = prev
-            filled = 1
-            loyalty_applied += 1
-            if log.isEnabledFor(logging.TRACE):
-                log.trace(f"    Consumer {h}: Applied loyalty to firm {prev} (slot 0)")
+        loyal = prev >= 0
 
-        # Fill remaining slots with random sampling
-        n_draw = min(stride - filled, avail.size - int(loyal))
+        # Fill slots with random sampling (excluding loyalty firm if present)
+        n_draw = min(stride - int(loyal), avail.size - int(loyal))
         if n_draw > 0:
             # Ensure we don't re-sample the loyal firm
             choices = avail if not loyal else avail[avail != prev]
             if choices.size >= n_draw:
                 sample = rng.choice(choices, size=n_draw, replace=False)
-                # Sort by price (cheapest first)
-                order = np.argsort(prod.price[sample])
-                row[filled : filled + n_draw] = sample[order]
-                filled += n_draw
+            else:
+                sample = choices.copy()
+                n_draw = len(sample)
+        else:
+            sample = np.array([], dtype=np.int64)
 
-                if log.isEnabledFor(logging.TRACE):
-                    log.trace(
-                        f"    Consumer {h}: Added {n_draw} firms "
-                        f"(sorted by price): {sample[order]}"
-                    )
+        # Include loyalty firm in the full consideration set
+        # Loyalty firm is GUARANTEED to be in the set, but competes on price
+        if loyal:
+            full_set = np.append(sample, prev)
+            loyalty_applied += 1
+            if log.isEnabledFor(logging.TRACE):
+                log.trace(
+                    f"    Consumer {h}: Loyalty firm {prev} included in consideration set"
+                )
+        else:
+            full_set = sample
 
-        # Defensive loyalty enforcement (should never trigger in practice)
-        if loyal and filled > 1 and row[0] != prev:  # pragma: no cover
-            log.warning(f"    Consumer {h}: Loyalty violation detected, correcting...")
-            j = np.where(row[:filled] == prev)[0][0]
-            row[0], row[j] = row[j], row[0]
+        # Sort ALL selected firms by price (cheapest first)
+        # This matches NetLogo where consumer always picks cheapest from my-stores
+        if full_set.size > 0:
+            order = np.argsort(prod.price[full_set])
+            row[: full_set.size] = full_set[order]
+            filled = full_set.size
+
+            if log.isEnabledFor(logging.TRACE):
+                log.trace(
+                    f"    Consumer {h}: Selected {filled} firms "
+                    f"(sorted by price): {full_set[order]}"
+                )
 
         # Activate shopping queue if any firms selected
         if filled > 0:
@@ -452,6 +460,163 @@ def consumers_shop_one_round(
             )
 
     log.info("--- Shopping Round complete ---")
+
+
+def consumers_shop_sequential(
+    con: Consumer, prod: Producer, *, max_Z: int, rng: Rng = make_rng()
+) -> None:
+    """
+    Execute sequential shopping where each consumer completes all visits.
+
+    Unlike round-robin shopping (consumers_shop_one_round), this function
+    processes consumers one at a time. Each consumer completes all their
+    shopping visits before the next consumer starts. This matches NetLogo
+    and ABCredit behavior and makes the goods market less efficient:
+    early consumers can deplete inventory, leaving late consumers with
+    wasted visits on sold-out firms.
+
+    See Also
+    --------
+    bamengine.events.goods_market.ConsumersShopSequential : Full documentation
+    """
+    log.info("--- Consumers Shopping Sequential ---")
+
+    stride = con.shop_visits_targets.shape[1]
+    buyers = np.where(con.income_to_spend > EPS)[0]
+
+    if buyers.size == 0:
+        log.info("  No consumers with remaining spending budget. Shopping skipped.")
+        log.info("--- Sequential Shopping complete ---")
+        return
+
+    # Pre-shopping statistics
+    total_budget_before = con.income_to_spend.sum()
+    total_inventory_before = prod.inventory.sum()
+
+    if total_inventory_before <= EPS:
+        log.info("  No firms with remaining inventory. Shopping skipped.")
+        log.info("--- Sequential Shopping complete ---")
+        return
+
+    log.info(
+        f"  {buyers.size:,} consumers with remaining budget "
+        f"(Total: {total_budget_before:,.2f}) will shop sequentially."
+    )
+    log.info(f"  Total available inventory: {total_inventory_before:,.2f}")
+    log.info(f"  Max visits per consumer: {max_Z}")
+
+    # Randomize consumer order (like NetLogo's ask workers)
+    rng.shuffle(buyers)
+    log.info("  Consumer order randomized for fairness.")
+
+    # Track statistics
+    successful_purchases = 0
+    total_quantity_sold = 0.0
+    total_revenue = 0.0
+    wasted_visits = 0
+    consumers_exhausted_budget = 0
+    consumers_exhausted_queue = 0
+
+    for h in buyers:
+        # Each consumer completes all Z visits before next consumer starts
+        for _ in range(max_Z):
+            if con.income_to_spend[h] <= EPS:
+                consumers_exhausted_budget += 1
+                break  # Budget exhausted
+
+            ptr = con.shop_visits_head[h]
+            if ptr < 0:
+                consumers_exhausted_queue += 1
+                break  # No more firms to visit
+
+            row, col = divmod(ptr, stride)
+            firm_idx = con.shop_visits_targets[row, col]
+
+            if firm_idx < 0:
+                con.shop_visits_head[h] = -1
+                consumers_exhausted_queue += 1
+                break  # End of queue
+
+            # Advance pointer regardless of purchase success (like NetLogo)
+            con.shop_visits_head[h] = ptr + 1
+            con.shop_visits_targets[row, col] = -1
+
+            # Check if firm has inventory
+            if prod.inventory[firm_idx] <= EPS:
+                wasted_visits += 1
+                if log.isEnabledFor(logging.TRACE):
+                    log.trace(
+                        f"    Consumer {h}: Firm {firm_idx} sold out, wasted visit"
+                    )
+                continue  # Wasted visit - firm sold out
+
+            # Calculate purchase quantity and cost
+            price = prod.price[firm_idx]
+            max_qty_by_budget = con.income_to_spend[h] / price
+            max_qty_by_inventory = float(prod.inventory[firm_idx])
+            qty = min(max_qty_by_budget, max_qty_by_inventory)
+            spent = qty * price
+
+            # Execute purchase
+            prod.inventory[firm_idx] -= qty
+            con.income_to_spend[h] -= spent
+
+            # Update statistics
+            successful_purchases += 1
+            total_quantity_sold += qty
+            total_revenue += spent
+
+            if log.isEnabledFor(logging.TRACE):
+                log.trace(
+                    f"    Consumer {h} bought {qty:.2f} from firm {firm_idx} "
+                    f"for {spent:.2f} (price={price:.2f})"
+                )
+
+    # Post-shopping statistics
+    total_budget_after = con.income_to_spend.sum()
+    total_inventory_after = prod.inventory.sum()
+    budget_spent = total_budget_before - total_budget_after
+    inventory_sold = total_inventory_before - total_inventory_after
+
+    log.info(
+        f"  Sequential shopping completed: {successful_purchases:,} purchases made."
+    )
+    log.info(
+        f"  Total quantity sold: {total_quantity_sold:,.2f}, "
+        f"Total revenue: {total_revenue:,.2f}"
+    )
+    log.info(
+        f"  Wasted visits (firms sold out): {wasted_visits:,} "
+        f"({wasted_visits / max(1, successful_purchases + wasted_visits):.1%} of attempts)"
+    )
+    log.info(
+        f"  Budget spent: {budget_spent:,.2f} of {total_budget_before:,.2f} "
+        f"({budget_spent / total_budget_before:.1%} utilization)"
+    )
+    log.info(
+        f"  Inventory sold: {inventory_sold:,.2f} of {total_inventory_before:,.2f} "
+        f"({inventory_sold / total_inventory_before:.1%} depletion)"
+    )
+
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug(
+            f"  Consumer outcomes: {consumers_exhausted_budget:,} exhausted budget, "
+            f"{consumers_exhausted_queue:,} exhausted firm queue"
+        )
+
+        # Validation check
+        if abs(budget_spent - total_revenue) > EPS:
+            log.error(
+                f"  ACCOUNTING ERROR: Budget spent ({budget_spent:.2f}) != "
+                f"Revenue generated ({total_revenue:.2f})"
+            )
+        if abs(inventory_sold - total_quantity_sold) > EPS:
+            log.error(
+                f"  INVENTORY ERROR: Inventory sold ({inventory_sold:.2f}) != "
+                f"Quantity purchased ({total_quantity_sold:.2f})"
+            )
+
+    log.info("--- Sequential Shopping complete ---")
 
 
 def consumers_finalize_purchases(con: Consumer) -> None:

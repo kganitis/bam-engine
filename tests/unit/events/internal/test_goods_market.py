@@ -93,32 +93,44 @@ def test_pick_firms_basic() -> None:
     assert ((targets == -1) | ((targets >= 0) & (targets < prod.price.size))).all()
 
 
-def test_pick_firms_loyalty_slot() -> None:
-    """Previous largest producer with stock must appear in column-0."""
+def test_pick_firms_loyalty_included() -> None:
+    """Previous largest producer must appear somewhere in the consideration set."""
     con, prod, rng, Z = _mini_state()
     # set loyalty of hh-0 to firm-2 (which has inventory)
     con.largest_prod_prev[0] = 2
     consumers_calc_propensity(con, avg_sav=1.0, beta=0.9)
     consumers_decide_income_to_spend(con)
     consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=rng)
-    assert con.shop_visits_targets[0, 0] == 2
+    # Loyalty firm is INCLUDED in the set (but competes on price, not guaranteed slot 0)
+    targets = con.shop_visits_targets[0]
+    assert 2 in targets[targets >= 0]
 
 
-def test_pick_firms_no_inventory_exits_early() -> None:
+def test_pick_firms_selects_even_with_zero_inventory() -> None:
+    """Consumers select firms regardless of inventory (matching NetLogo behavior).
+
+    Consumers discover firms are sold out during shopping, not during selection.
+    This makes the goods market less efficient but matches the reference model.
+    """
     con, prod, rng, Z = _mini_state()
     prod.inventory[:] = 0.0  # market empty
     consumers_calc_propensity(con, avg_sav=1.0, beta=0.9)
     consumers_decide_income_to_spend(con)
     consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=rng)
-    assert np.all(con.shop_visits_head == -1)
-    assert np.all(con.shop_visits_targets == -1)
+    # Consumers with budget should still have active queues
+    has_budget = con.income_to_spend > 0
+    assert np.all(con.shop_visits_head[has_budget] >= 0)
+    # They should have selected some firms (even though inventory is 0)
+    assert np.any(con.shop_visits_targets >= 0)
 
 
-def test_loyalty_swap_keeps_prev_at_slot0() -> None:
+def test_loyalty_firm_competes_on_price() -> None:
     """
-    Craft a case where the previous-period firm has a *higher* price than
-    another sampled firm, so the initial ascending sort pushes it away from
-    column-0.  The post-sort swap must pull it back.
+    Loyalty firm competes on price (matching NetLogo behavior).
+
+    When the loyalty firm has a higher price than another sampled firm,
+    the cheaper firm should be visited first. Loyalty only guarantees
+    INCLUSION in the consideration set, not priority in shopping order.
     """
     Z = 2
     con = mock_consumer(n=1, queue_z=Z, income=np.array([3.0]), savings=np.array([2.0]))
@@ -136,8 +148,10 @@ def test_loyalty_swap_keeps_prev_at_slot0() -> None:
     consumers_decide_income_to_spend(con)
     consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=make_rng(42))
 
-    # loyalty guarantee: despite being pricier, firm-1 stays in column-0
-    assert con.shop_visits_targets[0, 0] == 1
+    # Loyalty firm (1) is in the set but sorted by price
+    # Cheaper firm (0) should be in slot 0, expensive loyalty firm (1) in slot 1
+    assert con.shop_visits_targets[0, 0] == 0  # Cheapest first
+    assert con.shop_visits_targets[0, 1] == 1  # Loyalty firm still included
 
 
 def test_one_round_basic_purchase() -> None:

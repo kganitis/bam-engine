@@ -129,15 +129,15 @@ events:
   - workers_update_contracts           # Decrement contract duration, handle expiration
 
   # ────────────────────────────────────────────────────────────────────────────
-  # PHASE 5: GOODS MARKET (3 + max_Z + 1 = 6 events with default max_Z=2)
+  # PHASE 5: GOODS MARKET (5 events)
   # ────────────────────────────────────────────────────────────────────────────
   # Households decide spending based on income/savings, select firms to visit,
-  # sequential shopping rounds (max_Z), then save any unspent income.
+  # shop sequentially (each consumer completes max_Z visits), then save unspent income.
 
   - consumers_calc_propensity          # Calculate consumption propensity from savings
   - consumers_decide_income_to_spend   # Allocate income for consumption
   - consumers_decide_firms_to_visit    # Select firms to shop at (price-sorted)
-  - consumers_shop_one_round x {max_Z} # Shopping rounds (buy from one firm per round)
+  - consumers_shop_sequential          # Sequential shopping (each consumer completes Z visits before next)
   - consumers_finalize_purchases       # Update savings with unspent income
 
   # ────────────────────────────────────────────────────────────────────────────

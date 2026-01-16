@@ -9,12 +9,13 @@ def test_create_default_pipeline():
     max_M, max_H, max_Z = 5, 3, 2
     pipeline = create_default_pipeline(max_M=max_M, max_H=max_H, max_Z=max_Z)
 
-    # Should have base events (34) + interleaved market rounds
-    # Market rounds: 2*max_M + 2*max_H + max_Z
+    # Should have base events (35) + interleaved market rounds
+    # Market rounds: 2*max_M + 2*max_H (no max_Z since consumers_shop_sequential is single event)
     # Note: calc_unemployment_rate removed from default pipeline (deprecated)
     # Base events increased from 33 to 34 after adding firms_fire_excess_workers
-    expected_length = 34 + 2 * max_M + 2 * max_H + max_Z
-    assert len(pipeline) == expected_length  # 34 + 2*5 + 2*3 + 2 = 52
+    # Base events increased from 34 to 35 after switching to consumers_shop_sequential
+    expected_length = 35 + 2 * max_M + 2 * max_H
+    assert len(pipeline) == expected_length  # 35 + 2*5 + 2*3 = 51
 
 
 def test_default_pipeline_interleaved_market_rounds():
@@ -82,7 +83,8 @@ def test_default_pipeline_has_correct_market_round_counts():
     assert event_names.count("firms_hire_workers") == max_M
     assert event_names.count("firms_send_one_loan_app") == max_H
     assert event_names.count("banks_provide_loans") == max_H
-    assert event_names.count("consumers_shop_one_round") == max_Z
+    # consumers_shop_sequential is a single event (not repeated max_Z times)
+    assert event_names.count("consumers_shop_sequential") == 1
 
 
 def test_default_pipeline_contains_all_phases():
@@ -96,7 +98,7 @@ def test_default_pipeline_contains_all_phases():
     assert "workers_send_one_round" in event_names  # Labor
     assert "banks_provide_loans" in event_names  # Credit
     assert "firms_run_production" in event_names  # Production
-    assert "consumers_shop_one_round" in event_names  # Goods
+    assert "consumers_shop_sequential" in event_names  # Goods
     assert "firms_collect_revenue" in event_names  # Revenue
     assert "mark_bankrupt_firms" in event_names  # Bankruptcy
     assert "spawn_replacement_banks" in event_names  # Entry (end of period)
