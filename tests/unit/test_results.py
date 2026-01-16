@@ -482,3 +482,375 @@ class TestGetArray:
         # Aggregation on 1D data should return the data unchanged
         arr = results.get_array("Producer", "price", aggregate="mean")
         np.testing.assert_array_equal(arr, data_1d)
+
+
+class TestPandasImportError:
+    """Tests for pandas import error handling."""
+
+    def test_import_pandas_raises_helpful_error(self):
+        """Test _import_pandas raises helpful ImportError when pandas unavailable."""
+        # We can't actually remove pandas, but we can test that the function
+        # returns pandas when available (the error path is hard to test without
+        # actually uninstalling pandas)
+        pd_module = _import_pandas()
+        assert pd_module is pd
+
+
+class TestDataCollectorPipelineSetup:
+    """Tests for _DataCollector.setup_pipeline_callbacks()."""
+
+    def test_setup_pipeline_callbacks_requires_pipeline(self):
+        """Test that setup_pipeline_callbacks raises TypeError for non-Pipeline."""
+        collector = _DataCollector(
+            variables={"Producer": ["price"]},
+            aggregate="mean",
+            capture_after="firms_adjust_price",
+        )
+        # Pass a non-Pipeline object
+        with pytest.raises(TypeError, match="Expected Pipeline"):
+            collector.setup_pipeline_callbacks("not_a_pipeline")
+
+    def test_setup_pipeline_callbacks_with_capture_after(self):
+        """Test setup_pipeline_callbacks with capture_after configuration."""
+        from bamengine.core import Pipeline
+
+        collector = _DataCollector(
+            variables={"Producer": ["price"], "Economy": ["avg_price"]},
+            aggregate="mean",
+            capture_after="firms_adjust_price",
+        )
+        # Create a minimal pipeline
+        pipeline = Pipeline(events=[])
+        # This should not raise - callbacks are registered even if events don't exist yet
+        collector.setup_pipeline_callbacks(pipeline)
+        # Verify timed capture is enabled
+        assert collector._use_timed_capture is True
+
+    def test_setup_pipeline_callbacks_with_wildcard_capture(self):
+        """Test setup_pipeline_callbacks with True (wildcard) for all variables."""
+        from bamengine.core import Pipeline
+
+        collector = _DataCollector(
+            variables={"Producer": True},
+            aggregate="mean",
+            capture_after="firms_adjust_price",
+        )
+        pipeline = Pipeline(events=[])
+        collector.setup_pipeline_callbacks(pipeline)
+        assert collector._use_timed_capture is True
+
+    def test_setup_pipeline_callbacks_with_capture_timing(self):
+        """Test setup_pipeline_callbacks with per-variable capture_timing."""
+        from bamengine.core import Pipeline
+
+        collector = _DataCollector(
+            variables={"Producer": ["price", "inventory"]},
+            aggregate="mean",
+            capture_after="firms_adjust_price",
+            capture_timing={"Producer.price": "firms_run_production"},
+        )
+        pipeline = Pipeline(events=[])
+        collector.setup_pipeline_callbacks(pipeline)
+        assert collector._use_timed_capture is True
+
+
+class TestDataCollectorCaptureLogic:
+    """Tests for _DataCollector capture deduplication and aggregation."""
+
+    def test_capture_role_single_already_captured(self):
+        """Test that _capture_role_single skips already captured variables."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=5, n_households=10, seed=42)
+        collector = _DataCollector(
+            variables={"Producer": ["price"]},
+            aggregate="mean",
+        )
+        # Capture once
+        collector._capture_role_single(sim, "Producer", "price")
+        first_count = len(collector.role_data["Producer"]["price"])
+
+        # Try to capture again in same period - should be skipped (deduplication)
+        collector._capture_role_single(sim, "Producer", "price")
+        second_count = len(collector.role_data["Producer"]["price"])
+
+        assert first_count == second_count == 1
+
+    def test_capture_role_single_missing_role(self):
+        """Test _capture_role_single handles missing role gracefully."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=5, n_households=10, seed=42)
+        collector = _DataCollector(
+            variables={"NonExistent": ["price"]},
+            aggregate="mean",
+        )
+        # Should not raise, just skip
+        collector._capture_role_single(sim, "NonExistent", "price")
+        assert (
+            "NonExistent" not in collector.role_data
+            or len(collector.role_data["NonExistent"]) == 0
+        )
+
+    def test_capture_role_single_missing_attribute(self):
+        """Test _capture_role_single handles missing attribute gracefully."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=5, n_households=10, seed=42)
+        collector = _DataCollector(
+            variables={"Producer": ["nonexistent_attr"]},
+            aggregate="mean",
+        )
+        # Should not raise, just skip
+        collector._capture_role_single(sim, "Producer", "nonexistent_attr")
+        assert len(collector.role_data["Producer"]["nonexistent_attr"]) == 0
+
+    def test_capture_role_single_non_array_attribute(self):
+        """Test _capture_role_single skips non-array attributes."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=5, n_households=10, seed=42)
+        collector = _DataCollector(
+            variables={"Producer": ["price"]},
+            aggregate="mean",
+        )
+        # Temporarily set a non-array attribute
+        original_price = sim.prod.price
+        sim.prod.price = "not_an_array"  # type: ignore
+        try:
+            collector._capture_role_single(sim, "Producer", "price")
+            assert len(collector.role_data["Producer"]["price"]) == 0
+        finally:
+            sim.prod.price = original_price
+
+    def test_capture_role_single_aggregation_fallback(self):
+        """Test _capture_role_single falls back to mean for unknown aggregation."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=5, n_households=10, seed=42)
+        collector = _DataCollector(
+            variables={"Producer": ["price"]},
+            aggregate="unknown_method",  # Unknown method should fall back to mean
+        )
+        collector._capture_role_single(sim, "Producer", "price")
+        # Should have captured using mean (fallback)
+        assert len(collector.role_data["Producer"]["price"]) == 1
+        expected_mean = float(np.mean(sim.prod.price))
+        assert collector.role_data["Producer"]["price"][0] == pytest.approx(
+            expected_mean
+        )
+
+    @pytest.mark.parametrize(
+        "aggregate,expected_func",
+        [
+            ("median", np.median),
+            ("sum", np.sum),
+            ("std", np.std),
+        ],
+    )
+    def test_capture_role_single_aggregation_methods(self, aggregate, expected_func):
+        """Test _capture_role_single with different aggregation methods."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=5, n_households=10, seed=42)
+        collector = _DataCollector(
+            variables={"Producer": ["price"]},
+            aggregate=aggregate,
+        )
+        collector._capture_role_single(sim, "Producer", "price")
+        assert len(collector.role_data["Producer"]["price"]) == 1
+        expected_value = float(expected_func(sim.prod.price))
+        assert collector.role_data["Producer"]["price"][0] == pytest.approx(
+            expected_value
+        )
+
+    def test_capture_role_all(self):
+        """Test _capture_role_all captures all role variables."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=5, n_households=10, seed=42)
+        collector = _DataCollector(
+            variables={"Producer": True},
+            aggregate="mean",
+        )
+        collector._capture_role_all(sim, "Producer")
+        # Should have captured multiple variables
+        assert len(collector.role_data["Producer"]) > 0
+        # price should be one of them
+        assert "price" in collector.role_data["Producer"]
+
+    def test_capture_role_all_missing_role(self):
+        """Test _capture_role_all handles missing role gracefully."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=5, n_households=10, seed=42)
+        collector = _DataCollector(
+            variables={"NonExistent": True},
+            aggregate="mean",
+        )
+        # Should not raise
+        collector._capture_role_all(sim, "NonExistent")
+
+    def test_capture_economy_single_already_captured(self):
+        """Test _capture_economy_single skips already captured metrics."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=5, n_households=10, seed=42)
+        # Run one period to generate economy data
+        sim.run(n_periods=1, collect=False)
+
+        collector = _DataCollector(
+            variables={"Economy": ["avg_price"]},
+            aggregate="mean",
+        )
+        # Capture once
+        collector._capture_economy_single(sim, "avg_price")
+        first_count = len(collector.economy_data["avg_price"])
+
+        # Try to capture again - should be skipped (deduplication)
+        collector._capture_economy_single(sim, "avg_price")
+        second_count = len(collector.economy_data["avg_price"])
+
+        assert first_count == second_count == 1
+
+
+class TestDataCollectorCaptureRemaining:
+    """Tests for _DataCollector.capture_remaining()."""
+
+    def test_capture_remaining_captures_economy_true(self):
+        """Test capture_remaining with Economy: True captures all metrics."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=5, n_households=10, seed=42)
+        sim.run(n_periods=1, collect=False)
+
+        collector = _DataCollector(
+            variables={"Economy": True},
+            aggregate="mean",
+        )
+        collector.capture_remaining(sim)
+        # Should have captured the economy metrics
+        assert len(collector.economy_data) > 0
+
+    def test_capture_remaining_captures_economy_specific(self):
+        """Test capture_remaining with specific Economy variables."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=5, n_households=10, seed=42)
+        sim.run(n_periods=1, collect=False)
+
+        collector = _DataCollector(
+            variables={"Economy": ["avg_price"]},
+            aggregate="mean",
+        )
+        collector.capture_remaining(sim)
+        assert "avg_price" in collector.economy_data
+
+    def test_capture_remaining_captures_role_true(self):
+        """Test capture_remaining with Role: True captures all variables."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=5, n_households=10, seed=42)
+
+        collector = _DataCollector(
+            variables={"Producer": True},
+            aggregate="mean",
+        )
+        collector.capture_remaining(sim)
+        assert "price" in collector.role_data["Producer"]
+
+    def test_capture_remaining_skips_already_captured(self):
+        """Test capture_remaining skips already captured variables."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=5, n_households=10, seed=42)
+
+        collector = _DataCollector(
+            variables={"Producer": ["price"]},
+            aggregate="mean",
+        )
+        # Manually mark as captured
+        collector._captured_this_period.add("Producer.price")
+        collector.capture_remaining(sim)
+        # Should not have captured (already marked)
+        assert len(collector.role_data["Producer"]["price"]) == 0
+
+    def test_capture_remaining_clears_tracking_set(self):
+        """Test capture_remaining clears _captured_this_period."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=5, n_households=10, seed=42)
+
+        collector = _DataCollector(
+            variables={"Producer": ["price"]},
+            aggregate="mean",
+        )
+        collector._captured_this_period.add("Producer.price")
+        collector.capture_remaining(sim)
+        # Should have cleared the tracking set
+        assert len(collector._captured_this_period) == 0
+
+
+class TestDataCollectorCapture:
+    """Tests for _DataCollector.capture() method."""
+
+    def test_capture_missing_role(self):
+        """Test capture handles missing role gracefully."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=5, n_households=10, seed=42)
+
+        collector = _DataCollector(
+            variables={"NonExistent": ["price"]},
+            aggregate="mean",
+        )
+        # Should not raise
+        collector.capture(sim)
+
+    def test_capture_missing_attribute(self):
+        """Test capture handles missing attribute gracefully."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=5, n_households=10, seed=42)
+
+        collector = _DataCollector(
+            variables={"Producer": ["nonexistent_attr"]},
+            aggregate="mean",
+        )
+        # Should not raise, just skip
+        collector.capture(sim)
+        assert len(collector.role_data["Producer"]["nonexistent_attr"]) == 0
+
+    def test_capture_aggregation_fallback(self):
+        """Test capture falls back to mean for unknown aggregation method."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=5, n_households=10, seed=42)
+
+        collector = _DataCollector(
+            variables={"Producer": ["price"]},
+            aggregate="unknown_method",  # Should fall back to mean
+        )
+        collector.capture(sim)
+        assert len(collector.role_data["Producer"]["price"]) == 1
+        expected_mean = float(np.mean(sim.prod.price))
+        assert collector.role_data["Producer"]["price"][0] == pytest.approx(
+            expected_mean
+        )
+
+
+class TestDataCollectorFinalize:
+    """Tests for _DataCollector.finalize() method."""
+
+    def test_finalize_with_empty_data_lists(self):
+        """Test finalize handles empty data lists gracefully."""
+        collector = _DataCollector(
+            variables={"Producer": ["price"]},
+            aggregate="mean",
+        )
+        # Add an empty list
+        collector.role_data["Producer"]["price"] = []
+
+        results = collector.finalize(config={}, metadata={})
+        # Empty list should not appear in results
+        assert "price" not in results.role_data.get("Producer", {})

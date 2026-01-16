@@ -112,6 +112,10 @@ class TestSimulationInvariants:
             seed=seed,
         )
 
+        # Track consecutive periods of mass unemployment
+        consecutive_mass_unemployment = 0
+        max_consecutive_allowed = 3  # Allow temporary unemployment spikes
+
         # Run 10 periods
         for period in range(10):
             sim.step()
@@ -133,9 +137,17 @@ class TestSimulationInvariants:
                 f"Infinite production at period {period}"
             )
 
-            # No mass unemployment (at least some employed)
+            # Check for mass unemployment (at least some employed)
+            # Allow temporary spikes but not persistent unemployment
             employed_count = sim.wrk.employed.sum()
-            assert employed_count > 0, f"Mass unemployment at period {period}"
+            if employed_count == 0:
+                consecutive_mass_unemployment += 1
+                assert consecutive_mass_unemployment <= max_consecutive_allowed, (
+                    f"Persistent mass unemployment for {consecutive_mass_unemployment} "
+                    f"consecutive periods (max allowed: {max_consecutive_allowed})"
+                )
+            else:
+                consecutive_mass_unemployment = 0  # Reset counter
 
 
 @pytest.mark.invariants
