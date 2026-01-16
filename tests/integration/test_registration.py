@@ -87,6 +87,7 @@ def test_role_has_slots():
     # Instance should not have __dict__
     prod = Producer(
         production=np.ones(10),
+        production_prev=np.ones(10),
         inventory=np.zeros(10),
         expected_demand=np.ones(10),
         desired_production=np.ones(10),

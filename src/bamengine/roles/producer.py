@@ -22,7 +22,12 @@ class Producer:
     Parameters
     ----------
     production : Float1D
-        Current production level (units of goods produced this period).
+        Current period's production level (units of goods produced this period).
+        Set by ``firms_run_production`` event, zeroed at start of planning phase.
+    production_prev : Float1D
+        Previous period's production level, used as planning signal.
+        Set by ``firms_run_production`` alongside production, retained across
+        the planning phase for use in ``firms_decide_desired_production``.
     inventory : Float1D
         Unsold goods from previous periods.
     expected_demand : Float1D
@@ -89,6 +94,7 @@ class Producer:
     """
 
     production: Float1D
+    production_prev: Float1D
     inventory: Float1D
     expected_demand: Float1D
     desired_production: Float1D

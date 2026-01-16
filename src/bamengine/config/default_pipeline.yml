@@ -155,7 +155,7 @@ events:
   # Detect insolvent firms/banks, mark for exit (workers fired, loans purged).
 
   - firms_update_net_worth             # Add retained profits to firm net worth
-  - mark_bankrupt_firms                # Detect/remove bankrupt firms (net worth < 0)
+  - mark_bankrupt_firms                # Detect/remove bankrupt firms (net worth < 0, production = 0)
   - mark_bankrupt_banks                # Detect/remove bankrupt banks (equity < 0)
 
   # ────────────────────────────────────────────────────────────────────────────

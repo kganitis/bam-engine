@@ -32,6 +32,10 @@ def firms_decide_desired_production(
     bamengine.events.planning.FirmsDecideDesiredProduction : Full documentation
     """
     log.info("--- Firms Deciding Desired Production ---")
+
+    # Zero out current production at start of planning phase.
+    # production_prev retains previous period's value for use as planning signal.
+    prod.production[:] = 0.0
     log.info(
         f"  Inputs: Avg Market Price (p_avg)={p_avg:.3f}  |  "
         f"Max Production Shock (h_ρ)={h_rho:.3f}"
@@ -73,15 +77,15 @@ def firms_decide_desired_production(
         log.debug(f"  Inventories (S):\n{np.array2string(prod.inventory, precision=2)}")
         log.debug(
             f"  Previous Production (Y_{{t-1}}):\n"
-            f"{np.array2string(prod.production, precision=2)}"
+            f"{np.array2string(prod.production_prev, precision=2)}"
         )
         if n_up > 0:
             log.debug(f"  Firms increasing production: {np.where(up_mask)[0].tolist()}")
         if n_dn > 0:
             log.debug(f"  Firms decreasing production: {np.where(dn_mask)[0].tolist()}")
 
-    # core rule
-    prod.expected_demand[:] = prod.production
+    # core rule - use production_prev as baseline for expected demand
+    prod.expected_demand[:] = prod.production_prev
     prod.expected_demand[up_mask] *= 1.0 + shock[up_mask]
     prod.expected_demand[dn_mask] *= 1.0 - shock[dn_mask]
     if log.isEnabledFor(logging.DEBUG):
@@ -119,8 +123,8 @@ def firms_calc_breakeven_price(
     log.info("--- Firms Calculating Breakeven Price ---")
     log.info(f"  Inputs: Breakeven Cap Factor={cap_factor if cap_factor else 'None'}")
     log.info(
-        "  Calculation uses `prod.production` (from t-1) as the denominator. "
-        "Ensure this is the intended production base."
+        "  Calculation uses projected production (labor_productivity × current_labor) "
+        "as the denominator."
     )
 
     # Breakeven calculation
@@ -256,7 +260,7 @@ def firms_adjust_price(
         np.multiply(prod.price, 1.0 - shock, out=prod.price, where=mask_dn)
 
         if price_cut_allow_increase:
-            # Allow price to increase due to breakeven floor (current behavior)
+            # Allow price to increase due to breakeven floor
             np.maximum(prod.price, prod.breakeven_price, out=prod.price, where=mask_dn)
         else:
             # Don't allow price increase when trying to cut - cap at old price
@@ -277,7 +281,7 @@ def firms_adjust_price(
             f"{num_floored} prices set by breakeven floor."
         )
         if num_increased_due_to_floor > 0:
-            log.warning(
+            log.info(
                 f"  !!! {num_increased_due_to_floor} firms in the 'cut price' "
                 f"group ended up INCREASING their price because their "
                 f"breakeven floor was higher than their old price."
@@ -375,14 +379,13 @@ def firms_fire_excess_workers(
     """
     log.info("--- Firms Firing Excess Workers ---")
 
-    # Find firms with excess labor
     excess = emp.current_labor - emp.desired_labor
     firing_ids = np.where(excess > 0)[0]
     total_excess = excess[excess > 0].sum() if excess.size > 0 else 0
 
     log.info(
-        f"  {firing_ids.size} firms have excess labor totaling {total_excess:,} "
-        f"workers and need to fire using '{method}' method."
+        f"  {firing_ids.size} firms have excess labor totaling {total_excess:,} workers "
+        f"using '{method}' method."
     )
 
     total_workers_fired_this_step = 0

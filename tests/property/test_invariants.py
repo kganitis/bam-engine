@@ -151,14 +151,16 @@ class TestProductionInvariants:
         """Production changes should be bounded by shock parameter."""
         sim = Simulation.init(n_firms=n_firms, h_rho=h_rho, seed=seed)
 
-        initial_production = sim.prod.production.copy()
+        # production_prev holds the planning signal used to compute desired_production
+        # (production starts at 0 and is only set during firms_run_production)
+        initial_production_signal = sim.prod.production_prev.copy()
 
         sim.step()
 
         # Production changes should not exceed shock bounds
         # (relaxed constraint due to other factors affecting production)
         production_ratio = sim.prod.desired_production / np.maximum(
-            initial_production, 1e-10
+            initial_production_signal, 1e-10
         )
 
         # Allow for some flexibility due to market conditions
