@@ -319,16 +319,21 @@ class WorkersDecideFirmsToApply:
     """
     Unemployed workers choose up to max_M firms to apply to, sorted by wage.
 
-    Unemployed workers build an application queue by sampling firms with
-    vacancies and sorting them by wage offer (descending). Workers apply the
-    loyalty rule: if their contract expired (not fired), they prioritize their
-    previous employer.
+    Unemployed workers build an application queue by sampling firms and sorting
+    them by wage offer (descending). Workers apply the loyalty rule: if their
+    contract expired (not fired), they prioritize their previous employer.
+
+    The ``job_search_method`` config parameter controls which firms are sampled:
+
+    - ``"vacancies_only"`` (default): Sample only from firms with open vacancies.
+    - ``"all_firms"``: Sample from ALL firms. Applications to firms without
+      vacancies are "wasted" (the firm simply doesn't hire).
 
     Algorithm
     ---------
     For each unemployed worker j:
 
-    1. Sample min(max_M, n_hiring_firms) firms randomly from those with vacancies
+    1. Sample min(max_M, n_firms) firms randomly from eligible pool
     2. Sort sampled firms by wage offer (descending)
     3. Apply loyalty rule:
        - If worker's contract expired (not fired) AND previous employer is hiring:
@@ -338,7 +343,10 @@ class WorkersDecideFirmsToApply:
 
     Mathematical Notation
     ---------------------
-    Let :math:`H = \\{i : V_i > 0\\}` be the set of hiring firms (with vacancies).
+    Let :math:`H` be the set of eligible firms:
+
+    - If ``job_search_method="vacancies_only"``: :math:`H = \\{i : V_i > 0\\}` (firms with vacancies)
+    - If ``job_search_method="all_firms"``: :math:`H = \\{1, ..., N\\}` (all firms)
 
     For unemployed worker j:
 
@@ -420,6 +428,7 @@ class WorkersDecideFirmsToApply:
             wrk=sim.wrk,
             emp=sim.emp,
             max_M=sim.config.max_M,
+            job_search_method=sim.config.job_search_method,
             rng=sim.rng,
         )
 
@@ -499,7 +508,9 @@ class WorkersSendOneRound:
     def execute(self, sim: Simulation) -> None:
         from bamengine.events._internal.labor_market import workers_send_one_round
 
-        workers_send_one_round(sim.wrk, sim.emp, rng=sim.rng)
+        workers_send_one_round(
+            sim.wrk, sim.emp, rng=sim.rng, matching_method=sim.config.matching_method
+        )
 
 
 @event
@@ -613,6 +624,7 @@ class FirmsHireWorkers:
             emp=sim.emp,
             theta=sim.config.theta,
             contract_poisson_mean=sim.config.contract_poisson_mean,
+            matching_method=sim.config.matching_method,
             rng=sim.rng,
         )
 

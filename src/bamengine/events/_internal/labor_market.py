@@ -175,6 +175,7 @@ def workers_decide_firms_to_apply(
     emp: Employer,
     *,
     max_M: int,
+    job_search_method: str = "vacancies_only",
     rng: Rng = make_rng(),
 ) -> None:
     """
@@ -185,7 +186,10 @@ def workers_decide_firms_to_apply(
     bamengine.events.labor_market.WorkersDecideFirmsToApply : Full documentation
     """
     log.info("--- Workers Deciding Firms to Apply ---")
-    hiring = np.where(emp.n_vacancies > 0)[0]
+    if job_search_method == "vacancies_only":
+        hiring = np.where(emp.n_vacancies > 0)[0]
+    else:  # "all_firms"
+        hiring = np.arange(emp.n_vacancies.size)
     unemp = np.where(wrk.employed == 0)[0]
 
     log.info(
@@ -311,7 +315,13 @@ def workers_decide_firms_to_apply(
     log.info("--- Workers Deciding Firms to Apply complete ---")
 
 
-def workers_send_one_round(wrk: Worker, emp: Employer, rng: Rng = make_rng()) -> None:
+def workers_send_one_round(
+    wrk: Worker,
+    emp: Employer,
+    rng: Rng = make_rng(),
+    *,
+    matching_method: str = "sequential",
+) -> None:
     """
     Process one round of job applications from workers to firms.
 
@@ -319,7 +329,20 @@ def workers_send_one_round(wrk: Worker, emp: Employer, rng: Rng = make_rng()) ->
     --------
     bamengine.events.labor_market.WorkersSendOneRound : Full documentation
     """
-    log.info("--- Workers Sending One Round of Applications ---")
+    if matching_method == "simultaneous":
+        _workers_send_one_round_simultaneous(wrk, emp, rng)
+    else:
+        _workers_send_one_round_sequential(wrk, emp, rng)
+
+
+def _workers_send_one_round_sequential(wrk: Worker, emp: Employer, rng: Rng) -> None:
+    """
+    Sequential matching: workers shuffled, apply one at a time.
+
+    This is the traditional efficient matching where workers are processed
+    in random order and each application is handled immediately.
+    """
+    log.info("--- Workers Sending One Round of Applications (Sequential) ---")
     stride = wrk.job_apps_targets.shape[1]
     unemp_ids = np.where(wrk.employed == 0)[0]
     active_applicants_mask = wrk.job_apps_head[unemp_ids] >= 0
@@ -430,6 +453,159 @@ def workers_send_one_round(wrk: Worker, emp: Employer, rng: Rng = make_rng()) ->
     log.info("--- Application Sending Round complete ---")
 
 
+def _workers_send_one_round_simultaneous(wrk: Worker, emp: Employer, rng: Rng) -> None:
+    """
+    Simultaneous matching: all workers apply at once, creating crowding.
+
+    This matching method creates coordination failure by having all workers
+    simultaneously choose their best remaining firm. Multiple workers "crowd"
+    at popular (high-wage) firms, and firms randomly select from applicants.
+    This creates natural unemployment even when vacancies exceed jobseekers.
+
+    Algorithm
+    ---------
+    1. ALL unemployed workers simultaneously pick their current best target
+    2. Workers "crowd" at popular firms (coordination failure)
+    3. Each firm's queue receives all simultaneous applicants
+    4. Firms will later hire a random subset up to vacancy limit
+    5. Unhired workers have their target marked as visited for next round
+    """
+    log.info("--- Workers Sending One Round of Applications (Simultaneous) ---")
+    stride = wrk.job_apps_targets.shape[1]
+    unemp_ids = np.where(wrk.employed == 0)[0]
+    active_applicants_mask = wrk.job_apps_head[unemp_ids] >= 0
+    unemp_ids_applying = unemp_ids[active_applicants_mask]
+
+    if unemp_ids_applying.size == 0:
+        log.info("  No workers with pending applications found. Skipping round.")
+        log.info("--- Application Sending Round complete ---")
+        return
+
+    log.info(
+        f"  Processing {unemp_ids_applying.size} workers simultaneously "
+        f"(Stride={stride})."
+    )
+
+    # Counters for logging
+    apps_sent_successfully = 0
+    apps_dropped_no_vacancy = 0
+    workers_exhausted_list = 0
+
+    # Phase 1: ALL workers simultaneously pick their best remaining target
+    # Build a mapping of firm -> list of applicants
+    firm_applicants: dict[int, list[int]] = {}
+
+    for j in unemp_ids_applying:
+        head = wrk.job_apps_head[j]
+        if head < 0:
+            continue
+
+        row_from_head, col = divmod(head, stride)
+
+        # Check if worker exhausted their list
+        if head >= (j + 1) * stride:
+            if log.isEnabledFor(logging.DEBUG):
+                log.debug(
+                    f"    Worker {j} exhausted all {stride} application slots. "
+                    f"Setting head to -1."
+                )
+            wrk.job_apps_head[j] = -1
+            workers_exhausted_list += 1
+            continue
+
+        firm_id = wrk.job_apps_targets[row_from_head, col]
+        if firm_id < 0:
+            if log.isEnabledFor(logging.DEBUG):
+                log.debug(
+                    f"    Worker {j} encountered sentinel (-1) at col {col}. "
+                    f"End of list. Setting head to -1."
+                )
+            wrk.job_apps_head[j] = -1
+            workers_exhausted_list += 1
+            continue
+
+        # Check for vacancy at target firm
+        if emp.n_vacancies[firm_id] <= 0:
+            if log.isEnabledFor(logging.DEBUG):
+                log.debug(
+                    f"  Firm {firm_id} has no vacancies. "
+                    f"Worker {j} application dropped, advances to next target."
+                )
+            apps_dropped_no_vacancy += 1
+            # Advance to next target for next round
+            wrk.job_apps_head[j] = head + 1
+            wrk.job_apps_targets[row_from_head, col] = -1
+            continue
+
+        # Worker applies to this firm (simultaneously with all other workers)
+        if firm_id not in firm_applicants:
+            firm_applicants[firm_id] = []
+        firm_applicants[firm_id].append(j)
+
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug(f"    Worker {j} targeting firm {firm_id} (app #{col + 1}).")
+
+    # Phase 2: Queue all simultaneous applications at each firm
+    for firm_id, applicants in firm_applicants.items():
+        n_applicants = len(applicants)
+
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug(
+                f"  Firm {firm_id}: {n_applicants} workers crowding "
+                f"(vacancies: {emp.n_vacancies[firm_id]})"
+            )
+
+        # Add all applicants to firm's queue (up to queue capacity)
+        for worker_id in applicants:
+            ptr = emp.recv_job_apps_head[firm_id] + 1
+            if ptr >= emp.recv_job_apps.shape[1]:
+                if log.isEnabledFor(logging.DEBUG):
+                    log.debug(
+                        f"    Firm {firm_id} queue full. "
+                        f"Worker {worker_id} application dropped."
+                    )
+                continue
+
+            emp.recv_job_apps_head[firm_id] = ptr
+            emp.recv_job_apps[firm_id, ptr] = worker_id
+            apps_sent_successfully += 1
+
+            if log.isEnabledFor(logging.DEBUG):
+                log.debug(
+                    f"    Worker {worker_id} application queued "
+                    f"at firm {firm_id} slot {ptr}."
+                )
+
+        # Advance head pointer for ALL applicants (they all "visited" this firm)
+        for worker_id in applicants:
+            head = wrk.job_apps_head[worker_id]
+            row_from_head, col = divmod(head, stride)
+            wrk.job_apps_head[worker_id] = head + 1
+            wrk.job_apps_targets[row_from_head, col] = -1
+
+    # Log crowding statistics
+    if firm_applicants:
+        crowding_counts = [len(apps) for apps in firm_applicants.values()]
+        max_crowding = max(crowding_counts)
+        avg_crowding = sum(crowding_counts) / len(crowding_counts)
+        firms_with_crowding = sum(1 for c in crowding_counts if c > 1)
+
+        log.info(
+            f"  Crowding stats: {len(firm_applicants)} firms received applications, "
+            f"avg {avg_crowding:.1f} workers/firm, max {max_crowding}, "
+            f"{firms_with_crowding} firms with >1 applicant"
+        )
+
+    # Summary log
+    log.info(
+        f"  Round Summary: "
+        f"{apps_sent_successfully} applications queued simultaneously, "
+        f"{apps_dropped_no_vacancy} dropped (no vacancy), "
+        f"{workers_exhausted_list} workers exhausted their list."
+    )
+    log.info("--- Application Sending Round complete ---")
+
+
 def _check_labor_consistency(tag: str, i: int, wrk: Worker, emp: Employer) -> bool:
     """
     Compare firm‐side bookkeeping (`emp.current_labor[i]`)
@@ -527,6 +703,7 @@ def firms_hire_workers(
     *,
     theta: int,
     contract_poisson_mean: int = 10,
+    matching_method: str = "sequential",
     rng: Rng = make_rng(),
 ) -> None:
     """
@@ -536,7 +713,7 @@ def firms_hire_workers(
     --------
     bamengine.events.labor_market.FirmsHireWorkers : Full documentation
     """
-    log.info("--- Firms Hiring Workers ---")
+    log.info(f"--- Firms Hiring Workers ({matching_method}) ---")
     hiring_ids = np.where(emp.n_vacancies > 0)[0]
     total_vacancies = emp.n_vacancies.sum()
     log.info(
@@ -545,6 +722,7 @@ def firms_hire_workers(
     )
 
     total_hires_this_round = 0
+    total_rejected_this_round = 0
 
     for i in hiring_ids:
         if log.isEnabledFor(logging.DEBUG):
@@ -581,14 +759,32 @@ def firms_hire_workers(
             log.debug(f"    Firm {i} has {queue.size} valid potential hires: {queue}")
 
         num_to_hire = min(queue.size, emp.n_vacancies[i])
+        num_rejected = queue.size - num_to_hire
+
         if num_to_hire < queue.size:
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(
                     f"    Firm {i} capping hires from {queue.size} "
-                    f"to {num_to_hire} due to vacancy limit."
+                    f"to {num_to_hire} due to vacancy limit "
+                    f"({num_rejected} rejected)."
                 )
+            total_rejected_this_round += num_rejected
 
-        final_hires = queue[:num_to_hire]
+        # Selection method depends on matching_method
+        if matching_method == "simultaneous":
+            # Random selection: shuffles queue and takes first num_to_hire
+            # This creates coordination failure - workers who "crowded" at
+            # the firm may be randomly rejected even if they arrived "first"
+            rng.shuffle(queue)
+            final_hires = queue[:num_to_hire]
+            if log.isEnabledFor(logging.DEBUG) and num_rejected > 0:
+                log.debug(
+                    f"    Firm {i} randomly selected {num_to_hire} from "
+                    f"{queue.size} applicants (simultaneous mode)"
+                )
+        else:
+            # FIFO selection: takes first num_to_hire from queue order
+            final_hires = queue[:num_to_hire]
 
         # extra validation, should never trigger
         if final_hires.size == 0:  # pragma: no cover
@@ -632,7 +828,14 @@ def firms_hire_workers(
 
         _check_labor_consistency("POST-hire", i, wrk, emp)
 
-    log.info(f"  Total hires made this step across all firms: {total_hires_this_round}")
+    log.info(
+        f"  Total hires made this step across all firms: {total_hires_this_round}"
+        + (
+            f", {total_rejected_this_round} rejected due to crowding"
+            if total_rejected_this_round > 0
+            else ""
+        )
+    )
     if log.isEnabledFor(logging.DEBUG):
         true_labor_counts = _safe_bincount_employed(wrk, emp.current_labor.size)
         mismatched_firms = np.flatnonzero(emp.current_labor != true_labor_counts)

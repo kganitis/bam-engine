@@ -73,6 +73,16 @@ class Config:
     firing_method : str, optional
         How firms select workers to fire: "random" or "expensive"
         (highest wage first). Default: "expensive".
+    matching_method : str, optional
+        How workers and firms are matched in labor market:
+        "sequential" = workers shuffled, apply one at a time (efficient)
+        "simultaneous" = all workers apply at once, creating crowding at
+        high-wage firms (creates natural unemployment). Default: "sequential".
+    job_search_method : str, optional
+        How unemployed workers sample firms for job applications:
+        "vacancies_only" = sample only from firms with open vacancies (default)
+        "all_firms" = sample from ALL firms (applications to non-hiring firms
+        are wasted). Default: "vacancies_only".
     price_cut_allow_increase : bool, optional
         Whether to allow price increase when trying to cut due to
         breakeven floor. Default: True.
@@ -170,6 +180,8 @@ class Config:
         "by_leverage"  # "by_net_worth", "by_leverage", "by_appearance"
     )
     firing_method: str = "expensive"  # "random" or "expensive"
+    matching_method: str = "sequential"  # "sequential" or "simultaneous"
+    job_search_method: str = "vacancies_only"  # "vacancies_only" or "all_firms"
     price_cut_allow_increase: bool = True  # Allow price increase when cutting
     fragility_cap_method: str = "credit_demand"  # "credit_demand" or "none"
 
