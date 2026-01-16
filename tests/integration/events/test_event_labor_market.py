@@ -122,3 +122,61 @@ def test_labor_market_post_state_consistency(tiny_sched: Simulation) -> None:
     # an empty queue; firms with zero vacancies may retain stale pointers
     mask_vac = sch.emp.n_vacancies > 0
     assert np.all(sch.emp.recv_job_apps_head[mask_vac] == -1)
+
+
+def test_job_search_method_all_firms() -> None:
+    """
+    Integration test for job_search_method='all_firms'.
+    Workers should be able to sample from firms without vacancies.
+    """
+    # Create simulation with all_firms job search method
+    sim = Simulation.init(
+        n_firms=10,
+        n_households=50,
+        n_banks=2,
+        seed=42,
+        job_search_method="all_firms",
+    )
+
+    # Run one period - the simulation should work correctly
+    sim.step()
+
+    # Basic invariants should hold
+    assert (sim.emp.n_vacancies >= 0).all()
+    assert np.all(sim.wrk.job_apps_head[sim.wrk.employed == 1] == -1)
+
+    # Worker ↔ firm labor counts are consistent
+    counts = np.bincount(
+        sim.wrk.employer[sim.wrk.employed == 1],
+        minlength=sim.emp.current_labor.size,
+    )
+    np.testing.assert_array_equal(counts, sim.emp.current_labor)
+
+
+def test_job_search_method_vacancies_only() -> None:
+    """
+    Integration test for job_search_method='vacancies_only' (default).
+    Workers should only sample from firms with vacancies.
+    """
+    # Create simulation with default (vacancies_only) job search method
+    sim = Simulation.init(
+        n_firms=10,
+        n_households=50,
+        n_banks=2,
+        seed=42,
+        job_search_method="vacancies_only",
+    )
+
+    # Run one period - the simulation should work correctly
+    sim.step()
+
+    # Basic invariants should hold
+    assert (sim.emp.n_vacancies >= 0).all()
+    assert np.all(sim.wrk.job_apps_head[sim.wrk.employed == 1] == -1)
+
+    # Worker ↔ firm labor counts are consistent
+    counts = np.bincount(
+        sim.wrk.employer[sim.wrk.employed == 1],
+        minlength=sim.emp.current_labor.size,
+    )
+    np.testing.assert_array_equal(counts, sim.emp.current_labor)

@@ -83,7 +83,7 @@ events:
   - firms_fire_excess_workers          # Fire workers when desired_labor < current_labor
 
   # ────────────────────────────────────────────────────────────────────────────
-  # PHASE 2: LABOR MARKET (3 + 2×max_M + 1 = 12 events with default max_M=4)
+  # PHASE 2: LABOR MARKET (4 + 2×max_M + 1 = 13 events with default max_M=4)
   # ────────────────────────────────────────────────────────────────────────────
   # Minimum wage adjustment, firms set wages, unemployed workers search for jobs,
   # sequential matching rounds (max_M), then wage bill calculation.

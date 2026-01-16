@@ -353,6 +353,63 @@ def test_prepare_applications_no_hiring_but_unemployed() -> None:
     assert np.all(wrk.job_apps_targets[unemp] == -1)
 
 
+def test_prepare_applications_job_search_method_vacancies_only() -> None:
+    """
+    With job_search_method='vacancies_only', workers should only sample
+    from firms with vacancies (the default behavior).
+    """
+    emp = mock_employer(
+        n=4,
+        queue_m=2,
+        wage_offer=np.array([1.0, 1.5, 1.2, 2.0]),
+        n_vacancies=np.array([2, 0, 1, 0]),  # only firms 0 and 2 have vacancies
+    )
+    wrk = mock_worker(
+        n=3,
+        queue_m=2,
+        employer=np.array([-1, -1, -1], dtype=np.intp),  # all unemployed
+    )
+    workers_decide_firms_to_apply(
+        wrk, emp, max_M=2, job_search_method="vacancies_only", rng=make_rng(0)
+    )
+    # All targets should only be firms 0 or 2 (those with vacancies)
+    unemp = np.where(wrk.employed == 0)[0]
+    targets = wrk.job_apps_targets[unemp]
+    valid_targets = targets[targets >= 0]
+    assert np.all(np.isin(valid_targets, [0, 2]))
+
+
+def test_prepare_applications_job_search_method_all_firms() -> None:
+    """
+    With job_search_method='all_firms', workers can sample from ANY firm,
+    including those without vacancies.
+    """
+    emp = mock_employer(
+        n=4,
+        queue_m=4,
+        wage_offer=np.array([1.0, 1.5, 1.2, 2.0]),
+        n_vacancies=np.array([0, 0, 0, 0]),  # NO firm has vacancies
+    )
+    wrk = mock_worker(
+        n=3,
+        queue_m=4,
+        employer=np.array([-1, -1, -1], dtype=np.intp),  # all unemployed
+    )
+    # With vacancies_only, this would result in empty queues
+    # With all_firms, workers should still have targets
+    workers_decide_firms_to_apply(
+        wrk, emp, max_M=4, job_search_method="all_firms", rng=make_rng(0)
+    )
+    unemp = np.where(wrk.employed == 0)[0]
+    # Workers should have valid targets even though no firm has vacancies
+    assert np.any(wrk.job_apps_head[unemp] >= 0)
+    targets = wrk.job_apps_targets[unemp]
+    valid_targets = targets[targets >= 0]
+    assert valid_targets.size > 0
+    # Targets can be any firm (0, 1, 2, or 3)
+    assert np.all((valid_targets >= 0) & (valid_targets < 4))
+
+
 def test_workers_send_one_round() -> None:
     """
     One unemployed worker should place a single application in the only
