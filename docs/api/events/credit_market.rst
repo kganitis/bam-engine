@@ -16,7 +16,7 @@ Event Classes
    BanksDecideCreditSupply
    BanksDecideInterestRate
    FirmsDecideCreditDemand
-   FirmsCalcCreditMetrics
+   FirmsCalcFinancialFragility
    FirmsPrepareLoanApplications
    FirmsSendOneLoanApp
    BanksProvideLoans

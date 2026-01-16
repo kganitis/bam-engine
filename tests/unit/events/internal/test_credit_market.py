@@ -16,7 +16,7 @@ from bamengine.events._internal.credit_market import (
     banks_decide_credit_supply,
     banks_decide_interest_rate,
     banks_provide_loans,
-    firms_calc_credit_metrics,
+    firms_calc_financial_fragility,
     firms_decide_credit_demand,
     firms_fire_workers,
     firms_prepare_loan_applications,
@@ -133,7 +133,7 @@ def test_calc_credit_metrics_fragility() -> None:
         credit_demand=np.array([5.0, 8.0, 0.0]),
         net_worth=np.array([10.0, 0.0, 5.0]),  # second firm zero ⇒ CAP_FRAG
     )
-    firms_calc_credit_metrics(bor)
+    firms_calc_financial_fragility(bor)
     # fragility = min(B/A, B): [5/10=0.5, capped to B=8, 0/5=0]
     expected = np.array([0.5, 8.0, 0.0])
     np.testing.assert_allclose(bor.projected_fragility, expected, rtol=1e-12)
@@ -153,7 +153,7 @@ def test_calc_credit_metrics_allocates_buffer() -> None:
     # give it the wrong shape so the allocation branch triggers
     bor.projected_fragility = np.empty(0, dtype=np.float64)
 
-    firms_calc_credit_metrics(bor)
+    firms_calc_financial_fragility(bor)
 
     assert bor.projected_fragility is not None
     # fragility = min(B/A, B): [4/8=0.5, 6/2=3.0]
@@ -239,7 +239,7 @@ def _run_basic_loan_cycle(
     """helper used by many tests"""
     firms_decide_credit_demand(bor)
     orig_demand = np.asarray(bor.credit_demand.copy())  # snapshot for later assertions
-    firms_calc_credit_metrics(bor)
+    firms_calc_financial_fragility(bor)
     firms_prepare_loan_applications(bor, lend, max_H=H, rng=rng)
     for _ in range(H):
         firms_send_one_loan_app(bor, lend)
@@ -685,7 +685,7 @@ def test_calc_credit_metrics_general_cap_for_tiny_positive_net_worth() -> None:
         credit_demand=np.array([1.0]),  # B
         net_worth=np.array([1e-12]),  # tiny positive A
     )
-    firms_calc_credit_metrics(bor)
+    firms_calc_financial_fragility(bor)
     assert bor.projected_fragility is not None
     # fragility = min(B/A, B) capped to B=1
     np.testing.assert_allclose(bor.projected_fragility, np.array([1.0]), atol=1e-12)

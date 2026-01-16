@@ -13,7 +13,7 @@ The credit market events execute in this order:
 1. BanksDecideCreditSupply - Banks set total lendable funds based on equity
 2. BanksDecideInterestRate - Banks set interest rates with random markup
 3. FirmsDecideCreditDemand - Firms calculate funding shortfall
-4. FirmsCalcCreditMetrics - Firms calculate leverage and fragility
+4. FirmsCalcFinancialFragility - Firms calculate leverage and fragility
 5. FirmsPrepareLoanApplications - Firms select banks to apply to (sorted by rate)
 6. FirmsSendOneLoanApp ↔ BanksProvideLoans - Interleaved application/provision rounds (max_H times)
 7. FirmsFireWorkers - Firms with insufficient funds lay off workers
@@ -300,7 +300,7 @@ class FirmsDecideCreditDemand:
     See Also
     --------
     FirmsCalcWageBill : Calculates wage_bill used in credit demand
-    FirmsCalcCreditMetrics : Uses credit_demand to calculate leverage
+    FirmsCalcFinancialFragility : Uses credit_demand to calculate leverage
     FirmsPrepareLoanApplications : Firms with credit_demand > 0 apply for loans
     bamengine.events._internal.credit_market.firms_decide_credit_demand : Implementation
     """
@@ -312,9 +312,9 @@ class FirmsDecideCreditDemand:
 
 
 @event
-class FirmsCalcCreditMetrics:
+class FirmsCalcFinancialFragility:
     """
-    Firms calculate financial fragility metric for credit evaluation.
+    Firms calculate projected financial fragility metric for credit evaluation.
 
     The fragility metric is the leverage ratio (debt-to-equity). Higher fragility
     indicates greater default risk. Banks may use this metric (implicitly via
@@ -347,7 +347,7 @@ class FirmsCalcCreditMetrics:
     >>> # First calculate credit demand
     >>> sim.get_event("firms_decide_credit_demand")().execute(sim)
     >>> # Then calculate metrics
-    >>> event = sim.get_event("firms_calc_credit_metrics")
+    >>> event = sim.get_event("firms_calc_financial_fragility")
     >>> event.execute(sim)
 
     Check fragility distribution:
@@ -392,13 +392,15 @@ class FirmsCalcCreditMetrics:
     FirmsDecideCreditDemand : Calculates credit_demand used in leverage
     BanksProvideLoans : Banks evaluate creditworthiness (by net worth)
     Borrower : Financial state with credit_demand, net_worth
-    bamengine.events._internal.credit_market.firms_calc_credit_metrics : Implementation
+    bamengine.events._internal.credit_market.firms_calc_financial_fragility : Implementation
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.events._internal.credit_market import firms_calc_credit_metrics
+        from bamengine.events._internal.credit_market import (
+            firms_calc_financial_fragility,
+        )
 
-        firms_calc_credit_metrics(
+        firms_calc_financial_fragility(
             sim.bor,
             fragility_cap_method=sim.config.fragility_cap_method,
         )

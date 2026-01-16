@@ -130,17 +130,17 @@ def firms_decide_credit_demand(bor: Borrower) -> None:
     log.info("--- Credit Demand Decision complete ---")
 
 
-def firms_calc_credit_metrics(
+def firms_calc_financial_fragility(
     bor: Borrower,
     *,
     fragility_cap_method: str = "credit_demand",
 ) -> None:
     """
-    Calculate firm financial fragility metrics for loan applications.
+    Calculate firm projected financial fragility metric for loan applications.
 
     See Also
     --------
-    bamengine.events.credit_market.FirmsCalcCreditMetrics : Full documentation
+    bamengine.events.credit_market.FirmsCalcFinancialFragility : Full documentation
     """
     log.info("--- Borrowers Calculating Credit Metrics ---")
     shape = bor.net_worth.shape

@@ -107,7 +107,7 @@ events:
   - banks_decide_credit_supply         # Banks determine lending capacity
   - banks_decide_interest_rate         # Banks set interest rates
   - firms_decide_credit_demand         # Firms calculate financing needs
-  - firms_calc_credit_metrics          # Calculate firm financial fragility metrics
+  - firms_calc_financial_fragility     # Calculate firm financial fragility metrics
   - firms_prepare_loan_applications    # Firms prepare ranked bank applications
   - firms_send_one_loan_app <-> banks_provide_loans x {max_H}
                                        # Interleaved loan application/provision rounds
