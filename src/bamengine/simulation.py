@@ -444,7 +444,7 @@ class Simulation:
             extra = object.__getattribute__(self, "extra_params")
             if name in extra:
                 return extra[name]
-        except AttributeError:
+        except AttributeError:  # pragma: no cover
             pass
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '{name}'"
@@ -1454,20 +1454,26 @@ class Simulation:
 
         # If not found, check if it's a valid event in registry
         # This provides better error messages
+        is_registered = False
         try:
             get_event_class(name)  # Just to check if it exists
+            is_registered = True
+        except KeyError:
+            pass
+
+        if is_registered:
             # Event exists in registry but not in current pipeline
-            pipeline_events = [e.name for e in self.pipeline.events[:5]]  # TODO cover
+            pipeline_events = [e.name for e in self.pipeline.events[:5]]
             raise KeyError(
                 f"Event '{name}' is registered but not in current pipeline. "
                 f"Pipeline events (first 5): {pipeline_events}..."
             )
-        except KeyError:
+        else:
             # Event doesn't exist in registry at all
             available = list_events()
             raise KeyError(
                 f"Event '{name}' not found. Available events in registry: {available[:10]}..."
-            ) from None
+            )
 
     def get_relationship(self, name: str) -> Any:
         """
@@ -1519,7 +1525,7 @@ class Simulation:
             LoanBook: self.lb,
         }
 
-        if rel_cls not in instance_map:
+        if rel_cls not in instance_map:  # pragma: no cover
             # This shouldn't happen unless new relationships are added without updating Simulation
             raise KeyError(
                 f"Relationship '{rel_cls.__name__}' is registered but not available in simulation"

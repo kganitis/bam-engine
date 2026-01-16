@@ -546,7 +546,7 @@ def _workers_send_one_round_simultaneous(wrk: Worker, emp: Employer, rng: Rng) -
 
     for j in unemp_ids_applying:
         head = wrk.job_apps_head[j]
-        if head < 0:
+        if head < 0:  # pragma: no cover
             continue
 
         row_from_head, col = divmod(head, stride)

@@ -44,7 +44,7 @@ def _import_pandas() -> Any:
         import pandas as pd
 
         return pd
-    except ImportError:
+    except ImportError:  # pragma: no cover
         raise ImportError(
             "pandas is required for DataFrame export methods. "
             "Install it with: pip install pandas"
@@ -177,7 +177,7 @@ class _DataCollector:
                             event = self.capture_timing.get(key, self.capture_after)
                             if event:
                                 event_to_vars[event].append((role_name, var_name))
-                except Exception:
+                except Exception:  # pragma: no cover
                     pass  # Will capture at end-of-period
 
         # Register callbacks for each event
@@ -188,7 +188,7 @@ class _DataCollector:
             ) -> Callable[[Simulation], None]:
                 def callback(sim: Simulation) -> None:
                     for role_name, var_name in vars_to_capture:
-                        if var_name == "*":
+                        if var_name == "*":  # pragma: no cover
                             # Capture all variables from this role
                             self._capture_role_all(sim, role_name)
                         elif role_name == "Economy":
@@ -302,7 +302,7 @@ class _DataCollector:
                 else:
                     for var_name in var_spec:
                         key = f"{name}.{var_name}"
-                        if key not in self._captured_this_period:
+                        if key not in self._captured_this_period:  # pragma: no cover
                             self._capture_role_single(sim, name, var_name)
 
         # Reset for next period

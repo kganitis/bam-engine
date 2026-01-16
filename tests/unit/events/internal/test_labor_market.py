@@ -896,3 +896,195 @@ def test_firms_calc_wage_bill_basic() -> None:
     wrk.wage[:] = np.array([1.0, 1.5, 9.9, 2.0, 3.0])
     firms_calc_wage_bill(emp, wrk)
     np.testing.assert_allclose(emp.wage_bill, np.array([2.5, 0.0, 5.0]))
+
+
+# ============================================================================
+# Labor Consistency Check Coverage
+# ============================================================================
+
+
+def test_labor_consistency_check_with_mismatch(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test _check_labor_consistency logs warning on mismatch."""
+    from bamengine import logging
+    from bamengine.events._internal.labor_market import _check_labor_consistency
+
+    emp = mock_employer(n=2, n_vacancies=np.array([1, 0]))
+    wrk = mock_worker(n=3, employer=np.array([0, 0, -1], dtype=np.intp))
+    # 2 workers at firm 0, but recorded as 1 (mismatch)
+    emp.current_labor[0] = 1
+
+    # Call the check function
+    with caplog.at_level(logging.WARNING, logger="bamengine"):
+        result = _check_labor_consistency("TEST", 0, wrk, emp)
+
+    assert result is False
+    assert "LABOR INCONSISTENCY" in caplog.text
+
+
+def test_labor_consistency_check_when_consistent() -> None:
+    """Test _check_labor_consistency returns True when consistent."""
+    from bamengine.events._internal.labor_market import _check_labor_consistency
+
+    emp = mock_employer(n=2, n_vacancies=np.array([1, 0]))
+    wrk = mock_worker(n=3, employer=np.array([0, 0, -1], dtype=np.intp))
+    emp.current_labor[0] = 2  # Matches actual count (2 workers at firm 0)
+    emp.current_labor[1] = 0  # Matches actual count (0 workers at firm 1)
+
+    result = _check_labor_consistency("TEST", 0, wrk, emp)
+    assert result is True
+
+
+def test_firms_hire_workers_with_debug_logging(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test firms_hire_workers exercises consistency checks with DEBUG logging."""
+    from bamengine import logging
+
+    M = 2
+    emp = mock_employer(
+        n=1,
+        queue_m=M,
+        n_vacancies=np.array([2]),
+        current_labor=np.array([0], dtype=np.int64),
+    )
+    wrk = mock_worker(n=2, queue_m=M)
+
+    # Set up queue with one application
+    emp.recv_job_apps_head[0] = 0
+    emp.recv_job_apps[0, 0] = 0
+
+    # Run with DEBUG logging enabled
+    with caplog.at_level(logging.DEBUG, logger="bamengine"):
+        firms_hire_workers(wrk, emp, theta=8)
+
+    # Verify hiring happened
+    assert wrk.employed[0]
+    assert emp.current_labor[0] == 1
+
+
+# ============================================================================
+# Simultaneous Matching Edge Cases
+# ============================================================================
+
+
+def test_workers_send_one_round_simultaneous_basic() -> None:
+    """Test simultaneous matching basic flow with valid workers."""
+    from bamengine.events._internal.labor_market import (
+        _workers_send_one_round_simultaneous,
+    )
+
+    M = 2
+    emp = mock_employer(
+        n=1,
+        queue_m=M,
+        wage_offer=np.array([1.0]),
+        n_vacancies=np.array([2]),  # Has vacancies
+    )
+    wrk = mock_worker(
+        n=1,
+        queue_m=M,
+        employer=np.array([-1], dtype=np.intp),  # Unemployed
+        job_apps_head=np.array([0]),  # Points to first slot
+        job_apps_targets=np.array([[0, -1]], dtype=np.intp),  # Target firm 0
+    )
+
+    _workers_send_one_round_simultaneous(wrk, emp, rng=make_rng(42))
+
+    # Worker should have applied and head advanced
+    assert wrk.job_apps_head[0] == 1
+    # Firm should have received application
+    assert emp.recv_job_apps_head[0] >= 0
+
+
+def test_workers_send_one_round_simultaneous_no_vacancy() -> None:
+    """Test simultaneous matching drops application when no vacancy."""
+    from bamengine.events._internal.labor_market import (
+        _workers_send_one_round_simultaneous,
+    )
+
+    M = 2
+    emp = mock_employer(
+        n=1,
+        queue_m=M,
+        wage_offer=np.array([1.0]),
+        n_vacancies=np.array([0]),  # NO vacancies
+    )
+    wrk = mock_worker(
+        n=1,
+        queue_m=M,
+        employer=np.array([-1], dtype=np.intp),  # Unemployed
+        job_apps_head=np.array([0]),  # Points to first slot
+        job_apps_targets=np.array([[0, -1]], dtype=np.intp),  # Target firm 0
+    )
+
+    _workers_send_one_round_simultaneous(wrk, emp, rng=make_rng(42))
+
+    # Worker's head should advance (skipped firm with no vacancies)
+    assert wrk.job_apps_head[0] == 1
+    # Firm should NOT have received application
+    assert emp.recv_job_apps_head[0] == -1
+
+
+def test_workers_send_one_round_simultaneous_queue_full() -> None:
+    """Test simultaneous matching handles full firm queue (application dropped)."""
+    from bamengine.events._internal.labor_market import (
+        _workers_send_one_round_simultaneous,
+    )
+
+    # Use larger queue for valid application, but fill it first
+    emp = mock_employer(
+        n=1,
+        queue_m=2,
+        wage_offer=np.array([1.0]),
+        n_vacancies=np.array([5]),  # Has vacancies
+    )
+    # Fill the queue completely
+    emp.recv_job_apps_head[0] = emp.recv_job_apps.shape[1] - 1
+    emp.recv_job_apps[0, :] = np.arange(emp.recv_job_apps.shape[1])
+
+    wrk = mock_worker(
+        n=1,
+        queue_m=2,
+        employer=np.array([-1], dtype=np.intp),  # Unemployed
+        job_apps_head=np.array([0]),
+        job_apps_targets=np.array([[0, -1]], dtype=np.intp),
+    )
+
+    head_before = emp.recv_job_apps_head[0]
+    _workers_send_one_round_simultaneous(wrk, emp, rng=make_rng(42))
+
+    # Queue should still be full (no additional apps added beyond capacity)
+    assert emp.recv_job_apps_head[0] == head_before
+
+
+def test_workers_send_one_round_simultaneous_exhausted_list() -> None:
+    """Test simultaneous matching handles worker exhausting their application list."""
+    from bamengine.events._internal.labor_market import (
+        _workers_send_one_round_simultaneous,
+    )
+
+    M = 2  # stride = 2 slots per worker
+    emp = mock_employer(
+        n=1,
+        queue_m=M,
+        wage_offer=np.array([1.0]),
+        n_vacancies=np.array([5]),
+    )
+    wrk = mock_worker(
+        n=1,
+        queue_m=M,
+        employer=np.array([-1], dtype=np.intp),  # Unemployed
+        # head = 2 means we're at position 2, which is (0+1)*2 = 2
+        # This triggers head >= (j + 1) * stride
+        job_apps_head=np.array([2]),
+        job_apps_targets=np.array([[0, 0]], dtype=np.intp),
+    )
+
+    _workers_send_one_round_simultaneous(wrk, emp, rng=make_rng(42))
+
+    # Worker should be marked as exhausted (head = -1)
+    assert wrk.job_apps_head[0] == -1
+    # No application should have been queued
+    assert emp.recv_job_apps_head[0] == -1

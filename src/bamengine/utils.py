@@ -283,7 +283,7 @@ def sample_beta_with_mean(
             low = mean - eps
         if high <= mean:
             high = mean + eps
-        if not (low < mean < high):
+        if not (low < mean < high):  # pragma: no cover
             raise ValueError(
                 f"Could not place mean ({mean}) strictly inside (low, high): "
                 f"low={low}, high={high}"

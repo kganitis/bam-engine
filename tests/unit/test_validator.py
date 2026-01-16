@@ -520,3 +520,114 @@ events:
             assert len(sim.pipeline) == 3
         finally:
             Path(path).unlink()
+
+
+class TestUncoveredTypeValidation:
+    """Tests for previously uncovered type validation error paths."""
+
+    def test_array_param_rejects_invalid_array_like(self):
+        """Array-like parameters should reject non-convertible values."""
+
+        # Object with __array__ that raises ValueError
+        class NotArrayLike:
+            def __array__(self, *args, **kwargs):
+                raise ValueError("Cannot convert to array")
+
+        # Use a valid vector parameter name (price_init, savings_init, equity_base_init)
+        cfg = {"price_init": NotArrayLike()}
+        with pytest.raises(ValueError, match="must be float or array-like"):
+            ConfigValidator._validate_types(cfg)
+
+    def test_cap_factor_rejects_string(self):
+        """cap_factor should reject string values."""
+        cfg = {"cap_factor": "1.5"}
+        with pytest.raises(ValueError, match="cap_factor.*must be float or None"):
+            ConfigValidator._validate_types(cfg)
+
+    def test_bool_param_rejects_string(self):
+        """Boolean parameters should reject string 'true' values."""
+        cfg = {"price_cut_allow_increase": "true"}
+        with pytest.raises(ValueError, match="must be bool"):
+            ConfigValidator._validate_types(cfg)
+
+    def test_string_enum_param_rejects_int(self):
+        """String enum parameters should reject int values."""
+        cfg = {"loan_priority_method": 123}
+        with pytest.raises(ValueError, match="must be str"):
+            ConfigValidator._validate_types(cfg)
+
+    def test_seed_rejects_string(self):
+        """seed should reject string values."""
+        cfg = {"seed": "42"}
+        with pytest.raises(
+            ValueError, match="seed.*must be int or np.random.Generator"
+        ):
+            ConfigValidator._validate_types(cfg)
+
+
+class TestUncoveredRangeValidation:
+    """Tests for previously uncovered range validation error paths."""
+
+    def test_enum_invalid_value(self):
+        """Invalid enum values should be rejected."""
+        cfg = {"loan_priority_method": "invalid_method"}
+        with pytest.raises(ValueError, match="must be one of"):
+            ConfigValidator._validate_ranges(cfg)
+
+
+class TestUncoveredLoggingValidation:
+    """Tests for previously uncovered logging validation error paths."""
+
+    def test_log_file_rejects_int(self):
+        """log_file should reject int values."""
+        log_config = {"log_file": 123}
+        with pytest.raises(ValueError, match="log_file must be str or None"):
+            ConfigValidator._validate_logging(log_config)
+
+    def test_event_name_rejects_non_string(self):
+        """Event names in events dict should reject non-string keys."""
+        log_config = {"events": {123: "INFO"}}
+        with pytest.raises(ValueError, match="Event name must be str"):
+            ConfigValidator._validate_logging(log_config)
+
+    def test_event_level_rejects_non_string(self):
+        """Event log levels should reject non-string values."""
+        log_config = {"events": {"some_event": 123}}
+        with pytest.raises(ValueError, match="Log level for event.*must be str"):
+            ConfigValidator._validate_logging(log_config)
+
+
+class TestUncoveredPipelineYamlValidation:
+    """Tests for previously uncovered pipeline YAML validation error paths."""
+
+    def test_yaml_not_dict_raises(self):
+        """Pipeline YAML that's not a dict should raise ValueError."""
+        yaml_content = "- just\n- a\n- list\n"
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+            f.write(yaml_content)
+            path = f.name
+
+        try:
+            with pytest.raises(ValueError, match="must be a dictionary"):
+                ConfigValidator.validate_pipeline_yaml(path)
+        finally:
+            Path(path).unlink()
+
+    def test_event_spec_not_string_raises(self):
+        """Event specs that are not strings should raise ValueError."""
+        yaml_content = """
+events:
+  - firms_decide_desired_production
+  - 123
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+            f.write(yaml_content)
+            path = f.name
+
+        try:
+            import bamengine.events  # noqa: F401
+
+            with pytest.raises(ValueError, match="Event spec at index 1 must be str"):
+                ConfigValidator.validate_pipeline_yaml(path)
+        finally:
+            Path(path).unlink()

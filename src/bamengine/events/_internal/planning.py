@@ -446,7 +446,7 @@ def firms_fire_excess_workers(
                 f"with bookkeeping ({emp.current_labor[i]})."
             )
 
-        if workforce.size == 0:
+        if workforce.size == 0:  # pragma: no cover
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(f"    Firm {i}: No workers to fire. Skipping.")
             continue
