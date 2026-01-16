@@ -15,13 +15,13 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
 from numpy.typing import NDArray
 
 if TYPE_CHECKING:  # pragma: no cover
-    import pandas as pd  # type: ignore[import-untyped]
+    from pandas import DataFrame  # type: ignore[import-untyped]
 
     from bamengine.simulation import Simulation
 
@@ -489,7 +489,7 @@ class SimulationResults:
         variables: list[str] | None = None,
         include_economy: bool = True,
         aggregate: str | None = None,
-    ) -> pd.DataFrame:
+    ) -> DataFrame:
         """
         Export results to a pandas DataFrame.
 
@@ -582,15 +582,13 @@ class SimulationResults:
 
         # Combine all DataFrames
         if not dfs:
-            return pd.DataFrame()
+            return cast("DataFrame", pd.DataFrame())
 
         result = pd.concat(dfs, axis=1)
         result.index.name = "period"
-        return result
+        return cast("DataFrame", result)
 
-    def get_role_data(
-        self, role_name: str, aggregate: str | None = None
-    ) -> pd.DataFrame:
+    def get_role_data(self, role_name: str, aggregate: str | None = None) -> DataFrame:
         """
         Get data for a specific role as a DataFrame.
 
@@ -621,7 +619,7 @@ class SimulationResults:
         )
 
     @property
-    def economy_metrics(self) -> pd.DataFrame:
+    def economy_metrics(self) -> DataFrame:
         """
         Get economy-wide metrics as a DataFrame.
 
@@ -642,11 +640,11 @@ class SimulationResults:
         """
         pd = _import_pandas()
         if not self.economy_data:
-            return pd.DataFrame()
+            return cast("DataFrame", pd.DataFrame())
 
         df = pd.DataFrame(self.economy_data)
         df.index.name = "period"
-        return df
+        return cast("DataFrame", df)
 
     @property
     def data(self) -> dict[str, dict[str, NDArray[Any]]]:
@@ -753,7 +751,7 @@ class SimulationResults:
         return data
 
     @property
-    def summary(self) -> pd.DataFrame:
+    def summary(self) -> DataFrame:
         """
         Get summary statistics for key metrics.
 
