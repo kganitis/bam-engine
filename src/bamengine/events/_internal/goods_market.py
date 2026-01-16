@@ -193,13 +193,20 @@ def consumers_decide_firms_to_visit(
 
     log.info("  Processing firm selection for each consumer...")
 
+    # Cache log level checks outside loop for performance
+    trace_enabled = log.isEnabledFor(logging.TRACE)
+    debug_enabled = log.isEnabledFor(logging.DEBUG)
+
+    # Pre-allocate work array to avoid np.append allocations in loop
+    full_set = np.empty(stride, dtype=np.int64)
+    debug_consumer_count = 0  # Track for debug logging
+
     for h in range(con.income_to_spend.size):
         if con.income_to_spend[h] <= EPS:
             continue  # Skip consumers with no spending budget
 
         consumers_processed += 1
         row = con.shop_visits_targets[h]
-        filled = 0
 
         # Check for loyalty firm
         prev = con.largest_prod_prev[h]
@@ -217,51 +224,56 @@ def consumers_decide_firms_to_visit(
                 n_draw = len(sample)
         else:
             sample = np.array([], dtype=np.int64)
+            n_draw = 0
 
-        # Include loyalty firm in the full consideration set
+        # Build full consideration set - avoid np.append by direct assignment
         # Loyalty firm is GUARANTEED to be in the set, but competes on price
         if loyal:
-            full_set = np.append(sample, prev)
+            full_set[:n_draw] = sample
+            full_set[n_draw] = prev
+            set_size = n_draw + 1
             loyalty_applied += 1
-            if log.isEnabledFor(logging.TRACE):
+            if trace_enabled:
                 log.trace(
                     f"    Consumer {h}: Loyalty firm {prev} included in consideration set"
                 )
         else:
-            full_set = sample
+            full_set[:n_draw] = sample
+            set_size = n_draw
 
         # Sort ALL selected firms by price (cheapest first)
         # This matches NetLogo where consumer always picks cheapest from my-stores
-        if full_set.size > 0:
-            order = np.argsort(prod.price[full_set])
-            row[: full_set.size] = full_set[order]
-            filled = full_set.size
+        if set_size > 0:
+            working_set = full_set[:set_size]
+            order = np.argsort(prod.price[working_set])
+            row[:set_size] = working_set[order]
 
-            if log.isEnabledFor(logging.TRACE):
+            if trace_enabled:
                 log.trace(
-                    f"    Consumer {h}: Selected {filled} firms "
-                    f"(sorted by price): {full_set[order]}"
+                    f"    Consumer {h}: Selected {set_size} firms "
+                    f"(sorted by price): {working_set[order]}"
                 )
 
         # Activate shopping queue if any firms selected
-        if filled > 0:
+        if set_size > 0:
             con.shop_visits_head[h] = h * stride
-            total_selections_made += filled
+            total_selections_made += set_size
 
             # Update loyalty to largest producer in consideration set
             # This happens BEFORE shopping, regardless of which firm consumer buys from
-            selected_firms = row[:filled]
+            selected_firms = row[:set_size]
             valid_firms = selected_firms[selected_firms >= 0]
             if valid_firms.size > 0:
                 largest_idx = valid_firms[np.argmax(prod.production[valid_firms])]
                 con.largest_prod_prev[h] = largest_idx
                 loyalty_updates += 1
 
-            if log.isEnabledFor(logging.DEBUG) and h < 10:  # Log first 10 consumers
+            if debug_enabled and debug_consumer_count < 10:
                 log.debug(
-                    f"    Consumer {h}: Selected {filled} firms: {valid_firms}, "
+                    f"    Consumer {h}: Selected {set_size} firms: {valid_firms}, "
                     f"loyalty -> firm {con.largest_prod_prev[h]}"
                 )
+                debug_consumer_count += 1
 
     # Summary statistics
     avg_selections = (
@@ -355,6 +367,9 @@ def consumers_shop_one_round(
     consumers_exhausted_queue = 0
     firms_sold_out = 0
 
+    # Cache log level check outside loop for performance
+    trace_enabled = log.isEnabledFor(logging.TRACE)
+
     for h in buyers_indices:
         ptr = con.shop_visits_head[h]
         if ptr < 0:
@@ -366,7 +381,7 @@ def consumers_shop_one_round(
         if firm_idx < 0:  # Reached end of queue
             con.shop_visits_head[h] = -1
             consumers_exhausted_queue += 1
-            if log.isEnabledFor(logging.TRACE):
+            if trace_enabled:
                 log.trace(f"    Consumer {h} exhausted firm queue at col {col}")
             continue
 
@@ -376,7 +391,7 @@ def consumers_shop_one_round(
             # Note: Loyalty was already set BEFORE shopping in consumers_decide_firms_to_visit
             con.shop_visits_head[h] = ptr + 1
             con.shop_visits_targets[row, col] = -1
-            if log.isEnabledFor(logging.TRACE):
+            if trace_enabled:
                 log.trace(f"    Consumer {h}: Firm {firm_idx} sold out, skipping")
             continue
 
@@ -403,7 +418,7 @@ def consumers_shop_one_round(
         total_quantity_sold += qty
         total_revenue += spent
 
-        if log.isEnabledFor(logging.TRACE):
+        if trace_enabled:
             log.trace(
                 f"    Consumer {h} bought {qty:.2f} from firm {firm_idx} "
                 f"for {spent:.2f} (price={price:.2f})"
@@ -417,7 +432,7 @@ def consumers_shop_one_round(
         if con.income_to_spend[h] <= EPS:  # Effectively zero
             consumers_exhausted_budget += 1
             con.shop_visits_head[h] = -1  # Stop shopping
-            if log.isEnabledFor(logging.TRACE):
+            if trace_enabled:
                 log.trace(f"    Consumer {h} exhausted spending budget")
 
     # Post-round statistics
@@ -517,6 +532,9 @@ def consumers_shop_sequential(
     consumers_exhausted_budget = 0
     consumers_exhausted_queue = 0
 
+    # Cache log level check outside loop for performance
+    trace_enabled = log.isEnabledFor(logging.TRACE)
+
     for h in buyers:
         # Each consumer completes all Z visits before next consumer starts
         for _ in range(max_Z):
@@ -544,7 +562,7 @@ def consumers_shop_sequential(
             # Check if firm has inventory
             if prod.inventory[firm_idx] <= EPS:
                 wasted_visits += 1
-                if log.isEnabledFor(logging.TRACE):
+                if trace_enabled:
                     log.trace(
                         f"    Consumer {h}: Firm {firm_idx} sold out, wasted visit"
                     )
@@ -566,7 +584,7 @@ def consumers_shop_sequential(
             total_quantity_sold += qty
             total_revenue += spent
 
-            if log.isEnabledFor(logging.TRACE):
+            if trace_enabled:
                 log.trace(
                     f"    Consumer {h} bought {qty:.2f} from firm {firm_idx} "
                     f"for {spent:.2f} (price={price:.2f})"

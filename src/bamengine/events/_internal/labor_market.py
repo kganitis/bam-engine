@@ -217,9 +217,10 @@ def workers_decide_firms_to_apply(
     M_eff = min(max_M, hiring.size)
     log.info(f"  Effective applications per worker (M_eff): {M_eff}")
     sample = np.empty((unemp.size, M_eff), dtype=np.int64)
+    trace_enabled = log.isEnabledFor(logging.TRACE)
     for row, j in enumerate(unemp):
         sample[row] = rng.choice(hiring, size=M_eff, replace=False)
-        if log.isEnabledFor(logging.TRACE):
+        if trace_enabled:
             log.trace(
                 f"  Worker {j}: initial sample={sample[row]}, "
                 f"previous: {wrk.employer_prev[j]}, "
@@ -258,7 +259,7 @@ def workers_decide_firms_to_apply(
             application_row = sorted_sample[row]
             num_applications = application_row.shape[0]
 
-            if log.isEnabledFor(logging.TRACE):
+            if trace_enabled:
                 log.trace(
                     f"      Adjusting for loyalty: "
                     f"Worker ID {actual_worker_id} (row {row}), "
@@ -284,7 +285,7 @@ def workers_decide_firms_to_apply(
                         ]
                     application_row[0] = prev_employer_id
 
-            if log.isEnabledFor(logging.TRACE):
+            if trace_enabled:
                 log.trace(f"      Application row AFTER:  {application_row}")
 
         if log.isEnabledFor(logging.DEBUG) and loyal_mask.any():
@@ -365,6 +366,9 @@ def _workers_send_one_round_sequential(wrk: Worker, emp: Employer, rng: Rng) -> 
     apps_dropped_queue_full = 0
     apps_dropped_no_vacancy = 0
 
+    # Cache log level check outside the loop
+    debug_enabled = log.isEnabledFor(logging.DEBUG)
+
     for j in unemp_ids_applying:
         head = wrk.job_apps_head[j]
         if head < 0:  # TODO branch is uncovered by unit tests
@@ -380,7 +384,7 @@ def _workers_send_one_round_sequential(wrk: Worker, emp: Employer, rng: Rng) -> 
 
         if head >= (j + 1) * stride:  # TODO branch is uncovered by unit tests
             # Normal exit condition for a worker who finished their list.
-            if log.isEnabledFor(logging.DEBUG):
+            if debug_enabled:
                 log.debug(
                     f"    Worker {j} exhausted all {stride} application slots. "
                     f"Setting head to -1."
@@ -390,7 +394,7 @@ def _workers_send_one_round_sequential(wrk: Worker, emp: Employer, rng: Rng) -> 
 
         firm_id = wrk.job_apps_targets[row_from_head, col]
         if firm_id < 0:
-            if log.isEnabledFor(logging.DEBUG):
+            if debug_enabled:
                 log.debug(
                     f"    Worker {j} encountered sentinel (-1) at col {col}. "
                     f"End of list. Setting head to -1."
@@ -398,12 +402,12 @@ def _workers_send_one_round_sequential(wrk: Worker, emp: Employer, rng: Rng) -> 
             wrk.job_apps_head[j] = -1
             continue
 
-        if log.isEnabledFor(logging.DEBUG):
+        if debug_enabled:
             log.debug(f"    Worker {j} applying to firm {firm_id} (app #{col + 1}).")
 
         # Check for vacancy before checking queue space
         if emp.n_vacancies[firm_id] <= 0:
-            if log.isEnabledFor(logging.DEBUG):
+            if debug_enabled:
                 log.debug(
                     f"  Firm {firm_id} has no more open vacancies. "
                     f"Worker {j} application dropped."
@@ -416,7 +420,7 @@ def _workers_send_one_round_sequential(wrk: Worker, emp: Employer, rng: Rng) -> 
         # Check firm's application queue available space
         ptr = emp.recv_job_apps_head[firm_id] + 1
         if ptr >= emp.recv_job_apps.shape[1]:
-            if log.isEnabledFor(logging.DEBUG):
+            if debug_enabled:
                 log.debug(
                     f"    Firm {firm_id} application queue full. "
                     f"Worker {j} application dropped."
@@ -430,7 +434,7 @@ def _workers_send_one_round_sequential(wrk: Worker, emp: Employer, rng: Rng) -> 
         emp.recv_job_apps_head[firm_id] = ptr
         emp.recv_job_apps[firm_id, ptr] = j
         apps_sent_successfully += 1
-        if log.isEnabledFor(logging.DEBUG):
+        if debug_enabled:
             log.debug(
                 f"    Worker {j} application queued at firm {firm_id} slot {ptr}."
             )
@@ -445,7 +449,7 @@ def _workers_send_one_round_sequential(wrk: Worker, emp: Employer, rng: Rng) -> 
         f"{apps_sent_successfully} applications successfully queued, "
         f"{total_dropped} dropped."
     )
-    if total_dropped > 0 and log.isEnabledFor(logging.DEBUG):
+    if total_dropped > 0 and debug_enabled:
         log.debug(
             f"    Dropped breakdown -> Queue Full: {apps_dropped_queue_full},"
             f" No Vacancy: {apps_dropped_no_vacancy}"
@@ -491,6 +495,9 @@ def _workers_send_one_round_simultaneous(wrk: Worker, emp: Employer, rng: Rng) -
     apps_dropped_no_vacancy = 0
     workers_exhausted_list = 0
 
+    # Cache log level check outside the loops
+    debug_enabled = log.isEnabledFor(logging.DEBUG)
+
     # Phase 1: ALL workers simultaneously pick their best remaining target
     # Build a mapping of firm -> list of applicants
     firm_applicants: dict[int, list[int]] = {}
@@ -504,7 +511,7 @@ def _workers_send_one_round_simultaneous(wrk: Worker, emp: Employer, rng: Rng) -
 
         # Check if worker exhausted their list
         if head >= (j + 1) * stride:
-            if log.isEnabledFor(logging.DEBUG):
+            if debug_enabled:
                 log.debug(
                     f"    Worker {j} exhausted all {stride} application slots. "
                     f"Setting head to -1."
@@ -515,7 +522,7 @@ def _workers_send_one_round_simultaneous(wrk: Worker, emp: Employer, rng: Rng) -
 
         firm_id = wrk.job_apps_targets[row_from_head, col]
         if firm_id < 0:
-            if log.isEnabledFor(logging.DEBUG):
+            if debug_enabled:
                 log.debug(
                     f"    Worker {j} encountered sentinel (-1) at col {col}. "
                     f"End of list. Setting head to -1."
@@ -526,7 +533,7 @@ def _workers_send_one_round_simultaneous(wrk: Worker, emp: Employer, rng: Rng) -
 
         # Check for vacancy at target firm
         if emp.n_vacancies[firm_id] <= 0:
-            if log.isEnabledFor(logging.DEBUG):
+            if debug_enabled:
                 log.debug(
                     f"  Firm {firm_id} has no vacancies. "
                     f"Worker {j} application dropped, advances to next target."
@@ -542,14 +549,14 @@ def _workers_send_one_round_simultaneous(wrk: Worker, emp: Employer, rng: Rng) -
             firm_applicants[firm_id] = []
         firm_applicants[firm_id].append(j)
 
-        if log.isEnabledFor(logging.DEBUG):
+        if debug_enabled:
             log.debug(f"    Worker {j} targeting firm {firm_id} (app #{col + 1}).")
 
     # Phase 2: Queue all simultaneous applications at each firm
     for firm_id, applicants in firm_applicants.items():
         n_applicants = len(applicants)
 
-        if log.isEnabledFor(logging.DEBUG):
+        if debug_enabled:
             log.debug(
                 f"  Firm {firm_id}: {n_applicants} workers crowding "
                 f"(vacancies: {emp.n_vacancies[firm_id]})"
@@ -559,7 +566,7 @@ def _workers_send_one_round_simultaneous(wrk: Worker, emp: Employer, rng: Rng) -
         for worker_id in applicants:
             ptr = emp.recv_job_apps_head[firm_id] + 1
             if ptr >= emp.recv_job_apps.shape[1]:
-                if log.isEnabledFor(logging.DEBUG):
+                if debug_enabled:
                     log.debug(
                         f"    Firm {firm_id} queue full. "
                         f"Worker {worker_id} application dropped."
@@ -570,7 +577,7 @@ def _workers_send_one_round_simultaneous(wrk: Worker, emp: Employer, rng: Rng) -
             emp.recv_job_apps[firm_id, ptr] = worker_id
             apps_sent_successfully += 1
 
-            if log.isEnabledFor(logging.DEBUG):
+            if debug_enabled:
                 log.debug(
                     f"    Worker {worker_id} application queued "
                     f"at firm {firm_id} slot {ptr}."
@@ -650,13 +657,15 @@ def _safe_bincount_employed(wrk: Worker, n_firms: int) -> Int1D:  # pragma: no c
     ).astype(np.int64)
 
 
-def _clean_queue(slice_: Idx1D, wrk: Worker, firm_idx_for_log: int) -> Idx1D:
+def _clean_queue(
+    slice_: Idx1D, wrk: Worker, firm_idx_for_log: int, *, trace_enabled: bool = False
+) -> Idx1D:
     """
     Return a *unique* array of still-unemployed worker ids
     from the raw queue slice (may contain -1 sentinels and duplicates),
     preserving the original order of first appearance.
     """
-    if log.isEnabledFor(logging.TRACE):
+    if trace_enabled:
         log.trace(
             f"    Firm {firm_idx_for_log}: Cleaning queue. Initial raw slice: {slice_}"
         )
@@ -664,13 +673,13 @@ def _clean_queue(slice_: Idx1D, wrk: Worker, firm_idx_for_log: int) -> Idx1D:
     # Drop -1 sentinels
     cleaned_slice = slice_[slice_ >= 0]
     if cleaned_slice.size == 0:
-        if log.isEnabledFor(logging.TRACE):
+        if trace_enabled:
             log.trace(
                 f"    Firm {firm_idx_for_log}: Queue empty after dropping sentinels."
             )
         return cleaned_slice.astype(np.intp)
 
-    if log.isEnabledFor(logging.TRACE):
+    if trace_enabled:
         log.trace(
             f"    Firm {firm_idx_for_log}: "
             f"Queue after dropping sentinels: {cleaned_slice}"
@@ -679,7 +688,7 @@ def _clean_queue(slice_: Idx1D, wrk: Worker, firm_idx_for_log: int) -> Idx1D:
     # Unique *without* sorting
     first_idx = np.unique(cleaned_slice, return_index=True)[1]
     unique_slice = cleaned_slice[np.sort(first_idx)]
-    if log.isEnabledFor(logging.TRACE):
+    if trace_enabled:
         log.trace(
             f"    Firm {firm_idx_for_log}: "
             f"Queue after unique (order kept): {unique_slice}"
@@ -688,7 +697,7 @@ def _clean_queue(slice_: Idx1D, wrk: Worker, firm_idx_for_log: int) -> Idx1D:
     # Keep only unemployed workers
     unemployed_mask = wrk.employed[unique_slice] == 0
     final_queue = unique_slice[unemployed_mask]
-    if log.isEnabledFor(logging.TRACE):
+    if trace_enabled:
         log.trace(
             f"    Firm {firm_idx_for_log}: "
             f"Final cleaned queue (unique, unemployed): {final_queue}"
@@ -724,29 +733,36 @@ def firms_hire_workers(
     total_hires_this_round = 0
     total_rejected_this_round = 0
 
+    # Cache log level checks outside the loop
+    debug_enabled = log.isEnabledFor(logging.DEBUG)
+    trace_enabled = log.isEnabledFor(logging.TRACE)
+
     for i in hiring_ids:
-        if log.isEnabledFor(logging.DEBUG):
+        if debug_enabled:
             log.debug(f"  Processing firm {i} (vacancies: {emp.n_vacancies[i]})")
 
-        _check_labor_consistency("PRE-hire", i, wrk, emp)
+        if debug_enabled:
+            _check_labor_consistency("PRE-hire", i, wrk, emp)
 
         n_recv = emp.recv_job_apps_head[i] + 1
         if n_recv <= 0:
-            if log.isEnabledFor(logging.DEBUG):
+            if debug_enabled:
                 log.debug(f"    Firm {i} has no applications. Skipping.")
             continue
 
         raw_queue = emp.recv_job_apps[i, :n_recv].copy()
-        if log.isEnabledFor(logging.DEBUG):
+        if debug_enabled:
             log.debug(
                 f"    Firm {i} raw application queue "
                 f"({n_recv} applications): {raw_queue}"
             )
 
-        queue = _clean_queue(raw_queue, wrk, firm_idx_for_log=i)
+        queue = _clean_queue(
+            raw_queue, wrk, firm_idx_for_log=i, trace_enabled=trace_enabled
+        )
 
         if queue.size == 0:
-            if log.isEnabledFor(logging.DEBUG):
+            if debug_enabled:
                 log.debug(
                     f"    Firm {i}: no valid (unique, unemployed) "
                     f"applicants in queue. Flushing."
@@ -755,14 +771,14 @@ def firms_hire_workers(
             emp.recv_job_apps[i, :n_recv] = -1
             continue
 
-        if log.isEnabledFor(logging.DEBUG):
+        if debug_enabled:
             log.debug(f"    Firm {i} has {queue.size} valid potential hires: {queue}")
 
         num_to_hire = min(queue.size, emp.n_vacancies[i])
         num_rejected = queue.size - num_to_hire
 
         if num_to_hire < queue.size:
-            if log.isEnabledFor(logging.DEBUG):
+            if debug_enabled:
                 log.debug(
                     f"    Firm {i} capping hires from {queue.size} "
                     f"to {num_to_hire} due to vacancy limit "
@@ -777,7 +793,7 @@ def firms_hire_workers(
             # the firm may be randomly rejected even if they arrived "first"
             rng.shuffle(queue)
             final_hires = queue[:num_to_hire]
-            if log.isEnabledFor(logging.DEBUG) and num_rejected > 0:
+            if debug_enabled and num_rejected > 0:
                 log.debug(
                     f"    Firm {i} randomly selected {num_to_hire} from "
                     f"{queue.size} applicants (simultaneous mode)"
@@ -799,7 +815,10 @@ def firms_hire_workers(
         total_hires_this_round += final_hires.size
 
         # worker‑side updates
-        log.debug(f"      Updating state for {final_hires.size} newly hired workers.")
+        if debug_enabled:
+            log.debug(
+                f"      Updating state for {final_hires.size} newly hired workers."
+            )
         wrk.employer[final_hires] = i
         wrk.wage[final_hires] = emp.wage_offer[i]
         if contract_poisson_mean > 0:
@@ -814,19 +833,21 @@ def firms_hire_workers(
         # firm‑side updates
         emp.current_labor[i] += final_hires.size
         emp.n_vacancies[i] -= final_hires.size
-        log.debug(
-            f"      Firm {i} state updated: "
-            f"current_labor={emp.current_labor[i]}, "
-            f"n_vacancies={emp.n_vacancies[i]}"
-        )
+        if debug_enabled:
+            log.debug(
+                f"      Firm {i} state updated: "
+                f"current_labor={emp.current_labor[i]}, "
+                f"n_vacancies={emp.n_vacancies[i]}"
+            )
 
         # flush inbound queue for this firm
         emp.recv_job_apps_head[i] = -1
         emp.recv_job_apps[i, :n_recv] = -1
-        if log.isEnabledFor(logging.DEBUG):
+        if debug_enabled:
             log.debug(f"    Firm {i} application queue flushed.")
 
-        _check_labor_consistency("POST-hire", i, wrk, emp)
+        if debug_enabled:
+            _check_labor_consistency("POST-hire", i, wrk, emp)
 
     log.info(
         f"  Total hires made this step across all firms: {total_hires_this_round}"
