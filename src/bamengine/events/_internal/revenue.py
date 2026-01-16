@@ -15,7 +15,7 @@ import numpy as np
 
 from bamengine import logging
 from bamengine.relationships import LoanBook
-from bamengine.roles import Borrower, Lender, Producer
+from bamengine.roles import Borrower, Consumer, Lender, Producer
 from bamengine.utils import EPS
 
 log = logging.getLogger(__name__)
@@ -246,14 +246,20 @@ def firms_validate_debt_commitments(
 
             # Calculate the bad debt amount for this loan.
             # This is the bank's `frac` multiplied by the firm's net worth.
-            bad_amt_per_loan = (
-                frac * bor.net_worth[borrowers_from_lb[bad_rows_in_lb_mask]]
+            # Bad debt is bounded: 0 <= bad_amt <= loan_value
+            # - Floor at 0: negative net_worth means bank loses the full loan
+            # - Cap at loan: bank can't lose more than it lent
+            loan_values = lb.debt[: lb.size][bad_rows_in_lb_mask]
+            bad_amt_per_loan = np.clip(
+                frac * bor.net_worth[borrowers_from_lb[bad_rows_in_lb_mask]],
+                0.0,
+                loan_values,
             )
 
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(
                     "    Calculating bad_amt per loan for write-off "
-                    "(frac * firm_net_worth):"
+                    "(capped at loan value):"
                 )
                 sample_bad_loan_indices = np.where(bad_rows_in_lb_mask)[0][
                     : min(5, int(np.sum(bad_rows_in_lb_mask)))
@@ -313,6 +319,13 @@ def firms_validate_debt_commitments(
                         f"equity from {old_lender_equity_default[i_lender]:.2f} "
                         f"to {lend.equity_base[lender_idx]:.2f}"
                     )
+
+            # Remove defaulted loans from loan book (debt has been written off)
+            removed = lb.drop_rows(bad_rows_in_lb_mask)
+            log.debug(
+                f"  Compacting loan book: removed {removed} defaulted loans. "
+                f"New size={lb.size}"
+            )
         else:
             log.info(
                 "  No outstanding loans in the loan book for the firms identified "
@@ -332,9 +345,9 @@ def firms_validate_debt_commitments(
     log.info("--- Firms Validating Debt Commitments complete ---")
 
 
-def firms_pay_dividends(bor: Borrower, *, delta: float) -> None:
+def firms_pay_dividends(bor: Borrower, cons: Consumer, *, delta: float) -> None:
     """
-    Distribute dividends from positive profits and retain remainder.
+    Distribute dividends from positive profits and credit households.
 
     See Also
     --------
@@ -376,4 +389,28 @@ def firms_pay_dividends(bor: Borrower, *, delta: float) -> None:
         f"  Total dividends paid out: {total_dividends:,.2f}. "
         f"Total earnings retained: {total_retained:,.2f}."
     )
+
+    # distribute dividends to households (equal distribution)
+    # This is a modeling simplification: rather than introducing a separate
+    # "capitalist" role, dividends flow to all households equally. This preserves
+    # stock-flow consistency while maintaining model parsimony.
+    # TODO: Implement a Capitalist role with firm ownership relationships to allow
+    #  dividends to flow to specific households (shareholders) rather than equally.
+    n_households = cons.savings.size
+    dividend_per_household = total_dividends / n_households
+
+    log.info(
+        f"  Distributing dividends to {n_households} households "
+        f"({dividend_per_household:,.4f} per household)"
+    )
+
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug(f"  Household savings before dividends: {cons.savings}")
+
+    # credit household savings with dividends
+    np.add(cons.savings, dividend_per_household, out=cons.savings)
+
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug(f"  Household savings after dividends: {cons.savings}")
+
     log.info("--- Firms Paying Dividends complete ---")

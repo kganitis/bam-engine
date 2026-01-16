@@ -16,6 +16,7 @@ from bamengine.relationships import LoanBook
 from bamengine.roles import Borrower, Lender
 from tests.helpers.factories import (
     mock_borrower,
+    mock_consumer,
     mock_lender,
     mock_loanbook,
     mock_producer,
@@ -140,10 +141,82 @@ def test_validate_debt_partial_writeoff() -> None:
 
     # equity drop: each bank eats ½ of net_worth (=5.0)
     assert lend.equity_base.tolist() == pytest.approx([5.0, 0.0])
-    # ledger rows *stay* (no repayment)
-    assert lb.size == 2
+    # ledger emptied after bad debt write-off (debt has been settled)
+    assert lb.size == 0
     # net_profit = gross_profit − total_interest
     assert bor.net_profit[0] == pytest.approx(-4.0)
+
+
+def test_validate_debt_bad_amt_capped_at_loan_value() -> None:
+    """
+    When net_worth > loan_value, bad_amt should be capped at the loan value.
+
+    This tests the fix for the bug where banks could lose more than they lent
+    when a defaulting firm had net_worth exceeding its debt.
+    """
+    # Scenario: Firm has high net_worth (50.0) but small loan (2.0)
+    # Without the fix: bank would lose frac × net_worth = 1.0 × 50.0 = 50.0
+    # With the fix: bank loses at most loan_value = 2.0
+    bor = mock_borrower(
+        n=1,
+        gross_profit=np.array([-5.0]),
+        net_worth=np.array([50.0]),  # Much higher than loan
+        total_funds=np.array([1.0]),  # Cannot cover debt (2.0)
+    )
+    lend = mock_lender(
+        n=1,
+        equity_base=np.array([100.0]),
+    )
+    lb = mock_loanbook(n=1, size=1)
+    lb.borrower[0] = 0
+    lb.lender[0] = 0
+    lb.principal[0] = 1.0
+    lb.rate[0] = 1.0
+    lb.interest[0] = 1.0
+    lb.debt[0] = 2.0  # Total debt = 2.0, much less than net_worth (50.0)
+
+    firms_validate_debt_commitments(bor, lend, lb)
+
+    # Bank should lose at most the loan value (2.0), not frac × net_worth (50.0)
+    # equity = 100.0 - 2.0 = 98.0
+    assert lend.equity_base[0] == pytest.approx(98.0)
+    assert lb.size == 0
+
+
+def test_validate_debt_bad_amt_floored_at_zero() -> None:
+    """
+    When net_worth < 0, bad_amt should be floored at 0.
+
+    This ensures that negative net_worth doesn't result in banks gaining equity
+    from defaults (which would be economically absurd).
+    """
+    # Scenario: Firm has negative net_worth (-10.0)
+    # Without the floor: bank would "gain" frac × (-10) = -10 (equity increases!)
+    # With the floor: bank loses 0, not the full loan, because bad_amt >= 0
+    bor = mock_borrower(
+        n=1,
+        gross_profit=np.array([-20.0]),
+        net_worth=np.array([-10.0]),  # Negative net worth
+        total_funds=np.array([0.0]),  # Cannot cover debt
+    )
+    lend = mock_lender(
+        n=1,
+        equity_base=np.array([100.0]),
+    )
+    lb = mock_loanbook(n=1, size=1)
+    lb.borrower[0] = 0
+    lb.lender[0] = 0
+    lb.principal[0] = 5.0
+    lb.rate[0] = 0.0
+    lb.interest[0] = 0.0
+    lb.debt[0] = 5.0
+
+    firms_validate_debt_commitments(bor, lend, lb)
+
+    # Bank loses 0 (floored), not -5 (which would increase equity)
+    # Note: The bank still loses the loan asset, but bad_amt accounting is 0
+    assert lend.equity_base[0] == pytest.approx(100.0)
+    assert lb.size == 0
 
 
 def test_validate_debt_no_loans_noop() -> None:
@@ -173,8 +246,9 @@ def test_pay_dividends_positive_profit(delta: float) -> None:
         total_funds=np.array([50.0]),
         net_worth=np.array([40.0]),
     )
+    cons = mock_consumer(n=5, savings=np.array([100.0] * 5))
 
-    firms_pay_dividends(bor, delta=delta)
+    firms_pay_dividends(bor, cons, delta=delta)
 
     retained = net * (1 - delta)
     div = net - retained
@@ -193,8 +267,77 @@ def test_pay_dividends_negative_profit() -> None:
         total_funds=np.array([20.0]),
         net_worth=np.array([30.0]),
     )
+    cons = mock_consumer(n=5, savings=np.array([100.0] * 5))
 
-    firms_pay_dividends(bor, delta=0.99)  # δ should be irrelevant
+    firms_pay_dividends(bor, cons, delta=0.99)  # δ should be irrelevant
 
     assert bor.retained_profit[0] == -4.0
     assert bor.total_funds[0] == 20.0  # cash unchanged
+
+
+def test_pay_dividends_credits_household_savings() -> None:
+    """
+    Dividends are distributed equally to all households,
+    increasing their savings by dividend_total / n_households.
+    """
+    net = 10.0
+    delta = 0.25
+    n_households = 5
+
+    bor = mock_borrower(
+        n=1,
+        net_profit=np.array([net]),
+        total_funds=np.array([50.0]),
+        net_worth=np.array([40.0]),
+    )
+    initial_savings = np.array([100.0] * n_households)
+    cons = mock_consumer(n=n_households, savings=initial_savings.copy())
+
+    firms_pay_dividends(bor, cons, delta=delta)
+
+    # Calculate expected dividend per household
+    total_dividends = net * delta  # 2.5
+    dividend_per_household = total_dividends / n_households  # 0.5
+
+    # Each household savings should increase by dividend_per_household
+    expected_savings = initial_savings + dividend_per_household
+    np.testing.assert_array_almost_equal(cons.savings, expected_savings)
+
+
+def test_pay_dividends_stock_flow_consistency() -> None:
+    """
+    Verify stock-flow consistency: total dividends paid by firms equals
+    total dividends received by households.
+    """
+    net_profits = np.array([10.0, -5.0, 20.0])  # Two profitable, one loss
+    delta = 0.10
+    n_households = 10
+
+    bor = mock_borrower(
+        n=3,
+        net_profit=net_profits,
+        total_funds=np.array([100.0, 50.0, 200.0]),
+        net_worth=np.array([50.0, 20.0, 100.0]),
+    )
+    initial_savings = np.full(n_households, 50.0)
+    cons = mock_consumer(n=n_households, savings=initial_savings.copy())
+
+    initial_firm_funds = bor.total_funds.sum()
+    initial_household_savings = cons.savings.sum()
+
+    firms_pay_dividends(bor, cons, delta=delta)
+
+    # Calculate total dividends from positive profits
+    positive_mask = net_profits > 0
+    total_dividends = (net_profits[positive_mask] * delta).sum()
+
+    # Verify firm funds decreased by total dividends
+    firm_funds_decrease = initial_firm_funds - bor.total_funds.sum()
+    assert firm_funds_decrease == pytest.approx(total_dividends)
+
+    # Verify household savings increased by same amount
+    household_savings_increase = cons.savings.sum() - initial_household_savings
+    assert household_savings_increase == pytest.approx(total_dividends)
+
+    # Verify firm debit equals household credit (stock-flow consistency)
+    assert firm_funds_decrease == pytest.approx(household_savings_increase)

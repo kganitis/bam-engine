@@ -20,7 +20,7 @@ class Consumer:
     Parameters
     ----------
     income : Float1D
-        Total income received this period (wages + dividends).
+        Total income received this period from wages.
     savings : Float1D
         Accumulated savings from previous periods.
     income_to_spend : Float1D

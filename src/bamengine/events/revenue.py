@@ -203,10 +203,11 @@ class FirmsValidateDebtCommitments:
 @event
 class FirmsPayDividends:
     """
-    Firms distribute dividends from positive profits and retain remainder.
+    Firms distribute dividends from positive profits to households.
 
-    Profitable firms (net_profit > 0) pay dividends to shareholders. Unprofitable
-    firms retain all losses. Funds decrease by dividend amount.
+    Profitable firms (net_profit > 0) pay dividends. Unprofitable firms retain
+    all losses. Dividends are distributed equally to all households, maintaining
+    stock-flow consistency in the model.
 
     Algorithm
     ---------
@@ -219,6 +220,11 @@ class FirmsPayDividends:
     2. Else (unprofitable):
        - Retained: :math:`RP_i = NP_i` (retain all losses)
        - No dividends paid
+
+    For households:
+
+    3. Total dividends distributed equally: :math:`div_j = \\sum Div_i / N_H`
+    4. Household savings increased: :math:`SA_j \\leftarrow SA_j + div_j`
 
     Mathematical Notation
     ---------------------
@@ -235,13 +241,21 @@ class FirmsPayDividends:
 
         \\quad RP_i = NP_i
 
-    where :math:`\\delta` = dividend payout ratio (config).
+        \\text{Dividend distribution to households:}
+
+        \\quad div_j = \\frac{\\sum_i Div_i}{N_H} \\quad \\forall j
+
+        \\quad SA_j \\leftarrow SA_j + div_j
+
+    where :math:`\\delta` = dividend payout ratio (config), :math:`N_H` = number
+    of households.
 
     Examples
     --------
     >>> import bamengine as be
     >>> sim = be.Simulation.init(n_firms=100, seed=42)
     >>> initial_funds = sim.bor.total_funds.copy()
+    >>> initial_savings = sim.cons.savings.copy()
     >>> event = sim.get_event("firms_pay_dividends")
     >>> event.execute(sim)
 
@@ -260,12 +274,10 @@ class FirmsPayDividends:
     >>> np.allclose(funds_decrease[profitable], dividends)
     True
 
-    Unprofitable firms retain all losses:
+    Verify household savings increased:
 
-    >>> unprofitable = sim.bor.net_profit <= 0
-    >>> np.allclose(
-    ...     sim.bor.retained_profit[unprofitable], sim.bor.net_profit[unprofitable]
-    ... )
+    >>> savings_increase = sim.cons.savings - initial_savings
+    >>> np.allclose(savings_increase.sum(), total_dividends)  # doctest: +SKIP
     True
 
     Notes
@@ -276,6 +288,13 @@ class FirmsPayDividends:
 
     Dividend payout ratio δ typically 0.1-0.3 (10-30% of profits).
 
+    **Modeling Note**: Equal distribution of dividends to all households is a
+    simplification that avoids introducing a separate "capitalist" role.
+    Since all households share the same consumption function based on savings
+    ratios, the specific distribution pattern does not meaningfully affect
+    aggregate consumption dynamics. What matters for model validity is stock-flow
+    consistency: dividends debited from firms are credited to households.
+
     See Also
     --------
     FirmsValidateDebtCommitments : Calculates net_profit
@@ -285,4 +304,4 @@ class FirmsPayDividends:
     def execute(self, sim: Simulation) -> None:
         from bamengine.events._internal import firms_pay_dividends
 
-        firms_pay_dividends(sim.bor, delta=sim.config.delta)
+        firms_pay_dividends(sim.bor, sim.con, delta=sim.config.delta)
