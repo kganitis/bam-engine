@@ -181,11 +181,37 @@ Running Benchmarks
 Benchmark Suites
 ~~~~~~~~~~~~~~~~
 
-The ASV configuration includes three benchmark suites:
+The ASV configuration includes seven benchmark suites:
 
 * **SimulationSuite**: Full simulation runs (100/1000 periods) across small/medium/large
 * **PipelineSuite**: Single step performance (all 39 events)
 * **MemorySuite**: Peak memory during initialization and simulation
+* **CriticalEventSuite**: Individual event benchmarks for the critical path (goods/labor/credit markets)
+* **InitSuite**: Initialization costs across different scales (100-1000 firms)
+* **LoanBookSuite**: Sparse relationship operations (append, aggregate, purge)
+* **ScalingSuite**: Performance scaling analysis with agent count (50-400 firms)
+
+Quick Benchmarks (pytest-benchmark)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For fast local benchmarking during development, use the pytest-benchmark tests:
+
+.. code-block:: bash
+
+   # Run all quick benchmarks
+   pytest tests/performance/test_quick_benchmarks.py -v
+
+   # With detailed statistics
+   pytest tests/performance/test_quick_benchmarks.py -v --benchmark-verbose
+
+   # Save baseline for comparison
+   pytest tests/performance/test_quick_benchmarks.py --benchmark-save=baseline
+
+   # Compare against saved baseline
+   pytest tests/performance/test_quick_benchmarks.py --benchmark-compare
+
+These benchmarks cover core operations (single step, initialization) and critical
+events (goods/labor market operations) with a small configuration for quick feedback.
 
 Regression Testing
 ~~~~~~~~~~~~~~~~~~
