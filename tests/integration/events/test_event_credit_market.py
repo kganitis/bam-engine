@@ -22,7 +22,7 @@ from bamengine.events._internal.credit_market import (
     banks_decide_credit_supply,
     banks_decide_interest_rate,
     banks_provide_loans,
-    firms_calc_credit_metrics,
+    firms_calc_financial_fragility,
     firms_decide_credit_demand,
     firms_fire_workers,
     firms_prepare_loan_applications,
@@ -47,7 +47,7 @@ def _run_credit_event(sch: Simulation) -> NDArray[np.float64]:
     # demand + fragility
     firms_decide_credit_demand(sch.bor)
     demand_before = sch.bor.credit_demand.copy()
-    firms_calc_credit_metrics(sch.bor)
+    firms_calc_financial_fragility(sch.bor)
 
     # application cycle
     firms_prepare_loan_applications(sch.bor, sch.lend, max_H=sch.max_H, rng=sch.rng)

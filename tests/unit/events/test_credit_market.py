@@ -36,10 +36,10 @@ def test_firms_decide_credit_demand_executes():
     event.execute(sim)  # Should not crash
 
 
-def test_firms_calc_credit_metrics_executes():
-    """FirmsCalcCreditMetrics executes without error."""
+def test_firms_calc_financial_fragility_executes():
+    """FirmsCalcFinancialFragility executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = get_event("firms_calc_credit_metrics")()
+    event = get_event("firms_calc_financial_fragility")()
     event.execute(sim)  # Should not crash
 
 
@@ -85,7 +85,7 @@ def test_credit_market_event_chain():
         "banks_decide_credit_supply",
         "banks_decide_interest_rate",
         "firms_decide_credit_demand",
-        "firms_calc_credit_metrics",
+        "firms_calc_financial_fragility",
         "firms_prepare_loan_applications",
         "firms_send_one_loan_app",
         "banks_provide_loans",

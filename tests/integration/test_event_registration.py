@@ -38,7 +38,7 @@ def test_all_credit_market_events_registered():
     assert "banks_decide_credit_supply" in events
     assert "banks_decide_interest_rate" in events
     assert "firms_decide_credit_demand" in events
-    assert "firms_calc_credit_metrics" in events
+    assert "firms_calc_financial_fragility" in events
     assert "firms_prepare_loan_applications" in events
     assert "firms_send_one_loan_app" in events
     assert "banks_provide_loans" in events
