@@ -38,6 +38,9 @@ asv_benchmarks/__pycache__/
 # Calibration outputs
 calibration/output/
 
+# Example outputs
+examples/*/**/output/
+
 # IDEs
 .idea/
 .vscode/
@@ -82,3 +85,7 @@ notes/
 # Claude AI files
 .claude/
 CLAUDE.md
+/examples/analysis/
+/calibration/
+/DelliBAM_.nlogo
+/ABCredit.jl-main/
