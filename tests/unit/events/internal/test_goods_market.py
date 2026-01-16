@@ -298,3 +298,202 @@ def test_visit_invariants(n_hh: int, n_firms: int, Z: int) -> None:
     # every non-sentinel target index < n_firms
     mask = con.shop_visits_targets >= 0
     assert (con.shop_visits_targets[mask] < n_firms).all()
+
+
+# ============================================================================
+# No Firms Edge Cases
+# ============================================================================
+
+
+def test_pick_firms_with_no_firms() -> None:
+    """Test consumers_decide_firms_to_visit with n_firms=0.
+
+    When there are no firms, all shopping queues should be cleared.
+    """
+    Z = 2
+    n_hh = 3
+    rng = make_rng(42)
+    con = mock_consumer(
+        n=n_hh,
+        queue_z=Z,
+        income=np.full(n_hh, 3.0),
+        savings=np.full(n_hh, 2.0),
+    )
+    prod = mock_producer(
+        n=0,  # No firms
+        inventory=np.array([]),
+        price=np.array([]),
+        production=np.array([]),
+    )
+
+    # Give consumers budget
+    consumers_calc_propensity(con, avg_sav=1.0, beta=0.9)
+    consumers_decide_income_to_spend(con)
+
+    consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=rng)
+
+    # All shopping queues should be cleared (-1)
+    assert np.all(con.shop_visits_head == -1)
+    assert np.all(con.shop_visits_targets == -1)
+
+
+# ============================================================================
+# No Inventory Edge Cases
+# ============================================================================
+
+
+def test_one_round_no_inventory_skips_shopping() -> None:
+    """Test consumers_shop_one_round when all inventory is depleted."""
+    Z = 2
+    n_hh = 3
+    rng = make_rng(42)
+    con = mock_consumer(
+        n=n_hh,
+        queue_z=Z,
+        income=np.full(n_hh, 3.0),
+        savings=np.full(n_hh, 2.0),
+    )
+    prod = mock_producer(
+        n=3,
+        inventory=np.zeros(3),  # All inventory depleted
+        price=np.ones(3),
+        production=np.ones(3),
+    )
+
+    # Set up consumers with budget and queues
+    consumers_calc_propensity(con, avg_sav=1.0, beta=0.9)
+    consumers_decide_income_to_spend(con)
+    consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=rng)
+
+    budget_before = con.income_to_spend.copy()
+
+    # No shopping should occur
+    consumers_shop_one_round(con, prod, rng=rng)
+
+    # Budget unchanged (no purchases possible)
+    # Note: Pointers may advance as consumers try to visit sold-out firms
+    np.testing.assert_allclose(con.income_to_spend, budget_before)
+
+
+def test_sequential_shopping_no_inventory_skips() -> None:
+    """Test consumers_shop_sequential when all inventory is depleted."""
+    from bamengine.events._internal.goods_market import consumers_shop_sequential
+
+    Z = 2
+    n_hh = 3
+    rng = make_rng(42)
+    con = mock_consumer(
+        n=n_hh,
+        queue_z=Z,
+        income=np.full(n_hh, 3.0),
+        savings=np.full(n_hh, 2.0),
+    )
+    prod = mock_producer(
+        n=3,
+        inventory=np.zeros(3),  # All inventory depleted
+        price=np.ones(3),
+        production=np.ones(3),
+    )
+
+    # Set up consumers with budget and queues
+    consumers_calc_propensity(con, avg_sav=1.0, beta=0.9)
+    consumers_decide_income_to_spend(con)
+    consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=rng)
+
+    budget_before = con.income_to_spend.copy()
+
+    # No shopping should occur (early return due to zero inventory)
+    consumers_shop_sequential(con, prod, max_Z=Z, rng=rng)
+
+    # Budget unchanged
+    np.testing.assert_allclose(con.income_to_spend, budget_before)
+
+
+# ============================================================================
+# Queue Exhaustion Edge Cases
+# ============================================================================
+
+
+def test_sequential_shopping_queue_exhaustion_at_sentinel() -> None:
+    """Test sequential shopping handles -1 sentinel correctly (queue exhaustion)."""
+    from bamengine.events._internal.goods_market import consumers_shop_sequential
+
+    Z = 2
+    con = mock_consumer(
+        n=1,
+        queue_z=Z,
+        income_to_spend=np.array([10.0]),  # Has plenty of budget
+        savings=np.array([1.0]),
+        shop_visits_head=np.array([0]),  # Points to (row 0, col 0)
+        shop_visits_targets=np.array([[-1, -1]], dtype=np.intp),  # All sentinels
+    )
+    prod = mock_producer(
+        n=2,
+        inventory=np.array([10.0, 10.0]),  # Plenty of inventory
+        price=np.array([1.0, 1.0]),
+        production=np.array([1.0, 1.0]),
+    )
+
+    budget_before = float(con.income_to_spend[0])
+
+    consumers_shop_sequential(con, prod, max_Z=Z, rng=make_rng(42))
+
+    # Head should be set to -1 (queue exhausted at sentinel)
+    assert con.shop_visits_head[0] == -1
+    # Budget unchanged (no purchases possible - queue was empty)
+    assert con.income_to_spend[0] == pytest.approx(budget_before)
+
+
+def test_sequential_shopping_negative_head() -> None:
+    """Test sequential shopping handles negative head pointer correctly."""
+    from bamengine.events._internal.goods_market import consumers_shop_sequential
+
+    Z = 2
+    con = mock_consumer(
+        n=1,
+        queue_z=Z,
+        income_to_spend=np.array([10.0]),  # Has budget
+        savings=np.array([1.0]),
+        shop_visits_head=np.array([-1]),  # No more firms to visit
+        shop_visits_targets=np.array([[-1, -1]], dtype=np.intp),
+    )
+    prod = mock_producer(
+        n=2,
+        inventory=np.array([10.0, 10.0]),
+        price=np.array([1.0, 1.0]),
+        production=np.array([1.0, 1.0]),
+    )
+
+    budget_before = float(con.income_to_spend[0])
+
+    consumers_shop_sequential(con, prod, max_Z=Z, rng=make_rng(42))
+
+    # No change expected since head was already -1
+    assert con.shop_visits_head[0] == -1
+    assert con.income_to_spend[0] == pytest.approx(budget_before)
+
+
+def test_sequential_shopping_no_budget_skips() -> None:
+    """Test sequential shopping skips when no consumers have budget."""
+    from bamengine.events._internal.goods_market import consumers_shop_sequential
+
+    Z = 2
+    con = mock_consumer(
+        n=2,
+        queue_z=Z,
+        income_to_spend=np.zeros(2),  # No budget
+        savings=np.array([1.0, 1.0]),
+    )
+    prod = mock_producer(
+        n=2,
+        inventory=np.array([10.0, 10.0]),
+        price=np.array([1.0, 1.0]),
+        production=np.array([1.0, 1.0]),
+    )
+
+    inv_before = prod.inventory.copy()
+
+    consumers_shop_sequential(con, prod, max_Z=Z, rng=make_rng(42))
+
+    # Inventory unchanged
+    np.testing.assert_array_equal(prod.inventory, inv_before)

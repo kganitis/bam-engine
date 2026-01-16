@@ -475,3 +475,86 @@ class TestExtraParams:
         assert sim.str_param == "hello"
         assert sim.list_param == [1, 2, 3]
         assert sim.dict_param == {"a": 1, "b": 2}
+
+
+class TestConfigPropertyAccessors:
+    """Test property accessors for configuration parameters."""
+
+    def test_labor_productivity_property(self) -> None:
+        """Test labor_productivity property accessor."""
+        sim = Simulation.init(
+            n_firms=10,
+            n_households=50,
+            seed=42,
+            labor_productivity=2.5,
+        )
+        assert sim.labor_productivity == 2.5
+
+    def test_config_property_accessors(self) -> None:
+        """Test various config property accessors."""
+        sim = Simulation.init(
+            n_firms=10,
+            n_households=50,
+            seed=42,
+            max_M=4,
+            max_H=3,
+            max_Z=5,
+            theta=12,
+            beta=0.9,
+            r_bar=0.03,
+            v=0.1,
+        )
+        assert sim.max_M == 4
+        assert sim.max_H == 3
+        assert sim.max_Z == 5
+        assert sim.theta == 12
+        assert sim.beta == 0.9
+        assert sim.r_bar == 0.03
+        assert sim.v == 0.1
+
+
+class TestLoggingConfiguration:
+    """Test logging configuration options."""
+
+    def test_log_file_creation(self, tmp_path) -> None:
+        """Test creating simulation with log file configuration."""
+        import logging as std_logging
+
+        log_file = tmp_path / "simulation.log"
+
+        sim = Simulation.init(
+            n_firms=10,
+            n_households=50,
+            seed=42,
+            logging={"default_level": "DEBUG", "log_file": str(log_file)},
+        )
+
+        # Run a step to generate log output
+        sim.step()
+
+        # Log file should be created
+        assert log_file.exists()
+
+        # Clean up file handler to release the file
+        bam_logger = std_logging.getLogger("bamengine")
+        for handler in bam_logger.handlers[:]:
+            if isinstance(handler, std_logging.FileHandler):
+                handler.close()
+                bam_logger.removeHandler(handler)
+
+
+class TestEventPipelineErrors:
+    """Test error handling for event access."""
+
+    def test_get_event_registered_but_not_in_pipeline(self) -> None:
+        """get_event() raises helpful error for event in registry but not pipeline."""
+        from bamengine.core import Pipeline
+
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+
+        # Create a minimal pipeline that doesn't include a known registered event
+        sim.pipeline = Pipeline(events=[])
+
+        # Should raise with helpful message about pipeline
+        with pytest.raises(KeyError, match="registered but not in current pipeline"):
+            sim.get_event("adjust_minimum_wage")

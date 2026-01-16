@@ -259,9 +259,8 @@ exclude_lines = [
     "log.error",
     "log.critical",
     "log.isEnabledFor",
-    # Exclude common defensive code
-    "raise ValueError",
-    "raise KeyError",
+    "info_enabled",
+    "debug_enabled",
 ]
 
 [tool.coverage.json]
