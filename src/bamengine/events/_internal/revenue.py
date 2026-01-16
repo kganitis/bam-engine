@@ -29,17 +29,20 @@ def firms_collect_revenue(prod: Producer, bor: Borrower) -> None:
     --------
     bamengine.events.revenue.FirmsCollectRevenue : Full documentation
     """
-    log.info("--- Firms Collecting Revenue & Calculating Gross Profit ---")
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Firms Collecting Revenue & Calculating Gross Profit ---")
 
     # calculate quantities sold
     quantity_sold = prod.production - prod.inventory
     total_quantity_sold = quantity_sold.sum()
 
-    log.info(
-        f"  Total quantity produced: {prod.production.sum():,.2f}, "
-        f"Total inventory: {prod.inventory.sum():,.2f} -> "
-        f"Total quantity sold: {total_quantity_sold:,.2f}"
-    )
+    if info_enabled:
+        log.info(
+            f"  Total quantity produced: {prod.production.sum():,.2f}, "
+            f"Total inventory: {prod.inventory.sum():,.2f} -> "
+            f"Total quantity sold: {total_quantity_sold:,.2f}"
+        )
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Quantity sold per firm: {quantity_sold}")
@@ -49,10 +52,11 @@ def firms_collect_revenue(prod: Producer, bor: Borrower) -> None:
     total_revenue = revenue.sum()
     total_wage_bill = bor.wage_bill.sum()
 
-    log.info(
-        f"  Total revenue: {total_revenue:,.2f}, "
-        f"Total wage bill: {total_wage_bill:,.2f}"
-    )
+    if info_enabled:
+        log.info(
+            f"  Total revenue: {total_revenue:,.2f}, "
+            f"Total wage bill: {total_wage_bill:,.2f}"
+        )
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Total funds (cash) before revenue collection: {bor.total_funds}")
@@ -68,12 +72,14 @@ def firms_collect_revenue(prod: Producer, bor: Borrower) -> None:
     bor.gross_profit[:] = revenue - bor.wage_bill
     total_gross_profit = bor.gross_profit.sum()
 
-    log.info(f"  Total gross profit for the economy: {total_gross_profit:,.2f}")
+    if info_enabled:
+        log.info(f"  Total gross profit for the economy: {total_gross_profit:,.2f}")
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Gross profit per firm: {bor.gross_profit}")
 
-    log.info("--- Firms Collecting Revenue & Calculating Gross Profit complete ---")
+    if info_enabled:
+        log.info("--- Firms Collecting Revenue & Calculating Gross Profit complete ---")
 
 
 def firms_validate_debt_commitments(
@@ -88,7 +94,9 @@ def firms_validate_debt_commitments(
     --------
     bamengine.events.revenue.FirmsValidateDebtCommitments : Full documentation
     """
-    log.info("--- Firms Validating Debt Commitments ---")
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Firms Validating Debt Commitments ---")
 
     # calculate debt obligations
     n_firms = bor.total_funds.size
@@ -98,11 +106,12 @@ def firms_validate_debt_commitments(
     total_outstanding_debt = total_debt.sum()
     total_interest_component = total_interest.sum()
 
-    log.info(
-        f"  Total outstanding debt (principal + interest) to be serviced: "
-        f"{total_outstanding_debt:,.2f}"
-    )
-    log.info(f"  Total interest component of debt: {total_interest_component:,.2f}")
+    if info_enabled:
+        log.info(
+            f"  Total outstanding debt (principal + interest) to be serviced: "
+            f"{total_outstanding_debt:,.2f}"
+        )
+        log.info(f"  Total interest component of debt: {total_interest_component:,.2f}")
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Total debt per firm: {total_debt}")
@@ -118,18 +127,20 @@ def firms_validate_debt_commitments(
     num_can_repay = repay_mask.sum()
     num_unable_repay = unable_mask.sum()
 
-    log.info(
-        f"  {num_can_repay} firms can repay their debt (total_funds >= total_debt); "
-        f"{num_unable_repay} firms are unable to repay (total_funds < total_debt)."
-    )
+    if info_enabled:
+        log.info(
+            f"  {num_can_repay} firms can repay their debt (total_funds >= total_debt); "
+            f"{num_unable_repay} firms are unable to repay (total_funds < total_debt)."
+        )
 
     # process full repayments
     repay_firms = np.where(repay_mask & (total_debt > EPS))[0]
     if repay_firms.size > 0:
-        log.info(
-            f"  Processing full repayments for {repay_firms.size} firms, "
-            f"totaling {total_debt[repay_firms].sum():,.2f}."
-        )
+        if info_enabled:
+            log.info(
+                f"  Processing full repayments for {repay_firms.size} firms, "
+                f"totaling {total_debt[repay_firms].sum():,.2f}."
+            )
 
         if log.isEnabledFor(logging.DEBUG):
             sample_repay_firms = repay_firms[: min(5, repay_firms.size)]
@@ -201,14 +212,15 @@ def firms_validate_debt_commitments(
     # process bad-debt write-offs
     bad_firms = np.where(unable_mask & (total_debt > EPS))[0]
     if bad_firms.size > 0:
-        log.info(
-            f"  Processing bad-debt write-offs for {bad_firms.size} defaulting firms."
-        )
+        if info_enabled:
+            log.info(
+                f"  Processing bad-debt write-offs for {bad_firms.size} defaulting firms."
+            )
 
-        # zero out cash for defaulting firms
-        log.info(
-            f"  Zeroing out total_funds (cash) for {bad_firms.size} defaulting firms."
-        )
+            # zero out cash for defaulting firms
+            log.info(
+                f"  Zeroing out total_funds (cash) for {bad_firms.size} defaulting firms."
+            )
 
         if log.isEnabledFor(logging.DEBUG):
             sample_default_firms = bad_firms[: min(5, bad_firms.size)]
@@ -282,10 +294,11 @@ def firms_validate_debt_commitments(
                         )
 
             total_bad_debt_writeoff = bad_amt_per_loan.sum()
-            log.info(
-                f"  Total bad debt write-off value (sum of bad_amt_per_loan) "
-                f"impacting lender equity: {total_bad_debt_writeoff:,.2f}."
-            )
+            if info_enabled:
+                log.info(
+                    f"  Total bad debt write-off value (sum of bad_amt_per_loan) "
+                    f"impacting lender equity: {total_bad_debt_writeoff:,.2f}."
+                )
 
             # update lender equity
             affected_lenders_default = np.unique(
@@ -327,22 +340,26 @@ def firms_validate_debt_commitments(
                 f"New size={lb.size}"
             )
         else:
-            log.info(
-                "  No outstanding loans in the loan book for the firms identified "
-                "as 'at risk of default'; no specific loan write-offs needed."
-            )
+            if info_enabled:
+                log.info(
+                    "  No outstanding loans in the loan book for the firms identified "
+                    "as 'at risk of default'; no specific loan write-offs needed."
+                )
 
     # calculate net profit
-    log.info("  Calculating net profit (gross profit - total interest)")
+    if info_enabled:
+        log.info("  Calculating net profit (gross profit - total interest)")
     bor.net_profit[:] = bor.gross_profit - total_interest
     total_net_profit = bor.net_profit.sum()
 
-    log.info(f"  Final net profit for the economy: {total_net_profit:,.2f}")
+    if info_enabled:
+        log.info(f"  Final net profit for the economy: {total_net_profit:,.2f}")
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Net profits per firm: {bor.net_profit}")
 
-    log.info("--- Firms Validating Debt Commitments complete ---")
+    if info_enabled:
+        log.info("--- Firms Validating Debt Commitments complete ---")
 
 
 def firms_pay_dividends(bor: Borrower, cons: Consumer, *, delta: float) -> None:
@@ -353,15 +370,20 @@ def firms_pay_dividends(bor: Borrower, cons: Consumer, *, delta: float) -> None:
     --------
     bamengine.events.revenue.FirmsPayDividends : Full documentation
     """
-    log.info(
-        f"--- Firms Paying Dividends (Payout Ratio δ for profits = {delta:.2f}) ---"
-    )
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info(
+            f"--- Firms Paying Dividends (Payout Ratio δ for profits = {delta:.2f}) ---"
+        )
 
     # identify firms with positive profits
     positive_profit_mask = bor.net_profit > 0.0
     num_paying_dividends = np.sum(positive_profit_mask)
 
-    log.info(f"  {num_paying_dividends} firms have net profit and will pay dividends.")
+    if info_enabled:
+        log.info(
+            f"  {num_paying_dividends} firms have net profit and will pay dividends."
+        )
 
     # calculate retained profits and dividends
     # Default case: all net profit is retained if not positive
@@ -385,10 +407,11 @@ def firms_pay_dividends(bor: Borrower, cons: Consumer, *, delta: float) -> None:
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Total funds (cash) after paying dividends: {bor.total_funds}")
 
-    log.info(
-        f"  Total dividends paid out: {total_dividends:,.2f}. "
-        f"Total earnings retained: {total_retained:,.2f}."
-    )
+    if info_enabled:
+        log.info(
+            f"  Total dividends paid out: {total_dividends:,.2f}. "
+            f"Total earnings retained: {total_retained:,.2f}."
+        )
 
     # distribute dividends to households (equal distribution)
     # This is a modeling simplification: rather than introducing a separate
@@ -399,10 +422,11 @@ def firms_pay_dividends(bor: Borrower, cons: Consumer, *, delta: float) -> None:
     n_households = cons.savings.size
     dividend_per_household = total_dividends / n_households
 
-    log.info(
-        f"  Distributing dividends to {n_households} households "
-        f"({dividend_per_household:,.4f} per household)"
-    )
+    if info_enabled:
+        log.info(
+            f"  Distributing dividends to {n_households} households "
+            f"({dividend_per_household:,.4f} per household)"
+        )
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Household savings before dividends: {cons.savings}")
@@ -413,4 +437,5 @@ def firms_pay_dividends(bor: Borrower, cons: Consumer, *, delta: float) -> None:
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Household savings after dividends: {cons.savings}")
 
-    log.info("--- Firms Paying Dividends complete ---")
+    if info_enabled:
+        log.info("--- Firms Paying Dividends complete ---")

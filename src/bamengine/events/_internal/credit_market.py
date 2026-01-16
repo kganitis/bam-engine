@@ -30,16 +30,21 @@ def banks_decide_credit_supply(lend: Lender, *, v: float) -> None:
     --------
     bamengine.events.credit_market.BanksDecideCreditSupply : Full documentation
     """
-    log.info("--- Banks Deciding Credit Supply ---")
-    log.info(f"  Inputs: Capital Requirement (v)={v:.3f} (Max Leverage={1 / v:.2f}x)")
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Banks Deciding Credit Supply ---")
+        log.info(
+            f"  Inputs: Capital Requirement (v)={v:.3f} (Max Leverage={1 / v:.2f}x)"
+        )
 
     # Core Rule
     np.divide(lend.equity_base, v, out=lend.credit_supply)
     np.maximum(lend.credit_supply, 0.0, out=lend.credit_supply)
 
     # Logging
-    total_supply = lend.credit_supply.sum()
-    log.info(f"  Total credit supply in the economy: {total_supply:,.2f}")
+    if info_enabled:
+        total_supply = lend.credit_supply.sum()
+        log.info(f"  Total credit supply in the economy: {total_supply:,.2f}")
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"  Equity Base (E) (first 10 borrowers): "
@@ -49,7 +54,8 @@ def banks_decide_credit_supply(lend: Lender, *, v: float) -> None:
             f"  Credit Supply (C = E / v) (first 10 borrowers): "
             f"{np.array2string(lend.credit_supply[:10], precision=2)}"
         )
-    log.info("--- Credit Supply Decision complete ---")
+    if info_enabled:
+        log.info("--- Credit Supply Decision complete ---")
 
 
 def banks_decide_interest_rate(
@@ -66,11 +72,13 @@ def banks_decide_interest_rate(
     --------
     bamengine.events.credit_market.BanksDecideInterestRate : Full documentation
     """
-    log.info("--- Banks Deciding Interest Rate ---")
-    log.info(
-        f"  Inputs: Base Rate (r_bar)={r_bar:.4f}  |"
-        f"  Max Markup Shock (h_phi)={h_phi:.4f}"
-    )
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Banks Deciding Interest Rate ---")
+        log.info(
+            f"  Inputs: Base Rate (r_bar)={r_bar:.4f}  |"
+            f"  Max Markup Shock (h_phi)={h_phi:.4f}"
+        )
     shape = lend.interest_rate.shape
 
     # Permanent scratch buffer
@@ -84,8 +92,9 @@ def banks_decide_interest_rate(
     lend.interest_rate[:] = r_bar * (1.0 + shock)
 
     # Logging
-    avg_rate = lend.interest_rate.mean() * 100
-    log.info(f"  Interest rates set. Average rate: {avg_rate:.3f}%")
+    if info_enabled:
+        avg_rate = lend.interest_rate.mean() * 100
+        log.info(f"  Interest rates set. Average rate: {avg_rate:.3f}%")
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"  Generated shocks (first 10 borrowers): "
@@ -95,7 +104,8 @@ def banks_decide_interest_rate(
             f"  Interest Rates (%) (first 10 borrowers): "
             f"{np.array2string(lend.interest_rate[:10] * 100, precision=4)}"
         )
-    log.info("--- Interest Rate Decision complete ---")
+    if info_enabled:
+        log.info("--- Interest Rate Decision complete ---")
 
 
 def firms_decide_credit_demand(bor: Borrower) -> None:
@@ -106,28 +116,32 @@ def firms_decide_credit_demand(bor: Borrower) -> None:
     --------
     bamengine.events.credit_market.FirmsDecideCreditDemand : Full documentation
     """
-    log.info("--- Borrowers Deciding Credit Demand ---")
-    log.info(
-        f"  Inputs: Total Wage Bill={bor.wage_bill.sum():,.2f}  |"
-        f"  Total Net Worth={bor.total_funds.sum():,.2f}"
-    )
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Borrowers Deciding Credit Demand ---")
+        log.info(
+            f"  Inputs: Total Wage Bill={bor.wage_bill.sum():,.2f}  |"
+            f"  Total Net Worth={bor.total_funds.sum():,.2f}"
+        )
 
     # Core Rule
     np.subtract(bor.wage_bill, bor.total_funds, out=bor.credit_demand)
     np.maximum(bor.credit_demand, 0.0, out=bor.credit_demand)
 
     # Logging
-    total_demand = bor.credit_demand.sum()
-    num_borrowers = np.sum(bor.credit_demand > 0)
-    log.info(
-        f"  {num_borrowers} borrowers demand credit, for a total of {total_demand:,.2f}"
-    )
+    if info_enabled:
+        total_demand = bor.credit_demand.sum()
+        num_borrowers = np.sum(bor.credit_demand > 0)
+        log.info(
+            f"  {num_borrowers} borrowers demand credit, for a total of {total_demand:,.2f}"
+        )
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"  Credit Demand per borrower (B = max(0, W-A)) (first 10 borrowers): "
             f"{np.array2string(bor.credit_demand[:10], precision=2)}"
         )
-    log.info("--- Credit Demand Decision complete ---")
+    if info_enabled:
+        log.info("--- Credit Demand Decision complete ---")
 
 
 def firms_calc_financial_fragility(
@@ -142,7 +156,9 @@ def firms_calc_financial_fragility(
     --------
     bamengine.events.credit_market.FirmsCalcFinancialFragility : Full documentation
     """
-    log.info("--- Borrowers Calculating Credit Metrics ---")
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Borrowers Calculating Credit Metrics ---")
     shape = bor.net_worth.shape
 
     # Permanent scratch buffer (may be None on first call)
@@ -169,7 +185,7 @@ def firms_calc_financial_fragility(
     # very small (but positive) net worth, capping them at amount B.
     if fragility_cap_method == "credit_demand":
         general_cap_mask = frag > bor.credit_demand
-        if np.any(general_cap_mask):
+        if np.any(general_cap_mask) and info_enabled:
             num_generally_capped = np.sum(general_cap_mask)
             log.info(
                 f"  Capping fragility for {num_generally_capped} borrower(s) "
@@ -178,18 +194,23 @@ def firms_calc_financial_fragility(
         np.minimum(frag, bor.credit_demand, out=frag)
     else:
         # fragility_cap_method == "none" - skip global cap
-        log.info("  Fragility cap disabled (fragility_cap_method='none').")
+        if info_enabled:
+            log.info("  Fragility cap disabled (fragility_cap_method='none').")
 
     # Logging
-    valid_frag = frag[np.isfinite(frag)]
-    avg_fragility = valid_frag.mean() if valid_frag.size > 0 else 0.0
-    log.info(f"  Average projected fragility across all borrowers: {avg_fragility:.4f}")
+    if info_enabled:
+        valid_frag = frag[np.isfinite(frag)]
+        avg_fragility = valid_frag.mean() if valid_frag.size > 0 else 0.0
+        log.info(
+            f"  Average projected fragility across all borrowers: {avg_fragility:.4f}"
+        )
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"  Projected Fragility per borrower (first 10 borrowers): "
             f"{np.array2string(frag[:10], precision=3)}"
         )
-    log.info("--- Credit Metrics Calculation complete ---")
+    if info_enabled:
+        log.info("--- Credit Metrics Calculation complete ---")
 
 
 def firms_prepare_loan_applications(
@@ -206,27 +227,33 @@ def firms_prepare_loan_applications(
     --------
     bamengine.events.credit_market.FirmsPrepareLoanApplications : Full documentation
     """
-    log.info("--- Borrowers Preparing Loan Applications ---")
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Borrowers Preparing Loan Applications ---")
     lenders = np.where(lend.credit_supply > 0)[0]
     borrowers = np.where(bor.credit_demand > 0.0)[0]
 
-    log.info(
-        f"  {borrowers.size} borrowers are seeking loans "
-        f"from {lenders.size} available lenders (max apps per borrower, H={max_H})."
-    )
+    if info_enabled:
+        log.info(
+            f"  {borrowers.size} borrowers are seeking loans "
+            f"from {lenders.size} available lenders (max apps per borrower, H={max_H})."
+        )
 
     if borrowers.size == 0 or lenders.size == 0:
-        log.info(
-            "  No borrowers or no available lenders. "
-            "Skipping loan application preparation."
-        )
+        if info_enabled:
+            log.info(
+                "  No borrowers or no available lenders. "
+                "Skipping loan application preparation."
+            )
         bor.loan_apps_head.fill(-1)
-        log.info("--- Loan Application Preparation complete ---")
+        if info_enabled:
+            log.info("--- Loan Application Preparation complete ---")
         return
 
     # Sample H random lending banks per borrower
     H_eff = min(max_H, lenders.size)
-    log.info(f"  Effective applications per borrower (H_eff): {H_eff}")
+    if info_enabled:
+        log.info(f"  Effective applications per borrower (H_eff): {H_eff}")
     sample = np.array(
         [rng.choice(lenders, size=H_eff, replace=False) for _ in range(borrowers.size)]
     )
@@ -262,7 +289,8 @@ def firms_prepare_loan_applications(
                 f"head_ptr={bor.loan_apps_head[f_id]}"
             )
 
-    log.info("--- Loan Application Preparation complete ---")
+    if info_enabled:
+        log.info("--- Loan Application Preparation complete ---")
 
 
 def firms_send_one_loan_app(bor: Borrower, lend: Lender, rng: Rng = make_rng()) -> None:
@@ -273,21 +301,25 @@ def firms_send_one_loan_app(bor: Borrower, lend: Lender, rng: Rng = make_rng()) 
     --------
     bamengine.events.credit_market.FirmsSendOneLoanApp : Full documentation
     """
-    log.info("--- Borrowers Sending One Round of Applications ---")
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Borrowers Sending One Round of Applications ---")
     stride = bor.loan_apps_targets.shape[1]  # max_H
     borrowers = np.where(bor.credit_demand > 0.0)[0]  # borrowers ids
     active_applicants_mask = bor.loan_apps_head[borrowers] >= 0
     borrowers_applying = borrowers[active_applicants_mask]
 
     if borrowers_applying.size == 0:
-        log.info("  No borrowers with pending applications found. Skipping round.")
-        log.info("--- Application Sending Round complete ---")
+        if info_enabled:
+            log.info("  No borrowers with pending applications found. Skipping round.")
+            log.info("--- Application Sending Round complete ---")
         return
 
-    log.info(
-        f"  Processing {borrowers_applying.size} borrowers with pending applications "
-        f"(Stride={stride})."
-    )
+    if info_enabled:
+        log.info(
+            f"  Processing {borrowers_applying.size} borrowers with pending applications "
+            f"(Stride={stride})."
+        )
 
     rng.shuffle(borrowers_applying)  # order randomly chosen at each time step
 
@@ -373,17 +405,19 @@ def firms_send_one_loan_app(bor: Borrower, lend: Lender, rng: Rng = make_rng()) 
 
     # Summary log
     total_dropped = apps_dropped_queue_full + apps_dropped_no_credit
-    log.info(
-        f"  Round Summary: "
-        f"{apps_sent_successfully} applications successfully queued, "
-        f"{total_dropped} dropped."
-    )
+    if info_enabled:
+        log.info(
+            f"  Round Summary: "
+            f"{apps_sent_successfully} applications successfully queued, "
+            f"{total_dropped} dropped."
+        )
     if total_dropped > 0 and log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"    Dropped breakdown -> Queue Full: {apps_dropped_queue_full},"
             f" No Credit: {apps_dropped_no_credit}"
         )
-    log.info("--- Application Sending Round complete ---")
+    if info_enabled:
+        log.info("--- Application Sending Round complete ---")
 
 
 def _clean_queue(
@@ -511,13 +545,16 @@ def banks_provide_loans(
     --------
     bamengine.events.credit_market.BanksProvideLoans : Full documentation
     """
-    log.info("--- Banks Providing Loans ---")
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Banks Providing Loans ---")
     bank_ids = np.where(lend.credit_supply > 0.0)[0]
     total_credit_supply = lend.credit_supply.sum()
-    log.info(
-        f"  {bank_ids.size} banks have {total_credit_supply:,} "
-        f"total credit supply and are attempting to provide loans."
-    )
+    if info_enabled:
+        log.info(
+            f"  {bank_ids.size} banks have {total_credit_supply:,} "
+            f"total credit supply and are attempting to provide loans."
+        )
 
     total_loans_this_round = 0
 
@@ -645,11 +682,12 @@ def banks_provide_loans(
         if log.isEnabledFor(logging.DEBUG):
             log.debug(f"    Bank {k} application queue flushed.")
 
-    log.info(
-        f"  Total loan amount provided this round across all banks: "
-        f"{total_loans_this_round}"
-    )
-    log.info("--- Banks Providing Loans complete ---")
+    if info_enabled:
+        log.info(
+            f"  Total loan amount provided this round across all banks: "
+            f"{total_loans_this_round}"
+        )
+        log.info("--- Banks Providing Loans complete ---")
 
 
 def firms_fire_workers(
@@ -666,17 +704,20 @@ def firms_fire_workers(
     --------
     bamengine.events.credit_market.FirmsFireWorkers : Full documentation
     """
-    log.info("--- Firms Firing Workers ---")
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Firms Firing Workers ---")
 
     # Find firms with financing gaps
     gaps = emp.wage_bill - emp.total_funds
     firing_ids = np.where(gaps > 0.0)[0]
     total_gap = gaps[gaps > EPS].sum() if gaps.size > 0 else 0.0
 
-    log.info(
-        f"  {firing_ids.size} firms have financing gaps totaling {total_gap:,.2f} "
-        f"and need to fire workers using '{method}' method."
-    )
+    if info_enabled:
+        log.info(
+            f"  {firing_ids.size} firms have financing gaps totaling {total_gap:,.2f} "
+            f"and need to fire workers using '{method}' method."
+        )
 
     total_workers_fired_this_step = 0
 
@@ -799,10 +840,11 @@ def firms_fire_workers(
                 f"wage_bill={emp.wage_bill[i]:.2f}"
             )
 
-    log.info(
-        f"  Total workers fired this step across all firms: "
-        f"{total_workers_fired_this_step}"
-    )
+    if info_enabled:
+        log.info(
+            f"  Total workers fired this step across all firms: "
+            f"{total_workers_fired_this_step}"
+        )
     if log.isEnabledFor(logging.DEBUG):
         remaining_gaps = emp.wage_bill - emp.total_funds
         firms_with_gaps = np.flatnonzero(remaining_gaps > EPS)
@@ -817,4 +859,5 @@ def firms_fire_workers(
                 )
         else:
             log.debug("[GAPS RESOLVED] All financing gaps resolved after firing.")
-    log.info("--- Firms Firing Workers complete ---")
+    if info_enabled:
+        log.info("--- Firms Firing Workers complete ---")

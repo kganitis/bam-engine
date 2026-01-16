@@ -29,7 +29,7 @@ Before optimizing, follow these principles:
 Benchmark Results
 -----------------
 
-Current benchmarks (Apple M4 Pro, macOS 15.1, Python 3.12):
+Current benchmarks (Apple M4 Pro, macOS 15.1, Python 3.13):
 
 .. list-table::
    :header-rows: 1
@@ -46,25 +46,27 @@ Current benchmarks (Apple M4 Pro, macOS 15.1, Python 3.12):
      - 100
      - 500
      - 10
-     - 4.1s
-     - 0.4s
-     - 244 periods/s
+     - 2.0s
+     - 0.2s
+     - 500 periods/s
    * - Medium
      - 200
      - 1,000
      - 10
-     - 8.0s
-     - 0.8s
-     - 125 periods/s
+     - 4.2s
+     - 0.4s
+     - 240 periods/s
    * - Large
      - 500
      - 2,500
      - 10
-     - 20.5s
-     - 2.1s
-     - 49 periods/s
+     - 13.0s
+     - 1.3s
+     - 77 periods/s
 
-Performance scales sub-linearly with agent count due to NumPy vectorization efficiency.
+Performance scales approximately linearly with agent count. While NumPy vectorization
+is highly efficient, the per-agent computation cost means doubling the number of
+agents roughly doubles simulation time.
 
 For historical benchmark tracking across commits, see the
 `ASV Benchmark Dashboard <https://kganitis.github.io/bam-engine/>`_.
@@ -284,13 +286,17 @@ Use ``argpartition`` instead of ``argsort`` when only top-k elements are needed:
 Critical Path
 ~~~~~~~~~~~~~
 
-The market queuing system (labor, credit, goods markets) requires Python loops
-for multi-round matching. This is the primary bottleneck, accounting for
-approximately 50% of simulation time:
+The market queuing system (labor, credit, goods markets) contains the primary
+bottlenecks. Most operations are now vectorized, but some sequential matching
+remains:
 
-* **Goods market**: ~48% (``consumers_decide_firms_to_visit``, ``consumers_shop_one_round``)
-* **Labor market**: ~5% (``workers_decide_firms_to_apply``, ``firms_hire_workers``)
-* **Credit market**: ~5%
+* **Goods market**: ``consumers_decide_firms_to_visit`` is fully vectorized using
+  batch random sampling and 2D array operations. ``consumers_shop_sequential``
+  requires sequential processing due to inventory state dependencies.
+* **Labor market**: ``workers_decide_firms_to_apply``, ``firms_hire_workers``
+  use sequential queue processing for multi-round matching.
+* **Credit market**: Similar sequential matching for loan applications.
 
-These loops are inherently sequential and cannot be easily vectorized due to
-the state-dependent matching process.
+The sequential shopping and hiring loops are inherently O(n) and cannot be
+fully parallelized due to state-dependent matching where each transaction
+affects subsequent ones.

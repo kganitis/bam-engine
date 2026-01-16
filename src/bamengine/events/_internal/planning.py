@@ -31,15 +31,18 @@ def firms_decide_desired_production(
     --------
     bamengine.events.planning.FirmsDecideDesiredProduction : Full documentation
     """
-    log.info("--- Firms Deciding Desired Production ---")
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Firms Deciding Desired Production ---")
 
     # Zero out current production at start of planning phase.
     # production_prev retains previous period's value for use as planning signal.
     prod.production[:] = 0.0
-    log.info(
-        f"  Inputs: Avg Market Price (p_avg)={p_avg:.3f}  |  "
-        f"Max Production Shock (h_ρ)={h_rho:.3f}"
-    )
+    if info_enabled:
+        log.info(
+            f"  Inputs: Avg Market Price (p_avg)={p_avg:.3f}  |  "
+            f"Max Production Shock (h_ρ)={h_rho:.3f}"
+        )
     shape = prod.price.shape
 
     # permanent scratches
@@ -66,7 +69,10 @@ def firms_decide_desired_production(
     n_up = np.sum(up_mask)
     n_dn = np.sum(dn_mask)
     n_keep = prod.price.size - n_up - n_dn
-    log.info(f"  Production changes: {n_up} firms ↑, {n_dn} firms ↓, {n_keep} firms ↔.")
+    if info_enabled:
+        log.info(
+            f"  Production changes: {n_up} firms ↑, {n_dn} firms ↓, {n_keep} firms ↔."
+        )
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Avg market price (P̄): {p_avg:.2f}")
@@ -95,15 +101,17 @@ def firms_decide_desired_production(
         )
 
     prod.desired_production[:] = prod.expected_demand
-    log.info(
-        f"  Total Desired Production for economy: {prod.desired_production.sum():,.2f}"
-    )
+    if info_enabled:
+        log.info(
+            f"  Total Desired Production for economy: {prod.desired_production.sum():,.2f}"
+        )
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"  Desired Production (Yd):\n"
             f"{np.array2string(prod.desired_production, precision=2)}"
         )
-    log.info("--- Desired Production Decision complete ---")
+    if info_enabled:
+        log.info("--- Desired Production Decision complete ---")
 
 
 def firms_calc_breakeven_price(
@@ -120,21 +128,26 @@ def firms_calc_breakeven_price(
     --------
     bamengine.events.planning.FirmsCalcBreakevenPrice : Full documentation
     """
-    log.info("--- Firms Calculating Breakeven Price ---")
-    log.info(f"  Inputs: Breakeven Cap Factor={cap_factor if cap_factor else 'None'}")
-    log.info(
-        "  Calculation uses projected production (labor_productivity × current_labor) "
-        "as the denominator."
-    )
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Firms Calculating Breakeven Price ---")
+        log.info(
+            f"  Inputs: Breakeven Cap Factor={cap_factor if cap_factor else 'None'}"
+        )
+        log.info(
+            "  Calculation uses projected production (labor_productivity × current_labor) "
+            "as the denominator."
+        )
 
     # Breakeven calculation
     interest = lb.interest_per_borrower(prod.production.size)
     projected_production = prod.labor_productivity * emp.current_labor
     breakeven = (emp.wage_bill + interest) / np.maximum(projected_production, EPS)
-    log.info(
-        f"  Total Wage Bill for calc: {emp.wage_bill.sum():,.2f}. "
-        f"Total Interest for calc: {interest.sum():,.2f}"
-    )
+    if info_enabled:
+        log.info(
+            f"  Total Wage Bill for calc: {emp.wage_bill.sum():,.2f}. "
+            f"Total Interest for calc: {interest.sum():,.2f}"
+        )
     if log.isEnabledFor(logging.DEBUG):
         valid_breakeven = breakeven[np.isfinite(breakeven)]
         log.debug(
@@ -150,16 +163,17 @@ def firms_calc_breakeven_price(
         breakeven_max_value = prod.price * cap_factor
     else:
         # If no cap_factor, the max value is effectively infinite
-        log.info(
-            "  No cap_factor provided for breakeven price. "
-            "Prices may jump uncontrollably."
-        )
+        if info_enabled:
+            log.info(
+                "  No cap_factor provided for breakeven price. "
+                "Prices may jump uncontrollably."
+            )
         breakeven_max_value = breakeven
 
     np.minimum(breakeven, breakeven_max_value, out=prod.breakeven_price)
 
     num_capped = np.sum(breakeven > breakeven_max_value)
-    if num_capped > 0:
+    if num_capped > 0 and info_enabled:
         log.info(f"  Breakeven prices capped for {num_capped} firms.")
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
@@ -172,7 +186,8 @@ def firms_calc_breakeven_price(
             f"  Final (Capped) Breakeven Prices:\n"
             f"{np.array2string(prod.breakeven_price, precision=2)}"
         )
-    log.info("--- Breakeven Price Calculation complete ---")
+    if info_enabled:
+        log.info("--- Breakeven Price Calculation complete ---")
 
 
 def firms_adjust_price(
@@ -190,11 +205,13 @@ def firms_adjust_price(
     --------
     bamengine.events.planning.FirmsAdjustPrice : Full documentation
     """
-    log.info("--- Firms Adjusting Prices ---")
-    log.info(
-        f"  Inputs: Avg Market Price (p_avg)={p_avg:.3f}  |  "
-        f"Max Price Shock (h_η)={h_eta:.3f}"
-    )
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Firms Adjusting Prices ---")
+        log.info(
+            f"  Inputs: Avg Market Price (p_avg)={p_avg:.3f}  |  "
+            f"Max Price Shock (h_η)={h_eta:.3f}"
+        )
 
     shape = prod.price.shape
     old_prices_for_log = prod.price.copy()
@@ -214,7 +231,10 @@ def firms_adjust_price(
     mask_dn = (prod.inventory > 0.0) & (prod.price >= p_avg)
     n_up, n_dn = np.sum(mask_up), np.sum(mask_dn)
     n_keep = shape[0] - n_up - n_dn
-    log.info(f"  Price adjustments: {n_up} firms ↑, {n_dn} firms ↓, {n_keep} firms ↔.")
+    if info_enabled:
+        log.info(
+            f"  Price adjustments: {n_up} firms ↑, {n_dn} firms ↓, {n_keep} firms ↔."
+        )
 
     if log.isEnabledFor(logging.DEBUG):
         if n_up > 0:
@@ -237,15 +257,16 @@ def firms_adjust_price(
         np.multiply(prod.price, 1.0 + shock, out=prod.price, where=mask_up)
         np.maximum(prod.price, prod.breakeven_price, out=prod.price, where=mask_up)
 
-        price_changes = prod.price[mask_up] - old_prices_for_log[mask_up]
-        num_floored = np.sum(
-            np.isclose(prod.price[mask_up], prod.breakeven_price[mask_up])
-        )
-        log.info(
-            f"  Raised prices for {n_up} firms. "
-            f"Avg change: {np.mean(price_changes):+.3f}. "
-            f"{num_floored} prices set by breakeven floor."
-        )
+        if info_enabled:
+            price_changes = prod.price[mask_up] - old_prices_for_log[mask_up]
+            num_floored = np.sum(
+                np.isclose(prod.price[mask_up], prod.breakeven_price[mask_up])
+            )
+            log.info(
+                f"  Raised prices for {n_up} firms. "
+                f"Avg change: {np.mean(price_changes):+.3f}. "
+                f"{num_floored} prices set by breakeven floor."
+            )
         if log.isEnabledFor(logging.DEBUG):
             for firm_idx in np.where(mask_up)[0][:5]:
                 log.debug(
@@ -268,24 +289,25 @@ def firms_adjust_price(
             floor_price = np.minimum(old_prices_for_log, prod.breakeven_price)
             np.maximum(prod.price, floor_price, out=prod.price, where=mask_dn)
 
-        price_changes = prod.price[mask_dn] - old_prices_for_log[mask_dn]
-        num_floored = np.sum(
-            np.isclose(prod.price[mask_dn], prod.breakeven_price[mask_dn])
-        )
-        num_increased_due_to_floor = np.sum(
-            prod.price[mask_dn] > old_prices_for_log[mask_dn]
-        )
-        log.info(
-            f"  Cut prices for {n_dn} firms. "
-            f"Avg change: {np.mean(price_changes):+.3f}. "
-            f"{num_floored} prices set by breakeven floor."
-        )
-        if num_increased_due_to_floor > 0:
-            log.info(
-                f"  !!! {num_increased_due_to_floor} firms in the 'cut price' "
-                f"group ended up INCREASING their price because their "
-                f"breakeven floor was higher than their old price."
+        if info_enabled:
+            price_changes = prod.price[mask_dn] - old_prices_for_log[mask_dn]
+            num_floored = np.sum(
+                np.isclose(prod.price[mask_dn], prod.breakeven_price[mask_dn])
             )
+            num_increased_due_to_floor = np.sum(
+                prod.price[mask_dn] > old_prices_for_log[mask_dn]
+            )
+            log.info(
+                f"  Cut prices for {n_dn} firms. "
+                f"Avg change: {np.mean(price_changes):+.3f}. "
+                f"{num_floored} prices set by breakeven floor."
+            )
+            if num_increased_due_to_floor > 0:
+                log.info(
+                    f"  !!! {num_increased_due_to_floor} firms in the 'cut price' "
+                    f"group ended up INCREASING their price because their "
+                    f"breakeven floor was higher than their old price."
+                )
         if log.isEnabledFor(logging.DEBUG):
             for firm_idx in np.where(mask_dn)[0][:5]:
                 log.debug(
@@ -295,7 +317,8 @@ def firms_adjust_price(
                     f"(Breakeven={prod.breakeven_price[firm_idx]:.2f})"
                 )
 
-    log.info("--- Price Adjustment complete ---")
+    if info_enabled:
+        log.info("--- Price Adjustment complete ---")
 
 
 def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
@@ -306,7 +329,9 @@ def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
     --------
     bamengine.events.planning.FirmsDecideDesiredLabor : Full documentation
     """
-    log.info("--- Firms Deciding Desired Labor ---")
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Firms Deciding Desired Labor ---")
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"  Inputs: Total Desired Production={prod.desired_production.sum():,.2f}"
@@ -330,10 +355,12 @@ def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:
     emp.desired_labor[:] = desired_labor_frac.astype(np.int64)
 
     # logging
-    log.info(f"  Total desired labor across all firms: {emp.desired_labor.sum():,}")
+    if info_enabled:
+        log.info(f"  Total desired labor across all firms: {emp.desired_labor.sum():,}")
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Desired Labor (Ld):\n{emp.desired_labor}")
-    log.info("--- Desired Labor Decision complete ---")
+    if info_enabled:
+        log.info("--- Desired Labor Decision complete ---")
 
 
 def firms_decide_vacancies(emp: Employer) -> None:
@@ -344,11 +371,13 @@ def firms_decide_vacancies(emp: Employer) -> None:
     --------
     bamengine.events.planning.FirmsDecideVacancies : Full documentation
     """
-    log.info("--- Firms Deciding Vacancies ---")
-    log.info(
-        f"  Inputs: Total Desired Labor={emp.desired_labor.sum():,}  |"
-        f"  Total Current Labor={emp.current_labor.sum():,}"
-    )
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Firms Deciding Vacancies ---")
+        log.info(
+            f"  Inputs: Total Desired Labor={emp.desired_labor.sum():,}  |"
+            f"  Total Current Labor={emp.current_labor.sum():,}"
+        )
 
     # core rule
     np.subtract(
@@ -357,10 +386,12 @@ def firms_decide_vacancies(emp: Employer) -> None:
     np.maximum(emp.n_vacancies, 0, out=emp.n_vacancies)
 
     # logging
-    log.info(f"  Total open vacancies in the economy: {emp.n_vacancies.sum():,}")
+    if info_enabled:
+        log.info(f"  Total open vacancies in the economy: {emp.n_vacancies.sum():,}")
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Final Vacancies:\n{emp.n_vacancies}")
-    log.info("--- Vacancy Decision complete ---")
+    if info_enabled:
+        log.info("--- Vacancy Decision complete ---")
 
 
 def firms_fire_excess_workers(
@@ -377,16 +408,19 @@ def firms_fire_excess_workers(
     --------
     bamengine.events.planning.FirmsFireExcessWorkers : Full documentation
     """
-    log.info("--- Firms Firing Excess Workers ---")
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Firms Firing Excess Workers ---")
 
     excess = emp.current_labor - emp.desired_labor
     firing_ids = np.where(excess > 0)[0]
     total_excess = excess[excess > 0].sum() if excess.size > 0 else 0
 
-    log.info(
-        f"  {firing_ids.size} firms have excess labor totaling {total_excess:,} workers "
-        f"using '{method}' method."
-    )
+    if info_enabled:
+        log.info(
+            f"  {firing_ids.size} firms have excess labor totaling {total_excess:,} workers "
+            f"using '{method}' method."
+        )
 
     total_workers_fired_this_step = 0
 
@@ -476,8 +510,9 @@ def firms_fire_excess_workers(
                 f"desired_labor={emp.desired_labor[i]}"
             )
 
-    log.info(
-        f"  Total workers fired this step across all firms: "
-        f"{total_workers_fired_this_step}"
-    )
-    log.info("--- Firms Firing Excess Workers complete ---")
+    if info_enabled:
+        log.info(
+            f"  Total workers fired this step across all firms: "
+            f"{total_workers_fired_this_step}"
+        )
+        log.info("--- Firms Firing Excess Workers complete ---")

@@ -45,7 +45,7 @@ This section helps you choose appropriate configurations for your research needs
 Runtime Expectations
 ~~~~~~~~~~~~~~~~~~~~
 
-Expected runtimes on modern hardware (Apple M4 Pro, Python 3.12):
+Expected runtimes on modern hardware (Apple M4 Pro, Python 3.13):
 
 .. list-table::
    :header-rows: 1
@@ -58,19 +58,19 @@ Expected runtimes on modern hardware (Apple M4 Pro, Python 3.12):
      - Throughput
    * - Prototyping
      - 100 firms, 500 households
-     - ~0.4s
-     - ~4s
-     - ~250 periods/s
+     - ~0.2s
+     - ~2s
+     - ~500 periods/s
    * - Development
      - 200 firms, 1000 households
-     - ~0.8s
-     - ~8s
-     - ~125 periods/s
+     - ~0.4s
+     - ~4s
+     - ~240 periods/s
    * - Production
      - 500 firms, 2500 households
-     - ~2s
-     - ~20s
-     - ~50 periods/s
+     - ~1.3s
+     - ~13s
+     - ~77 periods/s
 
 .. note::
 
