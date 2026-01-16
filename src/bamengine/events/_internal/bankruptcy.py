@@ -17,7 +17,7 @@ from bamengine import Rng, logging, make_rng
 from bamengine.economy import Economy
 from bamengine.relationships import LoanBook
 from bamengine.roles import Borrower, Employer, Lender, Producer, Worker
-from bamengine.utils import EPS, trim_mean, trimmed_weighted_mean
+from bamengine.utils import EPS, trim_mean
 
 log = logging.getLogger(__name__)
 
@@ -75,13 +75,18 @@ def mark_bankrupt_firms(
     """
     # A firm is marked as bankrupt if either:
     #     • net-worth (A) < 0
-    #     • current production (Y) <= 0
+    #     • previous production (Y_prev) <= 0 (ghost firm rule)
+    #
+    # Note: We check production_prev (not production) because production is zeroed
+    # at the start of each period's planning phase. production_prev holds the
+    # previous period's actual production, which is the relevant signal for
+    # detecting inactive "ghost" firms.
     #
     # For bankrupt firms, all workers are fired and loans are purged.
     log.info("--- Marking Bankrupt Firms ---")
 
     # detect bankruptcies
-    bankrupt_mask = (bor.net_worth < EPS) | (prod.production <= EPS)
+    bankrupt_mask = (bor.net_worth < EPS) | (prod.production_prev <= EPS)
     bankrupt_indices = np.where(bankrupt_mask)[0]
 
     ec.exiting_firms = bankrupt_indices.astype(np.int64)
@@ -97,13 +102,13 @@ def mark_bankrupt_firms(
     )
     if log.isEnabledFor(logging.DEBUG):  # pragma: no cover
         nw_bankrupt = np.where(bor.net_worth < EPS)[0]
-        prod_bankrupt = np.where(prod.production <= 0)[0]
+        prod_bankrupt = np.where(prod.production_prev <= 0)[0]
         log.debug(
             f"    Bankrupt due to Net Worth < 0: "
             f"{np.intersect1d(bankrupt_indices, nw_bankrupt).tolist()}"
         )
         log.debug(
-            f"    Bankrupt due to Production <= 0: "
+            f"    Bankrupt due to production_prev <= 0: "
             f"{np.intersect1d(bankrupt_indices, prod_bankrupt).tolist()}"
         )
 
@@ -209,14 +214,10 @@ def spawn_replacement_firms(
     mean_net = trim_mean(bor.net_worth[survivors])
     mean_prod = trim_mean(prod.production[survivors])
     mean_wage = trim_mean(wrk.wage[wrk.employed])
-    mean_labor_prod = trimmed_weighted_mean(
-        prod.labor_productivity[survivors], weights=prod.production[survivors]
-    )
 
     log.info(
         f"  New firms will be initialized based on survivor averages: "
-        f"mean_net={mean_net:.2f}, mean_prod={mean_prod:.2f}, "
-        f"mean_wage={mean_wage:.2f}, mean_labor_prod={mean_labor_prod:.4f}"
+        f"mean_net={mean_net:.2f}, mean_prod={mean_prod:.2f}, mean_wage={mean_wage:.2f}"
     )
 
     # initialize new firms
@@ -231,11 +232,11 @@ def spawn_replacement_firms(
         bor.projected_fragility[i] = 0.0
 
         # Reset Producer component
-        prod.production[i] = mean_prod * new_firm_production_factor
+        prod.production[i] = 0.0
+        prod.production_prev[i] = mean_prod * new_firm_production_factor
         prod.inventory[i] = 0.0
         prod.expected_demand[i] = 0.0
         prod.desired_production[i] = 0.0
-        prod.labor_productivity[i] = mean_labor_prod
         prod.price[i] = ec.avg_mkt_price * new_firm_price_markup
 
         # Reset Employer component

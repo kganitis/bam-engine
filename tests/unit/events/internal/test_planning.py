@@ -89,10 +89,29 @@ def test_decide_desired_production_vector() -> None:
 def test_shock_off_no_change() -> None:
     """
     With h_rho = 0 the rule must leave Yd unchanged, regardless of conditions.
+    Uses production_prev as the baseline for expected demand.
     """
-    prod = mock_producer(production=np.array([5.0]))
+    prod = mock_producer(production_prev=np.array([5.0]))
     firms_decide_desired_production(prod, p_avg=1.5, h_rho=0.0, rng=make_rng(7))
     assert np.isclose(prod.desired_production[0], 5.0)
+
+
+def test_planning_zeros_production_at_start() -> None:
+    """
+    Planning must zero out production at the start.
+    production_prev retains previous period's value for use as planning signal.
+    """
+    prod = mock_producer(
+        n=3,
+        production=np.array([5.0, 10.0, 15.0]),  # Will be zeroed
+        production_prev=np.array([5.0, 10.0, 15.0]),  # Retained for planning
+    )
+    firms_decide_desired_production(prod, p_avg=1.5, h_rho=0.0, rng=make_rng(0))
+
+    # production should be zeroed
+    np.testing.assert_array_equal(prod.production, [0.0, 0.0, 0.0])
+    # production_prev unchanged - used as baseline for expected_demand
+    np.testing.assert_array_equal(prod.production_prev, [5.0, 10.0, 15.0])
 
 
 def test_reuses_internal_buffers() -> None:
@@ -352,10 +371,13 @@ def test_fire_excess_workers_fires_correct_number() -> None:
     n_firms = 3
     n_workers = 10
 
+    desired_labor = np.array([2, 3, 1], dtype=np.int64)
+    current_labor = np.array([4, 3, 3], dtype=np.int64)  # excess: [2, 0, 2]
+
     emp = mock_employer(
         n=n_firms,
-        desired_labor=np.array([2, 3, 1], dtype=np.int64),
-        current_labor=np.array([4, 3, 3], dtype=np.int64),  # excess: [2, 0, 2]
+        desired_labor=desired_labor,
+        current_labor=current_labor,
     )
     wrk = mock_worker(n=n_workers)
     # Assign workers to firms: workers 0-3 to firm 0, 4-6 to firm 1, 7-9 to firm 2
@@ -378,10 +400,13 @@ def test_fire_excess_workers_expensive_first() -> None:
     n_firms = 1
     n_workers = 4
 
+    desired_labor = np.array([2], dtype=np.int64)
+    current_labor = np.array([4], dtype=np.int64)  # excess: 2
+
     emp = mock_employer(
         n=n_firms,
-        desired_labor=np.array([2], dtype=np.int64),
-        current_labor=np.array([4], dtype=np.int64),  # excess: 2
+        desired_labor=desired_labor,
+        current_labor=current_labor,
     )
     wrk = mock_worker(n=n_workers)
     wrk.employer[:] = np.array([0, 0, 0, 0], dtype=np.intp)
@@ -403,10 +428,13 @@ def test_fire_excess_workers_no_excess() -> None:
     n_firms = 2
     n_workers = 6
 
+    desired_labor = np.array([3, 4], dtype=np.int64)
+    current_labor = np.array([2, 4], dtype=np.int64)  # no excess
+
     emp = mock_employer(
         n=n_firms,
-        desired_labor=np.array([3, 4], dtype=np.int64),
-        current_labor=np.array([2, 4], dtype=np.int64),  # no excess
+        desired_labor=desired_labor,
+        current_labor=current_labor,
     )
     wrk = mock_worker(n=n_workers)
     wrk.employer[:] = np.array([0, 0, 1, 1, 1, 1], dtype=np.intp)
@@ -426,10 +454,13 @@ def test_fire_excess_workers_updates_worker_state() -> None:
     n_firms = 1
     n_workers = 3
 
+    desired_labor = np.array([1], dtype=np.int64)
+    current_labor = np.array([3], dtype=np.int64)  # excess: 2
+
     emp = mock_employer(
         n=n_firms,
-        desired_labor=np.array([1], dtype=np.int64),
-        current_labor=np.array([3], dtype=np.int64),  # excess: 2
+        desired_labor=desired_labor,
+        current_labor=current_labor,
     )
     wrk = mock_worker(n=n_workers)
     wrk.employer[:] = np.array([0, 0, 0], dtype=np.intp)
@@ -459,10 +490,13 @@ def test_fire_excess_workers_updates_firm_state() -> None:
     n_firms = 2
     n_workers = 7
 
+    desired_labor = np.array([1, 2], dtype=np.int64)
+    current_labor = np.array([3, 4], dtype=np.int64)  # excess: [2, 2]
+
     emp = mock_employer(
         n=n_firms,
-        desired_labor=np.array([1, 2], dtype=np.int64),
-        current_labor=np.array([3, 4], dtype=np.int64),  # excess: [2, 2]
+        desired_labor=desired_labor,
+        current_labor=current_labor,
     )
     wrk = mock_worker(n=n_workers)
     wrk.employer[:] = np.array([0, 0, 0, 1, 1, 1, 1], dtype=np.intp)
@@ -481,10 +515,13 @@ def test_fire_excess_workers_sets_employer_prev() -> None:
     n_firms = 1
     n_workers = 3
 
+    desired_labor = np.array([1], dtype=np.int64)
+    current_labor = np.array([3], dtype=np.int64)
+
     emp = mock_employer(
         n=n_firms,
-        desired_labor=np.array([1], dtype=np.int64),
-        current_labor=np.array([3], dtype=np.int64),
+        desired_labor=desired_labor,
+        current_labor=current_labor,
     )
     wrk = mock_worker(n=n_workers)
     wrk.employer[:] = np.array([0, 0, 0], dtype=np.intp)

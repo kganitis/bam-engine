@@ -36,6 +36,14 @@ class TestLongRunningStability:
         assert (sim.prod.production >= 0).all(), "Some production became negative"
         assert np.isfinite(sim.prod.production).all(), "Some production became infinite"
 
+        # production_prev should also remain non-negative and finite
+        assert (sim.prod.production_prev >= 0).all(), (
+            "Some production_prev became negative"
+        )
+        assert np.isfinite(sim.prod.production_prev).all(), (
+            "Some production_prev became infinite"
+        )
+
         # Employment should be reasonable
         employed_count = sim.wrk.employed.sum()
         assert employed_count > 0, "Complete unemployment after 100 periods"

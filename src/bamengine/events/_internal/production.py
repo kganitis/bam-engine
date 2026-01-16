@@ -85,6 +85,14 @@ def update_avg_mkt_price(
             f"previous_avg={previous_price:.4f}"
         )
 
+    # If calculated price is 0 (all production is 0), preserve previous price
+    if p_avg_trimmed <= 0 and previous_price > 0:
+        log.warning(
+            f"  Calculated avg price is {p_avg_trimmed:.4f} (no production). "
+            f"Preserving previous price {previous_price:.4f}."
+        )
+        p_avg_trimmed = previous_price
+
     # update economy state
     ec.avg_mkt_price = p_avg_trimmed
     ec.avg_mkt_price_history = np.append(ec.avg_mkt_price_history, ec.avg_mkt_price)
@@ -175,10 +183,17 @@ def firms_run_production(prod: Producer, emp: Employer) -> None:
 
     # calculate production output
     np.multiply(prod.labor_productivity, emp.current_labor, out=prod.production)
+
+    # Update production_prev unconditionally.
+    # Firms with production=0 will be detected as "ghost firms" by the bankruptcy
+    # check next period (production_prev <= 0) and replaced with new entrants.
+    prod.production_prev[:] = prod.production
+
     total_production = prod.production.sum()
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Production output: {prod.production}")
+        log.debug(f"  Production_prev updated: {prod.production_prev}")
 
     log.info(f"  Total production output: {total_production:,.2f}")
 

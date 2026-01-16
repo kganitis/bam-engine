@@ -38,6 +38,7 @@ def _economy_defaults() -> dict[str, Any]:
 def _producer_defaults(n: int, *, queue_: int) -> dict[str, Any]:
     return dict(
         production=np.full(n, 10.0, dtype=np.float64),
+        production_prev=np.full(n, 10.0, dtype=np.float64),
         inventory=np.zeros(n, dtype=np.float64),
         expected_demand=np.zeros(n, dtype=np.float64),
         desired_production=np.full(n, 10.0, dtype=np.float64),

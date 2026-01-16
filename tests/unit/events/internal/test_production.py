@@ -158,6 +158,7 @@ def test_firms_run_production_updates_output_and_stock() -> None:
         n=2,
         labor_productivity=np.array([2.0, 3.0]),
         production=np.zeros(2),
+        production_prev=np.zeros(2),
         inventory=np.zeros(2),
     )
 
@@ -165,6 +166,7 @@ def test_firms_run_production_updates_output_and_stock() -> None:
 
     expected = prod.labor_productivity * emp.current_labor
     np.testing.assert_allclose(prod.production, expected)
+    np.testing.assert_allclose(prod.production_prev, expected)  # Also updated
     np.testing.assert_allclose(prod.inventory, expected)
 
 

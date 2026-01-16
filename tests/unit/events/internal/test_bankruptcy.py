@@ -76,7 +76,8 @@ def test_mark_bankrupt_firms_fires_workers_and_purges_loans() -> None:
 
 def test_mark_bankrupt_firms_exits_zero_production() -> None:
     """Positive equity but zero output ⇒ exit (ghost-firm rule)."""
-    prod = mock_producer(2, production=np.array([0.0, 3.0]))  # firm-0 is a ghost
+    # Ghost firm rule checks production_prev (not production)
+    prod = mock_producer(2, production_prev=np.array([0.0, 3.0]))  # firm-0 is a ghost
     emp = mock_employer(2)
     bor = mock_borrower(2, net_worth=np.array([10.0, 4.0]))
     wrk = mock_worker(0)
@@ -88,8 +89,8 @@ def test_mark_bankrupt_firms_exits_zero_production() -> None:
 
 
 def test_mark_bankrupt_firms_noop_when_all_viable() -> None:
-    """All firms have positive equity **and** production."""
-    prod = mock_producer(2, production=np.array([4.0, 3.0]))
+    """All firms have positive equity **and** production_prev."""
+    prod = mock_producer(2, production_prev=np.array([4.0, 3.0]))
     bor = mock_borrower(2, net_worth=np.array([3.0, 1.0]))
     ec = mock_economy()
     before = bor.net_worth.copy()
@@ -126,7 +127,11 @@ def test_spawn_replacement_firms_restores_positive_equity() -> None:
     ec = mock_economy()
     ec.exiting_firms = np.array([0, 2], dtype=np.int64)
 
-    prod = mock_producer(3, production=np.array([0.0, 10.0, 0.0]))
+    prod = mock_producer(
+        3,
+        production=np.array([0.0, 10.0, 0.0]),
+        production_prev=np.array([0.0, 10.0, 0.0]),
+    )
     emp = mock_employer(3, wage_offer=np.array([1.2, 1.0, 1.5]))
     bor = mock_borrower(
         3,
@@ -147,6 +152,16 @@ def test_spawn_replacement_firms_restores_positive_equity() -> None:
     # labour reset to zero -> for *replaced* firms: inventory zeroed out
     assert emp.current_labor[[0, 2]].sum() == 0
     assert np.array_equal(prod.inventory[[0, 2]], [0, 0])
+
+    # production is 0 for spawned firms (no workers yet)
+    assert prod.production[0] == 0.0
+    assert prod.production[2] == 0.0
+
+    # production_prev is set to planning signal (based on survivor mean × factor)
+    # Survivor is firm 1 with production 10.0, default factor is 0.8
+    expected_signal = 10.0 * 0.8
+    assert prod.production_prev[0] == expected_signal
+    assert prod.production_prev[2] == expected_signal
 
 
 def test_spawn_replacement_banks_clone_and_fallback() -> None:
