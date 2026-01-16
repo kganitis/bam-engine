@@ -33,6 +33,7 @@ def _run_revenue_event(
         "net_w_before": sch.bor.net_worth.copy(),
         "debt_tot_before": sch.lb.debt_per_borrower(n_firms),
         "interest_tot": sch.lb.interest_per_borrower(n_firms),
+        "savings_before": sch.con.savings.copy(),
     }
 
     # revenue & gross-profit
@@ -42,13 +43,14 @@ def _run_revenue_event(
     # debt service
     firms_validate_debt_commitments(sch.bor, sch.lend, sch.lb)
 
-    # dividends
-    firms_pay_dividends(sch.bor, delta=delta)
+    # dividends (now also credits households)
+    firms_pay_dividends(sch.bor, sch.con, delta=delta)
 
     snap["funds_after"] = sch.bor.total_funds.copy()
     snap["equity_after"] = sch.lend.equity_base.copy()
     snap["net_w_after"] = sch.bor.net_worth.copy()
     snap["debt_tot_after"] = sch.lb.debt_per_borrower(n_firms)
+    snap["savings_after"] = sch.con.savings.copy()
     return snap
 
 
@@ -123,10 +125,9 @@ def test_event_revenue_basic(tiny_sched: Simulation) -> None:
 
     np.testing.assert_allclose(sch.lend.equity_base, equity_expected, rtol=EPS)
 
-    # ledger size & rows
-    assert 0 not in sch.lb.borrower[: sch.lb.size]  # firm-0 repaid
-    assert 1 not in sch.lb.borrower[: sch.lb.size]  # firm-1 repaid
-    assert sch.lb.size == 1
+    # ledger size & rows - all loans should be removed:
+    # firm-0 and firm-1 repaid, firm-2 defaulted (loan written off and removed)
+    assert sch.lb.size == 0
 
 
 def test_revenue_post_state_consistency(tiny_sched: Simulation) -> None:
@@ -170,3 +171,52 @@ def test_revenue_post_state_consistency(tiny_sched: Simulation) -> None:
     assert sch.lb.size <= sch.lb.capacity
     assert (sch.lb.borrower[: sch.lb.size] < sch.bor.total_funds.size).all()
     assert (sch.lb.lender[: sch.lb.size] < sch.lend.equity_base.size).all()
+
+
+def test_dividend_stock_flow_consistency(tiny_sched: Simulation) -> None:
+    """
+    Verify that dividends paid by firms exactly equal dividends received
+    by households (stock-flow consistency).
+    """
+    sch = tiny_sched
+    delta = 0.20
+
+    # Setup firms with some profit to generate dividends
+    sch.prod.production[:] = 30.0
+    sch.prod.inventory[:] = 10.0  # Each firm sells 20 units
+    sch.prod.price[:] = 2.0  # Revenue = 40 per firm
+    sch.bor.wage_bill[:] = 15.0  # Gross profit = 25 per firm
+    sch.bor.total_funds[:] = 100.0
+    sch.bor.net_worth[:] = 50.0
+    sch.lb.size = 0  # No debt → net_profit = gross_profit
+
+    snap = _run_revenue_event(sch, delta=delta)
+
+    # Calculate expected dividends
+    # All firms should be profitable after revenue collection
+    expected_dividends = (sch.bor.net_profit[sch.bor.net_profit > 0] * delta).sum()
+
+    # Verify firm funds decreased by total dividends
+    # (funds_after already accounts for revenue and debt service)
+    # For this test, we verify via retained_profit calculation
+    total_retained = sch.bor.retained_profit.sum()
+    total_net_profit = sch.bor.net_profit.sum()
+    actual_dividends_paid = total_net_profit - total_retained
+
+    # Verify household savings increased by the same amount
+    savings_increase = snap["savings_after"].sum() - snap["savings_before"].sum()
+
+    # Stock-flow consistency: dividends paid = dividends received
+    np.testing.assert_allclose(
+        actual_dividends_paid,
+        savings_increase,
+        rtol=EPS,
+        err_msg="Stock-flow inconsistency: firm dividends != household dividends",
+    )
+
+    # Also verify the dividend amount is correct
+    np.testing.assert_allclose(
+        actual_dividends_paid,
+        expected_dividends,
+        rtol=EPS,
+    )
