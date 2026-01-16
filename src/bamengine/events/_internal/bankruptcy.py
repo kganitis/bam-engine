@@ -30,14 +30,17 @@ def firms_update_net_worth(bor: Borrower) -> None:
     --------
     bamengine.events.bankruptcy.FirmsUpdateNetWorth : Full documentation
     """
-    log.info("--- Firms Updating Net Worth ---")
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Firms Updating Net Worth ---")
 
     # update net worth with retained profits
-    total_retained_profits = bor.retained_profit.sum()
-    log.info(
-        f"  Total retained profits being added to net worth: "
-        f"{total_retained_profits:,.2f}"
-    )
+    if info_enabled:
+        total_retained_profits = bor.retained_profit.sum()
+        log.info(
+            f"  Total retained profits being added to net worth: "
+            f"{total_retained_profits:,.2f}"
+        )
 
     np.add(bor.net_worth, bor.retained_profit, out=bor.net_worth)
 
@@ -55,7 +58,8 @@ def firms_update_net_worth(bor: Borrower) -> None:
             f"{np.array2string(bor.total_funds, precision=2)}"
         )
 
-    log.info("--- Firms Updating Net Worth complete ---")
+    if info_enabled:
+        log.info("--- Firms Updating Net Worth complete ---")
 
 
 def mark_bankrupt_firms(
@@ -83,7 +87,9 @@ def mark_bankrupt_firms(
     # detecting inactive "ghost" firms.
     #
     # For bankrupt firms, all workers are fired and loans are purged.
-    log.info("--- Marking Bankrupt Firms ---")
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Marking Bankrupt Firms ---")
 
     # detect bankruptcies
     bankrupt_mask = (bor.net_worth < EPS) | (prod.production_prev <= EPS)
@@ -92,8 +98,9 @@ def mark_bankrupt_firms(
     ec.exiting_firms = bankrupt_indices.astype(np.int64)
 
     if bankrupt_indices.size == 0:
-        log.info("  No new firm bankruptcies this period.")
-        log.info("--- Firm Bankruptcy Marking complete ---")
+        if info_enabled:
+            log.info("  No new firm bankruptcies this period.")
+            log.info("--- Firm Bankruptcy Marking complete ---")
         return
 
     log.warning(
@@ -116,7 +123,8 @@ def mark_bankrupt_firms(
     workers_to_fire_mask = np.isin(wrk.employer, bankrupt_indices)
     num_fired = np.sum(workers_to_fire_mask)
     if num_fired > 0:
-        log.info(f"  Firing {num_fired} worker(s) from bankrupt firms.")
+        if info_enabled:
+            log.info(f"  Firing {num_fired} worker(s) from bankrupt firms.")
         wrk.employer_prev[workers_to_fire_mask] = -1
         wrk.employer[workers_to_fire_mask] = -1
         wrk.wage[workers_to_fire_mask] = 0.0
@@ -125,19 +133,21 @@ def mark_bankrupt_firms(
         wrk.fired[workers_to_fire_mask] = 0
 
     # wipe firm-side labor books
-    log.debug(
-        f"  Wiping labor and wage bill data for {bankrupt_indices.size} bankrupt firms."
-    )
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug(
+            f"  Wiping labor and wage bill data for {bankrupt_indices.size} bankrupt firms."
+        )
     emp.current_labor[bankrupt_indices] = 0
     emp.wage_bill[bankrupt_indices] = 0.0
 
     # purge their loans from the ledger
     num_purged = lb.purge_borrowers(bankrupt_indices)
-    log.info(
-        f"  Purged {num_purged} loans from the ledger belonging to bankrupt firms."
-    )
+    if info_enabled:
+        log.info(
+            f"  Purged {num_purged} loans from the ledger belonging to bankrupt firms."
+        )
 
-    log.info("--- Firm Bankruptcy Marking complete ---")
+        log.info("--- Firm Bankruptcy Marking complete ---")
 
 
 def mark_bankrupt_banks(ec: Economy, lend: Lender, lb: LoanBook) -> None:
@@ -148,15 +158,18 @@ def mark_bankrupt_banks(ec: Economy, lend: Lender, lb: LoanBook) -> None:
     --------
     bamengine.events.bankruptcy.MarkBankruptBanks : Full documentation
     """
-    log.info("--- Marking Bankrupt Banks ---")
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Marking Bankrupt Banks ---")
 
     # detect bankruptcies
     bankrupt_indices = np.where(lend.equity_base < EPS)[0]
     ec.exiting_banks = bankrupt_indices.astype(np.int64)
 
     if bankrupt_indices.size == 0:
-        log.info("  No new bank bankruptcies this period.")
-        log.info("--- Bank Bankruptcy Marking complete ---")
+        if info_enabled:
+            log.info("  No new bank bankruptcies this period.")
+            log.info("--- Bank Bankruptcy Marking complete ---")
         return
 
     log.warning(
@@ -166,9 +179,12 @@ def mark_bankrupt_banks(ec: Economy, lend: Lender, lb: LoanBook) -> None:
 
     # purge their loans from the ledger
     num_purged = lb.purge_lenders(bankrupt_indices)
-    log.info(f"  Purged {num_purged} loans from the ledger issued by bankrupt banks.")
+    if info_enabled:
+        log.info(
+            f"  Purged {num_purged} loans from the ledger issued by bankrupt banks."
+        )
 
-    log.info("--- Bank Bankruptcy Marking complete ---")
+        log.info("--- Bank Bankruptcy Marking complete ---")
 
 
 def spawn_replacement_firms(
@@ -191,15 +207,19 @@ def spawn_replacement_firms(
     --------
     bamengine.events.bankruptcy.SpawnReplacementFirms : Full documentation
     """
-    log.info("--- Spawning Replacement Firms ---")
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Spawning Replacement Firms ---")
     exiting_indices = ec.exiting_firms
     num_exiting = exiting_indices.size
     if num_exiting == 0:
-        log.info("  No firms to replace. Skipping.")
-        log.info("--- Firm Spawning complete ---")
+        if info_enabled:
+            log.info("  No firms to replace. Skipping.")
+            log.info("--- Firm Spawning complete ---")
         return
 
-    log.info(f"  Spawning {num_exiting} new firm(s) to replace bankrupt ones.")
+    if info_enabled:
+        log.info(f"  Spawning {num_exiting} new firm(s) to replace bankrupt ones.")
 
     # handle full market collapse
     if num_exiting == bor.net_worth.size:  # pragma: no cover - catastrophic edge case
@@ -215,10 +235,11 @@ def spawn_replacement_firms(
     mean_prod = trim_mean(prod.production[survivors])
     mean_wage = trim_mean(wrk.wage[wrk.employed])
 
-    log.info(
-        f"  New firms will be initialized based on survivor averages: "
-        f"mean_net={mean_net:.2f}, mean_prod={mean_prod:.2f}, mean_wage={mean_wage:.2f}"
-    )
+    if info_enabled:
+        log.info(
+            f"  New firms will be initialized based on survivor averages: "
+            f"mean_net={mean_net:.2f}, mean_prod={mean_prod:.2f}, mean_wage={mean_wage:.2f}"
+        )
 
     # initialize new firms
     for i in exiting_indices:
@@ -255,7 +276,8 @@ def spawn_replacement_firms(
 
     # clear exit list
     ec.exiting_firms = np.empty(0, np.intp)
-    log.info("--- Firm Spawning complete ---")
+    if info_enabled:
+        log.info("--- Firm Spawning complete ---")
 
 
 def spawn_replacement_banks(
@@ -271,15 +293,19 @@ def spawn_replacement_banks(
     --------
     bamengine.events.bankruptcy.SpawnReplacementBanks : Full documentation
     """
-    log.info("--- Spawning Replacement Banks ---")
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Spawning Replacement Banks ---")
     exiting_indices = ec.exiting_banks
     num_exiting = exiting_indices.size
     if num_exiting == 0:
-        log.info("  No banks to replace. Skipping.")
-        log.info("--- Bank Spawning complete ---")
+        if info_enabled:
+            log.info("  No banks to replace. Skipping.")
+            log.info("--- Bank Spawning complete ---")
         return
 
-    log.info(f"  Spawning {num_exiting} new bank(s) to replace bankrupt ones.")
+    if info_enabled:
+        log.info(f"  Spawning {num_exiting} new bank(s) to replace bankrupt ones.")
 
     # handle full market collapse
     alive = np.setdiff1d(
@@ -291,9 +317,11 @@ def spawn_replacement_banks(
         return
 
     # initialize new banks
+    debug_enabled = log.isEnabledFor(logging.DEBUG)
     for k in exiting_indices:
         src = int(rng.choice(alive))
-        log.debug(f"  Cloning healthy bank {src} to replace bankrupt bank {k}.")
+        if debug_enabled:
+            log.debug(f"  Cloning healthy bank {src} to replace bankrupt bank {k}.")
         lend.equity_base[k] = lend.equity_base[src]
 
         # Reset state for the new bank
@@ -304,4 +332,5 @@ def spawn_replacement_banks(
 
     # clear exit list
     ec.exiting_banks = np.empty(0, np.intp)
-    log.info("--- Bank Spawning complete ---")
+    if info_enabled:
+        log.info("--- Bank Spawning complete ---")

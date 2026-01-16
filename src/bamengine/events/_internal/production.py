@@ -39,7 +39,9 @@ def calc_unemployment_rate(
     --------
     bamengine.events.economy_stats.CalcUnemploymentRate : Full documentation
     """
-    log.info("--- Calculating Unemployment Rate ---")
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Calculating Unemployment Rate ---")
 
     n_workers = wrk.employed.size
     unemployed_count = n_workers - wrk.employed.sum()
@@ -51,12 +53,14 @@ def calc_unemployment_rate(
             f"out of {n_workers} total workers"
         )
 
-    log.info(f"  Unemployment rate: {rate * 100:.2f}%")
+    if info_enabled:
+        log.info(f"  Unemployment rate: {rate * 100:.2f}%")
 
     # Store raw rate in history
     ec.unemp_rate_history = np.append(ec.unemp_rate_history, rate)
 
-    log.info("--- Unemployment Rate Calculation complete ---")
+    if info_enabled:
+        log.info("--- Unemployment Rate Calculation complete ---")
 
 
 def update_avg_mkt_price(
@@ -71,7 +75,9 @@ def update_avg_mkt_price(
     --------
     bamengine.events.economy_stats.UpdateAvgMktPrice : Full documentation
     """
-    log.info("--- Updating Average Market Price ---")
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Updating Average Market Price ---")
 
     # calculate average market price by weighting firm prices by production output
     p_avg_trimmed = trimmed_weighted_mean(
@@ -97,8 +103,9 @@ def update_avg_mkt_price(
     ec.avg_mkt_price = p_avg_trimmed
     ec.avg_mkt_price_history = np.append(ec.avg_mkt_price_history, ec.avg_mkt_price)
 
-    log.info(f"  Average market price updated: {ec.avg_mkt_price:.4f}")
-    log.info("--- Average Market Price Update complete ---")
+    if info_enabled:
+        log.info(f"  Average market price updated: {ec.avg_mkt_price:.4f}")
+        log.info("--- Average Market Price Update complete ---")
 
 
 def firms_pay_wages(emp: Employer) -> None:
@@ -109,16 +116,19 @@ def firms_pay_wages(emp: Employer) -> None:
     --------
     bamengine.events.production.FirmsPayWages : Full documentation
     """
-    log.info("--- Firms Paying Wages ---")
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Firms Paying Wages ---")
 
     paying_firms = np.where(emp.wage_bill > 0.0)[0]
     total_wages_paid = (
         emp.wage_bill[paying_firms].sum() if paying_firms.size > 0 else 0.0
     )
 
-    log.info(
-        f"  {paying_firms.size} firms paying total wages of {total_wages_paid:,.2f}"
-    )
+    if info_enabled:
+        log.info(
+            f"  {paying_firms.size} firms paying total wages of {total_wages_paid:,.2f}"
+        )
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Pre-payment firm funds: {emp.total_funds}")
@@ -130,7 +140,8 @@ def firms_pay_wages(emp: Employer) -> None:
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Post-payment firm funds: {emp.total_funds}")
 
-    log.info("--- Firms Paying Wages complete ---")
+    if info_enabled:
+        log.info("--- Firms Paying Wages complete ---")
 
 
 def workers_receive_wage(con: Consumer, wrk: Worker) -> None:
@@ -141,15 +152,18 @@ def workers_receive_wage(con: Consumer, wrk: Worker) -> None:
     --------
     bamengine.events.production.WorkersReceiveWage : Full documentation
     """
-    log.info("--- Workers Receiving Wages ---")
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Workers Receiving Wages ---")
 
     employed_workers = np.where(wrk.employed == 1)[0]
     total_wages_received = (wrk.wage * wrk.employed).sum()
 
-    log.info(
-        f"  {employed_workers.size} employed workers receiving "
-        f"total wages of {total_wages_received:,.2f}"
-    )
+    if info_enabled:
+        log.info(
+            f"  {employed_workers.size} employed workers receiving "
+            f"total wages of {total_wages_received:,.2f}"
+        )
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Pre-wage consumer income: {con.income}")
@@ -161,7 +175,8 @@ def workers_receive_wage(con: Consumer, wrk: Worker) -> None:
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Post-wage consumer income: {con.income}")
 
-    log.info("--- Workers Receiving Wages complete ---")
+    if info_enabled:
+        log.info("--- Workers Receiving Wages complete ---")
 
 
 def firms_run_production(prod: Producer, emp: Employer) -> None:
@@ -172,7 +187,9 @@ def firms_run_production(prod: Producer, emp: Employer) -> None:
     --------
     bamengine.events.production.FirmsRunProduction : Full documentation
     """
-    log.info("--- Firms Running Production ---")
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Firms Running Production ---")
 
     producing_firms = np.where(emp.current_labor > 0)[0]
 
@@ -195,7 +212,8 @@ def firms_run_production(prod: Producer, emp: Employer) -> None:
         log.debug(f"  Production output: {prod.production}")
         log.debug(f"  Production_prev updated: {prod.production_prev}")
 
-    log.info(f"  Total production output: {total_production:,.2f}")
+    if info_enabled:
+        log.info(f"  Total production output: {total_production:,.2f}")
 
     # update inventory
     prod.inventory[:] = prod.production  # overwrite, do **not** add
@@ -203,7 +221,8 @@ def firms_run_production(prod: Producer, emp: Employer) -> None:
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Inventory updated (replaced): {prod.inventory}")
 
-    log.info("--- Firms Running Production complete ---")
+    if info_enabled:
+        log.info("--- Firms Running Production complete ---")
 
 
 def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
@@ -214,12 +233,15 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
     --------
     bamengine.events.production.WorkersUpdateContracts : Full documentation
     """
-    log.info("--- Updating Worker Contracts ---")
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Updating Worker Contracts ---")
 
     employed_workers = np.where(wrk.employed == 1)[0]
     total_employed = employed_workers.size
 
-    log.info(f"  Processing contracts for {total_employed} employed workers")
+    if info_enabled:
+        log.info(f"  Processing contracts for {total_employed} employed workers")
 
     # validate contract consistency
     already_expired_mask = (wrk.employed == 1) & (wrk.periods_left == 0)
@@ -243,8 +265,9 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
     # decrement contract periods
     mask_emp = wrk.employed == 1
     if not np.any(mask_emp):
-        log.info("  No employed workers found. Skipping contract updates.")
-        log.info("--- Worker Contract Update complete ---")
+        if info_enabled:
+            log.info("  No employed workers found. Skipping contract updates.")
+            log.info("--- Worker Contract Update complete ---")
         return
 
     num_employed_ticking = np.sum(mask_emp)
@@ -257,14 +280,16 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
     expired_mask = mask_emp & (wrk.periods_left == 0)
 
     if not np.any(expired_mask):
-        log.info("  No worker contracts expired this step.")
-        log.info("--- Worker Contract Update complete ---")
+        if info_enabled:
+            log.info("  No worker contracts expired this step.")
+            log.info("--- Worker Contract Update complete ---")
         return
 
     num_newly_expired = np.sum(expired_mask)
     newly_expired_worker_ids = np.where(expired_mask)[0]
 
-    log.info(f"  {num_newly_expired} worker contract(s) have expired")
+    if info_enabled:
+        log.info(f"  {num_newly_expired} worker contract(s) have expired")
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"    Expired worker IDs: {newly_expired_worker_ids.tolist()}")
@@ -323,4 +348,5 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"      Firm wage bills recalculated: {emp.wage_bill}")
 
-    log.info("--- Worker Contract Update complete ---")
+    if info_enabled:
+        log.info("--- Worker Contract Update complete ---")
