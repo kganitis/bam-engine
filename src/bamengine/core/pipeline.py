@@ -203,7 +203,7 @@ class Pipeline:
         """Build internal event mapping and initialize callbacks."""
         self._event_map = {event.name: event for event in self.events}
         # Ensure _after_event_callbacks is a defaultdict (in case of copy/pickle)
-        if not isinstance(self._after_event_callbacks, defaultdict):
+        if not isinstance(self._after_event_callbacks, defaultdict):  # pragma: no cover
             self._after_event_callbacks = defaultdict(list, self._after_event_callbacks)
 
     @classmethod

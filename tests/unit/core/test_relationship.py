@@ -448,3 +448,254 @@ def test_append_edges_exceeds_capacity():
 
     with pytest.raises(ValueError, match="Cannot append.*exceed capacity"):
         rel.append_edges(new_sources, new_targets)
+
+
+def test_append_edges_empty():
+    """Test appending empty arrays is a no-op."""
+
+    @relationship
+    class SimpleRelation:
+        weight: Float1D
+
+    rel = SimpleRelation(
+        source_ids=np.array([0, 1], dtype=np.int32),
+        target_ids=np.array([10, 11], dtype=np.int32),
+        weight=np.array([1.0, 2.0]),
+        size=2,
+        capacity=5,
+    )
+
+    # Append empty arrays - should be a no-op
+    new_sources = np.array([], dtype=np.int32)
+    new_targets = np.array([], dtype=np.int32)
+    rel.append_edges(new_sources, new_targets)
+
+    assert rel.size == 2  # Size unchanged
+
+
+def test_drop_rows_all_false_mask():
+    """Test drop_rows with all-False mask is a no-op."""
+
+    @relationship
+    class SimpleRelation:
+        weight: Float1D
+
+    rel = SimpleRelation(
+        source_ids=np.array([0, 1, 2], dtype=np.int32),
+        target_ids=np.array([10, 11, 12], dtype=np.int32),
+        weight=np.array([1.0, 2.0, 3.0]),
+        size=3,
+        capacity=5,
+    )
+
+    # Drop with all-False mask - should not remove anything
+    mask = np.array([False, False, False])
+    n_dropped = rel.drop_rows(mask)
+
+    assert n_dropped == 0
+    assert rel.size == 3
+
+
+# ============================================================================
+# Empty Relationship Edge Cases
+# ============================================================================
+
+
+def test_aggregate_by_source_empty_infer_size():
+    """Test aggregate_by_source with size=0 and n_sources=None."""
+
+    @relationship
+    class SimpleRelation:
+        weight: Float1D
+
+    rel = SimpleRelation(
+        source_ids=np.zeros(10, dtype=np.int32),
+        target_ids=np.zeros(10, dtype=np.int32),
+        weight=np.zeros(10),
+        size=0,  # Empty relationship
+        capacity=10,
+    )
+
+    # n_sources=None should infer size (0 since no active sources)
+    result = rel.aggregate_by_source(rel.weight, func="sum", n_sources=None)
+    assert result.size == 0
+
+
+def test_aggregate_by_target_empty_infer_size():
+    """Test aggregate_by_target with size=0 and n_targets=None."""
+
+    @relationship
+    class SimpleRelation:
+        weight: Float1D
+
+    rel = SimpleRelation(
+        source_ids=np.zeros(10, dtype=np.int32),
+        target_ids=np.zeros(10, dtype=np.int32),
+        weight=np.zeros(10),
+        size=0,  # Empty relationship
+        capacity=10,
+    )
+
+    # n_targets=None should infer size (0 since no active targets)
+    result = rel.aggregate_by_target(rel.weight, func="sum", n_targets=None)
+    assert result.size == 0
+
+
+def test_aggregate_by_target_with_preallocated_output():
+    """Test aggregate_by_target with pre-allocated output array."""
+
+    @relationship
+    class SimpleRelation:
+        weight: Float1D
+
+    rel = SimpleRelation(
+        source_ids=np.array([0, 1, 2], dtype=np.int32),
+        target_ids=np.array([0, 0, 1], dtype=np.int32),
+        weight=np.array([1.0, 2.0, 3.0]),
+        size=3,
+        capacity=10,
+    )
+
+    out = np.ones(2)  # Pre-allocate with non-zero values
+    result = rel.aggregate_by_target(rel.weight, func="sum", n_targets=2, out=out)
+
+    # Should overwrite out array (zero then accumulate)
+    np.testing.assert_array_almost_equal(result, [3.0, 3.0])  # 1+2, 3
+    assert result is out  # Should be same object
+
+
+# ============================================================================
+# Relationship Registration with Explicit Parameters
+# ============================================================================
+
+
+def test_relationship_with_explicit_source_target():
+    """Test relationship creation with explicit source= and target= kwargs."""
+    from bamengine.core import Role
+
+    # Create dummy role classes for testing
+    @Role.register
+    class SourceRole:
+        pass
+
+    @Role.register
+    class TargetRole:
+        pass
+
+    try:
+        # Create relationship with explicit source/target
+        @relationship(source=SourceRole, target=TargetRole)
+        class ExplicitRelation:
+            weight: Float1D
+
+        assert ExplicitRelation.source_role is SourceRole
+        assert ExplicitRelation.target_role is TargetRole
+    finally:
+        # Clean up role registry
+        from bamengine.core.registry import _ROLE_REGISTRY
+
+        _ROLE_REGISTRY.pop("SourceRole", None)
+        _ROLE_REGISTRY.pop("TargetRole", None)
+
+
+def test_relationship_init_subclass_with_explicit_source_target():
+    """Test __init_subclass__ is called with explicit source and target parameters."""
+    from dataclasses import dataclass
+
+    from bamengine.core import Relationship, Role
+
+    # Create dummy role classes for testing
+    @Role.register
+    class DummySourceRole:
+        pass
+
+    @Role.register
+    class DummyTargetRole:
+        pass
+
+    try:
+        # Create relationship by directly inheriting from Relationship
+        # and passing source/target to __init_subclass__
+        @dataclass(slots=True)
+        class DirectRelation(
+            Relationship, source=DummySourceRole, target=DummyTargetRole
+        ):
+            weight: Float1D
+
+        assert DirectRelation.source_role is DummySourceRole
+        assert DirectRelation.target_role is DummyTargetRole
+    finally:
+        # Clean up registries
+        from bamengine.core.registry import _RELATIONSHIP_REGISTRY, _ROLE_REGISTRY
+
+        _ROLE_REGISTRY.pop("DummySourceRole", None)
+        _ROLE_REGISTRY.pop("DummyTargetRole", None)
+        _RELATIONSHIP_REGISTRY.pop("DirectRelation", None)
+
+
+# ============================================================================
+# Error Handling Tests
+# ============================================================================
+
+
+def test_aggregate_by_source_invalid_func():
+    """Test that aggregate_by_source raises ValueError for invalid func."""
+
+    @relationship
+    class SimpleRelation:
+        weight: Float1D
+
+    rel = SimpleRelation(
+        source_ids=np.array([0, 1, 2], dtype=np.int32),
+        target_ids=np.array([10, 11, 12], dtype=np.int32),
+        weight=np.array([1.0, 2.0, 3.0]),
+        size=3,
+        capacity=10,
+    )
+
+    with pytest.raises(ValueError, match="Unknown aggregation function"):
+        rel.aggregate_by_source(rel.weight, func="invalid", n_sources=3)
+
+
+def test_aggregate_by_target_invalid_func():
+    """Test that aggregate_by_target raises ValueError for invalid func."""
+
+    @relationship
+    class SimpleRelation:
+        weight: Float1D
+
+    rel = SimpleRelation(
+        source_ids=np.array([0, 1, 2], dtype=np.int32),
+        target_ids=np.array([0, 0, 1], dtype=np.int32),
+        weight=np.array([1.0, 2.0, 3.0]),
+        size=3,
+        capacity=10,
+    )
+
+    with pytest.raises(ValueError, match="Unknown aggregation function"):
+        rel.aggregate_by_target(rel.weight, func="invalid", n_targets=2)
+
+
+def test_append_edges_size_mismatch():
+    """Test that append_edges raises ValueError for mismatched array sizes."""
+
+    @relationship
+    class SimpleRelation:
+        weight: Float1D
+
+    rel = SimpleRelation(
+        source_ids=np.array([0, 1], dtype=np.int32),
+        target_ids=np.array([10, 11], dtype=np.int32),
+        weight=np.array([1.0, 2.0]),
+        size=2,
+        capacity=10,
+    )
+
+    # source_ids has 3 elements, target_ids has 2
+    new_sources = np.array([2, 3, 4], dtype=np.int32)
+    new_targets = np.array([12, 13], dtype=np.int32)
+
+    with pytest.raises(
+        ValueError, match="source_ids and target_ids must have same length"
+    ):
+        rel.append_edges(new_sources, new_targets)

@@ -535,3 +535,31 @@ def test_fire_excess_workers_sets_employer_prev() -> None:
     # Fired workers should have employer_prev = 0 (their former employer)
     fired_mask = wrk.fired == 1
     assert (wrk.employer_prev[fired_mask] == 0).all()
+
+
+def test_price_adjust_cut_with_no_increase_allowed() -> None:
+    """
+    When price_cut_allow_increase=False, prices should not increase
+    even when the breakeven floor is above the old price.
+    """
+    rng = make_rng(1)
+    prod = mock_producer(n=2)
+
+    # Both firms in "cut" set (inventory>0 & price >= p_avg)
+    prod.inventory[:] = np.array([5.0, 5.0])
+    prod.price[:] = np.array([2.0, 1.0])
+    # Second firm has breakeven_price > old price
+    prod.breakeven_price[:] = np.array([1.5, 1.2])
+
+    old = prod.price.copy()
+    firms_adjust_price(
+        prod, p_avg=1.0, h_eta=0.1, rng=rng, price_cut_allow_increase=False
+    )
+
+    # First firm: normal cut (floor 1.5 below price cut target)
+    assert prod.price[0] <= old[0]
+
+    # Second firm: with price_cut_allow_increase=False, price should NOT increase
+    # even though breakeven_price (1.2) > old price (1.0)
+    # Instead, floor is min(old_price, breakeven_price) = min(1.0, 1.2) = 1.0
+    assert prod.price[1] <= old[1]
