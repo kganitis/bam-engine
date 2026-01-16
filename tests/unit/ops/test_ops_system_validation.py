@@ -199,8 +199,9 @@ class TestGoodsMarketSystemValidation:
         Tests division and power operations with conditionals.
         """
         # Create two identical simulations
-        sim_numpy = Simulation.init(n_households=200, seed=42)
-        sim_ops = Simulation.init(n_households=200, seed=42)
+        # Use n_firms=40 to satisfy n_households >= n_firms constraint
+        sim_numpy = Simulation.init(n_firms=40, n_households=200, seed=42)
+        sim_ops = Simulation.init(n_firms=40, n_households=200, seed=42)
 
         # Run a few steps to get realistic state
         for _ in range(3):

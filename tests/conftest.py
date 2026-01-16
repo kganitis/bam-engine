@@ -72,6 +72,10 @@ def tiny_sched() -> Simulation:
         delta=0.15,
         # Higher net_worth for stability with small populations
         net_worth_init=10.0,
+        # Sufficient bank equity for credit market tests
+        equity_base_init=5.0,
+        # Disable loan-to-net-worth cap for deterministic test behavior
+        max_loan_to_net_worth=0.0,
     )
 
 

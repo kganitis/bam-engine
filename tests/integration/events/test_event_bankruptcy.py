@@ -166,6 +166,11 @@ def test_bankruptcy_entry_post_state_consistency(tiny_sched: Simulation) -> None
     sch.bor.net_worth[bad_firms] *= -0.5
     sch.bor.total_funds[:] = sch.bor.net_worth
 
+    # Set production_prev so ghost firm rule doesn't mark all firms bankrupt.
+    # Ghost firm rule checks production_prev (not production).
+    sch.prod.production_prev[:] = rng.uniform(6.0, 12.0, bor_n)
+    sch.prod.production_prev[bad_firms] = 0.0  # bad firms have zero production_prev too
+
     lend_n = sch.lend.equity_base.size
     # pick ≈30 % of the banks (at least one) to be “bad”
     n_bad_banks = max(1, int(0.3 * lend_n))

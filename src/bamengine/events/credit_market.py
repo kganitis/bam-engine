@@ -77,7 +77,7 @@ class BanksDecideCreditSupply:
     Banks decide total credit supply based on equity and capital requirement.
 
     Banks set their maximum lendable funds based on their equity base and the
-    regulatory capital requirement coefficient (v). Higher v means banks can
+    regulatory capital requirement coefficient (v). Lower v means banks can
     lend more relative to their equity (higher leverage).
 
     Algorithm
@@ -671,6 +671,7 @@ class BanksProvideLoans:
             r_bar=sim.r_bar,
             h_phi=sim.config.h_phi,
             loan_priority_method=sim.config.loan_priority_method,
+            max_loan_to_net_worth=sim.config.max_loan_to_net_worth,
         )
 
 

@@ -99,8 +99,12 @@ class MarkBankruptFirms:
     """
     Detect insolvent firms and remove them from the economy.
 
-    Firms are bankrupt if net_worth < 0 or production = 0. Bankrupt firms fire
-    all workers and have all loans purged from LoanBook.
+    Firms are bankrupt if net_worth < 0 or production_prev = 0 (ghost firm rule).
+    Bankrupt firms fire all workers and have all loans purged from LoanBook.
+
+    Note: We check ``production_prev`` (not ``production``) because ``production``
+    is zeroed at the start of each period's planning phase. ``production_prev``
+    holds the previous period's actual production.
 
     Examples
     --------
@@ -165,6 +169,10 @@ class SpawnReplacementFirms:
 
     Replacement firms inherit attributes (price, wage, net worth) from
     trimmed mean of survivors × scale factor (smaller than average).
+
+    For production fields:
+    - ``production = 0`` (no workers yet, keeps end-period aggregate stats clean)
+    - ``production_prev = mean_prod × new_firm_production_factor`` (planning signal)
 
     Examples
     --------

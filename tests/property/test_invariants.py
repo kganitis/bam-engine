@@ -17,8 +17,9 @@ n_households_strategy = st.integers(min_value=50, max_value=1000)
 n_banks_strategy = st.integers(min_value=2, max_value=20)
 seed_strategy = st.integers(min_value=0, max_value=2**31 - 1)
 
-# Shock parameters (0 to 1)
-shock_strategy = st.floats(min_value=0.01, max_value=0.5)
+# Shock parameters (0 to 0.25, avoiding extreme values that cause instability)
+# Note: 50% shocks are too extreme for small populations and can cause collapse
+shock_strategy = st.floats(min_value=0.01, max_value=0.25)
 
 # Search frictions (1 to 10)
 friction_strategy = st.integers(min_value=1, max_value=10)

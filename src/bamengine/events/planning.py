@@ -67,32 +67,37 @@ class FirmsDecideDesiredProduction:
     have unsold inventory and how their prices compare to market average.
     This implements the adaptive production rule from Delli Gatti et al. (2011).
 
+    This event first zeroes out the current ``production`` field (preparing it for
+    the new period), then uses ``production_prev`` (the previous period's actual
+    production) as the baseline signal for planning decisions.
+
     Algorithm
     ---------
     For each firm i:
 
-    1. Generate random shock: :math:`\\varepsilon_i \\sim U(0, h_\\rho)`
-    2. Classify firm state and apply production rule:
+    1. Zero out current production: :math:`Y_i := 0`
+    2. Generate random shock: :math:`\\varepsilon_i \\sim U(0, h_\\rho)`
+    3. Use previous production (``production_prev``) as baseline and apply rule:
 
-       - If :math:`S_i = 0` and :math:`P_i \\geq \\bar{P}`: :math:`Y^*_i = Y_{i,t-1} \\times (1 + \\varepsilon_i)` [increase]
-       - If :math:`S_i > 0` and :math:`P_i < \\bar{P}`: :math:`Y^*_i = Y_{i,t-1} \\times (1 - \\varepsilon_i)` [decrease]
-       - Otherwise: :math:`Y^*_i = Y_{i,t-1}` [maintain]
+       - If :math:`S_i = 0` and :math:`P_i \\geq \\bar{P}`: :math:`Y^*_i = Y^{prev}_i \\times (1 + \\varepsilon_i)` [increase]
+       - If :math:`S_i > 0` and :math:`P_i < \\bar{P}`: :math:`Y^*_i = Y^{prev}_i \\times (1 - \\varepsilon_i)` [decrease]
+       - Otherwise: :math:`Y^*_i = Y^{prev}_i` [maintain]
 
-    3. Set desired_production = expected_demand = :math:`Y^*_i`
+    4. Set desired_production = expected_demand = :math:`Y^*_i`
 
     Mathematical Notation
     ---------------------
     .. math::
         Y^*_{i,t} = \\begin{cases}
-            Y_{i,t-1}(1 + \\varepsilon_i) & \\text{if } S_{i,t-1}=0 \\land P_i \\geq \\bar{P} \\\\
-            Y_{i,t-1}(1 - \\varepsilon_i) & \\text{if } S_{i,t-1}>0 \\land P_i < \\bar{P} \\\\
-            Y_{i,t-1} & \\text{otherwise}
+            Y^{prev}_{i}(1 + \\varepsilon_i) & \\text{if } S_{i,t-1}=0 \\land P_i \\geq \\bar{P} \\\\
+            Y^{prev}_{i}(1 - \\varepsilon_i) & \\text{if } S_{i,t-1}>0 \\land P_i < \\bar{P} \\\\
+            Y^{prev}_{i} & \\text{otherwise}
         \\end{cases}
 
     where:
 
     - :math:`Y^*`: desired production for next period
-    - :math:`Y`: actual production in previous period
+    - :math:`Y^{prev}`: actual production in previous period (``production_prev``)
     - :math:`S`: inventory (unsold goods from previous period)
     - :math:`P`: firm's individual price
     - :math:`\\bar{P}`: average market price across all firms
