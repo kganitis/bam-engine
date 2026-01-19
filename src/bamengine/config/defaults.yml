@@ -125,10 +125,10 @@ contract_poisson_mean: 0             # Poisson mean added to theta for contract 
                                      # Set to 0 for exact theta-only contracts
                                      # Actual duration: θ + Poisson(contract_poisson_mean)
 
-max_loan_to_net_worth: 100          # Max loan as multiple of borrower's net worth
+max_loan_to_net_worth: 100           # Max loan as multiple of borrower's net worth
                                      # Caps individual loans: loan <= X * net_worth
 
-max_leverage: 100                   # Maximum leverage ratio (fragility cap)
+max_leverage: 100                    # Maximum leverage ratio (fragility cap)
                                      # for interest rate calculation
 
 loan_priority_method: by_leverage    # How banks rank loan applicants
@@ -151,6 +151,6 @@ job_search_method: vacancies_only    # How workers sample firms for job applicat
 price_cut_allow_increase: true       # Allow price increase when trying to cut
                                      # (due to breakeven price floor being higher than cut price)
 
-cap_factor: 100                     # Multiplier limiting price increases
+cap_factor: 100                      # Multiplier limiting price increases
                                      # Prevents extreme price jumps when production is very
                                      # low (which would lead to very high breakeven prices)
