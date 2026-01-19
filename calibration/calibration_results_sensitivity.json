@@ -1,0 +1,153 @@
+{
+  "baseline_score": 0.6322668429918092,
+  "parameters": {
+    "new_firm_size_factor": {
+      "sensitivity": 0.029420663000425673,
+      "best_value": 0.5,
+      "best_score": 0.6616875059922349,
+      "values": [
+        0.5,
+        0.7,
+        0.9
+      ],
+      "scores": [
+        0.6616875059922349,
+        0.6410652307263842,
+        0.6322668429918092
+      ]
+    },
+    "new_firm_production_factor": {
+      "sensitivity": 0.18032887945682252,
+      "best_value": 1.0,
+      "best_score": 0.6252715734851184,
+      "values": [
+        0.5,
+        0.75,
+        1.0
+      ],
+      "scores": [
+        0.48541645743034945,
+        0.4449426940282959,
+        0.6252715734851184
+      ]
+    },
+    "new_firm_wage_factor": {
+      "sensitivity": 0.08133624133158757,
+      "best_value": 0.5,
+      "best_score": 0.6322668429918092,
+      "values": [
+        0.5,
+        0.75,
+        1.0
+      ],
+      "scores": [
+        0.6322668429918092,
+        0.6299005402361701,
+        0.5509306016602217
+      ]
+    },
+    "new_firm_price_markup": {
+      "sensitivity": 0.035691133408133346,
+      "best_value": 1.0,
+      "best_score": 0.6668506653657882,
+      "values": [
+        1.0,
+        1.1,
+        1.25,
+        1.5
+      ],
+      "scores": [
+        0.6668506653657882,
+        0.6311595319576548,
+        0.6319831591539578,
+        0.6322668429918092
+      ]
+    },
+    "max_loan_to_net_worth": {
+      "sensitivity": 0.03388809776212531,
+      "best_value": 100,
+      "best_score": 0.6661549407539346,
+      "values": [
+        2,
+        10,
+        100
+      ],
+      "scores": [
+        0.6487142394604088,
+        0.6322668429918092,
+        0.6661549407539346
+      ]
+    },
+    "max_leverage": {
+      "sensitivity": 0.0,
+      "best_value": 2,
+      "best_score": 0.6322668429918092,
+      "values": [
+        2,
+        10,
+        100
+      ],
+      "scores": [
+        0.6322668429918092,
+        0.6322668429918092,
+        0.6322668429918092
+      ]
+    },
+    "firing_method": {
+      "sensitivity": 0.05677159002284515,
+      "best_value": "random",
+      "best_score": 0.6890384330146544,
+      "values": [
+        "expensive",
+        "random"
+      ],
+      "scores": [
+        0.6322668429918092,
+        0.6890384330146544
+      ]
+    },
+    "matching_method": {
+      "sensitivity": 0.029677364162311592,
+      "best_value": "sequential",
+      "best_score": 0.6619442071541208,
+      "values": [
+        "sequential",
+        "simultaneous"
+      ],
+      "scores": [
+        0.6619442071541208,
+        0.6322668429918092
+      ]
+    },
+    "job_search_method": {
+      "sensitivity": 0.2537478995232944,
+      "best_value": "vacancies_only",
+      "best_score": 0.6322668429918092,
+      "values": [
+        "vacancies_only",
+        "all_firms"
+      ],
+      "scores": [
+        0.6322668429918092,
+        0.37851894346851483
+      ]
+    },
+    "cap_factor": {
+      "sensitivity": 0.05390680128287495,
+      "best_value": 1.1,
+      "best_score": 0.6861736442746842,
+      "values": [
+        1.1,
+        2,
+        10,
+        100
+      ],
+      "scores": [
+        0.6861736442746842,
+        0.6322668429918092,
+        0.6322668429918092,
+        0.6322668429918092
+      ]
+    }
+  }
+}
