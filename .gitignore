@@ -85,7 +85,3 @@ notes/
 # Claude AI files
 .claude/
 CLAUDE.md
-/examples/analysis/
-/calibration/
-/DelliBAM_.nlogo
-/ABCredit.jl-main/
