@@ -38,46 +38,39 @@ print(f"  - {sim.n_households} households")
 print(f"  - {sim.n_banks} banks")
 
 # %%
-# Run the simulation and collect data using SimulationResults.
-# We collect per-agent data (no aggregation) to compute metrics manually:
-#
-# - **Production**: Per-firm output, summed to get Real GDP
-# - **Wages/Employed**: Per-worker data, filtered to employed workers only
-# - **Vacancies**: Per-firm vacancies, summed for Beveridge curve
-# - **Economy metrics**: Inflation, avg price
+# Run the simulation and compute metrics using the validation module.
 
-results = sim.run(
-    collect={
-        "Producer": ["production", "labor_productivity"],
-        "Worker": ["wage", "employed"],
-        "Employer": ["n_vacancies"],
-        "Economy": True,  # Capture economy metrics (inflation, avg_price)
-        "aggregate": None,  # Keep full per-agent data for wages
-        "capture_timing": {
-            "Worker.wage": "workers_receive_wage",
-            "Worker.employed": "firms_run_production",
-            "Producer.production": "firms_run_production",
-            "Employer.n_vacancies": "firms_decide_vacancies",
-        },
-    }
-)
+from validation.metrics import BASELINE_COLLECT_CONFIG, compute_baseline_metrics
+
+results = sim.run(collect=BASELINE_COLLECT_CONFIG)
 
 print(f"\nSimulation completed: {results.metadata['n_periods']} periods")
 print(f"Runtime: {results.metadata['runtime_seconds']:.2f} seconds")
 
 # %%
-# Extract and Analyze Results
-# -------------------------
+# Compute Metrics
+# ---------------
 #
-# SimulationResults provides easy access to the collected time series data.
-# Economy-wide metrics are in ``economy_data``, role data in ``role_data``.
+# Use the shared metrics computation from the validation module.
+# This ensures consistency between the example and validation tests.
 
 import numpy as np
+from scipy.stats import skew
 
-# =============================================================================
+burn_in = 500
+metrics = compute_baseline_metrics(
+    sim, results, burn_in=burn_in, firm_size_threshold=5.0
+)
+
+print(
+    f"\nComputed metrics for {len(metrics.unemployment) - burn_in} periods (after burn-in)"
+)
+
+# %%
 # Metric Bounds Configuration
-# =============================================================================
-# Target bounds for validation and visualization (percentile-based)
+# ---------------------------
+#
+# Target bounds for validation and visualization (from book figures)
 
 BOUNDS: dict[str, dict[str, float]] = {
     "real_wage": {
@@ -111,90 +104,26 @@ BOUNDS: dict[str, dict[str, float]] = {
     # Curve correlation targets
     "phillips_corr": {
         "target": -0.10,
+        "min": -0.30,
+        "max": 0.05,
     },
     "okun_corr": {
         "target": -0.70,
+        "min": -0.90,
+        "max": -0.50,
     },
     "beveridge_corr": {
         "target": -0.27,
+        "min": -0.50,
+        "max": -0.05,
     },
     "firm_size": {
         "threshold": 5.0,
         "pct_below_target": 0.90,
+        "skewness_min": 1.0,
+        "skewness_max": 5.0,
     },
 }
-
-# Economy metrics (automatically captured)
-inflation = results.economy_data["inflation"]
-avg_price = results.economy_data["avg_price"]
-
-# Role data - shape is (n_periods, n_agents)
-production = results.role_data["Producer"]["production"]  # (1000, 300)
-labor_productivity = results.role_data["Producer"]["labor_productivity"]  # (1000, 300)
-wages = results.role_data["Worker"]["wage"]  # (1000, 3000)
-employed = results.role_data["Worker"]["employed"]  # (1000, 3000)
-n_vacancies = results.role_data["Employer"]["n_vacancies"]  # (1000, 300)
-
-# Calculate unemployment rate directly from Worker.employed data
-# unemployment = 1 - (employed workers / total workers)
-unemployment_raw = 1 - ops.mean(employed.astype(float), axis=1)
-
-# Calculate Real GDP as total production per period
-gdp = ops.sum(production, axis=1)  # Sum across all firms
-
-# Calculate aggregate labor productivity as production-weighted mean
-# Weight each firm's labor_productivity by its production share
-weighted_productivity = ops.sum(ops.multiply(labor_productivity, production), axis=1)
-avg_productivity = ops.divide(weighted_productivity, gdp)
-
-# Calculate average wage for EMPLOYED workers only per period
-# (unemployed workers have wage=0, which would skew the average)
-employed_wages_sum = ops.sum(ops.where(employed, wages, 0.0), axis=1)
-employed_count = ops.sum(employed, axis=1)
-avg_employed_wage = ops.where(
-    ops.greater(employed_count, 0),
-    ops.divide(employed_wages_sum, employed_count),
-    0.0,
-)
-
-# Calculate Productivity - Real Wage
-# Real wage = nominal wage / price level
-real_wage = ops.divide(avg_employed_wage, avg_price)
-prod_wage = ops.where(
-    ops.greater(real_wage, 0),
-    ops.divide(avg_productivity, real_wage),
-    0.0,
-)
-
-# %%
-# Calculate Metrics for Macroeconomic Curves
-# ------------------------------------------
-#
-# Prepare data for Phillips, Okun, Beveridge curves and firm size distribution.
-
-# Phillips Curve: Wage inflation (period-over-period)
-wage_inflation = ops.divide(
-    avg_employed_wage[1:] - avg_employed_wage[:-1],
-    ops.where(ops.greater(avg_employed_wage[:-1], 0), avg_employed_wage[:-1], 1.0),
-)
-
-# Okun Curve: GDP growth rate and unemployment growth rate
-gdp_growth = ops.divide(gdp[1:] - gdp[:-1], gdp[:-1])
-unemployment_growth = ops.divide(
-    unemployment_raw[1:] - unemployment_raw[:-1],
-    ops.where(ops.greater(unemployment_raw[:-1], 0), unemployment_raw[:-1], 1.0),
-)
-
-# Beveridge Curve: Vacancy rate
-total_vacancies = ops.sum(n_vacancies, axis=1)
-vacancy_rate = ops.divide(total_vacancies, sim.n_households)
-
-# Firm size distribution: Production at final period
-final_production = production[-1]
-
-print(f"\nCollected {len(gdp)} periods of data")
-print(f"Economy metrics: {list(results.economy_data.keys())}")
-print(f"Role data captured: {list(results.role_data.keys())}")
 
 # %%
 # Prepare Data for Visualization
@@ -203,40 +132,31 @@ print(f"Role data captured: {list(results.role_data.keys())}")
 # Apply a burn-in period to focus on steady-state dynamics
 # (excluding initial transients).
 
-burn_in = 500  # Exclude first 500 periods
+# Time axis for plots
+periods = ops.arange(burn_in, len(metrics.unemployment))
 
-# Apply burn-in and create time axis
-periods = ops.arange(burn_in, len(gdp))
+# Extract time series after burn-in
+log_gdp = metrics.log_gdp[burn_in:]
+inflation_pct = metrics.inflation[burn_in:] * 100
+unemployment_pct = metrics.unemployment[burn_in:] * 100
+real_wage_trimmed = metrics.real_wage[burn_in:]
+avg_productivity_trimmed = metrics.avg_productivity[burn_in:]
 
-# Use raw log(GDP) for better comparison with reference figures
-log_gdp = ops.log(gdp[burn_in:])
-inflation_pct = inflation[burn_in:] * 100  # Convert to percentage
-prod_wage_trimmed = prod_wage[burn_in:]
+# Curve data (already aligned in metrics computation)
+wage_inflation_trimmed = metrics.wage_inflation[burn_in - 1 :]
+unemployment_phillips = metrics.unemployment[burn_in:]
+gdp_growth_trimmed = metrics.gdp_growth[burn_in - 1 :]
+unemployment_growth_trimmed = metrics.unemployment_growth[burn_in - 1 :]
+vacancy_rate_trimmed = metrics.vacancy_rate[burn_in:]
+unemployment_beveridge = metrics.unemployment[burn_in:]
 
-# Unemployment for time series
-unemployment_pct = unemployment_raw[burn_in:] * 100  # Convert to percentage
+# Final period firm production for distribution
+final_production = metrics.final_production
 
-# Prepare productivity and real wage for co-movement plot
-avg_productivity_trimmed = avg_productivity[burn_in:]
-real_wage_trimmed = real_wage[burn_in:]
-
-# Apply burn-in to curve data
-# For Phillips curve: wage_inflation has length n-1, so burn_in-1 aligns with period burn_in
-wage_inflation_trimmed = wage_inflation[burn_in - 1 :]
-unemployment_phillips = unemployment_raw[burn_in:]
-
-# For Okun curve: align GDP growth with unemployment change
-gdp_growth_trimmed = gdp_growth[burn_in - 1 :]
-unemployment_growth_trimmed = unemployment_growth[burn_in - 1 :]
-
-# For Beveridge curve
-vacancy_rate_trimmed = vacancy_rate[burn_in:]
-unemployment_beveridge = unemployment_raw[burn_in:]
-
-# Calculate correlations
-phillips_corr = np.corrcoef(unemployment_phillips, wage_inflation_trimmed)[0, 1]
-okun_corr = np.corrcoef(unemployment_growth_trimmed, gdp_growth_trimmed)[0, 1]
-beveridge_corr = np.corrcoef(unemployment_beveridge, vacancy_rate_trimmed)[0, 1]
+# Use pre-computed correlations from metrics
+phillips_corr = metrics.phillips_corr
+okun_corr = metrics.okun_corr
+beveridge_corr = metrics.beveridge_corr
 
 print(f"Plotting {len(periods)} periods (after {burn_in}-period burn-in)")
 
@@ -255,103 +175,215 @@ fig.suptitle(
     "BAM Model Baseline Scenario Results (Section 3.9.1)", fontsize=16, y=0.995
 )
 
+
+# Helper function for statistics annotation
+def add_stats_box(ax, data, bounds_key, is_pct=False):
+    """Add statistics annotation box to axis."""
+    b = BOUNDS[bounds_key]
+    scale = 100 if is_pct else 1
+    actual_mean = np.mean(data)
+    actual_std = np.std(data)
+    target_mean = b["mean_target"] * scale
+    normal_min = b["normal_min"] * scale
+    normal_max = b["normal_max"] * scale
+    in_bounds = np.sum((data >= normal_min) & (data <= normal_max)) / len(data)
+
+    if is_pct:
+        stats_text = f"μ = {actual_mean:.1f}% (target: {target_mean:.1f}%)\nσ = {actual_std:.1f}%\n{in_bounds * 100:.0f}% in bounds"
+    else:
+        stats_text = f"μ = {actual_mean:.2f} (target: {target_mean:.2f})\nσ = {actual_std:.3f}\n{in_bounds * 100:.0f}% in bounds"
+
+    ax.text(
+        0.98,
+        0.97,
+        stats_text,
+        transform=ax.transAxes,
+        fontsize=8,
+        verticalalignment="top",
+        horizontalalignment="right",
+        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+    )
+
+
+def add_corr_stats_box(ax, actual_corr, bounds_key):
+    """Add correlation statistics box to curve axis."""
+    b = BOUNDS[bounds_key]
+    corr_min, corr_max = b["min"], b["max"]
+    in_range = corr_min <= actual_corr <= corr_max
+    status = "PASS" if in_range else "WARN"
+    color = "lightgreen" if in_range else "lightyellow"
+
+    stats_text = f"r = {actual_corr:.2f}\nRange: [{corr_min:.2f}, {corr_max:.2f}]\nStatus: {status}"
+    ax.text(
+        0.02,
+        0.97,
+        stats_text,
+        transform=ax.transAxes,
+        fontsize=8,
+        verticalalignment="top",
+        horizontalalignment="left",
+        bbox=dict(boxstyle="round", facecolor=color, alpha=0.7),
+    )
+
+
 # Top 2x2: Time series panels
 # ---------------------------
 
 # Panel (0,0): Log Real GDP
-axes[0, 0].plot(periods, log_gdp, linewidth=1, color="#2E86AB")
-axes[0, 0].axhline(
-    BOUNDS["log_gdp"]["normal_min"], color="green", linestyle="--", alpha=0.5
+ax = axes[0, 0]
+# Extreme bounds (shaded red zones)
+ax.axhspan(
+    BOUNDS["log_gdp"]["extreme_min"],
+    BOUNDS["log_gdp"]["normal_min"],
+    alpha=0.1,
+    color="red",
+    label="Extreme zone",
 )
-axes[0, 0].axhline(
-    BOUNDS["log_gdp"]["normal_max"], color="green", linestyle="--", alpha=0.5
+ax.axhspan(
+    BOUNDS["log_gdp"]["normal_max"],
+    BOUNDS["log_gdp"]["extreme_max"],
+    alpha=0.1,
+    color="red",
 )
-axes[0, 0].set_title("Real GDP", fontsize=12, fontweight="bold")
-axes[0, 0].set_ylabel("Log output")
-axes[0, 0].set_xlabel("t")
-axes[0, 0].grid(True, linestyle="--", alpha=0.3)
-
-# Panel (0,1): Unemployment Rate
-axes[0, 1].plot(periods, unemployment_pct, linewidth=1, color="#A23B72")
-axes[0, 1].axhline(
-    BOUNDS["unemployment"]["normal_min"] * 100,
+# Data
+ax.plot(periods, log_gdp, linewidth=1, color="#2E86AB", label="Log GDP")
+# Normal bounds
+ax.axhline(
+    BOUNDS["log_gdp"]["normal_min"],
     color="green",
     linestyle="--",
     alpha=0.5,
+    label="Normal bounds",
 )
-axes[0, 1].axhline(
-    BOUNDS["unemployment"]["normal_max"] * 100,
-    color="green",
-    linestyle="--",
-    alpha=0.5,
-)
-axes[0, 1].set_title("Unemployment Rate", fontsize=12, fontweight="bold")
-axes[0, 1].set_ylabel("Unemployment Rate (%)")
-axes[0, 1].set_xlabel("t")
-axes[0, 1].grid(True, linestyle="--", alpha=0.3)
-axes[0, 1].set_ylim(bottom=0)
-
-# Panel (1,0): Annual Inflation Rate
-axes[1, 0].plot(periods, inflation_pct, linewidth=1, color="#F18F01")
-axes[1, 0].axhline(0, color="black", linestyle="-", alpha=0.3, linewidth=0.5)
-axes[1, 0].axhline(
-    BOUNDS["inflation"]["normal_min"] * 100,
-    color="green",
-    linestyle="--",
-    alpha=0.5,
-)
-axes[1, 0].axhline(
-    BOUNDS["inflation"]["normal_max"] * 100,
-    color="green",
-    linestyle="--",
-    alpha=0.5,
-)
-axes[1, 0].axhline(
-    BOUNDS["inflation"]["mean_target"] * 100,
+ax.axhline(BOUNDS["log_gdp"]["normal_max"], color="green", linestyle="--", alpha=0.5)
+# Mean target
+ax.axhline(
+    BOUNDS["log_gdp"]["mean_target"],
     color="blue",
     linestyle="-.",
     alpha=0.5,
+    label="Mean target",
 )
-axes[1, 0].set_title("Annualized Rate of Inflation", fontsize=12, fontweight="bold")
-axes[1, 0].set_ylabel("Yearly inflation rate (%)")
-axes[1, 0].set_xlabel("t")  # TODO visualize years (cumulated quarters)
-axes[1, 0].grid(True, linestyle="--", alpha=0.3)
+ax.set_title("Real GDP", fontsize=12, fontweight="bold")
+ax.set_ylabel("Log output")
+ax.set_xlabel("t")
+ax.grid(True, linestyle="--", alpha=0.3)
+ax.legend(loc="lower left", fontsize=7)
+add_stats_box(ax, log_gdp, "log_gdp")
+
+# Panel (0,1): Unemployment Rate
+ax = axes[0, 1]
+# Extreme bounds (shaded red zones)
+ax.axhspan(
+    BOUNDS["unemployment"]["extreme_min"] * 100,
+    BOUNDS["unemployment"]["normal_min"] * 100,
+    alpha=0.1,
+    color="red",
+)
+ax.axhspan(
+    BOUNDS["unemployment"]["normal_max"] * 100,
+    BOUNDS["unemployment"]["extreme_max"] * 100,
+    alpha=0.1,
+    color="red",
+)
+# Data
+ax.plot(periods, unemployment_pct, linewidth=1, color="#A23B72")
+# Normal bounds
+ax.axhline(
+    BOUNDS["unemployment"]["normal_min"] * 100, color="green", linestyle="--", alpha=0.5
+)
+ax.axhline(
+    BOUNDS["unemployment"]["normal_max"] * 100, color="green", linestyle="--", alpha=0.5
+)
+# Mean target
+ax.axhline(
+    BOUNDS["unemployment"]["mean_target"] * 100, color="blue", linestyle="-.", alpha=0.5
+)
+ax.set_title("Unemployment Rate", fontsize=12, fontweight="bold")
+ax.set_ylabel("Unemployment Rate (%)")
+ax.set_xlabel("t")
+ax.grid(True, linestyle="--", alpha=0.3)
+ax.set_ylim(bottom=0)
+add_stats_box(ax, unemployment_pct, "unemployment", is_pct=True)
+
+# Panel (1,0): Annual Inflation Rate
+ax = axes[1, 0]
+# Extreme bounds (shaded red zones)
+ax.axhspan(
+    BOUNDS["inflation"]["extreme_min"] * 100,
+    BOUNDS["inflation"]["normal_min"] * 100,
+    alpha=0.1,
+    color="red",
+)
+ax.axhspan(
+    BOUNDS["inflation"]["normal_max"] * 100,
+    BOUNDS["inflation"]["extreme_max"] * 100,
+    alpha=0.1,
+    color="red",
+)
+# Data
+ax.plot(periods, inflation_pct, linewidth=1, color="#F18F01")
+ax.axhline(0, color="black", linestyle="-", alpha=0.3, linewidth=0.5)
+# Normal bounds
+ax.axhline(
+    BOUNDS["inflation"]["normal_min"] * 100, color="green", linestyle="--", alpha=0.5
+)
+ax.axhline(
+    BOUNDS["inflation"]["normal_max"] * 100, color="green", linestyle="--", alpha=0.5
+)
+# Mean target
+ax.axhline(
+    BOUNDS["inflation"]["mean_target"] * 100, color="blue", linestyle="-.", alpha=0.5
+)
+ax.set_title("Annualized Rate of Inflation", fontsize=12, fontweight="bold")
+ax.set_ylabel("Yearly inflation rate (%)")
+ax.set_xlabel("t")
+ax.grid(True, linestyle="--", alpha=0.3)
+add_stats_box(ax, inflation_pct, "inflation", is_pct=True)
 
 # Panel (1,1): Productivity and Real Wage Co-movement (two-line plot)
 # This demonstrates that income shares stay roughly constant as both grow
-axes[1, 1].plot(
+ax = axes[1, 1]
+# Extreme bounds (shaded red zones) - for real wage
+ax.axhspan(
+    BOUNDS["real_wage"]["extreme_min"],
+    BOUNDS["real_wage"]["normal_min"],
+    alpha=0.1,
+    color="red",
+)
+ax.axhspan(
+    BOUNDS["real_wage"]["normal_max"],
+    BOUNDS["real_wage"]["extreme_max"],
+    alpha=0.1,
+    color="red",
+)
+# Data
+ax.plot(
     periods,
     avg_productivity_trimmed,
     linewidth=1,
     color="#E74C3C",
     label="Productivity",
 )
-axes[1, 1].plot(
-    periods, real_wage_trimmed, linewidth=1, color="#6A994E", label="Real Wage"
-)
-axes[1, 1].axhline(
-    BOUNDS["real_wage"]["normal_min"], color="green", linestyle="--", alpha=0.5
-)
-axes[1, 1].axhline(
-    BOUNDS["real_wage"]["normal_max"], color="green", linestyle="--", alpha=0.5
-)
-axes[1, 1].axhline(
-    BOUNDS["real_wage"]["mean_target"],
-    color="blue",
-    linestyle="-.",
-    alpha=0.5,
-)
-axes[1, 1].set_title("Productivity / Real Wage Ratio", fontsize=12, fontweight="bold")
-axes[1, 1].set_ylabel("Productivity - Real Wage")
-axes[1, 1].set_xlabel("t")
-axes[1, 1].legend(loc="upper left", fontsize=8)
-axes[1, 1].grid(True, linestyle="--", alpha=0.3)
+ax.plot(periods, real_wage_trimmed, linewidth=1, color="#6A994E", label="Real Wage")
+# Normal bounds
+ax.axhline(BOUNDS["real_wage"]["normal_min"], color="green", linestyle="--", alpha=0.5)
+ax.axhline(BOUNDS["real_wage"]["normal_max"], color="green", linestyle="--", alpha=0.5)
+# Mean target
+ax.axhline(BOUNDS["real_wage"]["mean_target"], color="blue", linestyle="-.", alpha=0.5)
+ax.set_title("Productivity / Real Wage Ratio", fontsize=12, fontweight="bold")
+ax.set_ylabel("Productivity - Real Wage")
+ax.set_xlabel("t")
+ax.legend(loc="upper left", fontsize=7)
+ax.grid(True, linestyle="--", alpha=0.3)
+add_stats_box(ax, real_wage_trimmed, "real_wage")
 
 # Bottom 2x2: Macroeconomic curves
 # --------------------------------
 
 # Panel (2,0): Phillips Curve
-axes[2, 0].scatter(
+ax = axes[2, 0]
+ax.scatter(
     unemployment_phillips, wage_inflation_trimmed, s=10, alpha=0.5, color="#2E86AB"
 )
 # Add regression and target lines
@@ -362,7 +394,7 @@ if x_std > 0:
     # Actual regression line
     actual_slope = phillips_corr * (y_std / x_std)
     y_actual = y_mean + actual_slope * (x_range - x_mean)
-    axes[2, 0].plot(
+    ax.plot(
         x_range,
         y_actual,
         color="#2E86AB",
@@ -374,7 +406,7 @@ if x_std > 0:
     target_corr = BOUNDS["phillips_corr"]["target"]
     target_slope = target_corr * (y_std / x_std)
     y_target = y_mean + target_slope * (x_range - x_mean)
-    axes[2, 0].plot(
+    ax.plot(
         x_range,
         y_target,
         "g--",
@@ -382,14 +414,16 @@ if x_std > 0:
         alpha=0.7,
         label=f"Target (r={target_corr:.2f})",
     )
-axes[2, 0].set_title("Phillips Curve", fontsize=12, fontweight="bold")
-axes[2, 0].set_xlabel("Unemployment Rate")
-axes[2, 0].set_ylabel("Wage Inflation Rate")
-axes[2, 0].legend(fontsize=8, loc="upper right")
-axes[2, 0].grid(True, linestyle="--", alpha=0.3)
+ax.set_title("Phillips Curve", fontsize=12, fontweight="bold")
+ax.set_xlabel("Unemployment Rate")
+ax.set_ylabel("Wage Inflation Rate")
+ax.legend(fontsize=8, loc="upper right")
+ax.grid(True, linestyle="--", alpha=0.3)
+add_corr_stats_box(ax, phillips_corr, "phillips_corr")
 
 # Panel (2,1): Okun Curve
-axes[2, 1].scatter(
+ax = axes[2, 1]
+ax.scatter(
     unemployment_growth_trimmed, gdp_growth_trimmed, s=2, alpha=0.5, color="#A23B72"
 )
 # Add regression and target lines
@@ -402,7 +436,7 @@ if x_std > 0:
     # Actual regression line
     actual_slope = okun_corr * (y_std / x_std)
     y_actual = y_mean + actual_slope * (x_range - x_mean)
-    axes[2, 1].plot(
+    ax.plot(
         x_range,
         y_actual,
         color="#A23B72",
@@ -414,7 +448,7 @@ if x_std > 0:
     target_corr = BOUNDS["okun_corr"]["target"]
     target_slope = target_corr * (y_std / x_std)
     y_target = y_mean + target_slope * (x_range - x_mean)
-    axes[2, 1].plot(
+    ax.plot(
         x_range,
         y_target,
         "g--",
@@ -422,14 +456,16 @@ if x_std > 0:
         alpha=0.7,
         label=f"Target (r={target_corr:.2f})",
     )
-axes[2, 1].set_title("Okun Curve", fontsize=12, fontweight="bold")
-axes[2, 1].set_xlabel("Unemployment Growth Rate")
-axes[2, 1].set_ylabel("Output Growth Rate")
-axes[2, 1].legend(fontsize=8, loc="upper right")
-axes[2, 1].grid(True, linestyle="--", alpha=0.3)
+ax.set_title("Okun Curve", fontsize=12, fontweight="bold")
+ax.set_xlabel("Unemployment Growth Rate")
+ax.set_ylabel("Output Growth Rate")
+ax.legend(fontsize=8, loc="upper right")
+ax.grid(True, linestyle="--", alpha=0.3)
+add_corr_stats_box(ax, okun_corr, "okun_corr")
 
 # Panel (3,0): Beveridge Curve
-axes[3, 0].scatter(
+ax = axes[3, 0]
+ax.scatter(
     unemployment_beveridge, vacancy_rate_trimmed, s=10, alpha=0.5, color="#F18F01"
 )
 # Add regression and target lines
@@ -440,7 +476,7 @@ if x_std > 0:
     # Actual regression line
     actual_slope = beveridge_corr * (y_std / x_std)
     y_actual = y_mean + actual_slope * (x_range - x_mean)
-    axes[3, 0].plot(
+    ax.plot(
         x_range,
         y_actual,
         color="#F18F01",
@@ -452,7 +488,7 @@ if x_std > 0:
     target_corr = BOUNDS["beveridge_corr"]["target"]
     target_slope = target_corr * (y_std / x_std)
     y_target = y_mean + target_slope * (x_range - x_mean)
-    axes[3, 0].plot(
+    ax.plot(
         x_range,
         y_target,
         "g--",
@@ -460,20 +496,24 @@ if x_std > 0:
         alpha=0.7,
         label=f"Target (r={target_corr:.2f})",
     )
-axes[3, 0].set_title("Beveridge Curve", fontsize=12, fontweight="bold")
-axes[3, 0].set_xlabel("Unemployment Rate")
-axes[3, 0].set_ylabel("Vacancy Rate")
-axes[3, 0].legend(fontsize=8, loc="upper right")
-axes[3, 0].grid(True, linestyle="--", alpha=0.3)
+ax.set_title("Beveridge Curve", fontsize=12, fontweight="bold")
+ax.set_xlabel("Unemployment Rate")
+ax.set_ylabel("Vacancy Rate")
+ax.legend(fontsize=8, loc="upper right")
+ax.grid(True, linestyle="--", alpha=0.3)
+add_corr_stats_box(ax, beveridge_corr, "beveridge_corr")
 
 # Panel (3,1): Firm Size Distribution
+ax = axes[3, 1]
 threshold = BOUNDS["firm_size"]["threshold"]
 pct_below_target = BOUNDS["firm_size"]["pct_below_target"]
 pct_below_actual = np.sum(final_production < threshold) / len(final_production)
-axes[3, 1].hist(
-    final_production, bins=10, edgecolor="black", alpha=0.7, color="#6A994E"
-)
-axes[3, 1].axvline(
+skewness_actual = skew(final_production)
+skewness_min = BOUNDS["firm_size"]["skewness_min"]
+skewness_max = BOUNDS["firm_size"]["skewness_max"]
+skewness_in_range = skewness_min <= skewness_actual <= skewness_max
+ax.hist(final_production, bins=10, edgecolor="black", alpha=0.7, color="#6A994E")
+ax.axvline(
     x=threshold,
     color="#A23B72",
     linestyle="--",
@@ -481,20 +521,25 @@ axes[3, 1].axvline(
     alpha=0.7,
     label=f"Threshold ({threshold:.0f})",
 )
-axes[3, 1].set_title("Firm Size Distribution", fontsize=12, fontweight="bold")
-axes[3, 1].set_xlabel("Production")
-axes[3, 1].set_ylabel("Frequency")
-axes[3, 1].legend(fontsize=8, loc="upper right")
-axes[3, 1].grid(True, linestyle="--", alpha=0.3)
-axes[3, 1].text(
+ax.set_title("Firm Size Distribution", fontsize=12, fontweight="bold")
+ax.set_xlabel("Production")
+ax.set_ylabel("Frequency")
+ax.legend(fontsize=8, loc="upper right")
+ax.grid(True, linestyle="--", alpha=0.3)
+# Stats box with skewness
+skew_status = "PASS" if skewness_in_range else "WARN"
+skew_color = "lightgreen" if skewness_in_range else "lightyellow"
+ax.text(
     0.98,
-    0.60,
-    f"{pct_below_actual * 100:.0f}% below threshold\n(Target: {pct_below_target * 100:.0f}%)",
-    transform=axes[3, 1].transAxes,
-    fontsize=9,
+    0.97,
+    f"{pct_below_actual * 100:.0f}% below threshold\n(Target: {pct_below_target * 100:.0f}%)\n"
+    f"Skew: {skewness_actual:.2f} [{skewness_min:.1f}, {skewness_max:.1f}]\n"
+    f"Status: {skew_status}",
+    transform=ax.transAxes,
+    fontsize=8,
     ha="right",
     va="top",
-    bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+    bbox=dict(boxstyle="round", facecolor=skew_color, alpha=0.7),
 )
 
 plt.tight_layout()
