@@ -534,3 +534,207 @@ def test_baseline_scenario_validation() -> None:
     if not result.passed:
         failure_names = [r.name for r in result.metric_results if r.status == "FAIL"]
         pytest.fail(f"{result.n_fail} metric(s) failed validation: {failure_names}")
+
+
+# =============================================================================
+# Seed Stability Testing
+# =============================================================================
+
+
+@dataclass
+class MetricStats:
+    """Statistics for a single metric across multiple seeds."""
+
+    name: str
+    mean_value: float
+    std_value: float
+    mean_score: float
+    std_score: float
+    pass_rate: float  # Fraction of seeds where this metric passed (not FAIL)
+
+
+@dataclass
+class StabilityResult:
+    """Result of multi-seed stability testing."""
+
+    seed_results: list[ValidationScore]  # Individual seed results
+
+    # Aggregate score metrics
+    mean_score: float  # Mean total score across seeds
+    std_score: float  # Standard deviation of scores
+    min_score: float  # Worst seed
+    max_score: float  # Best seed
+
+    pass_rate: float  # Fraction of seeds that passed (no FAILs)
+    n_seeds: int  # Number of seeds tested
+
+    # Per-metric stability
+    metric_stats: dict[str, MetricStats]  # Stats for each metric
+
+    @property
+    def is_stable(self) -> bool:
+        """True if pass_rate >= 80% and std_score <= 0.1."""
+        return self.pass_rate >= 0.8 and self.std_score <= 0.1
+
+    def __str__(self) -> str:
+        return (
+            f"StabilityResult(mean={self.mean_score:.3f}±{self.std_score:.3f}, "
+            f"pass_rate={self.pass_rate:.0%}, seeds={self.n_seeds})"
+        )
+
+
+def run_stability_test(
+    seeds: list[int] | int = 5,
+    n_periods: int = 1000,
+    weights: dict[str, float] | None = None,
+    **config_overrides: Any,
+) -> StabilityResult:
+    """Run validation across multiple seeds and measure consistency.
+
+    Parameters
+    ----------
+    seeds : list[int] or int
+        List of specific seeds to test, or number of seeds to generate.
+        If int, uses seeds [0, 1, 2, ..., seeds-1].
+    n_periods : int
+        Number of simulation periods per seed.
+    weights : dict, optional
+        Custom weights for metrics.
+    **config_overrides
+        Any simulation config parameters to override.
+
+    Returns
+    -------
+    StabilityResult
+        Aggregated results across all seeds.
+
+    Example
+    -------
+    >>> result = run_stability_test(seeds=[0, 42, 123, 456, 789])
+    >>> print(f"Mean score: {result.mean_score:.3f} ± {result.std_score:.3f}")
+    >>> print(f"Pass rate: {result.pass_rate:.0%}")
+    """
+    import numpy as np
+
+    # Handle seeds parameter
+    if isinstance(seeds, int):
+        seed_list = list(range(seeds))
+    else:
+        seed_list = seeds
+
+    # Run validation for each seed
+    seed_results: list[ValidationScore] = []
+    for seed in seed_list:
+        result = run_validation(
+            seed=seed,
+            n_periods=n_periods,
+            weights=weights,
+            **config_overrides,
+        )
+        seed_results.append(result)
+
+    # Compute aggregate score metrics
+    scores = [r.total_score for r in seed_results]
+    mean_score = float(np.mean(scores))
+    std_score = float(np.std(scores))
+    min_score = float(np.min(scores))
+    max_score = float(np.max(scores))
+
+    # Compute pass rate
+    n_passed = sum(1 for r in seed_results if r.passed)
+    pass_rate = n_passed / len(seed_results)
+
+    # Compute per-metric statistics
+    metric_names = [m.name for m in seed_results[0].metric_results]
+    metric_stats: dict[str, MetricStats] = {}
+
+    for i, name in enumerate(metric_names):
+        values = [r.metric_results[i].actual for r in seed_results]
+        scores_for_metric = [r.metric_results[i].score for r in seed_results]
+        statuses = [r.metric_results[i].status for r in seed_results]
+
+        metric_stats[name] = MetricStats(
+            name=name,
+            mean_value=float(np.mean(values)),
+            std_value=float(np.std(values)),
+            mean_score=float(np.mean(scores_for_metric)),
+            std_score=float(np.std(scores_for_metric)),
+            pass_rate=sum(1 for s in statuses if s != "FAIL") / len(statuses),
+        )
+
+    return StabilityResult(
+        seed_results=seed_results,
+        mean_score=mean_score,
+        std_score=std_score,
+        min_score=min_score,
+        max_score=max_score,
+        pass_rate=pass_rate,
+        n_seeds=len(seed_results),
+        metric_stats=metric_stats,
+    )
+
+
+def print_stability_report(result: StabilityResult) -> None:
+    """Print formatted stability test report to stdout."""
+    print("\n" + "=" * 78)
+    print(f"SEED STABILITY TEST ({result.n_seeds} seeds)")
+    print("=" * 78)
+
+    print("\nAGGREGATE SCORES:")
+    print(f"  Mean Score:    {result.mean_score:.3f} ± {result.std_score:.3f}")
+    print(f"  Score Range:   [{result.min_score:.3f}, {result.max_score:.3f}]")
+    n_passed = int(result.pass_rate * result.n_seeds)
+    print(
+        f"  Pass Rate:     {result.pass_rate:.0%} ({n_passed}/{result.n_seeds} seeds passed)"
+    )
+
+    print("\nPER-METRIC STABILITY:")
+    print(f"  {'Metric':<28} {'Mean':>10} {'Std':>8} {'Score':>7} {'Pass%':>7}")
+    print("  " + "-" * 62)
+
+    for name, stats in result.metric_stats.items():
+        # Flag unstable metrics
+        flag = ""
+        if stats.pass_rate < 0.8:
+            flag = " ← unstable"
+        elif stats.std_score > 0.1:
+            flag = " ← variable"
+
+        if "pct" in name:
+            print(
+                f"  {name:<28} {stats.mean_value * 100:>9.1f}% {stats.std_value * 100:>7.2f}% "
+                f"{stats.mean_score:>7.3f} {stats.pass_rate:>6.0%}{flag}"
+            )
+        else:
+            print(
+                f"  {name:<28} {stats.mean_value:>10.4f} {stats.std_value:>8.4f} "
+                f"{stats.mean_score:>7.3f} {stats.pass_rate:>6.0%}{flag}"
+            )
+
+    print("\n" + "=" * 78)
+    stability_status = "PASS" if result.is_stable else "WARN"
+    print(
+        f"STABILITY: {stability_status} "
+        f"(pass_rate={result.pass_rate:.0%}, std={result.std_score:.3f})"
+    )
+    print("=" * 78 + "\n")
+
+
+@pytest.mark.slow
+def test_baseline_seed_stability() -> None:
+    """Test that baseline passes consistently across multiple seeds.
+
+    This test runs validation with 5 different seeds and checks:
+    1. At least 80% of seeds pass (no FAIL metrics)
+    2. Score standard deviation is reasonable (< 0.15)
+    """
+    result = run_stability_test(seeds=[0, 42, 123, 456, 789])
+    print_stability_report(result)
+
+    # Assert stability criteria
+    assert result.pass_rate >= 0.8, (
+        f"Pass rate too low: {result.pass_rate:.0%} (expected >= 80%)"
+    )
+    assert result.std_score <= 0.15, (
+        f"Score too variable: std={result.std_score:.3f} (expected <= 0.15)"
+    )
