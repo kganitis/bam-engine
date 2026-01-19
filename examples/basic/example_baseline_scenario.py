@@ -78,7 +78,7 @@ BOUNDS: dict[str, dict[str, float]] = {
         "normal_max": 0.40,
         "extreme_min": 0.25,
         "extreme_max": 0.45,
-        "mean_target": 0.33,
+        "mean_target": 0.34,
     },
     "log_gdp": {
         "normal_min": np.log(N_HOUSEHOLDS * 0.5 * 0.88),
@@ -88,18 +88,18 @@ BOUNDS: dict[str, dict[str, float]] = {
         "mean_target": np.log(N_HOUSEHOLDS * 0.5 * 0.95),
     },
     "inflation": {
-        "normal_min": -0.05,
-        "normal_max": 0.10,
-        "extreme_min": -0.10,
+        "normal_min": -0.01,
+        "normal_max": 0.08,
+        "extreme_min": -0.05,
         "extreme_max": 0.15,
         "mean_target": 0.05,
     },
     "unemployment": {
-        "normal_min": 0.02,
-        "normal_max": 0.12,
+        "normal_min": 0.03,
+        "normal_max": 0.09,
         "extreme_min": 0.01,
-        "extreme_max": 0.30,
-        "mean_target": 0.06,
+        "extreme_max": 0.15,
+        "mean_target": 0.055,
     },
     # Curve correlation targets
     "phillips_corr": {
@@ -108,14 +108,14 @@ BOUNDS: dict[str, dict[str, float]] = {
         "max": 0.05,
     },
     "okun_corr": {
-        "target": -0.70,
-        "min": -0.90,
-        "max": -0.50,
+        "target": -0.85,
+        "min": -0.98,
+        "max": -0.70,
     },
     "beveridge_corr": {
         "target": -0.27,
         "min": -0.50,
-        "max": -0.05,
+        "max": -0.10,
     },
     "firm_size": {
         "threshold": 5.0,
