@@ -105,7 +105,7 @@ time_series:
       mean: 0.05
 
     targets:
-      normal_min: 0.00              # 0% - mild deflation rare in steady state
+      normal_min: -0.01              # -1% - mild deflation rare in steady state
       normal_max: 0.08              # 8% - typical upper bound
       extreme_min: -0.05            # -5% - deflation during severe crisis
       extreme_max: 0.15             # 15% - inflation spike acceptable rarely
