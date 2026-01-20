@@ -10,6 +10,8 @@ from sphinx_gallery.sorting import ExplicitOrder
 
 # Add project root to path so we can import bamengine
 sys.path.insert(0, os.path.abspath("../src"))
+# TODO: Remove this once examples are refactored to not depend on validation package
+sys.path.insert(0, os.path.abspath(".."))  # For validation and calibration packages
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information

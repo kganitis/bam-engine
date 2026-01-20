@@ -133,6 +133,102 @@ For detailed function-level profiling:
 See :doc:`performance` for comprehensive profiling guidance, optimization tips,
 and current benchmark results.
 
+Validation & Calibration
+------------------------
+
+BAM Engine includes two packages for model validation and parameter calibration.
+
+Validation Package
+~~~~~~~~~~~~~~~~~~
+
+The ``validation/`` package validates simulation results against empirical targets
+from Delli Gatti et al. (2011).
+
+.. code-block:: python
+
+   from validation import run_validation, run_stability_test
+
+   # Single validation run
+   result = run_validation(seed=42, n_periods=1000)
+   print(f"Score: {result.total_score:.3f}, Passed: {result.passed}")
+
+   # Multi-seed stability test
+   stability = run_stability_test(seeds=[0, 42, 123, 456, 789])
+   print(f"Mean: {stability.mean_score:.3f} ± {stability.std_score:.3f}")
+   print(f"Pass rate: {stability.pass_rate:.0%}")
+
+**Scenarios:**
+
+* **baseline** (Section 3.9.1): Standard BAM model - validates unemployment, inflation,
+  GDP, Phillips/Okun/Beveridge curves, firm size distribution
+* **growth_plus** (Section 3.8): Endogenous productivity growth via R&D investment
+
+.. code-block:: python
+
+   # Growth+ scenario
+   from validation import run_growth_plus_validation, run_growth_plus_stability_test
+
+   result = run_growth_plus_validation(seed=42, n_periods=1000)
+   stability = run_growth_plus_stability_test(seeds=[0, 42, 123, 456, 789])
+
+**Key functions:**
+
+* ``run_validation()`` / ``run_growth_plus_validation()`` - Single run validation
+* ``run_stability_test()`` / ``run_growth_plus_stability_test()`` - Multi-seed testing
+* ``print_validation_report()`` / ``print_growth_plus_report()`` - Formatted output
+
+See ``validation/README.md`` for the full API reference.
+
+Calibration Package
+~~~~~~~~~~~~~~~~~~~
+
+The ``calibration/`` package finds optimal parameter values through sensitivity
+analysis and focused grid search.
+
+**Command line usage:**
+
+.. code-block:: bash
+
+   # Run sensitivity analysis only
+   python -m calibration --sensitivity-only --workers 10
+
+   # Full calibration (baseline scenario)
+   python -m calibration --workers 10 --periods 1000
+
+   # Calibrate Growth+ scenario
+   python -m calibration --scenario growth_plus --workers 10
+
+**Programmatic usage:**
+
+.. code-block:: python
+
+   from calibration import (
+       run_sensitivity_analysis,
+       build_focused_grid,
+       run_focused_calibration,
+       print_sensitivity_report,
+   )
+
+   # Phase 1: Sensitivity analysis
+   sensitivity = run_sensitivity_analysis(scenario="baseline", n_workers=10)
+   print_sensitivity_report(sensitivity)
+
+   # Phase 2: Build focused grid
+   grid, fixed = build_focused_grid(sensitivity)
+
+   # Phases 3-4: Grid search + stability testing
+   results = run_focused_calibration(grid, fixed, top_k=20)
+   print(f"Best: {results[0].combined_score:.4f}")
+
+**Calibration process:**
+
+1. **Sensitivity Analysis**: One-at-a-time (OAT) testing to identify impactful parameters
+2. **Build Focused Grid**: Categorize parameters by sensitivity (HIGH/MEDIUM/LOW)
+3. **Grid Search Screening**: Test combinations using single seed
+4. **Stability Testing**: Multi-seed validation of top candidates
+
+See ``calibration/README.md`` for CLI options and full API reference.
+
 Building Documentation
 ----------------------
 
