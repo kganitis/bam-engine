@@ -139,9 +139,9 @@ time_series:
     targets:
       normal_min: 7.22              # log(1365) - 91% employment
       normal_max: 7.28              # log(1455) - 97% employment
-      extreme_min: 7.10             # log(1212) - 81% employment (severe crisis)
+      extreme_min: 7.15             # log(1275) - 85% employment (severe crisis)
       extreme_max: 7.30             # log(1480) - 99% employment (boom)
-      mean_target: 7.25             # log(1410) - ~94% employment
+      mean_target: 7.26             # log(1418) - ~94.5% employment
       mean_tolerance: 0.03          # ± 0.03 log units (~3% output variation)
       std_target: 0.02              # Volatility in log output
       std_tolerance: 0.01

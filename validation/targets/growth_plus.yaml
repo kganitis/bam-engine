@@ -1,0 +1,375 @@
+# ==============================================================================
+# BAM Growth+ Scenario Validation Targets
+# ==============================================================================
+#
+# Target metrics derived from Delli Gatti et al. (2011), Section 3.8
+# "Macroeconomics from the Bottom-up" Growth+ extension scenario results.
+#
+# The Growth+ scenario introduces endogenous productivity growth through R&D
+# investment. Key differences from baseline:
+# - Productivity grows over time (non-stationary)
+# - Phillips correlation is stronger (-0.19 vs -0.10)
+# - Alternating booms and recessions along growth path
+# - Firm size distribution has larger production values due to productivity growth
+#
+# ==============================================================================
+
+# -- METADATA -----------------------------------------------------------------
+
+metadata:
+  source: "Delli Gatti et al. (2011), Section 3.8"
+  description: "Growth+ scenario validation targets - Endogenous Productivity Growth"
+
+  # Book and our setup are identical (no scaling needed)
+  setup:
+    n_firms: 100
+    n_households: 500
+    n_banks: 10
+    n_periods: 1000                 # 250 years x 4 quarters
+    workers_per_firm: 5.0           # 500/100
+    initial_labor_productivity: 0.5
+
+  # R&D extension parameters
+  extension_params:
+    sigma_min: 0.0                  # R&D share for highest fragility firms
+    sigma_max: 0.1                  # R&D share for lowest fragility firms
+    sigma_decay: -0.5               # Decay rate (negative = higher fragility -> lower R&D)
+
+  # Validation parameters
+  validation:
+    burn_in_periods: 500            # Exclude initial transients
+    extreme_violation_threshold: 0.10  # Max 10% of periods outside extreme bounds
+
+
+# -- TIME SERIES TARGETS ------------------------------------------------------
+#
+# Each metric includes:
+#   - book_values: Reference values from book figures
+#   - targets: Validation criteria
+#     - normal_min/max: Bounds for ~90% of periods (after burn-in)
+#     - extreme_min/max: Hard bounds, <10% violations acceptable
+#     - mean_target: Expected mean value
+#     - mean_tolerance: Acceptable deviation from mean (+/-)
+#     - std_target: Expected standard deviation
+#     - std_tolerance: Acceptable deviation from std (+/-)
+#
+# Note: All values are for steady-state (post burn-in) unless noted.
+
+time_series:
+
+  # --------------------------------------------------------------------------
+  # Unemployment Rate
+  # --------------------------------------------------------------------------
+  # Scale-invariant ratio. Higher volatility than baseline with multiple
+  # crisis episodes reaching 14%.
+  #
+  # Book figure (b): Range 0.01-0.14, cyclical pattern with crisis spikes
+  #
+  unemployment_rate:
+    description: "Fraction of households without employment"
+    unit: "ratio"
+    scales_with_population: false
+
+    book_values:
+      range_min: 0.01
+      range_max: 0.14
+      mean: 0.055
+
+    targets:
+      normal_min: 0.01              # 1% - tight labor market during booms
+      normal_max: 0.12              # 12% - high unemployment during recessions
+      extreme_min: 0.00             # 0% - rare full employment
+      extreme_max: 0.15             # 15% - severe crisis
+      mean_target: 0.055            # 5.5% average unemployment
+      mean_tolerance: 0.02          # +/- 2 percentage points
+      std_target: 0.03              # Higher volatility than baseline
+      std_tolerance: 0.015
+
+  # --------------------------------------------------------------------------
+  # Inflation Rate (Yearly/Annualized)
+  # --------------------------------------------------------------------------
+  # Scale-invariant ratio. More volatile than baseline with deeper deflation
+  # during crises.
+  #
+  # Book figure (c): Range -0.06 to 0.14, counter-cyclical to unemployment
+  #
+  inflation_rate:
+    description: "Period-over-period price change rate"
+    unit: "ratio"
+    scales_with_population: false
+
+    book_values:
+      range_min: -0.06
+      range_max: 0.14
+      mean: 0.04
+
+    targets:
+      normal_min: -0.02             # -2% - mild deflation during crises
+      normal_max: 0.10              # 10% - inflation during booms
+      extreme_min: -0.06            # -6% - severe deflation
+      extreme_max: 0.15             # 15% - inflation spike
+      mean_target: 0.04             # 4% average inflation
+      mean_tolerance: 0.025         # +/- 2.5 percentage points
+      std_target: 0.03              # Higher volatility than baseline
+      std_tolerance: 0.015
+
+  # --------------------------------------------------------------------------
+  # Log GDP (Log Output)
+  # --------------------------------------------------------------------------
+  # GROWS over time due to productivity growth. Range expands post burn-in.
+  #
+  # Book figure (a): Range 8.4-9.25 over 500 periods, clear upward trend
+  #
+  log_gdp:
+    description: "Natural log of total production (real GDP) - GROWING"
+    unit: "log units"
+    scales_with_population: false   # Book values used directly
+
+    book_values:
+      initial: 8.4                  # At t=0
+      final: 9.25                   # At t=500
+      growth_per_period: 0.0017     # Approximate linear trend
+
+    targets:
+      normal_min: 8.6               # After burn-in, growth has occurred
+      normal_max: 9.3
+      extreme_min: 8.4
+      extreme_max: 9.4
+      mean_target: 8.95             # Mid-range after burn-in
+      mean_tolerance: 0.15          # Wider tolerance due to growth trend
+      # Growth-specific targets
+      trend_coefficient_min: 0.001  # Minimum growth rate
+      trend_coefficient_max: 0.003  # Maximum growth rate
+
+  # --------------------------------------------------------------------------
+  # Productivity (Production-weighted average)
+  # --------------------------------------------------------------------------
+  # GROWS over time due to R&D investment. Upper line in book figure (d).
+  #
+  # Book figure (d) upper line: Range 10-22 over 500 periods
+  #
+  productivity:
+    description: "Production-weighted average labor productivity - GROWING"
+    unit: "output per worker"
+    scales_with_population: false
+
+    book_values:
+      initial: 10
+      final: 22
+      growth_rate: 1.2              # ~120% total growth
+
+    targets:
+      initial_min: 8
+      initial_max: 12
+      final_min: 18
+      final_max: 25
+      total_growth_min: 0.8         # At least 80% growth
+      total_growth_max: 2.5         # At most 250% growth
+      trend_coefficient_min: 0.001
+      trend_coefficient_max: 0.004
+
+  # --------------------------------------------------------------------------
+  # Real Wage
+  # --------------------------------------------------------------------------
+  # GROWS over time alongside productivity. Lower line in book figure (d).
+  #
+  # Book figure (d) lower line: Range 6.5-15 over 500 periods
+  #
+  real_wage:
+    description: "Average real wage of employed workers - GROWING"
+    unit: "wage units"
+    scales_with_population: false
+
+    book_values:
+      initial: 6.5
+      final: 15
+      growth_rate: 1.3              # ~130% total growth
+
+    targets:
+      initial_min: 5
+      initial_max: 8
+      final_min: 12
+      final_max: 18
+      total_growth_min: 0.8         # At least 80% growth
+      total_growth_max: 2.5         # At most 250% growth
+
+
+# -- MACROECONOMIC CURVE TARGETS ----------------------------------------------
+#
+# Each curve includes:
+#   - book_values: Reference correlation from book
+#   - targets: Validation criteria
+#     - correlation_target: Expected Pearson correlation coefficient
+#     - correlation_min/max: Acceptable correlation range
+#   - expected_ranges: Data ranges for sanity checks
+#
+# Correlations are dimensionless and do not scale with population.
+
+curves:
+
+  # --------------------------------------------------------------------------
+  # Phillips Curve (Wage Inflation vs Unemployment)
+  # --------------------------------------------------------------------------
+  # STRONGER negative correlation than baseline (-0.19 vs -0.10)
+  #
+  # Book figure (a) of curves: Clear negative slope with scatter
+  #
+  phillips:
+    description: "Wage inflation rate vs unemployment rate"
+    x_variable: "unemployment_rate"
+    y_variable: "wage_inflation_rate"
+
+    book_values:
+      correlation: -0.19            # Stronger than baseline's -0.10
+
+    targets:
+      correlation_target: -0.19
+      correlation_min: -0.35        # Stronger negative still acceptable
+      correlation_max: -0.05        # Must be negative
+      r_squared_min: 0.02           # Low R^2 expected (noisy relationship)
+
+    expected_ranges:
+      x_min: 0.00
+      x_max: 0.14
+      y_min: -0.10
+      y_max: 0.04
+
+  # --------------------------------------------------------------------------
+  # Okun Curve (Output Growth vs Unemployment Growth)
+  # --------------------------------------------------------------------------
+  # Strong negative relationship, similar to baseline
+  #
+  # Book figure (b) of curves: Tight negative correlation
+  #
+  okun:
+    description: "Output growth rate vs unemployment growth rate"
+    x_variable: "unemployment_growth_rate"
+    y_variable: "output_growth_rate"
+
+    book_values:
+      correlation: -0.85            # Strong negative relationship
+
+    targets:
+      correlation_target: -0.85
+      correlation_min: -0.98        # Near-perfect negative correlation
+      correlation_max: -0.70        # Still strong if slightly weaker
+      r_squared_min: 0.50           # At least 50% variance explained
+
+    expected_ranges:
+      x_min: -1.0
+      x_max: 5.0
+      y_min: -0.12
+      y_max: 0.04
+
+  # --------------------------------------------------------------------------
+  # Beveridge Curve (Vacancy Rate vs Unemployment)
+  # --------------------------------------------------------------------------
+  # Moderate negative relationship, similar to baseline
+  #
+  # Book figure (c) of curves: Downward sloping scatter
+  #
+  beveridge:
+    description: "Vacancy rate vs unemployment rate"
+    x_variable: "unemployment_rate"
+    y_variable: "vacancy_rate"
+
+    book_values:
+      correlation: -0.27            # Moderate negative relationship
+
+    targets:
+      correlation_target: -0.27
+      correlation_min: -0.50        # Stronger negative acceptable
+      correlation_max: -0.10        # Weak negative still valid
+      r_squared_min: 0.05           # Low R^2 expected
+
+    expected_ranges:
+      x_min: 0.00
+      x_max: 0.14
+      y_min: 0.08
+      y_max: 0.20
+
+
+# -- DISTRIBUTION TARGETS -----------------------------------------------------
+#
+# Firm size distribution at end of simulation.
+# Much larger production values than baseline due to productivity growth.
+
+distributions:
+
+  # --------------------------------------------------------------------------
+  # Firm Size Distribution (Final Period Production)
+  # --------------------------------------------------------------------------
+  # Production values are MUCH LARGER than baseline (50-350 vs 1-10)
+  # due to accumulated productivity growth over 1000 periods.
+  #
+  # Book figure (d) of distributions: Mode at ~100-125, range 50-350
+  #
+  firm_size:
+    description: "Distribution of firm production at final period - LARGER due to growth"
+    unit: "production units"
+    scales_with_population: false
+
+    book_values:
+      mode: 100                     # Mode production value
+      range_min: 50
+      range_max: 500
+      pct_below_150: 0.90           # ~90% of firms below 150
+
+    targets:
+      # Shape metrics
+      skewness_min: 0.5             # Positive skewness (right-skewed)
+      skewness_target: 1.5          # Moderate right skew
+      skewness_max: 4.0             # Heavy right tail acceptable
+
+      # Percentile-based thresholds
+      threshold_small: 150.0        # "Small" firm threshold
+      pct_below_small_target: 0.90  # 90% of firms should be "small"
+      pct_below_small_min: 0.70     # At least 70%
+      pct_below_small_max: 0.95     # At most 95%
+
+      # Mode should be in middle range
+      mode_min: 75
+      mode_max: 150
+
+  # --------------------------------------------------------------------------
+  # Vacancy Rate Distribution
+  # --------------------------------------------------------------------------
+  # Similar to baseline
+  #
+  vacancy_rate:
+    description: "Total vacancies divided by total households"
+    unit: "ratio"
+    scales_with_population: false
+
+    book_values:
+      range_min: 0.08
+      range_max: 0.20
+      mean: 0.12
+
+    targets:
+      normal_min: 0.08              # 8% - tight labor market
+      normal_max: 0.18              # 18% - many unfilled positions
+      extreme_min: 0.05             # 5% - very tight market
+      extreme_max: 0.25             # 25% - labor shortage
+      mean_target: 0.12             # 12% average vacancy rate
+      mean_tolerance: 0.03          # +/- 3 percentage points
+
+
+# -- DERIVED METRICS ----------------------------------------------------------
+#
+# Calculated from primary metrics for additional validation
+#
+
+derived_metrics:
+
+  # Employment rate = 1 - unemployment_rate
+  employment_rate:
+    formula: "1 - unemployment_rate"
+    target: 0.945                   # 94.5% employment
+    tolerance: 0.02
+
+  # Productivity to wage ratio (should stay roughly constant as both grow)
+  productivity_wage_ratio:
+    formula: "productivity / real_wage"
+    target: 1.5                     # Productivity ~1.5x real wage
+    tolerance: 0.3

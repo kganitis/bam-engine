@@ -1,10 +1,17 @@
-"""Validation tests for baseline scenario against book targets.
+"""Validation tests for Growth+ scenario against book targets.
 
-This module validates that the BAM Engine simulation reproduces the qualitative
-and quantitative behavior documented in Delli Gatti et al. (2011), Section 3.9.1.
+This module validates that the BAM Engine simulation with the Growth+ extension
+reproduces the qualitative and quantitative behavior documented in
+Delli Gatti et al. (2011), Section 3.8.
+
+The Growth+ scenario extends the baseline with endogenous productivity growth
+through R&D investment. Key differences from baseline:
+- Productivity and real wage grow over time (non-stationary)
+- Phillips correlation is stronger (-0.19 vs -0.10)
+- Firm size distribution has larger values due to productivity growth
 
 The test compares simulation results against targets defined in:
-    validation/targets/baseline.yaml
+    validation/targets/growth_plus.yaml
 
 Test behavior:
     - PASS: Metric within acceptable range
@@ -12,10 +19,6 @@ Test behavior:
     - FAIL: Metric significantly outside acceptable range
 
 The test fails if ANY metric has FAIL status. WARN is acceptable.
-
-Scoring:
-    Each metric receives a 0-1 score based on how close it is to the target.
-    A weighted total score enables comparison between parameter configurations.
 """
 
 from __future__ import annotations
@@ -24,10 +27,10 @@ import pytest
 
 from validation import (
     DEFAULT_STABILITY_SEEDS,
-    print_stability_report,
-    print_validation_report,
-    run_stability_test,
-    run_validation,
+    print_growth_plus_report,
+    print_growth_plus_stability_report,
+    run_growth_plus_stability_test,
+    run_growth_plus_validation,
 )
 
 # =============================================================================
@@ -36,17 +39,18 @@ from validation import (
 
 
 @pytest.mark.slow
-def test_baseline_scenario_validation() -> None:
-    """Validate baseline scenario results against book targets.
+def test_growth_plus_scenario_validation() -> None:
+    """Validate Growth+ scenario results against book targets.
 
-    This test runs a full 1000-period simulation and compares the results
-    against targets derived from Delli Gatti et al. (2011), Section 3.9.1.
+    This test runs a full 1000-period simulation with the RnD extension
+    and compares the results against targets derived from
+    Delli Gatti et al. (2011), Section 3.8.
 
     The test FAILS if any metric has FAIL status.
     WARN status is acceptable (indicates calibration work needed).
     """
-    result = run_validation(seed=0, n_periods=1000)
-    print_validation_report(result)
+    result = run_growth_plus_validation(seed=0, n_periods=1000)
+    print_growth_plus_report(result)
 
     # Assert no failures
     if not result.passed:
@@ -60,19 +64,19 @@ def test_baseline_scenario_validation() -> None:
 
 
 @pytest.mark.slow
-def test_baseline_seed_stability() -> None:
-    """Test that baseline passes consistently across multiple seeds.
+def test_growth_plus_seed_stability() -> None:
+    """Test that Growth+ passes consistently across multiple seeds.
 
     This test runs validation with 5 different seeds and checks:
     1. ALL seeds pass (no FAIL metrics)
     2. Score standard deviation is reasonable (< 0.15)
     """
-    result = run_stability_test(seeds=DEFAULT_STABILITY_SEEDS)
-    print_stability_report(result)
+    result = run_growth_plus_stability_test(seeds=DEFAULT_STABILITY_SEEDS)
+    print_growth_plus_stability_report(result)
 
     # Assert stability criteria
-    assert result.pass_rate == 1.0, (
-        f"Pass rate too low: {result.pass_rate:.0%} (expected 100%)"
+    assert result.pass_rate >= 1.0, (
+        f"Pass rate too low: {result.pass_rate:.0%} (expected = 100%)"
     )
     assert result.std_score <= 0.15, (
         f"Score too variable: std={result.std_score:.3f} (expected <= 0.15)"
