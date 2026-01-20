@@ -21,7 +21,6 @@ Usage:
 from calibration.optimizer import (
     CalibrationResult,
     build_focused_grid,
-    compute_combined_score,
     evaluate_stability,
     run_focused_calibration,
     screen_single_seed,
@@ -38,6 +37,9 @@ from calibration.sensitivity import (
     print_sensitivity_report,
     run_sensitivity_analysis,
 )
+
+# Re-export from validation for backwards compatibility
+from validation import compute_combined_score
 
 __all__ = [
     # Parameter space
