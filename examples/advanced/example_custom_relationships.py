@@ -417,12 +417,13 @@ plt.show()
 # The LoanBook relationship demonstrates advanced features.
 
 # Fresh simulation for loan analysis
+# Run longer to ensure loans are generated
 sim = bam.Simulation.init(n_firms=100, n_households=500, n_banks=10, seed=42)
-sim.run(n_periods=20)
+sim.run(n_periods=50)
 
 loans = sim.get_relationship("LoanBook")
 
-print("\nLoanBook after 20 periods:")
+print("\nLoanBook after 50 periods:")
 print(f"  Active loans: {loans.size}")
 
 if loans.size > 0:
@@ -462,6 +463,10 @@ if loans.size > 0:
 
     plt.tight_layout()
     plt.show()
+else:
+    print(
+        "  No active loans to visualize. This can happen when firms don't need credit."
+    )
 
 # %%
 # Key Takeaways

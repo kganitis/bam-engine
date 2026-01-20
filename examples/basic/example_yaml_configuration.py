@@ -166,25 +166,34 @@ low_friction_config = {
     "seed": 42,
 }
 
-# Run both simulations
+# Run both simulations with data collection for unemployment calculation
 n_periods = 100
 
+# High friction simulation
 sim_high = bam.Simulation.init(config=high_friction_config)
+wrk_high = sim_high.get_role("Worker")
+unemployment_high = []
 for _ in range(n_periods):
     sim_high.step()
+    # Calculate unemployment from Worker.employed (preferred method)
+    unemp = 1.0 - bam.ops.mean(wrk_high.employed.astype(float))
+    unemployment_high.append(unemp * 100)
 
+# Low friction simulation
 sim_low = bam.Simulation.init(config=low_friction_config)
+wrk_low = sim_low.get_role("Worker")
+unemployment_low = []
 for _ in range(n_periods):
     sim_low.step()
+    unemp = 1.0 - bam.ops.mean(wrk_low.employed.astype(float))
+    unemployment_low.append(unemp * 100)
+
+# Convert to arrays for plotting
+unemployment_high = bam.ops.asarray(unemployment_high)
+unemployment_low = bam.ops.asarray(unemployment_low)
 
 # Compare unemployment rates
 fig, ax = plt.subplots(figsize=(10, 6))
-
-# Convert to arrays and scale to percentages using ops
-unemployment_high = bam.ops.multiply(
-    bam.ops.asarray(sim_high.ec.unemp_rate_history), 100
-)
-unemployment_low = bam.ops.multiply(bam.ops.asarray(sim_low.ec.unemp_rate_history), 100)
 
 ax.plot(unemployment_high, label="High Friction", linewidth=2)
 ax.plot(unemployment_low, label="Low Friction", linewidth=2)

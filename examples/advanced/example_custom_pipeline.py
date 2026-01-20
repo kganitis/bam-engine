@@ -131,22 +131,40 @@ print("Completed 10 periods")
 # ---------------
 #
 # Create a pipeline without dividends (all profits retained).
+# When removing events, you may need to add a replacement that handles
+# any required state updates. Here we remove ``firms_pay_dividends`` and
+# add a custom event to set retained_profit = net_profit.
+
+from bamengine import event, ops
+
+
+@event
+class RetainAllProfits:
+    """Custom event that retains all profits (no dividends).
+
+    This replaces firms_pay_dividends - it sets retained_profit to net_profit
+    so that firms_update_net_worth can add it to net worth.
+    """
+
+    def execute(self, sim):
+        bor = sim.get_role("Borrower")
+        # All net profit is retained (no dividends paid)
+        bor.retained_profit[:] = bor.net_profit
+
 
 no_dividends_pipeline = """
 # Pipeline without dividend payments
-# Firms retain all profits
+# Firms retain all profits via custom RetainAllProfits event
 
 events:
   # Planning
   - firms_decide_desired_production
-  - firms_calc_breakeven_price
-  - firms_adjust_price
-  - update_avg_mkt_price
-  - calc_annual_inflation_rate
   - firms_decide_desired_labor
   - firms_decide_vacancies
+  - firms_fire_excess_workers
 
   # Labor market
+  - calc_annual_inflation_rate
   - adjust_minimum_wage
   - firms_decide_wage_offer
   - workers_decide_firms_to_apply
@@ -165,20 +183,23 @@ events:
   # Production
   - firms_pay_wages
   - workers_receive_wage
+  - firms_calc_breakeven_price
+  - firms_adjust_price
   - firms_run_production
+  - update_avg_mkt_price
   - workers_update_contracts
 
   # Goods market
   - consumers_calc_propensity
   - consumers_decide_income_to_spend
   - consumers_decide_firms_to_visit
-  - consumers_shop_one_round x {max_Z}
+  - consumers_shop_sequential
   - consumers_finalize_purchases
 
-  # Revenue (NO DIVIDENDS!)
+  # Revenue (custom event replaces dividends)
   - firms_collect_revenue
   - firms_validate_debt_commitments
-  # - firms_pay_dividends  # REMOVED!
+  - retain_all_profits  # CUSTOM: replaces firms_pay_dividends
 
   # Bankruptcy
   - firms_update_net_worth
@@ -188,7 +209,6 @@ events:
   # Entry
   - spawn_replacement_firms
   - spawn_replacement_banks
-  # Note: calc_unemployment_rate deprecated - calculate from Worker.employed
 """
 
 # Write and test
@@ -224,7 +244,7 @@ for _ in range(50):
 # Plot comparison
 fig, ax = plt.subplots(figsize=(10, 6))
 ax.plot(nw_with_div, label="With Dividends (default)", linewidth=2)
-ax.plot(nw_no_div, label="No Dividends (retained)", linewidth=2)
+ax.plot(nw_no_div, label="No Dividends (custom pipeline)", linewidth=2)
 ax.set_xlabel("Period")
 ax.set_ylabel("Mean Firm Net Worth")
 ax.set_title("Effect of Dividend Policy on Firm Net Worth")
@@ -243,7 +263,7 @@ print(f"  No dividends: {nw_no_div[-1]:.2f}")
 #
 # Define custom events and add them to the pipeline.
 
-from bamengine import event, ops
+from bamengine import event
 
 
 @event
@@ -291,14 +311,12 @@ custom_events_pipeline = """
 events:
   # Planning
   - firms_decide_desired_production
-  - firms_calc_breakeven_price
-  - firms_adjust_price
-  - update_avg_mkt_price
-  - calc_annual_inflation_rate
   - firms_decide_desired_labor
   - firms_decide_vacancies
+  - firms_fire_excess_workers
 
   # Labor market
+  - calc_annual_inflation_rate
   - adjust_minimum_wage
   - firms_decide_wage_offer
   - workers_decide_firms_to_apply
@@ -317,7 +335,10 @@ events:
   # Production
   - firms_pay_wages
   - workers_receive_wage
+  - firms_calc_breakeven_price
+  - firms_adjust_price
   - firms_run_production
+  - update_avg_mkt_price
   - workers_update_contracts
 
   # CUSTOM: Unemployment benefits (after wage receipt)
@@ -327,7 +348,7 @@ events:
   - consumers_calc_propensity
   - consumers_decide_income_to_spend
   - consumers_decide_firms_to_visit
-  - consumers_shop_one_round x {max_Z}
+  - consumers_shop_sequential
   - consumers_finalize_purchases
 
   # Revenue
@@ -347,7 +368,6 @@ events:
   # Entry
   - spawn_replacement_firms
   - spawn_replacement_banks
-  # Note: calc_unemployment_rate deprecated - calculate from Worker.employed
 """
 
 custom_path = config_dir / "custom_events_pipeline.yml"
@@ -425,48 +445,7 @@ print("Parameter substitution in pipelines:")
 print(param_example)
 
 # Test with different friction values
-high_friction_pipeline = """
-events:
-  - firms_decide_desired_production
-  - firms_calc_breakeven_price
-  - firms_adjust_price
-  - update_avg_mkt_price
-  - firms_decide_desired_labor
-  - firms_decide_vacancies
-  - adjust_minimum_wage
-  - firms_decide_wage_offer
-  - workers_decide_firms_to_apply
-  - workers_send_one_round <-> firms_hire_workers x {max_M}
-  - firms_calc_wage_bill
-  - banks_decide_credit_supply
-  - banks_decide_interest_rate
-  - firms_decide_credit_demand
-  - firms_calc_financial_fragility
-  - firms_prepare_loan_applications
-  - firms_send_one_loan_app <-> banks_provide_loans x {max_H}
-  - firms_fire_workers
-  - firms_pay_wages
-  - workers_receive_wage
-  - firms_run_production
-  - workers_update_contracts
-  - consumers_calc_propensity
-  - consumers_decide_income_to_spend
-  - consumers_decide_firms_to_visit
-  - consumers_shop_one_round x {max_Z}
-  - consumers_finalize_purchases
-  - firms_collect_revenue
-  - firms_validate_debt_commitments
-  - firms_pay_dividends
-  - firms_update_net_worth
-  - mark_bankrupt_firms
-  - mark_bankrupt_banks
-  - spawn_replacement_firms
-  - spawn_replacement_banks
-  # Note: calc_unemployment_rate deprecated - calculate from Worker.employed
-"""
-
-friction_path = config_dir / "friction_pipeline.yml"
-friction_path.write_text(high_friction_pipeline)
+# Uses default pipeline - the key difference is in max_M, max_H, max_Z config parameters
 
 # Low friction (many search rounds)
 sim_low_friction = bam.Simulation.init(
@@ -476,7 +455,6 @@ sim_low_friction = bam.Simulation.init(
     max_H=4,
     max_Z=4,  # More search rounds
     seed=42,
-    pipeline_path=str(friction_path),
 )
 
 # High friction (few search rounds)
@@ -487,7 +465,6 @@ sim_high_friction = bam.Simulation.init(
     max_H=1,
     max_Z=1,  # Fewer rounds
     seed=42,
-    pipeline_path=str(friction_path),
 )
 
 # Run both

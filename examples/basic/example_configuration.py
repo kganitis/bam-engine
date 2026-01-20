@@ -93,11 +93,20 @@ print(f"  Initial household savings: {bam.ops.mean(con.savings):.1f}")
 # -----------------
 #
 # Run two simulations with different parameters and compare outcomes.
+# We use sim.run() with collection to properly track unemployment.
+
+import numpy as np
 
 # Baseline scenario
 sim_baseline = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
-for _ in range(100):
-    sim_baseline.step()
+baseline_results = sim_baseline.run(
+    n_periods=100,
+    collect={
+        "Worker": ["employed"],
+        "aggregate": None,
+        "capture_timing": {"Worker.employed": "firms_run_production"},
+    },
+)
 
 # Low-friction scenario (more search rounds)
 sim_low_friction_run = bam.Simulation.init(
@@ -107,8 +116,21 @@ sim_low_friction_run = bam.Simulation.init(
     max_Z=4,  # More shopping rounds (default: 2)
     seed=42,
 )
-for _ in range(100):
-    sim_low_friction_run.step()
+lowfric_results = sim_low_friction_run.run(
+    n_periods=100,
+    collect={
+        "Worker": ["employed"],
+        "aggregate": None,
+        "capture_timing": {"Worker.employed": "firms_run_production"},
+    },
+)
+
+
+# Helper to calculate unemployment rate from Worker.employed
+def calc_unemployment(employed: np.ndarray) -> np.ndarray:
+    """Calculate unemployment rate per period from employed boolean array."""
+    return 1.0 - np.mean(employed.astype(float), axis=1)
+
 
 # %%
 # Visualize Comparison
@@ -118,18 +140,18 @@ for _ in range(100):
 
 import matplotlib.pyplot as plt
 
-# Convert unemployment histories to arrays and scale to percentages
-baseline_unemp = bam.ops.multiply(
-    bam.ops.asarray(sim_baseline.ec.unemp_rate_history), 100
-)
-lowfric_unemp = bam.ops.multiply(
-    bam.ops.asarray(sim_low_friction_run.ec.unemp_rate_history), 100
-)
+# Calculate unemployment rates from Worker.employed data
+baseline_employed = baseline_results.role_data["Worker"]["employed"]
+lowfric_employed = lowfric_results.role_data["Worker"]["employed"]
+
+baseline_unemp = calc_unemployment(baseline_employed) * 100
+lowfric_unemp = calc_unemployment(lowfric_employed) * 100
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 
-# Calculate y-axis limit using ops.max
-y_max = bam.ops.max(bam.ops.maximum(baseline_unemp, lowfric_unemp)) * 1.1
+# Calculate y-axis limit
+y_max = max(baseline_unemp.max(), lowfric_unemp.max()) * 1.1
+y_max = max(y_max, 10)  # Ensure minimum visible range
 
 # Baseline
 ax1.plot(baseline_unemp, linewidth=2, color="#2E86AB")
@@ -160,8 +182,8 @@ print("\n" + "=" * 60)
 print("COMPARISON: Baseline vs Low Friction")
 print("=" * 60)
 print("\nAverage Unemployment Rate:")
-print(f"  Baseline (max_M=4, max_Z=2):     {bam.ops.mean(baseline_unemp[20:]):.2f}%")
-print(f"  Low Friction (max_M=8, max_Z=4): {bam.ops.mean(lowfric_unemp[20:]):.2f}%")
+print(f"  Baseline (max_M=4, max_Z=2):     {baseline_unemp[20:].mean():.2f}%")
+print(f"  Low Friction (max_M=8, max_Z=4): {lowfric_unemp[20:].mean():.2f}%")
 
 baseline_price = sim_baseline.ec.avg_mkt_price
 lowfric_price = sim_low_friction_run.ec.avg_mkt_price

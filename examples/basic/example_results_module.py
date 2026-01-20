@@ -24,11 +24,31 @@ without manual data collection.
 # Pass ``collect=True`` to ``sim.run()`` to collect data automatically.
 # This returns a ``SimulationResults`` object containing time series data.
 
+import numpy as np
+
 import bamengine as bam
 
 # Run simulation with data collection
+# We collect Worker employed data without aggregation to calculate unemployment
 sim = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
-results = sim.run(n_periods=50, collect=True)
+results = sim.run(
+    n_periods=50,
+    collect={
+        "Producer": True,
+        "Worker": ["employed"],  # Boolean employed status for each worker
+        "Employer": True,
+        "Borrower": True,
+        "Lender": True,
+        "Consumer": True,
+        "Economy": True,
+        "aggregate": None,  # Full per-agent data for Worker
+        # Capture timing: when to snapshot each variable during the period
+        # Worker.employed should be captured after production runs (steady state)
+        "capture_timing": {
+            "Worker.employed": "firms_run_production",
+        },
+    },
+)
 
 print(f"Collected results: {results}")
 print("\nMetadata:")
@@ -41,19 +61,40 @@ print(f"  Households: {results.metadata.get('n_households', 'N/A')}")
 # -------------------------
 #
 # Economy-wide metrics are stored as arrays in ``economy_data``.
+# We can also compute derived metrics from role data.
 
 print("Available economy metrics:", list(results.economy_data.keys()))
 
-# Access specific metrics (returns empty array if key not found)
-empty_array = bam.ops.zeros(0)  # Fallback empty array
-unemployment = results.economy_data.get("unemployment_rate", empty_array)
-avg_price = results.economy_data.get("avg_price", empty_array)
-inflation = results.economy_data.get("inflation", empty_array)
 
-if len(unemployment) > 0:
-    print("\nUnemployment rate:")
+# Helper function to calculate unemployment rate from Worker employed data
+def calc_unemployment_rate(worker_employed: np.ndarray) -> np.ndarray:
+    """Calculate unemployment rate per period from Worker employed boolean array.
+
+    Args:
+        worker_employed: 2D boolean array of shape (n_periods, n_workers) where
+            True indicates employed, False indicates unemployed.
+
+    Returns:
+        1D array of unemployment rates per period.
+    """
+    # Employment rate = mean of employed (True=1, False=0) across workers
+    # Unemployment rate = 1 - employment rate
+    return 1.0 - np.mean(worker_employed.astype(float), axis=1)
+
+
+# Access specific metrics
+avg_price = results.economy_data.get("avg_price", bam.ops.zeros(0))
+inflation = results.economy_data.get("inflation", bam.ops.zeros(0))
+
+# Calculate unemployment rate from Worker employed data
+worker_employed = results.role_data.get("Worker", {}).get("employed", None)
+if worker_employed is not None:
+    unemployment = calc_unemployment_rate(worker_employed)
+    print("\nUnemployment rate (calculated from Worker employed data):")
     print(f"  Mean: {bam.ops.mean(unemployment):.2%}")
     print(f"  Final: {unemployment[-1]:.2%}")
+else:
+    unemployment = bam.ops.zeros(0)
 
 if len(avg_price) > 0:
     print("\nAverage price:")
@@ -65,7 +106,7 @@ if len(avg_price) > 0:
 # -------------------
 #
 # Role data contains per-period snapshots of agent states.
-# By default, data is aggregated (mean across agents).
+# When ``aggregate=None``, data is full per-agent arrays (periods x agents).
 
 print("Available roles:", list(results.role_data.keys()))
 
@@ -74,10 +115,12 @@ if "Producer" in results.role_data:
     producer_data = results.role_data["Producer"]
     print(f"\nProducer variables: {list(producer_data.keys())}")
 
-    # Get average price over time (already aggregated by default)
+    # Get price data - shape is (periods, firms) with aggregate=None
     if "price" in producer_data:
-        avg_prices = producer_data["price"]
-        print(f"  Average price shape: {avg_prices.shape}")
+        price_data = producer_data["price"]
+        print(f"  Price data shape: {price_data.shape}")
+        # Calculate mean price per period
+        avg_prices = np.mean(price_data, axis=1)
         print(f"  Price trend (first 5): {avg_prices[:5].round(3)}")
 
 # %%
@@ -96,10 +139,10 @@ if "Producer" in results.role_data and "price" in results.role_data["Producer"]:
     )
 
 # get_array() for economy data - use "Economy" as the role name
-if len(unemployment) > 0:
-    unemp_via_get_array = results.get_array("Economy", "unemployment_rate")
+if len(avg_price) > 0:
+    price_via_get_array = results.get_array("Economy", "avg_price")
     print(
-        f"  results.get_array('Economy', 'unemployment_rate').shape: {unemp_via_get_array.shape}"
+        f"  results.get_array('Economy', 'avg_price').shape: {price_via_get_array.shape}"
     )
 
 # Aggregation on-the-fly (useful when you have full per-agent data)
@@ -175,11 +218,13 @@ if len(inflation) > 0:
     ax3.axhline(y=0, color="black", linestyle="--", alpha=0.5)
     ax3.grid(True, alpha=0.3)
 
-# Production (if available)
+# Production (if available) - compute mean across firms since data is 2D
 ax4 = axes[1, 1]
 if "Producer" in results.role_data and "production" in results.role_data["Producer"]:
-    production = results.role_data["Producer"]["production"]
-    ax4.plot(production, linewidth=2, color="tab:red")
+    production_data = results.role_data["Producer"]["production"]
+    # Average across firms (axis=1) since data is (periods, firms)
+    avg_production = np.mean(production_data, axis=1)
+    ax4.plot(avg_production, linewidth=2, color="tab:red")
     ax4.set_ylabel("Avg Production")
     ax4.set_title("Average Firm Production")
     ax4.grid(True, alpha=0.3)
@@ -308,10 +353,17 @@ print("Running ensemble of simulations...")
 for i in range(n_runs):
     run_results = bam.Simulation.init(n_firms=100, n_households=500, seed=42 + i).run(
         n_periods=50,
-        collect=True,
+        collect={
+            "Worker": ["employed"],
+            "aggregate": None,
+            "capture_timing": {"Worker.employed": "firms_run_production"},
+        },
     )
-    if "unemployment_rate" in run_results.economy_data:
-        all_unemployment.append(run_results.economy_data["unemployment_rate"])
+    # Calculate unemployment from Worker employed data
+    worker_employed = run_results.role_data.get("Worker", {}).get("employed", None)
+    if worker_employed is not None:
+        unemp_rate = calc_unemployment_rate(worker_employed)
+        all_unemployment.append(unemp_rate)
 
 # Plot ensemble results
 if all_unemployment:
@@ -345,10 +397,27 @@ if all_unemployment:
 # Key Takeaways
 # -------------
 #
+# **Basic collection:**
+#
 # - Use ``collect=True`` for basic data collection with aggregated means
 # - Use ``collect=["Producer", "Worker", "Economy"]`` for specific roles
 # - Use ``collect={"Producer": ["price"], "Economy": True}`` for specific variables
 # - Use ``True`` for all variables: ``{"Worker": True}``
+#
+# **Per-agent data and capture timing:**
+#
+# - Use ``aggregate=None`` to get full per-agent data (shape: periods × agents)
+# - Use ``capture_timing`` to control when variables are captured during each period
+# - Example: ``"capture_timing": {"Worker.employed": "firms_run_production"}``
+#
+# **Computing derived metrics:**
+#
+# - Unemployment rate can be computed from ``Worker.employed``:
+#   ``1.0 - np.mean(employed.astype(float), axis=1)``
+# - When computing from per-agent data, aggregate across agents with ``axis=1``
+#
+# **Data access:**
+#
 # - Access raw data via ``results.economy_data`` and ``results.role_data``
 # - Use ``results.get_array()`` for cleaner access: ``get_array("Producer", "price")``
 # - Use ``results.get_array("Economy", "metric")`` for economy data
