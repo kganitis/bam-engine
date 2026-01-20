@@ -803,10 +803,12 @@ if __name__ == "__main__":
     # Run the simulation for 1000 periods, using the standard collection config.
     # Add project root to path so validation module can be imported.
 
+    import contextlib
     import sys
     from pathlib import Path
 
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    with contextlib.suppress(NameError):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
     from validation.metrics import (
         GROWTH_PLUS_COLLECT_CONFIG,
