@@ -21,11 +21,9 @@ inflation rate, productivity-real wage) and four macroeconomic curves
 import bamengine as bam
 from bamengine import ops
 
-N_HOUSEHOLDS = 3000
-
 sim = bam.Simulation.init(
     n_firms=300,
-    n_households=N_HOUSEHOLDS,
+    n_households=3000,
     n_banks=10,
     n_periods=1000,
     seed=0,
@@ -40,7 +38,11 @@ print(f"  - {sim.n_banks} banks")
 # %%
 # Run the simulation and compute metrics using the validation module.
 
-from validation.metrics import BASELINE_COLLECT_CONFIG, compute_baseline_metrics
+from validation.metrics import (
+    BASELINE_COLLECT_CONFIG,
+    compute_baseline_metrics,
+    load_baseline_targets,
+)
 
 results = sim.run(collect=BASELINE_COLLECT_CONFIG)
 
@@ -70,60 +72,9 @@ print(
 # Metric Bounds Configuration
 # ---------------------------
 #
-# Target bounds for validation and visualization (from book figures)
+# Load target bounds from validation YAML (single source of truth).
 
-BOUNDS: dict[str, dict[str, float]] = {
-    "real_wage": {
-        "normal_min": 0.30,
-        "normal_max": 0.40,
-        "extreme_min": 0.25,
-        "extreme_max": 0.45,
-        "mean_target": 0.34,
-    },
-    "log_gdp": {
-        "normal_min": np.log(N_HOUSEHOLDS * 0.5 * 0.88),
-        "normal_max": np.log(N_HOUSEHOLDS * 0.5 * 0.98),
-        "extreme_min": np.log(N_HOUSEHOLDS * 0.5 * 0.70),
-        "extreme_max": np.log(N_HOUSEHOLDS * 0.5 * 0.99),
-        "mean_target": np.log(N_HOUSEHOLDS * 0.5 * 0.95),
-    },
-    "inflation": {
-        "normal_min": -0.01,
-        "normal_max": 0.08,
-        "extreme_min": -0.05,
-        "extreme_max": 0.15,
-        "mean_target": 0.05,
-    },
-    "unemployment": {
-        "normal_min": 0.03,
-        "normal_max": 0.09,
-        "extreme_min": 0.01,
-        "extreme_max": 0.15,
-        "mean_target": 0.055,
-    },
-    # Curve correlation targets
-    "phillips_corr": {
-        "target": -0.10,
-        "min": -0.30,
-        "max": 0.05,
-    },
-    "okun_corr": {
-        "target": -0.85,
-        "min": -0.98,
-        "max": -0.70,
-    },
-    "beveridge_corr": {
-        "target": -0.27,
-        "min": -0.50,
-        "max": -0.10,
-    },
-    "firm_size": {
-        "threshold": 5.0,
-        "pct_below_target": 0.90,
-        "skewness_min": 1.0,
-        "skewness_max": 5.0,
-    },
-}
+BOUNDS = load_baseline_targets()
 
 # %%
 # Prepare Data for Visualization
@@ -268,8 +219,24 @@ ax.set_title("Real GDP", fontsize=12, fontweight="bold")
 ax.set_ylabel("Log output")
 ax.set_xlabel("t")
 ax.grid(True, linestyle="--", alpha=0.3)
-ax.legend(loc="lower left", fontsize=7)
-add_stats_box(ax, log_gdp, "log_gdp")
+ax.legend(loc="upper left", fontsize=7)
+# Stats box at lower right to avoid legend overlap
+b = BOUNDS["log_gdp"]
+actual_mean = np.mean(log_gdp)
+actual_std = np.std(log_gdp)
+in_bounds = np.sum((log_gdp >= b["normal_min"]) & (log_gdp <= b["normal_max"])) / len(
+    log_gdp
+)
+ax.text(
+    0.98,
+    0.03,
+    f"μ = {actual_mean:.2f} (target: {b['mean_target']:.2f})\nσ = {actual_std:.3f}\n{in_bounds * 100:.0f}% in bounds",
+    transform=ax.transAxes,
+    fontsize=8,
+    verticalalignment="bottom",
+    horizontalalignment="right",
+    bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+)
 
 # Panel (0,1): Unemployment Rate
 ax = axes[0, 1]
@@ -374,9 +341,25 @@ ax.axhline(BOUNDS["real_wage"]["mean_target"], color="blue", linestyle="-.", alp
 ax.set_title("Productivity / Real Wage Ratio", fontsize=12, fontweight="bold")
 ax.set_ylabel("Productivity - Real Wage")
 ax.set_xlabel("t")
-ax.legend(loc="upper left", fontsize=7)
+ax.legend(loc="lower right", fontsize=7)
 ax.grid(True, linestyle="--", alpha=0.3)
-add_stats_box(ax, real_wage_trimmed, "real_wage")
+# Stats box at upper left
+b = BOUNDS["real_wage"]
+actual_mean = np.mean(real_wage_trimmed)
+actual_std = np.std(real_wage_trimmed)
+in_bounds = np.sum(
+    (real_wage_trimmed >= b["normal_min"]) & (real_wage_trimmed <= b["normal_max"])
+) / len(real_wage_trimmed)
+ax.text(
+    0.02,
+    0.97,
+    f"μ = {actual_mean:.2f} (target: {b['mean_target']:.2f})\nσ = {actual_std:.3f}\n{in_bounds * 100:.0f}% in bounds",
+    transform=ax.transAxes,
+    fontsize=8,
+    verticalalignment="top",
+    horizontalalignment="left",
+    bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+)
 
 # Bottom 2x2: Macroeconomic curves
 # --------------------------------
@@ -417,9 +400,24 @@ if x_std > 0:
 ax.set_title("Phillips Curve", fontsize=12, fontweight="bold")
 ax.set_xlabel("Unemployment Rate")
 ax.set_ylabel("Wage Inflation Rate")
-ax.legend(fontsize=8, loc="upper right")
+ax.legend(fontsize=8, loc="lower right")
 ax.grid(True, linestyle="--", alpha=0.3)
-add_corr_stats_box(ax, phillips_corr, "phillips_corr")
+# Stats box at lower left
+b = BOUNDS["phillips_corr"]
+corr_min, corr_max = b["min"], b["max"]
+in_range = corr_min <= phillips_corr <= corr_max
+status = "PASS" if in_range else "WARN"
+color = "lightgreen" if in_range else "lightyellow"
+ax.text(
+    0.02,
+    0.03,
+    f"r = {phillips_corr:.2f}\nRange: [{corr_min:.2f}, {corr_max:.2f}]\nStatus: {status}",
+    transform=ax.transAxes,
+    fontsize=8,
+    verticalalignment="bottom",
+    horizontalalignment="left",
+    bbox=dict(boxstyle="round", facecolor=color, alpha=0.7),
+)
 
 # Panel (2,1): Okun Curve
 ax = axes[2, 1]
@@ -459,9 +457,24 @@ if x_std > 0:
 ax.set_title("Okun Curve", fontsize=12, fontweight="bold")
 ax.set_xlabel("Unemployment Growth Rate")
 ax.set_ylabel("Output Growth Rate")
-ax.legend(fontsize=8, loc="upper right")
+ax.legend(fontsize=8, loc="lower left")
 ax.grid(True, linestyle="--", alpha=0.3)
-add_corr_stats_box(ax, okun_corr, "okun_corr")
+# Stats box at upper right
+b = BOUNDS["okun_corr"]
+corr_min, corr_max = b["min"], b["max"]
+in_range = corr_min <= okun_corr <= corr_max
+status = "PASS" if in_range else "WARN"
+color = "lightgreen" if in_range else "lightyellow"
+ax.text(
+    0.98,
+    0.97,
+    f"r = {okun_corr:.2f}\nRange: [{corr_min:.2f}, {corr_max:.2f}]\nStatus: {status}",
+    transform=ax.transAxes,
+    fontsize=8,
+    verticalalignment="top",
+    horizontalalignment="right",
+    bbox=dict(boxstyle="round", facecolor=color, alpha=0.7),
+)
 
 # Panel (3,0): Beveridge Curve
 ax = axes[3, 0]
@@ -526,12 +539,12 @@ ax.set_xlabel("Production")
 ax.set_ylabel("Frequency")
 ax.legend(fontsize=8, loc="upper right")
 ax.grid(True, linestyle="--", alpha=0.3)
-# Stats box with skewness
+# Stats box with skewness (below legend at upper right)
 skew_status = "PASS" if skewness_in_range else "WARN"
 skew_color = "lightgreen" if skewness_in_range else "lightyellow"
 ax.text(
     0.98,
-    0.97,
+    0.70,
     f"{pct_below_actual * 100:.0f}% below threshold\n(Target: {pct_below_target * 100:.0f}%)\n"
     f"Skew: {skewness_actual:.2f} [{skewness_min:.1f}, {skewness_max:.1f}]\n"
     f"Status: {skew_status}",
