@@ -24,4 +24,4 @@ jobs:
         pip install -e ".[dev]"
 
     - name: Run validation tests
-      run: pytest -m validation -v
+      run: pytest -m validation -v --no-cov
