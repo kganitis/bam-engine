@@ -231,6 +231,7 @@ markers = [
     "regression: marks performance regression tests (deselect with '-m \"not regression\"')",
     "invariants: marks invariant validation tests (deselect with '-m \"not invariants\"')",
     "integration: marks integration tests (deselect with '-m \"not integration\"')",
+    "validation: marks validation scenario tests (deselect with '-m \"not validation\"')",
 ]
 addopts = """
 -ra
