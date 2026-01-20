@@ -37,6 +37,12 @@ print(f"  - {sim.n_banks} banks")
 
 # %%
 # Run the simulation and compute metrics using the validation module.
+# Add project root to path so validation module can be imported.
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from validation.metrics import (
     BASELINE_COLLECT_CONFIG,
