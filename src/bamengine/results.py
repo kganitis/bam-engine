@@ -21,7 +21,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 if TYPE_CHECKING:  # pragma: no cover
-    from pandas import DataFrame  # type: ignore[import-untyped]
+    from pandas import DataFrame
 
     from bamengine.simulation import Simulation
 
