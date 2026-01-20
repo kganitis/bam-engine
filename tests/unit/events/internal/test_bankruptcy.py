@@ -158,8 +158,8 @@ def test_spawn_replacement_firms_restores_positive_equity() -> None:
     assert prod.production[2] == 0.0
 
     # production_prev is set to planning signal (based on survivor mean × factor)
-    # Survivor is firm 1 with production 10.0, default factor is 0.8
-    expected_signal = 10.0 * 0.8
+    # Survivor is firm 1 with production 10.0, default factor is 0.9
+    expected_signal = 10.0 * 0.9
     assert prod.production_prev[0] == expected_signal
     assert prod.production_prev[2] == expected_signal
 

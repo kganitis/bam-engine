@@ -28,11 +28,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from calibration.parameter_space import get_parameter_grid  # noqa: E402
-from validation import (  # noqa: E402
-    DEFAULT_STABILITY_SEEDS,
-    compute_combined_score,
-    get_validation_funcs,
-)
+from validation import compute_combined_score, get_validation_funcs  # noqa: E402
 
 # Output directory for calibration results
 OUTPUT_DIR = Path(__file__).parent / "output"
@@ -153,6 +149,12 @@ Examples:
         default=None,
         help="Output file name (default: {scenario}_grid_search_results.json)",
     )
+    parser.add_argument(
+        "--stability-seeds",
+        type=int,
+        default=10,
+        help="Number of seeds for stability testing (default: 10)",
+    )
 
     args = parser.parse_args()
 
@@ -208,14 +210,18 @@ Examples:
     # Phase 2: Stability test top k
     print()
     print("=" * 70)
-    print(f"PHASE 2: STABILITY TESTING [{args.scenario}] (5 seeds)")
+    print(
+        f"PHASE 2: STABILITY TESTING [{args.scenario}] ({args.stability_seeds} seeds)"
+    )
     print("=" * 70)
 
+    # Use specified number of seeds for stability testing
+    stability_seeds = list(range(args.stability_seeds))
     stability_results = []
     for i, (params, score, _, _, _) in enumerate(results[: args.top_k]):
         print(f"  Testing {i + 1}/{args.top_k}: score={score:.3f}")
         stability = run_stability(
-            seeds=DEFAULT_STABILITY_SEEDS, n_periods=args.periods, **params
+            seeds=stability_seeds, n_periods=args.periods, **params
         )
         combined = compute_combined_score(stability)
         stability_results.append(

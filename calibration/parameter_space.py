@@ -43,17 +43,15 @@ PARAMETER_GRIDS: dict[str, dict[str, list[Any]]] = {
 
 DEFAULT_VALUES_BY_SCENARIO: dict[str, dict[str, Any]] = {
     "baseline": {
-        "new_firm_size_factor": 0.8,
-        "new_firm_production_factor": 0.8,
-        "new_firm_wage_factor": 1.0,
-        "new_firm_price_markup": 1.50,
+        "new_firm_size_factor": 0.9,
+        "new_firm_production_factor": 0.9,
+        "new_firm_wage_factor": 0.9,
+        "new_firm_price_markup": 1.0,
     },
     "growth_plus": {
-        # R&D extension parameter
-        "sigma_decay": -0.5,
-        # Calibrated defaults (Combined Score = 0.7946, 100% pass rate)
-        "new_firm_size_factor": 0.25,
-        "new_firm_production_factor": 0.25,
+        "sigma_decay": -1.0,
+        "new_firm_size_factor": 0.5,
+        "new_firm_production_factor": 0.5,
         "new_firm_wage_factor": 0.5,
         "new_firm_price_markup": 1.5,
     },

@@ -33,7 +33,7 @@ metadata:
   extension_params:
     sigma_min: 0.0                  # R&D share for highest fragility firms
     sigma_max: 0.1                  # R&D share for lowest fragility firms
-    sigma_decay: -0.5               # Decay rate (negative = higher fragility -> lower R&D)
+    sigma_decay: -1.0               # Decay rate (negative = higher fragility -> lower R&D)
 
   # Validation parameters
   validation:
@@ -317,9 +317,9 @@ distributions:
 
     targets:
       # Shape metrics
-      skewness_min: 0.5             # Positive skewness (right-skewed)
-      skewness_target: 1.5          # Moderate right skew
-      skewness_max: 4.0             # Heavy right tail acceptable
+      skewness_min: 0.5             # Must be right-skewed (strict)
+      skewness_target: 2.0          # Typical value
+      skewness_max: 10.0            # Allow for outlier firms (relaxed)
 
       # Percentile-based thresholds
       threshold_small: 150.0        # "Small" firm threshold

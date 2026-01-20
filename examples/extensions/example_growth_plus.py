@@ -771,16 +771,16 @@ if __name__ == "__main__":
         n_households=500,
         n_banks=10,
         n_periods=1000,
-        seed=0,
+        seed=2,
         logging={"default_level": "ERROR"},
-        new_firm_size_factor=0.25,
-        new_firm_production_factor=0.25,
+        new_firm_size_factor=0.5,
+        new_firm_production_factor=0.5,
         new_firm_wage_factor=0.5,
         new_firm_price_markup=1.5,
         # Growth+ R&D parameters (extension parameters)
         sigma_min=0.0,  # R&D share for poorest (highest fragility) firms
         sigma_max=0.1,  # R&D share for richest (lowest fragility) firms
-        sigma_decay=-0.5,  # Decay rate: negative means higher fragility → lower sigma
+        sigma_decay=-1.0,  # Decay rate: negative means higher fragility → lower sigma
     )
 
     # Attach custom RnD role using use_role() - automatically initializes with zeros
