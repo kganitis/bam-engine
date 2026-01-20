@@ -2,6 +2,10 @@
 
 This module provides the core calibration functionality, including
 grid building based on sensitivity analysis and focused grid search.
+
+Supports multiple scenarios:
+    - baseline: Standard BAM model (Section 3.9.1)
+    - growth_plus: Endogenous productivity growth via R&D (Section 3.8)
 """
 
 from __future__ import annotations
@@ -11,15 +15,16 @@ from dataclasses import dataclass
 from typing import Any
 
 from calibration.parameter_space import (
-    PARAMETER_GRID,
     count_combinations,
     generate_combinations,
+    get_parameter_grid,
 )
 from calibration.sensitivity import SensitivityResult
-from tests.validation.test_baseline_scenario import (
+from validation import (
+    DEFAULT_STABILITY_SEEDS,
     StabilityResult,
-    run_stability_test,
-    run_validation,
+    compute_combined_score,
+    get_validation_funcs,
 )
 
 
@@ -63,30 +68,10 @@ class CalibrationResult:
     stability_result: StabilityResult | None = None
 
 
-def compute_combined_score(stability: StabilityResult) -> float:
-    """Compute combined score balancing accuracy and stability.
-
-    Formula: mean_score * pass_rate * (1 - std_score)
-    - Higher mean_score is better
-    - Higher pass_rate is better
-    - Lower std_score is better
-
-    Parameters
-    ----------
-    stability : StabilityResult
-        Result from run_stability_test().
-
-    Returns
-    -------
-    float
-        Combined score (higher is better).
-    """
-    return stability.mean_score * stability.pass_rate * (1 - stability.std_score)
-
-
 def build_focused_grid(
     sensitivity: SensitivityResult,
     full_grid: dict[str, list[Any]] | None = None,
+    scenario: str = "baseline",
     high_threshold: float = 0.05,
     medium_threshold: float = 0.02,
 ) -> tuple[dict[str, list[Any]], dict[str, Any]]:
@@ -97,7 +82,9 @@ def build_focused_grid(
     sensitivity : SensitivityResult
         Result from run_sensitivity_analysis().
     full_grid : dict, optional
-        Full parameter grid. Defaults to PARAMETER_GRID.
+        Full parameter grid. Defaults to scenario-specific grid.
+    scenario : str
+        Scenario name ("baseline" or "growth_plus").
     high_threshold : float
         Sensitivity threshold for HIGH importance.
     medium_threshold : float
@@ -112,7 +99,7 @@ def build_focused_grid(
         - LOW sensitivity params: Fix at best value
     """
     if full_grid is None:
-        full_grid = PARAMETER_GRID
+        full_grid = get_parameter_grid(scenario)
 
     high, medium, _low = sensitivity.get_important(high_threshold, medium_threshold)
     param_best = {p.name: p.best_value for p in sensitivity.parameters}
@@ -133,7 +120,10 @@ def build_focused_grid(
 
 
 def screen_single_seed(
-    params: dict[str, Any], seed: int, n_periods: int
+    params: dict[str, Any],
+    scenario: str,
+    seed: int,
+    n_periods: int,
 ) -> CalibrationResult:
     """Run single-seed validation for quick screening.
 
@@ -141,6 +131,8 @@ def screen_single_seed(
     ----------
     params : dict
         Parameter configuration.
+    scenario : str
+        Scenario name ("baseline" or "growth_plus").
     seed : int
         Random seed.
     n_periods : int
@@ -151,7 +143,8 @@ def screen_single_seed(
     CalibrationResult
         Result with single-seed metrics.
     """
-    result = run_validation(seed=seed, n_periods=n_periods, **params)
+    validate, _ = get_validation_funcs(scenario)
+    result = validate(seed=seed, n_periods=n_periods, **params)
     return CalibrationResult(
         params=params,
         single_score=result.total_score,
@@ -163,6 +156,7 @@ def screen_single_seed(
 
 def evaluate_stability(
     params: dict[str, Any],
+    scenario: str,
     seeds: list[int],
     n_periods: int,
 ) -> CalibrationResult:
@@ -172,6 +166,8 @@ def evaluate_stability(
     ----------
     params : dict
         Parameter configuration.
+    scenario : str
+        Scenario name ("baseline" or "growth_plus").
     seeds : list[int]
         List of random seeds to test.
     n_periods : int
@@ -182,7 +178,8 @@ def evaluate_stability(
     CalibrationResult
         Result with stability metrics and combined score.
     """
-    stability = run_stability_test(seeds=seeds, n_periods=n_periods, **params)
+    _, run_stability = get_validation_funcs(scenario)
+    stability = run_stability(seeds=seeds, n_periods=n_periods, **params)
     combined = compute_combined_score(stability)
     return CalibrationResult(
         params=params,
@@ -201,6 +198,7 @@ def evaluate_stability(
 def run_focused_calibration(
     grid: dict[str, list[Any]],
     fixed_params: dict[str, Any],
+    scenario: str = "baseline",
     top_k: int = 20,
     n_workers: int = 10,
     stability_seeds: list[int] | None = None,
@@ -214,12 +212,14 @@ def run_focused_calibration(
         Parameter grid to search (from build_focused_grid).
     fixed_params : dict
         Fixed parameter values (from build_focused_grid).
+    scenario : str
+        Scenario name ("baseline" or "growth_plus").
     top_k : int
         Number of top configurations to stability test.
     n_workers : int
         Number of parallel workers.
     stability_seeds : list[int], optional
-        Seeds for stability testing. Defaults to [0, 42, 123, 456, 789].
+        Seeds for stability testing. Defaults to DEFAULT_STABILITY_SEEDS.
     n_periods : int
         Number of simulation periods.
 
@@ -229,10 +229,10 @@ def run_focused_calibration(
         Results sorted by combined_score (best first).
     """
     if stability_seeds is None:
-        stability_seeds = [0, 42, 123, 456, 789]
+        stability_seeds = DEFAULT_STABILITY_SEEDS
 
     total = count_combinations(grid)
-    print(f"\nFocused Grid Search: {total} combinations")
+    print(f"\n[{scenario}] Focused Grid Search: {total} combinations")
     print(f"Fixed params: {fixed_params}")
 
     # Generate all combinations (merging fixed params)
@@ -241,13 +241,13 @@ def run_focused_calibration(
         full_params = {**fixed_params, **combo}
         combinations.append(full_params)
 
-    # Phase 1: Screen all
-    print(f"\nPhase 3: Screening {total} combinations with {n_workers} workers...")
+    # Screening phase
+    print(f"\nScreening {total} combinations with {n_workers} workers...")
     screening_results: list[CalibrationResult] = []
 
     with ProcessPoolExecutor(max_workers=n_workers) as executor:
         futures = {
-            executor.submit(screen_single_seed, p, 0, n_periods): p
+            executor.submit(screen_single_seed, p, scenario, 0, n_periods): p
             for p in combinations
         }
         for i, future in enumerate(as_completed(futures)):
@@ -260,13 +260,15 @@ def run_focused_calibration(
     screening_results.sort(key=lambda r: r.single_score, reverse=True)
     top_results = screening_results[:top_k]
 
-    # Phase 2: Stability testing
-    print(f"\nPhase 4: Stability testing top {top_k} configurations...")
+    # Stability testing phase
+    print(f"\nStability testing top {top_k} configurations...")
     final_results: list[CalibrationResult] = []
 
     for i, screened in enumerate(top_results):
         print(f"  Testing {i + 1}/{top_k}: score={screened.single_score:.3f}")
-        result = evaluate_stability(screened.params, stability_seeds, n_periods)
+        result = evaluate_stability(
+            screened.params, scenario, stability_seeds, n_periods
+        )
         final_results.append(result)
 
     final_results.sort(key=lambda r: r.combined_score or 0, reverse=True)

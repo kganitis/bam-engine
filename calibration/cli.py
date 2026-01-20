@@ -1,11 +1,18 @@
 """Command-line interface for calibration.
 
+Supports multiple scenarios:
+    - baseline: Standard BAM model (Section 3.9.1)
+    - growth_plus: Endogenous productivity growth via R&D (Section 3.8)
+
 Usage:
-    # Run sensitivity analysis only
+    # Run sensitivity analysis only (baseline)
     python -m calibration --sensitivity-only --workers 10
 
-    # Run full calibration
+    # Run full calibration (baseline)
     python -m calibration --workers 10 --periods 1000
+
+    # Calibrate Growth+ scenario
+    python -m calibration --scenario growth_plus --workers 10
 
     # Custom thresholds
     python -m calibration --high-threshold 0.08 --medium-threshold 0.04
@@ -61,15 +68,24 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Run sensitivity analysis only (~15-20 minutes)
+  # Run sensitivity analysis only (baseline)
   python -m calibration --sensitivity-only --workers 10
 
-  # Run full calibration (runtime depends on sensitivity results)
+  # Run full calibration (baseline)
   python -m calibration --workers 10 --periods 1000
+
+  # Calibrate Growth+ scenario
+  python -m calibration --scenario growth_plus --workers 10
 
   # Use stricter thresholds for smaller grid
   python -m calibration --high-threshold 0.08 --medium-threshold 0.04
         """,
+    )
+    parser.add_argument(
+        "--scenario",
+        choices=["baseline", "growth_plus"],
+        default="baseline",
+        help="Scenario to calibrate (default: baseline)",
     )
     parser.add_argument(
         "--sensitivity-only",
@@ -117,11 +133,11 @@ Examples:
 
     # Phase 1-2: Sensitivity Analysis
     print("=" * 70)
-    print("PHASE 1: SENSITIVITY ANALYSIS")
+    print(f"PHASE 1: SENSITIVITY ANALYSIS ({args.scenario})")
     print("=" * 70)
-    print("Testing 29 parameter variations (10 parameters x ~3 values each)")
 
     sensitivity = run_sensitivity_analysis(
+        scenario=args.scenario,
         n_workers=args.workers,
         n_periods=args.periods,
     )
@@ -130,6 +146,7 @@ Examples:
     if args.sensitivity_only:
         # Save sensitivity results
         sensitivity_data = {
+            "scenario": args.scenario,
             "baseline_score": sensitivity.baseline_score,
             "parameters": {
                 p.name: {
@@ -143,7 +160,7 @@ Examples:
             },
         }
         OUTPUT_DIR.mkdir(exist_ok=True)
-        output_file = OUTPUT_DIR / args.output.replace(".json", "_sensitivity.json")
+        output_file = OUTPUT_DIR / f"{args.scenario}_sensitivity.json"
         with open(output_file, "w") as f:
             json.dump(sensitivity_data, f, indent=2)
         print(f"Sensitivity results saved to {output_file}")
@@ -152,11 +169,12 @@ Examples:
 
     # Phase 3-4: Focused Grid Search + Stability Testing
     print("\n" + "=" * 70)
-    print("PHASE 2: BUILD FOCUSED GRID")
+    print(f"PHASE 2: BUILD FOCUSED GRID ({args.scenario})")
     print("=" * 70)
 
     grid, fixed = build_focused_grid(
         sensitivity,
+        scenario=args.scenario,
         high_threshold=args.high_threshold,
         medium_threshold=args.medium_threshold,
     )
@@ -176,6 +194,7 @@ Examples:
     results = run_focused_calibration(
         grid=grid,
         fixed_params=fixed,
+        scenario=args.scenario,
         top_k=args.top_k,
         n_workers=args.workers,
         n_periods=args.periods,
@@ -185,6 +204,7 @@ Examples:
 
     # Save results
     output_data = {
+        "scenario": args.scenario,
         "sensitivity": {
             p.name: {"sensitivity": p.sensitivity, "best_value": p.best_value}
             for p in sensitivity.parameters
@@ -205,7 +225,7 @@ Examples:
     }
 
     OUTPUT_DIR.mkdir(exist_ok=True)
-    output_file = OUTPUT_DIR / args.output
+    output_file = OUTPUT_DIR / f"{args.scenario}_calibration_results.json"
     with open(output_file, "w") as f:
         json.dump(output_data, f, indent=2)
 

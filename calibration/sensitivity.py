@@ -2,6 +2,10 @@
 
 This module provides sensitivity analysis functionality to identify which
 parameters have the most impact on validation scores.
+
+Supports multiple scenarios:
+    - baseline: Standard BAM model (Section 3.9.1)
+    - growth_plus: Endogenous productivity growth via R&D (Section 3.8)
 """
 
 from __future__ import annotations
@@ -10,8 +14,8 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Any
 
-from calibration.parameter_space import DEFAULT_VALUES, PARAMETER_GRID
-from tests.validation.test_baseline_scenario import run_validation
+from calibration.parameter_space import get_default_values, get_parameter_grid
+from validation import get_validation_func
 
 
 @dataclass
@@ -52,10 +56,13 @@ class SensitivityResult:
         Sensitivity results for all parameters.
     baseline_score : float
         Score with all default values.
+    scenario : str
+        The scenario that was analyzed.
     """
 
     parameters: list[ParameterSensitivity]
     baseline_score: float
+    scenario: str = "baseline"
 
     @property
     def ranked(self) -> list[ParameterSensitivity]:
@@ -96,6 +103,7 @@ def _evaluate_param_value(
     param_name: str,
     value: Any,
     baseline: dict[str, Any],
+    scenario: str,
     seed: int,
     n_periods: int,
 ) -> tuple[Any, float]:
@@ -105,11 +113,13 @@ def _evaluate_param_value(
     """
     config = baseline.copy()
     config[param_name] = value
-    result = run_validation(seed=seed, n_periods=n_periods, **config)
+    validate = get_validation_func(scenario)
+    result = validate(seed=seed, n_periods=n_periods, **config)
     return value, result.total_score
 
 
 def run_sensitivity_analysis(
+    scenario: str = "baseline",
     grid: dict[str, list[Any]] | None = None,
     baseline: dict[str, Any] | None = None,
     seed: int = 0,
@@ -122,10 +132,12 @@ def run_sensitivity_analysis(
 
     Parameters
     ----------
+    scenario : str
+        Scenario to calibrate ("baseline" or "growth_plus").
     grid : dict, optional
-        Parameter grid. Defaults to PARAMETER_GRID.
+        Parameter grid. Defaults to scenario-specific grid.
     baseline : dict, optional
-        Baseline parameter values. Defaults to DEFAULT_VALUES.
+        Baseline parameter values. Defaults to scenario-specific defaults.
     seed : int
         Random seed for reproducibility.
     n_periods : int
@@ -139,14 +151,16 @@ def run_sensitivity_analysis(
         Sensitivity ranking of all parameters.
     """
     if grid is None:
-        grid = PARAMETER_GRID
+        grid = get_parameter_grid(scenario)
     if baseline is None:
-        baseline = DEFAULT_VALUES.copy()
+        baseline = get_default_values(scenario).copy()
+
+    validate = get_validation_func(scenario)
 
     # Get baseline score first
-    baseline_result = run_validation(seed=seed, n_periods=n_periods, **baseline)
+    baseline_result = validate(seed=seed, n_periods=n_periods, **baseline)
     baseline_score = baseline_result.total_score
-    print(f"Baseline score: {baseline_score:.4f}")
+    print(f"[{scenario}] Baseline score: {baseline_score:.4f}")
 
     # Test each parameter
     results: list[ParameterSensitivity] = []
@@ -163,7 +177,13 @@ def run_sensitivity_analysis(
         with ProcessPoolExecutor(max_workers=n_workers) as executor:
             futures = [
                 executor.submit(
-                    _evaluate_param_value, param_name, value, baseline, seed, n_periods
+                    _evaluate_param_value,
+                    param_name,
+                    value,
+                    baseline,
+                    scenario,
+                    seed,
+                    n_periods,
                 )
                 for value in values
             ]
@@ -192,7 +212,11 @@ def run_sensitivity_analysis(
             )
         )
 
-    return SensitivityResult(parameters=results, baseline_score=baseline_score)
+    return SensitivityResult(
+        parameters=results,
+        baseline_score=baseline_score,
+        scenario=scenario,
+    )
 
 
 def print_sensitivity_report(result: SensitivityResult) -> None:
@@ -204,7 +228,7 @@ def print_sensitivity_report(result: SensitivityResult) -> None:
         Result from run_sensitivity_analysis().
     """
     print("\n" + "=" * 70)
-    print("SENSITIVITY ANALYSIS RESULTS")
+    print(f"SENSITIVITY ANALYSIS RESULTS ({result.scenario})")
     print("=" * 70)
     print(f"\nBaseline score: {result.baseline_score:.4f}")
 
