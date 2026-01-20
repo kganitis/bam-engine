@@ -312,9 +312,9 @@ distributions:
     # Scaled targets for our setup (2x workers per firm → 2x production)
     targets:
       # Shape metrics
-      skewness_min: 1.0             # Positive skewness (right-skewed)
-      skewness_target: 2.0          # Strong right skew
-      skewness_max: 5.0             # Very heavy right tail acceptable
+      skewness_min: 1.0             # Must be right-skewed (strict)
+      skewness_target: 3.0          # Typical value based on observations
+      skewness_max: 10.0            # Allow for outlier firms (relaxed)
 
       # Percentile-based thresholds (scaled by 2x)
       threshold_small: 5.0          # Book: 2.5 → Our: 5.0

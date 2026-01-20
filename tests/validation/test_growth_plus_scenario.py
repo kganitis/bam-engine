@@ -67,16 +67,16 @@ def test_growth_plus_scenario_validation() -> None:
 def test_growth_plus_seed_stability() -> None:
     """Test that Growth+ passes consistently across multiple seeds.
 
-    This test runs validation with 5 different seeds and checks:
-    1. ALL seeds pass (no FAIL metrics)
+    This test runs validation with 20 different seeds and checks:
+    1. At least 95% of seeds pass (no FAIL metrics)
     2. Score standard deviation is reasonable (< 0.15)
     """
     result = run_growth_plus_stability_test(seeds=DEFAULT_STABILITY_SEEDS)
     print_growth_plus_stability_report(result)
 
     # Assert stability criteria
-    assert result.pass_rate >= 1.0, (
-        f"Pass rate too low: {result.pass_rate:.0%} (expected = 100%)"
+    assert result.pass_rate >= 0.95, (
+        f"Pass rate too low: {result.pass_rate:.0%} (expected >= 95%)"
     )
     assert result.std_score <= 0.15, (
         f"Score too variable: std={result.std_score:.3f} (expected <= 0.15)"

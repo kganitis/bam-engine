@@ -128,6 +128,12 @@ Examples:
         default=0.02,
         help="Sensitivity threshold for MEDIUM importance (default: 0.02)",
     )
+    parser.add_argument(
+        "--stability-seeds",
+        type=int,
+        default=10,
+        help="Number of seeds for stability testing (default: 10)",
+    )
 
     args = parser.parse_args()
 
@@ -191,12 +197,15 @@ Examples:
             print(f"  {k}: {v}")
         return
 
+    # Use specified number of seeds for stability testing
+    stability_seeds = list(range(args.stability_seeds))
     results = run_focused_calibration(
         grid=grid,
         fixed_params=fixed,
         scenario=args.scenario,
         top_k=args.top_k,
         n_workers=args.workers,
+        stability_seeds=stability_seeds,
         n_periods=args.periods,
     )
 

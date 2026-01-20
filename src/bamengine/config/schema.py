@@ -192,7 +192,7 @@ class Config:
     fragility_cap_method: str = "credit_demand"  # "credit_demand" or "none"
 
     # New firm entry parameters
-    new_firm_size_factor: float = 0.5  # Net worth scale factor vs survivor mean
-    new_firm_production_factor: float = 0.8  # Production scale factor vs survivor mean
+    new_firm_size_factor: float = 0.9  # Net worth scale factor vs survivor mean
+    new_firm_production_factor: float = 0.9  # Production scale factor vs survivor mean
     new_firm_wage_factor: float = 0.9  # Wage offer scale factor vs survivor mean
-    new_firm_price_markup: float = 1.1  # Price = avg_mkt_price * markup
+    new_firm_price_markup: float = 1.0  # Price = avg_mkt_price * markup

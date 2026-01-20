@@ -14,7 +14,7 @@ from typing import Any, Literal
 # =============================================================================
 
 # Default seeds for stability testing across validation/calibration
-DEFAULT_STABILITY_SEEDS: list[int] = [0, 42, 123, 456, 789]
+DEFAULT_STABILITY_SEEDS: list[int] = list(range(20))
 
 # Type alias for validation status
 Status = Literal["PASS", "WARN", "FAIL"]

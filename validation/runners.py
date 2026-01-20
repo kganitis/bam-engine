@@ -561,7 +561,6 @@ def run_growth_plus_validation(
         targets = yaml.safe_load(f)
 
     # Build config with Growth+ extension parameters
-    # Calibrated defaults (Combined Score = 0.7946, 100% pass rate)
     config = {
         "n_firms": 100,  # Book values (no scaling)
         "n_households": 500,
@@ -569,14 +568,14 @@ def run_growth_plus_validation(
         "n_periods": n_periods,
         "seed": seed,
         "logging": {"default_level": "ERROR"},
-        "new_firm_size_factor": 0.25,
-        "new_firm_production_factor": 0.25,
+        "new_firm_size_factor": 0.5,
+        "new_firm_production_factor": 0.5,
         "new_firm_wage_factor": 0.5,
         "new_firm_price_markup": 1.5,
         # R&D extension parameters
         "sigma_min": targets["metadata"]["extension_params"]["sigma_min"],
         "sigma_max": targets["metadata"]["extension_params"]["sigma_max"],
-        "sigma_decay": -0.5,  # Calibrated value (overrides YAML default)
+        "sigma_decay": -1.0,
         **config_overrides,
     }
 
