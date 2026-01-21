@@ -504,25 +504,14 @@ def print_stability_report(result: StabilityResult) -> None:
 
 
 def _import_rnd_role() -> Any:
-    """Import RnD role from example without sys.path pollution.
+    """Import RnD role from validation.scenarios.growth_plus_extension.
 
-    Uses importlib to load the module directly from file path,
-    avoiding global sys.path modifications.
+    The RnD role and custom events are defined in the validation package
+    to avoid circular dependencies with examples.
     """
-    import importlib.util
+    from validation.scenarios.growth_plus_extension import RnD
 
-    example_path = (
-        Path(__file__).parent.parent
-        / "examples"
-        / "extensions"
-        / "example_growth_plus.py"
-    )
-    spec = importlib.util.spec_from_file_location("example_growth_plus", example_path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Could not load module from {example_path}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module.RnD
+    return RnD
 
 
 def run_growth_plus_validation(

@@ -13,7 +13,7 @@ Examples in this section:
 5. **BAM Operations**: Comprehensive guide to the ops module for NumPy-free array operations
 6. **Type System**: Using Float, Int, Bool, Agent type aliases for custom roles
 7. **Simulation Results**: Comprehensive guide to SimulationResults for data collection
-8. **Baseline Scenario**: Reproduce the baseline scenario from section 3.9.1 of the original BAM book
+8. **Baseline Scenario**: Simplified baseline scenario from section 3.9.1 of the original BAM book
 
 These examples will teach you:
 
@@ -24,3 +24,10 @@ These examples will teach you:
 * How to reproduce scenarios from the BAM literature
 * How to use type aliases for extending BAM Engine
 * How to configure and use the logging system
+
+Note: The baseline scenario example is a simplified demonstration. For full
+validation with target bounds and statistical annotations, run:
+
+.. code-block:: bash
+
+   python -m validation.scenarios.baseline
