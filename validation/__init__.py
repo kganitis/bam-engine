@@ -3,11 +3,14 @@
 This package provides tools for validating simulation results against
 targets derived from Delli Gatti et al. (2011).
 
+Subpackages:
+    metrics/: Metric computation for validation (baseline.py, growth_plus.py)
+    scenarios/: Detailed scenario visualizations (baseline.py, growth_plus.py)
+    targets/: YAML files defining target values for different scenarios
+
 Modules:
     core: Shared types, dataclasses, and utility functions
     runners: Validation runner functions for all scenarios
-    metrics: Compute validation metrics from simulation results
-    targets/: YAML files defining target values for different scenarios
 
 Scenarios:
     - Baseline (Section 3.9.1): Standard BAM model behavior
@@ -30,7 +33,19 @@ Usage:
     from validation import run_growth_plus_validation
     score = run_growth_plus_validation(seed=0)
     print(f"Growth+ score: {score.total_score:.3f}")
+
+    # Run scenarios with visualization
+    from validation import run_baseline_scenario, run_growth_plus_scenario
+    run_baseline_scenario(seed=0, show_plot=True)
+    run_growth_plus_scenario(seed=2, show_plot=True)
+
+    # For Growth+ extension (RnD role and events), import directly:
+    from validation.scenarios.growth_plus_extension import RnD
 """
+
+from __future__ import annotations
+
+from typing import Any
 
 # Core types and utilities
 from validation.core import (
@@ -75,6 +90,28 @@ from validation.runners import (
     run_validation,
 )
 
+# Scenario visualization modules
+# Note: These are imported lazily to avoid registering Growth+ events globally.
+# Import directly from the modules when needed:
+#   from validation.scenarios.growth_plus_extension import RnD
+#   from validation.scenarios.baseline import visualize_baseline_results
+#   from validation.scenarios.growth_plus import visualize_growth_plus_results
+
+
+def run_baseline_scenario(**kwargs: Any) -> Any:
+    """Run baseline scenario with visualization. See scenarios.baseline.run_scenario."""
+    from validation.scenarios.baseline import run_scenario
+
+    return run_scenario(**kwargs)
+
+
+def run_growth_plus_scenario(**kwargs: Any) -> Any:
+    """Run Growth+ scenario with visualization. See scenarios.growth_plus.run_scenario."""
+    from validation.scenarios.growth_plus import run_scenario
+
+    return run_scenario(**kwargs)
+
+
 __all__ = [
     # Core types
     "Status",
@@ -115,4 +152,7 @@ __all__ = [
     "print_growth_plus_report",
     "run_growth_plus_stability_test",
     "print_growth_plus_stability_report",
+    # Scenario visualization (lazy imports - see module docs for direct imports)
+    "run_baseline_scenario",
+    "run_growth_plus_scenario",
 ]
