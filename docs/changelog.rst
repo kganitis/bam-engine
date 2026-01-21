@@ -10,6 +10,34 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 
    Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.
 
+[0.2.1] - 2026-01-21
+--------------------
+
+This patch release simplifies examples and reorganizes the validation package for better maintainability.
+
+Changed
+~~~~~~~
+
+**Validation Package**
+
+* Restructured validation package into subpackages:
+
+  * ``validation/metrics/`` - metric computation from simulation results (``baseline.py``, ``growth_plus.py``)
+  * ``validation/scenarios/`` - detailed visualizations with target bounds
+  * ``validation/targets/`` - YAML target definitions (unchanged)
+
+* Moved RnD role and events to ``validation/scenarios/growth_plus_extension.py``
+
+**Examples Simplification**
+
+* Simplified ``example_baseline_scenario.py`` and ``example_growth_plus.py`` to be self-contained
+* Examples focus on teaching core BAM Engine concepts; users are directed to validation package for detailed analysis with bounds
+
+Fixed
+~~~~~
+
+* Fixed Sphinx Gallery compatibility by handling missing ``__file__`` in exec() environment
+
 [0.2.0] - 2026-01-20
 --------------------
 
