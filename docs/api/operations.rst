@@ -55,7 +55,6 @@ BAM Operations
    :nosignatures:
 
    where
-   select
 
 **Element-wise**
 

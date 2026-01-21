@@ -109,7 +109,7 @@ NumPy-free operations for writing custom events. See :mod:`bamengine.ops` for th
 
 **Logical**: ``logical_and``, ``logical_or``, ``logical_not``
 
-**Conditional**: ``where``, ``select``
+**Conditional**: ``where``
 
 **Element-wise**: ``maximum``, ``minimum``, ``clip``
 
