@@ -1,7 +1,7 @@
 """Growth+ scenario visualization.
 
 This module provides detailed visualization for the Growth+ scenario from
-section 3.8 of Delli Gatti et al. (2011). The visualization includes
+section 3.9.2 of Delli Gatti et al. (2011). The visualization includes
 target bounds, statistical annotations, and validation status indicators.
 
 Run as a script for standalone execution:
@@ -79,7 +79,7 @@ def visualize_growth_plus_results(
 
     fig, axes = plt.subplots(4, 2, figsize=(14, 20))
     fig.suptitle(
-        "Growth+ Model Results (Section 3.8) - Endogenous Productivity Growth",
+        "Growth+ Model Results (Section 3.9.2) - Endogenous Productivity Growth",
         fontsize=16,
         y=0.995,
     )
@@ -288,7 +288,7 @@ def visualize_growth_plus_results(
     add_stats_box(ax, inflation_pct, "inflation", is_pct=True)
 
     # Panel (1,1): Productivity and Real Wage Co-movement (two-line plot)
-    # Both grow over time in Growth+ scenario - this is figure (d) in Section 3.8
+    # Both grow over time in Growth+ scenario - this is figure (d) in Section 3.9.2
     ax = axes[1, 1]
     # Data: Two separate growing lines
     ax.plot(

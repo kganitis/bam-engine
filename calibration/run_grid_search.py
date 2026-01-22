@@ -2,7 +2,7 @@
 
 Supports multiple scenarios:
     - baseline: Standard BAM model (Section 3.9.1)
-    - growth_plus: Endogenous productivity growth via R&D (Section 3.8)
+    - growth_plus: Endogenous productivity growth via R&D (Section 3.9.2)
 
 Usage:
     # Run grid search for baseline scenario

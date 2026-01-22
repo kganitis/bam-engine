@@ -5,7 +5,7 @@ results from Delli Gatti et al. (2011).
 
 Scenarios:
     baseline: Section 3.9.1 - Standard BAM model behavior
-    growth_plus: Section 3.8 - Endogenous productivity growth via R&D
+    growth_plus: Section 3.9.2 - Endogenous productivity growth via R&D
 
 Usage:
     # Run scenario with visualization

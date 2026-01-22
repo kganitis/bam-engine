@@ -30,7 +30,7 @@ Run scenarios with detailed visualization including target bounds, statistical a
 # Baseline scenario (Section 3.9.1)
 python -m validation.scenarios.baseline
 
-# Growth+ scenario (Section 3.8)
+# Growth+ scenario (Section 3.9.2)
 python -m validation.scenarios.growth_plus
 ```
 
@@ -53,7 +53,7 @@ metrics = run_baseline_scenario(seed=0, show_plot=False)
 
 Standard BAM model behavior - validates unemployment, inflation, GDP, Phillips/Okun/Beveridge curves, firm size distribution.
 
-### Growth+ (Section 3.8)
+### Growth+ (Section 3.9.2)
 
 Endogenous productivity growth via R&D investment - adds productivity growth, wage growth, and trend validation.
 

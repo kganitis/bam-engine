@@ -2,7 +2,7 @@
 # BAM Growth+ Scenario Validation Targets
 # ==============================================================================
 #
-# Target metrics derived from Delli Gatti et al. (2011), Section 3.8
+# Target metrics derived from Delli Gatti et al. (2011), Section 3.9.2
 # "Macroeconomics from the Bottom-up" Growth+ extension scenario results.
 #
 # The Growth+ scenario introduces endogenous productivity growth through R&D
@@ -17,7 +17,7 @@
 # -- METADATA -----------------------------------------------------------------
 
 metadata:
-  source: "Delli Gatti et al. (2011), Section 3.8"
+  source: "Delli Gatti et al. (2011), Section 3.9.2"
   description: "Growth+ scenario validation targets - Endogenous Productivity Growth"
 
   # Book and our setup are identical (no scaling needed)

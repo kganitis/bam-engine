@@ -6,7 +6,7 @@ and by validation tests for comparing against book targets.
 
 Modules:
     baseline: Metrics for baseline scenario (Section 3.9.1)
-    growth_plus: Metrics for Growth+ scenario (Section 3.8)
+    growth_plus: Metrics for Growth+ scenario (Section 3.9.2)
 
 The metrics correspond to the 8 figures in Delli Gatti et al. (2011):
     1. Log GDP (real output)

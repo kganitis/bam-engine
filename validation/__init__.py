@@ -14,7 +14,7 @@ Modules:
 
 Scenarios:
     - Baseline (Section 3.9.1): Standard BAM model behavior
-    - Growth+ (Section 3.8): Endogenous productivity growth via R&D
+    - Growth+ (Section 3.9.2): Endogenous productivity growth via R&D
 
 Usage:
     from validation import run_validation, run_stability_test
