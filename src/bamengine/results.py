@@ -102,6 +102,8 @@ class _DataCollector:
     ECONOMY_METRICS = [
         "avg_price",
         "inflation",
+        "n_firm_bankruptcies",
+        "n_bank_bankruptcies",
     ]
 
     def __init__(
@@ -120,10 +122,16 @@ class _DataCollector:
             lambda: defaultdict(list)
         )
         self.economy_data: dict[str, list[float]] = defaultdict(list)
+        # Storage for relationship data: rel_data[rel_name][var_name] = list
+        self.relationship_data: dict[str, dict[str, list[Any]]] = defaultdict(
+            lambda: defaultdict(list)
+        )
         # Track which variables have been captured this period
         self._captured_this_period: set[str] = set()
         # Flag to indicate if timed capture is active
         self._use_timed_capture = bool(capture_after or capture_timing)
+        # Cache for relationship names (populated on first use)
+        self._relationship_names: set[str] | None = None
 
     def setup_pipeline_callbacks(self, pipeline: Any) -> None:
         """
@@ -151,10 +159,13 @@ class _DataCollector:
             raise TypeError(f"Expected Pipeline, got {type(pipeline)}")
 
         # Group variables by their capture event
-        event_to_vars: dict[str, list[tuple[str, str]]] = defaultdict(list)
+        # Each entry is (name, var_name, is_relationship)
+        event_to_vars: dict[str, list[tuple[str, str, bool]]] = defaultdict(list)
 
-        for role_name, var_spec in self.variables.items():
-            if role_name == "Economy":
+        for name, var_spec in self.variables.items():
+            is_rel = self._is_relationship(name)
+
+            if name == "Economy":
                 # Economy uses capture_after for all metrics
                 if self.capture_after:
                     if var_spec is True:
@@ -162,21 +173,25 @@ class _DataCollector:
                     else:
                         vars_to_capture = var_spec
                     for var_name in vars_to_capture:
-                        event_to_vars[self.capture_after].append(("Economy", var_name))
+                        event_to_vars[self.capture_after].append(
+                            ("Economy", var_name, False)
+                        )
             else:
-                # Role data
+                # Role or Relationship data
                 try:
                     # Can't check variables until we have sim, so skip validation
                     if var_spec is True:
                         # Will capture all at runtime
                         if self.capture_after:
-                            event_to_vars[self.capture_after].append((role_name, "*"))
+                            event_to_vars[self.capture_after].append(
+                                (name, "*", is_rel)
+                            )
                     else:
                         for var_name in var_spec:
-                            key = f"{role_name}.{var_name}"
+                            key = f"{name}.{var_name}"
                             event = self.capture_timing.get(key, self.capture_after)
                             if event:
-                                event_to_vars[event].append((role_name, var_name))
+                                event_to_vars[event].append((name, var_name, is_rel))
                 except Exception:  # pragma: no cover
                     pass  # Will capture at end-of-period
 
@@ -184,17 +199,22 @@ class _DataCollector:
         for event_name, vars_list in event_to_vars.items():
             # Create callback with closure over vars_list
             def make_callback(
-                vars_to_capture: list[tuple[str, str]],
+                vars_to_capture: list[tuple[str, str, bool]],
             ) -> Callable[[Simulation], None]:
                 def callback(sim: Simulation) -> None:
-                    for role_name, var_name in vars_to_capture:
+                    for name, var_name, is_rel in vars_to_capture:
                         if var_name == "*":  # pragma: no cover
-                            # Capture all variables from this role
-                            self._capture_role_all(sim, role_name)
-                        elif role_name == "Economy":
+                            # Capture all variables from this role/relationship
+                            if is_rel:
+                                self._capture_relationship_all(sim, name)
+                            else:
+                                self._capture_role_all(sim, name)
+                        elif name == "Economy":
                             self._capture_economy_single(sim, var_name)
+                        elif is_rel:
+                            self._capture_relationship_single(sim, name, var_name)
                         else:
-                            self._capture_role_single(sim, role_name, var_name)
+                            self._capture_role_single(sim, name, var_name)
 
                 return callback
 
@@ -258,16 +278,106 @@ class _DataCollector:
 
         ec = sim.ec
 
-        metric_sources = {
+        # History-based metrics (take last value from history array)
+        history_sources = {
             "avg_price": ec.avg_mkt_price_history,
             "inflation": ec.inflation_history,
         }
 
-        if metric_name in metric_sources:
-            history = metric_sources[metric_name]
+        if metric_name in history_sources:
+            history = history_sources[metric_name]
             if len(history) > 0:
                 self.economy_data[metric_name].append(float(history[-1]))
                 self._captured_this_period.add(key)
+            return
+
+        # Transient metrics (capture current value, not from history)
+        if metric_name == "n_firm_bankruptcies":
+            self.economy_data[metric_name].append(len(ec.exiting_firms))
+            self._captured_this_period.add(key)
+        elif metric_name == "n_bank_bankruptcies":
+            self.economy_data[metric_name].append(len(ec.exiting_banks))
+            self._captured_this_period.add(key)
+
+    def _is_relationship(self, name: str) -> bool:
+        """Check if a name refers to a registered relationship."""
+        if self._relationship_names is None:
+            from bamengine.core.registry import list_relationships
+
+            self._relationship_names = set(list_relationships())
+        return name in self._relationship_names
+
+    def _capture_relationship_single(
+        self, sim: Simulation, rel_name: str, field_name: str
+    ) -> None:
+        """Capture a single field from a relationship."""
+        key = f"{rel_name}.{field_name}"
+        if key in self._captured_this_period:
+            return  # Already captured
+
+        try:
+            rel = sim.get_relationship(rel_name)
+        except KeyError:
+            return
+
+        if not hasattr(rel, field_name):
+            return
+
+        data = getattr(rel, field_name)
+        if not isinstance(data, np.ndarray):
+            return
+
+        # Slice to only valid entries (up to rel.size)
+        valid_data = data[: rel.size]
+
+        # Apply aggregation if requested
+        if self.aggregate:
+            if len(valid_data) == 0:
+                # Empty relationship, store NaN or 0
+                value = 0.0
+            elif self.aggregate == "mean":
+                value = float(np.mean(valid_data))
+            elif self.aggregate == "median":
+                value = float(np.median(valid_data))
+            elif self.aggregate == "sum":
+                value = float(np.sum(valid_data))
+            elif self.aggregate == "std":
+                value = float(np.std(valid_data))
+            else:
+                value = float(np.mean(valid_data))  # fallback
+            self.relationship_data[rel_name][field_name].append(value)
+        else:
+            # Store full array (copy to avoid mutation issues)
+            self.relationship_data[rel_name][field_name].append(valid_data.copy())
+
+        self._captured_this_period.add(key)
+
+    def _capture_relationship_all(self, sim: Simulation, rel_name: str) -> None:
+        """Capture all fields from a relationship."""
+        try:
+            rel = sim.get_relationship(rel_name)
+        except KeyError:
+            return
+
+        # Get edge-specific fields (exclude base fields)
+        base_fields = {"source_ids", "target_ids", "size", "capacity"}
+        fields = getattr(rel, "__dataclass_fields__", {})
+        field_names = [
+            f for f in fields if f not in base_fields and not f.startswith("_")
+        ]
+
+        for field_name in field_names:
+            self._capture_relationship_single(sim, rel_name, field_name)
+
+    def _capture_relationship(
+        self, sim: Simulation, rel_name: str, var_spec: list[str] | Literal[True]
+    ) -> None:
+        """Capture data from a relationship."""
+        if var_spec is True:
+            self._capture_relationship_all(sim, rel_name)
+        else:
+            for field_name in var_spec:
+                self._capture_relationship_single(sim, rel_name, field_name)
 
     def capture_remaining(self, sim: Simulation) -> None:
         """
@@ -295,6 +405,15 @@ class _DataCollector:
                     key = f"Economy.{metric}"
                     if key not in self._captured_this_period:
                         self._capture_economy_single(sim, metric)
+            elif self._is_relationship(name):
+                # Capture remaining relationship fields
+                if var_spec is True:
+                    self._capture_relationship_all(sim, name)
+                else:
+                    for field_name in var_spec:
+                        key = f"{name}.{field_name}"
+                        if key not in self._captured_this_period:
+                            self._capture_relationship_single(sim, name, field_name)
             else:
                 # Capture remaining role variables
                 if var_spec is True:
@@ -329,9 +448,15 @@ class _DataCollector:
             if name == "Economy":
                 # Handle Economy as a pseudo-role
                 self._capture_economy(sim, var_spec)
+            elif self._is_relationship(name):
+                # Handle relationships
+                self._capture_relationship(sim, name, var_spec)
             else:
                 # Handle regular roles
                 self._capture_role(sim, name, var_spec)
+
+        # Clear tracking for next period
+        self._captured_this_period.clear()
 
     def _capture_role(
         self, sim: Simulation, role_name: str, var_spec: list[str] | Literal[True]
@@ -386,18 +511,22 @@ class _DataCollector:
         else:
             metrics_to_capture = var_spec
 
-        # Map metric names to history arrays
-        metric_sources = {
+        # History-based metrics (take last value from history array)
+        history_sources = {
             "avg_price": ec.avg_mkt_price_history,
             "unemployment_rate": ec.unemp_rate_history,
             "inflation": ec.inflation_history,
         }
 
         for metric_name in metrics_to_capture:
-            if metric_name in metric_sources:
-                history = metric_sources[metric_name]
+            if metric_name in history_sources:
+                history = history_sources[metric_name]
                 if len(history) > 0:
                     self.economy_data[metric_name].append(float(history[-1]))
+            elif metric_name == "n_firm_bankruptcies":
+                self.economy_data[metric_name].append(len(ec.exiting_firms))
+            elif metric_name == "n_bank_bankruptcies":
+                self.economy_data[metric_name].append(len(ec.exiting_banks))
 
     def finalize(
         self, config: dict[str, Any], metadata: dict[str, Any]
@@ -437,9 +566,27 @@ class _DataCollector:
             if data_list:
                 final_economy_data[metric_name] = np.array(data_list)
 
+        # Convert relationship data lists to arrays or keep as list
+        final_relationship_data: dict[
+            str, dict[str, NDArray[Any] | list[NDArray[Any]]]
+        ] = {}
+        for rel_name, rel_vars in self.relationship_data.items():
+            final_relationship_data[rel_name] = {}
+            for field_name, data_list in rel_vars.items():
+                if not data_list:
+                    continue
+                if self.aggregate:
+                    # List of scalars -> 1D array
+                    final_relationship_data[rel_name][field_name] = np.array(data_list)
+                else:
+                    # List of variable-length arrays -> keep as list
+                    # (cannot stack into 2D because edge counts vary per period)
+                    final_relationship_data[rel_name][field_name] = data_list
+
         return SimulationResults(
             role_data=final_role_data,
             economy_data=final_economy_data,
+            relationship_data=final_relationship_data,
             config=config,
             metadata=metadata,
         )
@@ -452,7 +599,8 @@ class SimulationResults:
 
     This class is returned by Simulation.run() and provides structured
     access to simulation data, including time series of role states,
-    economy-wide metrics, and metadata about the simulation run.
+    economy-wide metrics, relationship edge data, and metadata about the
+    simulation run.
 
     Attributes
     ----------
@@ -461,6 +609,11 @@ class SimulationResults:
         Each value is a dict of arrays with shape (n_periods, n_agents).
     economy_data : dict
         Time series of economy-wide metrics with shape (n_periods,).
+    relationship_data : dict
+        Time series data for each relationship, keyed by relationship name.
+        Each value is a dict of arrays. When aggregated, arrays have shape
+        (n_periods,). When not aggregated, values are lists of variable-length
+        arrays (one per period).
     config : dict
         Configuration parameters used for this simulation.
     metadata : dict
@@ -476,10 +629,16 @@ class SimulationResults:
     >>> prod_df = results.get_role_data("Producer")
     >>> # Access economy metrics directly
     >>> unemployment = results.economy_data["unemployment_rate"]
+    >>> # Access relationship data (when collected)
+    >>> results = sim.run(n_periods=100, collect={"LoanBook": True, "aggregate": "sum"})
+    >>> total_principal = results.relationship_data["LoanBook"]["principal"]
     """
 
     role_data: dict[str, dict[str, NDArray[Any]]] = field(default_factory=dict)
     economy_data: dict[str, NDArray[Any]] = field(default_factory=dict)
+    relationship_data: dict[str, dict[str, NDArray[Any] | list[NDArray[Any]]]] = field(
+        default_factory=dict
+    )
     config: dict[str, Any] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -489,6 +648,7 @@ class SimulationResults:
         variables: list[str] | None = None,
         include_economy: bool = True,
         aggregate: str | None = None,
+        relationships: list[str] | None = None,
     ) -> DataFrame:
         """
         Export results to a pandas DataFrame.
@@ -503,6 +663,10 @@ class SimulationResults:
             Whether to include economy-wide metrics.
         aggregate : {'mean', 'median', 'sum', 'std'}, optional
             How to aggregate agent-level data. If None, returns all agents.
+        relationships : list of str, optional
+            Specific relationships to include. If None, includes all relationships
+            with aggregated data. Relationships with non-aggregated data (list of
+            arrays) are skipped with a warning.
 
         Returns
         -------
@@ -527,8 +691,13 @@ class SimulationResults:
 
         # Get only economy metrics
         >>> df = results.to_dataframe(include_economy=True, roles=[])
+
+        # Include relationship data
+        >>> df = results.to_dataframe(relationships=["LoanBook"])
         """
         pd = _import_pandas()
+        import warnings
+
         dfs = []
 
         # Add role data
@@ -575,6 +744,35 @@ class SimulationResults:
                     df = pd.DataFrame(columns)
                     dfs.append(df)
 
+        # Add relationship data
+        if relationships is None:
+            relationships = list(self.relationship_data.keys())
+
+        for rel_name in relationships:
+            if rel_name not in self.relationship_data:
+                continue
+
+            rel_dict = self.relationship_data[rel_name]
+
+            for var_name, rel_data in rel_dict.items():
+                if variables and var_name not in variables:
+                    continue
+
+                # Check if data is a list (non-aggregated variable-length arrays)
+                if isinstance(rel_data, list):
+                    warnings.warn(
+                        f"Relationship '{rel_name}.{var_name}' has non-aggregated "
+                        f"variable-length data and cannot be included in DataFrame. "
+                        f"Access it directly via results.relationship_data['{rel_name}']"
+                        f"['{var_name}'] or use aggregation during collection.",
+                        stacklevel=2,
+                    )
+                    continue
+
+                # Data is already 1D (aggregated during collection)
+                df = pd.DataFrame({f"{rel_name}.{var_name}": rel_data})
+                dfs.append(df)
+
         # Add economy data
         if include_economy and self.economy_data:
             econ_df = pd.DataFrame(self.economy_data)
@@ -618,6 +816,47 @@ class SimulationResults:
             roles=[role_name], include_economy=False, aggregate=aggregate
         )
 
+    def get_relationship_data(
+        self, rel_name: str, aggregate: str | None = None
+    ) -> DataFrame:
+        """
+        Get data for a specific relationship as a DataFrame.
+
+        Parameters
+        ----------
+        rel_name : str
+            Name of the relationship (e.g., 'LoanBook').
+        aggregate : {'mean', 'median', 'sum', 'std'}, optional
+            How to aggregate (only used if data needs re-aggregation).
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame with the relationship's time series data.
+
+        Raises
+        ------
+        ImportError
+            If pandas is not installed.
+
+        Notes
+        -----
+        If the relationship data was collected without aggregation
+        (variable-length arrays per period), this method will issue a
+        warning and return an empty DataFrame. Use
+        ``results.relationship_data[rel_name]`` directly for such data.
+
+        Examples
+        --------
+        >>> loans_df = results.get_relationship_data("LoanBook")
+        """
+        return self.to_dataframe(
+            roles=[],
+            relationships=[rel_name],
+            include_economy=False,
+            aggregate=aggregate,
+        )
+
     @property
     def economy_metrics(self) -> DataFrame:
         """
@@ -647,34 +886,47 @@ class SimulationResults:
         return cast("DataFrame", df)
 
     @property
-    def data(self) -> dict[str, dict[str, NDArray[Any]]]:
+    def data(self) -> dict[str, dict[str, NDArray[Any] | list[NDArray[Any]]]]:
         """
-        Unified access to all data (roles + economy).
+        Unified access to all data (roles + economy + relationships).
 
         Economy data is accessible under the "Economy" key.
+        Relationship data is merged with role data (relationships have
+        unique names so no conflicts).
 
         Returns
         -------
         dict
-            Combined role and economy data. Keys are role names
-            (plus "Economy" for economy metrics).
+            Combined role, economy, and relationship data. Keys are role names,
+            relationship names, and "Economy" for economy metrics.
 
         Examples
         --------
         >>> results.data["Producer"]["price"]
         >>> results.data["Economy"]["unemployment_rate"]
+        >>> results.data["LoanBook"]["principal"]  # if collected
         """
-        combined: dict[str, dict[str, NDArray[Any]]] = dict(self.role_data)
+        combined: dict[str, dict[str, NDArray[Any] | list[NDArray[Any]]]] = {}
+        # Add role data (NDArray values are compatible with the union type)
+        for role_name, role_dict in self.role_data.items():
+            combined[role_name] = cast(
+                dict[str, NDArray[Any] | list[NDArray[Any]]], role_dict
+            )
         if self.economy_data:
-            combined["Economy"] = self.economy_data
+            combined["Economy"] = cast(
+                dict[str, NDArray[Any] | list[NDArray[Any]]], self.economy_data
+            )
+        # Add relationship data (already has the right type)
+        for rel_name, rel_dict in self.relationship_data.items():
+            combined[rel_name] = rel_dict
         return combined
 
     def get_array(
         self,
-        role_name: str,
+        name: str,
         variable_name: str,
         aggregate: str | None = None,
-    ) -> NDArray[Any]:
+    ) -> NDArray[Any] | list[NDArray[Any]]:
         """
         Get a variable as a numpy array directly.
 
@@ -683,23 +935,25 @@ class SimulationResults:
 
         Parameters
         ----------
-        role_name : str
-            Role name ("Producer", "Worker", "Economy", etc.)
+        name : str
+            Role, relationship, or "Economy" name (e.g., "Producer",
+            "LoanBook", "Economy").
         variable_name : str
-            Variable name ("price", "unemployment_rate", etc.)
+            Variable name ("price", "principal", "unemployment_rate", etc.)
         aggregate : {'mean', 'sum', 'std', 'median'}, optional
             Aggregation method for 2D data. If provided, reduces
             (n_periods, n_agents) to (n_periods,).
 
         Returns
         -------
-        NDArray
-            1D array (n_periods,) or 2D array (n_periods, n_agents).
+        NDArray or list[NDArray]
+            1D array (n_periods,), 2D array (n_periods, n_agents), or
+            list of arrays for non-aggregated relationship data.
 
         Raises
         ------
         KeyError
-            If role or variable not found.
+            If role/relationship or variable not found.
 
         Examples
         --------
@@ -708,9 +962,10 @@ class SimulationResults:
         ...     "Producer", "labor_productivity", aggregate="mean"
         ... )
         >>> unemployment = results.get_array("Economy", "unemployment_rate")
+        >>> total_principal = results.get_array("LoanBook", "principal")
         """
         # Handle Economy data specially
-        if role_name == "Economy":
+        if name == "Economy":
             if variable_name not in self.economy_data:
                 available = list(self.economy_data.keys())
                 raise KeyError(
@@ -718,37 +973,56 @@ class SimulationResults:
                 )
             return self.economy_data[variable_name]
 
-        # Handle role data
-        if role_name not in self.role_data:
-            available = list(self.role_data.keys())
-            raise KeyError(f"Role '{role_name}' not found. Available: {available}")
-
-        role_dict = self.role_data[role_name]
-        if variable_name not in role_dict:
-            available = list(role_dict.keys())
-            raise KeyError(
-                f"'{variable_name}' not found in {role_name}. Available: {available}"
-            )
-
-        data = role_dict[variable_name]
-
-        # Apply aggregation if requested and data is 2D
-        if aggregate and data.ndim == 2:
-            AggFunc = Callable[[NDArray[Any], int], NDArray[Any]]
-            agg_funcs: dict[str, AggFunc] = {
-                "mean": np.mean,
-                "sum": np.sum,
-                "std": np.std,
-                "median": np.median,
-            }
-            if aggregate not in agg_funcs:
-                raise ValueError(
-                    f"Unknown aggregation '{aggregate}'. "
-                    f"Use one of: {list(agg_funcs.keys())}"
+        # Check role data first
+        if name in self.role_data:
+            role_dict = self.role_data[name]
+            if variable_name not in role_dict:
+                available = list(role_dict.keys())
+                raise KeyError(
+                    f"'{variable_name}' not found in {name}. Available: {available}"
                 )
-            return agg_funcs[aggregate](data, 1)
 
-        return data
+            data = role_dict[variable_name]
+
+            # Apply aggregation if requested and data is 2D
+            if aggregate and data.ndim == 2:
+                AggFunc = Callable[[NDArray[Any], int], NDArray[Any]]
+                agg_funcs: dict[str, AggFunc] = {
+                    "mean": np.mean,
+                    "sum": np.sum,
+                    "std": np.std,
+                    "median": np.median,
+                }
+                if aggregate not in agg_funcs:
+                    raise ValueError(
+                        f"Unknown aggregation '{aggregate}'. "
+                        f"Use one of: {list(agg_funcs.keys())}"
+                    )
+                return agg_funcs[aggregate](data, 1)
+
+            return data
+
+        # Check relationship data
+        if name in self.relationship_data:
+            rel_dict = self.relationship_data[name]
+            if variable_name not in rel_dict:
+                available = list(rel_dict.keys())
+                raise KeyError(
+                    f"'{variable_name}' not found in {name}. Available: {available}"
+                )
+
+            rel_data = rel_dict[variable_name]
+            # Relationship data is either 1D (aggregated) or list of arrays
+            # No additional aggregation is applied here (already done during collection)
+            return rel_data
+
+        # Not found in role_data or relationship_data
+        available_roles = list(self.role_data.keys())
+        available_rels = list(self.relationship_data.keys())
+        # For backwards compatibility, use "Role" in error message
+        raise KeyError(
+            f"Role '{name}' not found. Available: {available_roles + available_rels}"
+        )
 
     @property
     def summary(self) -> DataFrame:
@@ -828,11 +1102,17 @@ class SimulationResults:
         n_households = self.metadata.get("n_households", 0)
 
         roles_str = ", ".join(self.role_data.keys()) if self.role_data else "None"
+        rels_str = (
+            ", ".join(self.relationship_data.keys())
+            if self.relationship_data
+            else "None"
+        )
 
         return (
             f"SimulationResults("
             f"periods={n_periods}, "
             f"firms={n_firms}, "
             f"households={n_households}, "
-            f"roles=[{roles_str}])"
+            f"roles=[{roles_str}], "
+            f"relationships=[{rels_str}])"
         )

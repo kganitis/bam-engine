@@ -394,6 +394,80 @@ if all_unemployment:
     print(f"  Range: {bam.ops.min(final_rates):.2f}% - {bam.ops.max(final_rates):.2f}%")
 
 # %%
+# Collecting Relationship Data
+# ----------------------------
+#
+# Relationships (like ``LoanBook``) can be collected alongside role data.
+# Unlike roles, relationships are **opt-in only** and NOT included with ``collect=True``.
+
+# Manually add some loans to demonstrate relationship data collection
+rel_sim = bam.Simulation.init(n_firms=50, n_households=250, seed=42)
+loans = rel_sim.get_relationship("LoanBook")
+loans.append_loans_for_lender(
+    lender_idx=np.intp(0),
+    borrower_indices=np.array([0, 1, 2, 3, 4], dtype=np.int64),
+    amount=np.array([1000.0, 1500.0, 2000.0, 500.0, 750.0]),
+    rate=np.array([0.02, 0.03, 0.025, 0.018, 0.022]),
+)
+
+rel_results = rel_sim.run(
+    n_periods=20,
+    collect={
+        "Producer": ["price"],  # Role data
+        "LoanBook": ["principal", "rate", "debt"],  # Relationship data
+        "Economy": True,
+        "aggregate": "sum",  # Sum across all active loans
+    },
+)
+
+print("Relationship data collection:")
+print(f"  Relationships collected: {list(rel_results.relationship_data.keys())}")
+if "LoanBook" in rel_results.relationship_data:
+    loanbook = rel_results.relationship_data["LoanBook"]
+    print(f"  LoanBook fields: {list(loanbook.keys())}")
+    print(f"  Total principal over time shape: {loanbook['principal'].shape}")
+    print(f"  Initial total principal: {loanbook['principal'][0]:.2f}")
+
+# Access via get_array()
+if "LoanBook" in rel_results.relationship_data:
+    total_debt = rel_results.get_array("LoanBook", "debt")
+    print(f"  Total debt (last period): {total_debt[-1]:.2f}")
+
+# %%
+# Analyzing Loan Distribution
+# ---------------------------
+#
+# With ``aggregate=None``, you get full edge data per period as variable-length arrays.
+# This is useful for analyzing loan distributions but cannot be exported to DataFrame.
+
+loan_dist_sim = bam.Simulation.init(n_firms=50, n_households=250, seed=42)
+loans = loan_dist_sim.get_relationship("LoanBook")
+# Add loans with varying amounts
+loans.append_loans_for_lender(
+    lender_idx=np.intp(0),
+    borrower_indices=np.array([0, 1, 2], dtype=np.int64),
+    amount=np.array([100.0, 200.0, 300.0]),
+    rate=np.array([0.02, 0.03, 0.025]),
+)
+
+dist_results = loan_dist_sim.run(
+    n_periods=5,
+    collect={
+        "LoanBook": ["principal"],
+        "aggregate": None,  # Full edge data (variable-length per period)
+    },
+)
+
+if "LoanBook" in dist_results.relationship_data:
+    principal_per_period = dist_results.relationship_data["LoanBook"]["principal"]
+    print("\nLoan distribution (aggregate=None):")
+    print(f"  Type: {type(principal_per_period).__name__}")
+    print(f"  Number of periods: {len(principal_per_period)}")
+    if principal_per_period:
+        print(f"  Period 0 loans: {len(principal_per_period[0])} active")
+        print(f"  Period 0 principals: {principal_per_period[0]}")
+
+# %%
 # Key Takeaways
 # -------------
 #
@@ -416,11 +490,22 @@ if all_unemployment:
 #   ``1.0 - np.mean(employed.astype(float), axis=1)``
 # - When computing from per-agent data, aggregate across agents with ``axis=1``
 #
+# **Relationship data:**
+#
+# - Relationships (like ``LoanBook``) are opt-in: use ``"LoanBook": ["principal"]``
+# - NOT included with ``collect=True`` (must specify explicitly)
+# - Aggregations: ``sum`` (total), ``mean`` (average), ``std`` (variation)
+# - With ``aggregate=None``: list of variable-length arrays (can't export to DataFrame)
+# - Access via ``results.relationship_data["LoanBook"]["principal"]``
+# - Or via ``results.get_array("LoanBook", "principal")``
+#
 # **Data access:**
 #
-# - Access raw data via ``results.economy_data`` and ``results.role_data``
+# - Access raw data via ``results.economy_data``, ``results.role_data``, and
+#   ``results.relationship_data``
 # - Use ``results.get_array()`` for cleaner access: ``get_array("Producer", "price")``
 # - Use ``results.get_array("Economy", "metric")`` for economy data
-# - Use ``results.data`` for unified access (includes "Economy" key)
+# - Use ``results.get_array("LoanBook", "field")`` for relationship data
+# - Use ``results.data`` for unified access (includes "Economy" key and relationships)
 # - Export to pandas with ``to_dataframe()`` for further analysis
 # - Get quick statistics with ``results.summary``

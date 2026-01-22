@@ -1140,8 +1140,10 @@ class Simulation:
         collect : bool, list, or dict
             Collection configuration:
             - True: collect all roles and economy with all variables
-            - list[str]: collect specified roles/economy with all variables
-            - dict: role/economy names as keys, variables as values
+              (relationships are NOT included - they are opt-in only)
+            - list[str]: collect specified roles/relationships/economy with
+              all their variables
+            - dict: role/relationship/economy names as keys, variables as values
 
         Returns
         -------
@@ -1150,17 +1152,19 @@ class Simulation:
 
         Examples
         --------
-        >>> # All roles and economy
+        >>> # All roles and economy (NOT relationships)
         >>> collector = sim._create_collector(True)
 
-        >>> # Specific roles with all their variables
+        >>> # Specific roles/relationships with all their variables
         >>> collector = sim._create_collector(["Producer", "Worker", "Economy"])
+        >>> collector = sim._create_collector(["LoanBook", "Economy"])
 
-        >>> # Specific variables per role
+        >>> # Specific variables per role/relationship
         >>> collector = sim._create_collector(
         ...     {
         ...         "Producer": ["price", "inventory"],
         ...         "Worker": True,  # All Worker variables
+        ...         "LoanBook": ["principal", "rate"],  # Relationship data
         ...         "Economy": True,  # All economy metrics
         ...         "aggregate": "mean",
         ...     }
