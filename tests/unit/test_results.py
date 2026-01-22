@@ -553,6 +553,47 @@ class TestDataCollectorPipelineSetup:
         collector.setup_pipeline_callbacks(pipeline)
         assert collector._use_timed_capture is True
 
+    def test_setup_pipeline_callbacks_with_relationship_variables(self):
+        """Test setup_pipeline_callbacks with relationship-specific variables."""
+        from bamengine.core import Pipeline
+
+        collector = _DataCollector(
+            variables={"LoanBook": ["principal", "rate"]},
+            aggregate="sum",
+            capture_after="firms_run_production",
+        )
+        pipeline = Pipeline(events=[])
+        collector.setup_pipeline_callbacks(pipeline)
+        assert collector._use_timed_capture is True
+
+    def test_pipeline_callback_captures_relationship_data(self):
+        """Test that pipeline callback correctly captures relationship data."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=10, n_households=20, seed=42)
+        loans = sim.get_relationship("LoanBook")
+        loans.append_loans_for_lender(
+            lender_idx=np.intp(0),
+            borrower_indices=np.array([0, 1], dtype=np.int64),
+            amount=np.array([100.0, 150.0]),
+            rate=np.array([0.02, 0.03]),
+        )
+
+        collector = _DataCollector(
+            variables={"LoanBook": ["principal"]},
+            aggregate="sum",
+            capture_after="firms_run_production",
+        )
+        collector.setup_pipeline_callbacks(sim.pipeline)
+
+        # Manually trigger the callback to test the path
+        callbacks = sim.pipeline._after_event_callbacks.get("firms_run_production", [])
+        for callback in callbacks:
+            callback(sim)
+
+        # Should have captured data
+        assert len(collector.relationship_data["LoanBook"]["principal"]) == 1
+
 
 class TestDataCollectorCaptureLogic:
     """Tests for _DataCollector capture deduplication and aggregation."""
@@ -854,3 +895,592 @@ class TestDataCollectorFinalize:
         results = collector.finalize(config={}, metadata={})
         # Empty list should not appear in results
         assert "price" not in results.role_data.get("Producer", {})
+
+
+# ===========================================================================
+# Relationship Data Collection Tests
+# ===========================================================================
+
+
+class TestRelationshipDataCollector:
+    """Tests for _DataCollector relationship capture methods."""
+
+    def test_is_relationship_detects_loanbook(self):
+        """Test _is_relationship correctly identifies LoanBook."""
+        collector = _DataCollector(
+            variables={"LoanBook": ["principal"]},
+            aggregate="sum",
+        )
+        assert collector._is_relationship("LoanBook") is True
+        assert collector._is_relationship("Producer") is False
+        assert collector._is_relationship("Economy") is False
+
+    def test_capture_relationship_single_unknown_aggregation_fallback(self):
+        """Test _capture_relationship_single falls back to mean for unknown aggregate."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=10, n_households=20, seed=42)
+        loans = sim.get_relationship("LoanBook")
+        loans.append_loans_for_lender(
+            lender_idx=np.intp(0),
+            borrower_indices=np.array([0, 1, 2], dtype=np.int64),
+            amount=np.array([100.0, 200.0, 300.0]),
+            rate=np.array([0.02, 0.03, 0.025]),
+        )
+
+        # Use an unknown aggregate value - should fall back to mean
+        collector = _DataCollector(
+            variables={"LoanBook": ["principal"]},
+            aggregate="unknown_agg",  # Unknown aggregation
+        )
+        collector._capture_relationship_single(sim, "LoanBook", "principal")
+
+        # Should have captured mean as fallback
+        expected_mean = float(np.mean(loans.principal[: loans.size]))
+        assert collector.relationship_data["LoanBook"]["principal"][0] == pytest.approx(
+            expected_mean
+        )
+
+    def test_capture_relationship_all_missing_relationship(self):
+        """Test _capture_relationship_all handles missing relationship gracefully."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=10, n_households=20, seed=42)
+
+        collector = _DataCollector(
+            variables={"NonExistentRelationship": True},
+            aggregate="sum",
+        )
+        # Should not raise - just silently return
+        collector._capture_relationship_all(sim, "NonExistentRelationship")
+        # Should have nothing captured
+        assert len(collector.relationship_data.get("NonExistentRelationship", {})) == 0
+
+    def test_capture_relationship_single_with_aggregation(self):
+        """Test _capture_relationship_single with aggregation."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=10, n_households=20, seed=42)
+        loans = sim.get_relationship("LoanBook")
+
+        # Manually add test loans
+        loans.append_loans_for_lender(
+            lender_idx=np.intp(0),
+            borrower_indices=np.array([0, 1, 2], dtype=np.int64),
+            amount=np.array([100.0, 150.0, 200.0]),
+            rate=np.array([0.02, 0.03, 0.025]),
+        )
+
+        collector = _DataCollector(
+            variables={"LoanBook": ["principal"]},
+            aggregate="sum",
+        )
+        collector._capture_relationship_single(sim, "LoanBook", "principal")
+
+        # Should have captured one value
+        assert len(collector.relationship_data["LoanBook"]["principal"]) == 1
+        # Value should be sum of all principals
+        expected_sum = float(np.sum(loans.principal[: loans.size]))
+        assert collector.relationship_data["LoanBook"]["principal"][0] == pytest.approx(
+            expected_sum
+        )
+
+    def test_capture_relationship_single_without_aggregation(self):
+        """Test _capture_relationship_single without aggregation."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=10, n_households=20, seed=42)
+        loans = sim.get_relationship("LoanBook")
+
+        # Manually add test loans
+        loans.append_loans_for_lender(
+            lender_idx=np.intp(0),
+            borrower_indices=np.array([0, 1, 2], dtype=np.int64),
+            amount=np.array([100.0, 150.0, 200.0]),
+            rate=np.array([0.02, 0.03, 0.025]),
+        )
+
+        collector = _DataCollector(
+            variables={"LoanBook": ["principal"]},
+            aggregate=None,
+        )
+        collector._capture_relationship_single(sim, "LoanBook", "principal")
+
+        # Should have captured one array
+        assert len(collector.relationship_data["LoanBook"]["principal"]) == 1
+        captured = collector.relationship_data["LoanBook"]["principal"][0]
+        assert isinstance(captured, np.ndarray)
+
+        # Array should match active loans
+        expected = loans.principal[: loans.size]
+        np.testing.assert_array_equal(captured, expected)
+
+    def test_capture_relationship_single_already_captured(self):
+        """Test _capture_relationship_single skips already captured variables."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=10, n_households=20, seed=42)
+        loans = sim.get_relationship("LoanBook")
+
+        # Manually add test loans
+        loans.append_loans_for_lender(
+            lender_idx=np.intp(0),
+            borrower_indices=np.array([0, 1], dtype=np.int64),
+            amount=np.array([100.0, 150.0]),
+            rate=np.array([0.02, 0.03]),
+        )
+
+        collector = _DataCollector(
+            variables={"LoanBook": ["principal"]},
+            aggregate="sum",
+        )
+        # Capture once
+        collector._capture_relationship_single(sim, "LoanBook", "principal")
+        first_count = len(collector.relationship_data["LoanBook"]["principal"])
+
+        # Try again - should be skipped
+        collector._capture_relationship_single(sim, "LoanBook", "principal")
+        second_count = len(collector.relationship_data["LoanBook"]["principal"])
+
+        assert first_count == second_count == 1
+
+    def test_capture_relationship_single_missing_relationship(self):
+        """Test _capture_relationship_single handles missing relationship."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=10, n_households=20, seed=42)
+
+        collector = _DataCollector(
+            variables={"NonExistent": ["field"]},
+            aggregate="sum",
+        )
+        # Should not raise
+        collector._capture_relationship_single(sim, "NonExistent", "field")
+        # Should have nothing captured
+        assert (
+            "NonExistent" not in collector.relationship_data
+            or len(collector.relationship_data["NonExistent"]) == 0
+        )
+
+    def test_capture_relationship_single_missing_field(self):
+        """Test _capture_relationship_single handles missing field."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=10, n_households=20, seed=42)
+
+        collector = _DataCollector(
+            variables={"LoanBook": ["nonexistent_field"]},
+            aggregate="sum",
+        )
+        # Should not raise
+        collector._capture_relationship_single(sim, "LoanBook", "nonexistent_field")
+        assert len(collector.relationship_data["LoanBook"]["nonexistent_field"]) == 0
+
+    def test_capture_relationship_single_empty_relationship(self):
+        """Test _capture_relationship_single handles empty relationship."""
+        import bamengine as bam
+
+        # Use a fresh simulation with potentially no loans yet
+        sim = bam.Simulation.init(n_firms=10, n_households=20, seed=42)
+        # Don't run any periods - LoanBook should be empty
+
+        collector = _DataCollector(
+            variables={"LoanBook": ["principal"]},
+            aggregate="sum",
+        )
+        collector._capture_relationship_single(sim, "LoanBook", "principal")
+
+        # Should capture 0.0 for empty relationship
+        assert len(collector.relationship_data["LoanBook"]["principal"]) == 1
+        assert collector.relationship_data["LoanBook"]["principal"][0] == 0.0
+
+    def test_capture_relationship_all(self):
+        """Test _capture_relationship_all captures all fields."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=10, n_households=20, seed=42)
+        loans = sim.get_relationship("LoanBook")
+
+        # Manually add test loans
+        loans.append_loans_for_lender(
+            lender_idx=np.intp(0),
+            borrower_indices=np.array([0, 1], dtype=np.int64),
+            amount=np.array([100.0, 150.0]),
+            rate=np.array([0.02, 0.03]),
+        )
+
+        collector = _DataCollector(
+            variables={"LoanBook": True},
+            aggregate="sum",
+        )
+        collector._capture_relationship_all(sim, "LoanBook")
+
+        # Should have captured multiple fields
+        rel_data = collector.relationship_data["LoanBook"]
+        assert "principal" in rel_data
+        assert "rate" in rel_data
+        assert "debt" in rel_data
+        assert "interest" in rel_data
+
+    @pytest.mark.parametrize(
+        "aggregate,expected_func",
+        [
+            ("mean", np.mean),
+            ("median", np.median),
+            ("sum", np.sum),
+            ("std", np.std),
+        ],
+    )
+    def test_capture_relationship_aggregation_methods(self, aggregate, expected_func):
+        """Test _capture_relationship_single with different aggregations."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=10, n_households=20, seed=42)
+        loans = sim.get_relationship("LoanBook")
+
+        # Manually add test loans to ensure there is data to aggregate
+        loans.append_loans_for_lender(
+            lender_idx=np.intp(0),
+            borrower_indices=np.array([0, 1, 2], dtype=np.int64),
+            amount=np.array([100.0, 150.0, 200.0]),
+            rate=np.array([0.02, 0.03, 0.025]),
+        )
+
+        collector = _DataCollector(
+            variables={"LoanBook": ["principal"]},
+            aggregate=aggregate,
+        )
+        collector._capture_relationship_single(sim, "LoanBook", "principal")
+
+        expected = float(expected_func(loans.principal[: loans.size]))
+        assert collector.relationship_data["LoanBook"]["principal"][0] == pytest.approx(
+            expected
+        )
+
+
+class TestRelationshipCapture:
+    """Tests for relationship capture in _DataCollector.capture()."""
+
+    def test_capture_includes_relationships(self):
+        """Test capture() correctly captures relationship data."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=10, n_households=20, seed=42)
+        loans = sim.get_relationship("LoanBook")
+
+        # Manually add test loans
+        loans.append_loans_for_lender(
+            lender_idx=np.intp(0),
+            borrower_indices=np.array([0, 1], dtype=np.int64),
+            amount=np.array([100.0, 150.0]),
+            rate=np.array([0.02, 0.03]),
+        )
+
+        collector = _DataCollector(
+            variables={"LoanBook": ["principal", "rate"]},
+            aggregate="sum",
+        )
+        collector.capture(sim)
+
+        assert "principal" in collector.relationship_data["LoanBook"]
+        assert "rate" in collector.relationship_data["LoanBook"]
+
+    def test_capture_remaining_includes_relationships(self):
+        """Test capture_remaining() correctly captures remaining relationship data."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=10, n_households=20, seed=42)
+        loans = sim.get_relationship("LoanBook")
+
+        # Manually add test loans
+        loans.append_loans_for_lender(
+            lender_idx=np.intp(0),
+            borrower_indices=np.array([0, 1], dtype=np.int64),
+            amount=np.array([100.0, 150.0]),
+            rate=np.array([0.02, 0.03]),
+        )
+
+        collector = _DataCollector(
+            variables={"LoanBook": ["principal"]},
+            aggregate="sum",
+        )
+        # Mark nothing as captured yet
+        collector.capture_remaining(sim)
+
+        assert len(collector.relationship_data["LoanBook"]["principal"]) == 1
+
+    def test_capture_remaining_relationship_true(self):
+        """Test capture_remaining() with var_spec=True for relationships."""
+        import bamengine as bam
+
+        sim = bam.Simulation.init(n_firms=10, n_households=20, seed=42)
+        loans = sim.get_relationship("LoanBook")
+
+        # Manually add test loans
+        loans.append_loans_for_lender(
+            lender_idx=np.intp(0),
+            borrower_indices=np.array([0, 1], dtype=np.int64),
+            amount=np.array([100.0, 150.0]),
+            rate=np.array([0.02, 0.03]),
+        )
+
+        collector = _DataCollector(
+            variables={"LoanBook": True},  # True = capture all fields
+            aggregate="sum",
+        )
+        # Mark nothing as captured yet
+        collector.capture_remaining(sim)
+
+        # Should have captured all LoanBook fields
+        assert "principal" in collector.relationship_data["LoanBook"]
+        assert "rate" in collector.relationship_data["LoanBook"]
+        assert "debt" in collector.relationship_data["LoanBook"]
+
+
+class TestRelationshipFinalize:
+    """Tests for relationship data finalization."""
+
+    def test_finalize_with_aggregated_relationship_data(self):
+        """Test finalize converts aggregated relationship data to array."""
+        collector = _DataCollector(
+            variables={"LoanBook": ["principal"]},
+            aggregate="sum",
+        )
+        # Simulate captured data
+        collector.relationship_data["LoanBook"]["principal"] = [100.0, 150.0, 200.0]
+
+        results = collector.finalize(config={}, metadata={})
+
+        assert "LoanBook" in results.relationship_data
+        np.testing.assert_array_equal(
+            results.relationship_data["LoanBook"]["principal"], [100.0, 150.0, 200.0]
+        )
+
+    def test_finalize_with_non_aggregated_relationship_data(self):
+        """Test finalize keeps non-aggregated relationship data as list."""
+        collector = _DataCollector(
+            variables={"LoanBook": ["principal"]},
+            aggregate=None,
+        )
+        # Simulate variable-length captured data
+        collector.relationship_data["LoanBook"]["principal"] = [
+            np.array([100.0, 50.0]),
+            np.array([100.0, 50.0, 75.0]),
+            np.array([25.0]),
+        ]
+
+        results = collector.finalize(config={}, metadata={})
+
+        assert "LoanBook" in results.relationship_data
+        # Should remain a list (cannot stack variable-length arrays)
+        assert isinstance(results.relationship_data["LoanBook"]["principal"], list)
+        assert len(results.relationship_data["LoanBook"]["principal"]) == 3
+
+    def test_finalize_with_empty_relationship_data_list(self):
+        """Test finalize handles empty relationship data lists gracefully."""
+        collector = _DataCollector(
+            variables={"LoanBook": ["principal"]},
+            aggregate="sum",
+        )
+        # Add an empty list
+        collector.relationship_data["LoanBook"]["principal"] = []
+
+        results = collector.finalize(config={}, metadata={})
+        # Empty list should not appear in results
+        assert "principal" not in results.relationship_data.get("LoanBook", {})
+
+
+class TestSimulationResultsRelationship:
+    """Tests for relationship data in SimulationResults."""
+
+    def test_empty_relationship_data(self):
+        """Test empty relationship_data initialization."""
+        results = SimulationResults()
+        assert results.relationship_data == {}
+
+    def test_relationship_data_field(self):
+        """Test relationship_data field stores data correctly."""
+        results = SimulationResults(
+            relationship_data={
+                "LoanBook": {
+                    "principal": np.array([100.0, 150.0]),
+                    "rate": np.array([0.02, 0.03]),
+                }
+            }
+        )
+        assert "LoanBook" in results.relationship_data
+        np.testing.assert_array_equal(
+            results.relationship_data["LoanBook"]["principal"], [100.0, 150.0]
+        )
+
+    def test_repr_includes_relationships(self):
+        """Test __repr__ includes relationship information."""
+        results = SimulationResults(
+            relationship_data={"LoanBook": {}},
+            metadata={"n_periods": 10, "n_firms": 50, "n_households": 200},
+        )
+        repr_str = repr(results)
+        assert "relationships=[LoanBook]" in repr_str
+
+    def test_repr_no_relationships(self):
+        """Test __repr__ shows None for no relationships."""
+        results = SimulationResults(
+            metadata={"n_periods": 10, "n_firms": 50, "n_households": 200}
+        )
+        repr_str = repr(results)
+        assert "relationships=[None]" in repr_str
+
+    def test_data_property_includes_relationships(self):
+        """Test data property includes relationship data."""
+        results = SimulationResults(
+            role_data={"Producer": {"price": np.array([1.0, 2.0])}},
+            relationship_data={
+                "LoanBook": {"principal": np.array([100.0, 150.0])},
+            },
+        )
+        data = results.data
+        assert "Producer" in data
+        assert "LoanBook" in data
+        np.testing.assert_array_equal(data["LoanBook"]["principal"], [100.0, 150.0])
+
+
+class TestGetRelationshipData:
+    """Tests for get_relationship_data method."""
+
+    def test_get_relationship_data(self):
+        """Test get_relationship_data returns DataFrame."""
+        results = SimulationResults(
+            relationship_data={
+                "LoanBook": {
+                    "principal": np.array([100.0, 150.0, 200.0]),
+                    "rate": np.array([0.02, 0.03, 0.025]),
+                }
+            }
+        )
+        df = results.get_relationship_data("LoanBook")
+        assert isinstance(df, pd.DataFrame)
+        assert "LoanBook.principal" in df.columns
+        assert "LoanBook.rate" in df.columns
+
+    def test_get_relationship_data_nonexistent(self):
+        """Test get_relationship_data with nonexistent relationship."""
+        results = SimulationResults()
+        df = results.get_relationship_data("NonExistent")
+        assert len(df) == 0
+
+
+class TestGetArrayRelationship:
+    """Tests for get_array method with relationships."""
+
+    def test_get_array_relationship_data(self):
+        """Test get_array retrieves relationship data."""
+        results = SimulationResults(
+            relationship_data={
+                "LoanBook": {"principal": np.array([100.0, 150.0, 200.0])}
+            }
+        )
+        arr = results.get_array("LoanBook", "principal")
+        np.testing.assert_array_equal(arr, [100.0, 150.0, 200.0])
+
+    def test_get_array_relationship_list_data(self):
+        """Test get_array retrieves non-aggregated relationship data."""
+        results = SimulationResults(
+            relationship_data={
+                "LoanBook": {
+                    "principal": [
+                        np.array([100.0, 50.0]),
+                        np.array([75.0]),
+                    ]
+                }
+            }
+        )
+        arr = results.get_array("LoanBook", "principal")
+        assert isinstance(arr, list)
+        assert len(arr) == 2
+
+    def test_get_array_relationship_not_found(self):
+        """Test get_array raises KeyError for missing relationship variable."""
+        results = SimulationResults(
+            relationship_data={"LoanBook": {"principal": np.array([100.0])}}
+        )
+        with pytest.raises(KeyError, match="'rate' not found in LoanBook"):
+            results.get_array("LoanBook", "rate")
+
+
+class TestToDataFrameRelationships:
+    """Tests for to_dataframe with relationship data."""
+
+    def test_to_dataframe_with_relationships(self):
+        """Test to_dataframe includes relationship data."""
+        results = SimulationResults(
+            relationship_data={
+                "LoanBook": {
+                    "principal": np.array([100.0, 150.0, 200.0]),
+                    "rate": np.array([0.02, 0.03, 0.025]),
+                }
+            }
+        )
+        df = results.to_dataframe(roles=[], relationships=["LoanBook"])
+        assert "LoanBook.principal" in df.columns
+        assert "LoanBook.rate" in df.columns
+        assert len(df) == 3
+
+    def test_to_dataframe_skips_non_aggregated_with_warning(self):
+        """Test to_dataframe warns and skips non-aggregated relationship data."""
+        results = SimulationResults(
+            relationship_data={
+                "LoanBook": {
+                    "principal": [
+                        np.array([100.0, 50.0]),
+                        np.array([75.0]),
+                    ]
+                }
+            }
+        )
+        with pytest.warns(UserWarning, match="non-aggregated variable-length data"):
+            df = results.to_dataframe(roles=[], relationships=["LoanBook"])
+        # DataFrame should be empty since only non-aggregated data
+        assert len(df) == 0 or "LoanBook.principal" not in df.columns
+
+    def test_to_dataframe_mixed_role_and_relationship(self):
+        """Test to_dataframe with both role and relationship data."""
+        results = SimulationResults(
+            role_data={"Producer": {"price": np.array([1.0, 1.1, 1.2])}},
+            relationship_data={
+                "LoanBook": {"principal": np.array([100.0, 150.0, 200.0])}
+            },
+        )
+        df = results.to_dataframe(
+            roles=["Producer"],
+            relationships=["LoanBook"],
+            include_economy=False,
+        )
+        assert "Producer.price" in df.columns
+        assert "LoanBook.principal" in df.columns
+
+    def test_to_dataframe_default_includes_all_relationships(self):
+        """Test to_dataframe includes all relationships by default."""
+        results = SimulationResults(
+            relationship_data={
+                "LoanBook": {"principal": np.array([100.0, 150.0])},
+            }
+        )
+        df = results.to_dataframe(roles=[], include_economy=False)
+        assert "LoanBook.principal" in df.columns
+
+    def test_to_dataframe_with_variables_filter_relationships(self):
+        """Test to_dataframe filters relationship variables correctly."""
+        results = SimulationResults(
+            relationship_data={
+                "LoanBook": {
+                    "principal": np.array([100.0, 150.0]),
+                    "rate": np.array([0.02, 0.03]),
+                }
+            }
+        )
+        # Filter to only include 'rate' variable
+        df = results.to_dataframe(
+            roles=[], relationships=["LoanBook"], variables=["rate"]
+        )
+        assert "LoanBook.rate" in df.columns
+        assert "LoanBook.principal" not in df.columns

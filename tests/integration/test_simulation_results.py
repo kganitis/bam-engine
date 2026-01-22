@@ -386,3 +386,261 @@ class TestCaptureTiming:
             },
         )
         assert "Producer" in results.role_data
+
+
+class TestRunWithRelationshipCollect:
+    """Tests for Simulation.run() with relationship data collection."""
+
+    def test_collect_loanbook_aggregated(self):
+        """Test collecting LoanBook relationship data with aggregation."""
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+        # Manually add some loans to ensure data exists
+        loans = sim.get_relationship("LoanBook")
+        loans.append_loans_for_lender(
+            lender_idx=np.intp(0),
+            borrower_indices=np.array([0, 1, 2], dtype=np.int64),
+            amount=np.array([100.0, 150.0, 200.0]),
+            rate=np.array([0.02, 0.03, 0.025]),
+        )
+
+        results = sim.run(
+            n_periods=5,
+            collect={
+                "LoanBook": True,
+                "aggregate": "sum",
+            },
+        )
+
+        assert "LoanBook" in results.relationship_data
+        assert "principal" in results.relationship_data["LoanBook"]
+        # Data should be 1D (aggregated)
+        assert results.relationship_data["LoanBook"]["principal"].shape == (5,)
+
+    def test_collect_loanbook_specific_fields(self):
+        """Test collecting specific LoanBook fields."""
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+        loans = sim.get_relationship("LoanBook")
+        loans.append_loans_for_lender(
+            lender_idx=np.intp(0),
+            borrower_indices=np.array([0, 1], dtype=np.int64),
+            amount=np.array([100.0, 150.0]),
+            rate=np.array([0.02, 0.03]),
+        )
+
+        results = sim.run(
+            n_periods=5,
+            collect={
+                "LoanBook": ["principal", "rate"],
+                "aggregate": "mean",
+            },
+        )
+
+        assert "principal" in results.relationship_data["LoanBook"]
+        assert "rate" in results.relationship_data["LoanBook"]
+        # debt and interest should not be collected
+        assert "debt" not in results.relationship_data["LoanBook"]
+
+    def test_collect_loanbook_no_aggregation(self):
+        """Test collecting LoanBook data without aggregation."""
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+        loans = sim.get_relationship("LoanBook")
+        loans.append_loans_for_lender(
+            lender_idx=np.intp(0),
+            borrower_indices=np.array([0, 1, 2], dtype=np.int64),
+            amount=np.array([100.0, 150.0, 200.0]),
+            rate=np.array([0.02, 0.03, 0.025]),
+        )
+
+        results = sim.run(
+            n_periods=3,
+            collect={
+                "LoanBook": ["principal"],
+                "aggregate": None,
+            },
+        )
+
+        # Data should be a list of arrays (variable-length)
+        principal_data = results.relationship_data["LoanBook"]["principal"]
+        assert isinstance(principal_data, list)
+        assert len(principal_data) == 3
+
+    def test_collect_mixed_roles_and_relationships(self):
+        """Test collecting both role and relationship data together."""
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+        loans = sim.get_relationship("LoanBook")
+        loans.append_loans_for_lender(
+            lender_idx=np.intp(0),
+            borrower_indices=np.array([0, 1], dtype=np.int64),
+            amount=np.array([100.0, 150.0]),
+            rate=np.array([0.02, 0.03]),
+        )
+
+        results = sim.run(
+            n_periods=5,
+            collect={
+                "Producer": ["price"],
+                "LoanBook": ["principal"],
+                "Economy": True,
+                "aggregate": "mean",
+            },
+        )
+
+        # All should be collected
+        assert "Producer" in results.role_data
+        assert "LoanBook" in results.relationship_data
+        assert "avg_price" in results.economy_data
+
+    def test_collect_list_form_with_relationship(self):
+        """Test list form of collect with relationships."""
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+        loans = sim.get_relationship("LoanBook")
+        loans.append_loans_for_lender(
+            lender_idx=np.intp(0),
+            borrower_indices=np.array([0], dtype=np.int64),
+            amount=np.array([100.0]),
+            rate=np.array([0.02]),
+        )
+
+        results = sim.run(
+            n_periods=3,
+            collect=["Producer", "LoanBook"],
+        )
+
+        assert "Producer" in results.role_data
+        assert "LoanBook" in results.relationship_data
+
+    def test_collect_true_excludes_relationships(self):
+        """Test that collect=True does NOT include relationships."""
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+        loans = sim.get_relationship("LoanBook")
+        loans.append_loans_for_lender(
+            lender_idx=np.intp(0),
+            borrower_indices=np.array([0], dtype=np.int64),
+            amount=np.array([100.0]),
+            rate=np.array([0.02]),
+        )
+
+        results = sim.run(n_periods=3, collect=True)
+
+        # Relationships should NOT be included by default
+        assert results.relationship_data == {}
+        # But roles should be
+        assert "Producer" in results.role_data
+
+    def test_relationship_data_to_dataframe(self):
+        """Test converting relationship data to DataFrame."""
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+        loans = sim.get_relationship("LoanBook")
+        loans.append_loans_for_lender(
+            lender_idx=np.intp(0),
+            borrower_indices=np.array([0, 1], dtype=np.int64),
+            amount=np.array([100.0, 150.0]),
+            rate=np.array([0.02, 0.03]),
+        )
+
+        results = sim.run(
+            n_periods=5,
+            collect={
+                "LoanBook": ["principal"],
+                "aggregate": "sum",
+            },
+        )
+
+        df = results.to_dataframe(roles=[], relationships=["LoanBook"])
+        assert isinstance(df, pd.DataFrame)
+        assert "LoanBook.principal" in df.columns
+
+    def test_relationship_get_array(self):
+        """Test get_array method with relationship data."""
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+        loans = sim.get_relationship("LoanBook")
+        loans.append_loans_for_lender(
+            lender_idx=np.intp(0),
+            borrower_indices=np.array([0, 1, 2], dtype=np.int64),
+            amount=np.array([100.0, 150.0, 200.0]),
+            rate=np.array([0.02, 0.03, 0.025]),
+        )
+
+        results = sim.run(
+            n_periods=5,
+            collect={
+                "LoanBook": ["principal"],
+                "aggregate": "sum",
+            },
+        )
+
+        arr = results.get_array("LoanBook", "principal")
+        assert isinstance(arr, np.ndarray)
+        assert arr.shape == (5,)
+
+    def test_relationship_determinism(self):
+        """Test that relationship data collection is deterministic."""
+
+        def run_with_loans(seed):
+            sim = Simulation.init(n_firms=10, n_households=50, seed=seed)
+            loans = sim.get_relationship("LoanBook")
+            loans.append_loans_for_lender(
+                lender_idx=np.intp(0),
+                borrower_indices=np.array([0, 1], dtype=np.int64),
+                amount=np.array([100.0, 150.0]),
+                rate=np.array([0.02, 0.03]),
+            )
+            return sim.run(
+                n_periods=5,
+                collect={
+                    "LoanBook": ["principal"],
+                    "aggregate": "sum",
+                },
+            )
+
+        results1 = run_with_loans(seed=42)
+        results2 = run_with_loans(seed=42)
+
+        np.testing.assert_array_almost_equal(
+            results1.relationship_data["LoanBook"]["principal"],
+            results2.relationship_data["LoanBook"]["principal"],
+        )
+
+    def test_relationship_data_property(self):
+        """Test data property includes relationship data."""
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+        loans = sim.get_relationship("LoanBook")
+        loans.append_loans_for_lender(
+            lender_idx=np.intp(0),
+            borrower_indices=np.array([0], dtype=np.int64),
+            amount=np.array([100.0]),
+            rate=np.array([0.02]),
+        )
+
+        results = sim.run(
+            n_periods=3,
+            collect={
+                "LoanBook": ["principal"],
+                "aggregate": "sum",
+            },
+        )
+
+        data = results.data
+        assert "LoanBook" in data
+
+    def test_repr_shows_relationships(self):
+        """Test that repr includes relationship information."""
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+        loans = sim.get_relationship("LoanBook")
+        loans.append_loans_for_lender(
+            lender_idx=np.intp(0),
+            borrower_indices=np.array([0], dtype=np.int64),
+            amount=np.array([100.0]),
+            rate=np.array([0.02]),
+        )
+
+        results = sim.run(
+            n_periods=3,
+            collect={
+                "LoanBook": True,
+                "aggregate": "sum",
+            },
+        )
+
+        repr_str = repr(results)
+        assert "LoanBook" in repr_str
