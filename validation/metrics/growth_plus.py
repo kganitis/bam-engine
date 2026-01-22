@@ -1,4 +1,4 @@
-"""Growth+ scenario metrics (Section 3.8).
+"""Growth+ scenario metrics (Section 3.9.2).
 
 This module provides the GrowthPlusMetrics dataclass and compute function
 for the Growth+ extension scenario from Delli Gatti et al. (2011).
@@ -130,7 +130,7 @@ def compute_growth_plus_metrics(
     """Compute all validation metrics from Growth+ simulation results.
 
     This function computes metrics corresponding to the 8 figures in
-    Delli Gatti et al. (2011), Section 3.8, with additional growth-specific
+    Delli Gatti et al. (2011), Section 3.9.2, with additional growth-specific
     metrics for productivity and real wage trends.
 
     Args:

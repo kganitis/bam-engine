@@ -45,7 +45,7 @@ def test_growth_plus_scenario_validation() -> None:
 
     This test runs a full 1000-period simulation with the RnD extension
     and compares the results against targets derived from
-    Delli Gatti et al. (2011), Section 3.8.
+    Delli Gatti et al. (2011), Section 3.9.2.
 
     The test FAILS if any metric has FAIL status.
     WARN status is acceptable (indicates calibration work needed).
