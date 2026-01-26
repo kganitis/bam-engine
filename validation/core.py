@@ -135,6 +135,29 @@ GROWTH_PLUS_WEIGHTS: dict[str, float] = {
     "productivity_growth": 1.5,  # Key Growth+ metric
     "real_wage_growth": 1.0,  # Should track productivity
     "productivity_trend": 1.0,  # Trend coefficient
+    # Financial dynamics metrics
+    "real_interest_rate_mean": 0.5,  # Mean real interest rate
+    "real_interest_rate_std": 0.5,  # Volatility of real interest rate
+    "financial_fragility_mean": 0.5,  # Mean financial fragility
+    "financial_fragility_std": 0.5,  # Volatility of financial fragility
+    "price_ratio_mean": 0.5,  # Mean price ratio (P / P*)
+    "price_ratio_std": 0.5,  # Volatility of price ratio
+    "price_dispersion_mean": 0.5,  # Mean price dispersion (CV)
+    "price_dispersion_std": 0.5,  # Volatility of price dispersion
+    "equity_dispersion_mean": 0.5,  # Mean equity dispersion (CV)
+    "equity_dispersion_std": 0.5,  # Volatility of equity dispersion
+    "sales_dispersion_mean": 0.5,  # Mean sales dispersion (CV)
+    "sales_dispersion_std": 0.5,  # Volatility of sales dispersion
+    # Minsky classification
+    "minsky_hedge_pct": 0.5,  # Hedge firm percentage
+    "minsky_ponzi_pct": 0.5,  # Ponzi firm percentage
+    # Growth rate distribution metrics (tiered validation)
+    "output_growth_pct_tight": 1.0,  # % within tight range
+    "output_growth_pct_normal": 0.5,  # % within normal range
+    "output_growth_outliers": 1.5,  # Outlier penalty (higher weight)
+    "networth_growth_pct_tight": 1.0,  # % within tight range
+    "networth_growth_pct_normal": 0.5,  # % within normal range
+    "networth_growth_outliers": 1.5,  # Outlier penalty (higher weight)
 }
 
 
@@ -176,6 +199,42 @@ def score_range(actual: float, min_val: float, max_val: float) -> float:
         else:
             overshoot = (actual - max_val) / range_size
         return max(0.0, 0.75 - overshoot)  # 0.0-0.75
+
+
+def score_pct_within_target(
+    actual_pct: float, target_pct: float, min_pct: float
+) -> float:
+    """Score 0-1 for percentage meeting target.
+
+    Returns 1.0 if actual >= target, scores proportionally if >= min,
+    and penalizes below min.
+    """
+    if actual_pct >= target_pct:
+        return 1.0
+    elif actual_pct >= min_pct:
+        progress = (actual_pct - min_pct) / (target_pct - min_pct)
+        return 0.75 + 0.25 * progress
+    else:
+        if min_pct > 0:
+            shortfall = (min_pct - actual_pct) / min_pct
+            return max(0.0, 0.75 * (1 - shortfall))
+        return 0.0
+
+
+def score_outlier_penalty(
+    outlier_pct: float, max_outlier_pct: float, penalty_weight: float = 2.0
+) -> float:
+    """Score 0-1 with exponential penalty for excessive outliers.
+
+    Returns 1.0 if outlier_pct <= max_outlier_pct, else exponentially
+    decays based on how much the actual exceeds the maximum allowed.
+    """
+    import math
+
+    if outlier_pct <= max_outlier_pct:
+        return 1.0
+    excess = outlier_pct - max_outlier_pct
+    return max(0.0, math.exp(-penalty_weight * excess / max_outlier_pct))
 
 
 # =============================================================================
@@ -225,6 +284,40 @@ def check_range(
         <= actual
         <= (max_val + warn_buffer * range_size)
     ):
+        return "WARN"
+    return "FAIL"
+
+
+def check_pct_within_target(
+    actual_pct: float, target_pct: float, min_pct: float
+) -> Status:
+    """Check if percentage within target meets threshold.
+
+    Returns:
+        PASS if actual >= target
+        WARN if actual >= min
+        FAIL otherwise
+    """
+    if actual_pct >= target_pct:
+        return "PASS"
+    elif actual_pct >= min_pct:
+        return "WARN"
+    return "FAIL"
+
+
+def check_outlier_penalty(
+    outlier_pct: float, max_outlier_pct: float, severe_multiplier: float = 2.0
+) -> Status:
+    """Check if outlier percentage is within acceptable limits.
+
+    Returns:
+        PASS if outlier_pct <= max_outlier_pct
+        WARN if outlier_pct <= max_outlier_pct * severe_multiplier
+        FAIL otherwise
+    """
+    if outlier_pct <= max_outlier_pct:
+        return "PASS"
+    elif outlier_pct <= max_outlier_pct * severe_multiplier:
         return "WARN"
     return "FAIL"
 

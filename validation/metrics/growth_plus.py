@@ -17,7 +17,12 @@ from scipy import stats
 
 import bamengine as bam
 from bamengine import ops
-from validation.metrics._utils import filter_outliers_iqr, get_targets_dir
+from bamengine.utils import EPS
+from validation.metrics._utils import (
+    detect_recessions,
+    filter_outliers_iqr,
+    get_targets_dir,
+)
 
 
 @dataclass
@@ -72,6 +77,36 @@ class GrowthPlusMetrics:
             real_wage_initial: Real wage at burn-in period
             real_wage_final: Real wage at final period
             total_real_wage_growth: (final - initial) / initial
+
+        Financial dynamics metrics:
+            n_firm_bankruptcies: Number of firm bankruptcies per period
+            n_bank_bankruptcies: Number of bank bankruptcies per period
+            real_interest_rate: Weighted average real interest rate per period
+            avg_financial_fragility: Cross-section mean of wage_bill/net_worth
+            price_ratio: Ratio of market price to market-clearing price
+            price_dispersion: Coefficient of variation of firm prices
+            equity_dispersion: Coefficient of variation of firm net worth
+            sales_dispersion: Coefficient of variation of firm production
+
+        Growth rate distributions (final period, per firm):
+            output_growth_rates: Firm-level output growth rates
+            networth_growth_rates: Firm-level net worth growth rates
+
+        Recession detection:
+            recession_mask: Boolean array marking recession periods
+            n_recessions: Number of recession episodes (after burn-in)
+            avg_recession_length: Average length of recession episodes
+
+        Minsky classification (averaged over post-burn-in periods):
+            minsky_hedge_pct: Fraction of Hedge firms (total_funds >= debt)
+            minsky_speculative_pct: Fraction of Speculative firms (interest <= total_funds < debt)
+            minsky_ponzi_pct: Fraction of Ponzi firms (total_funds < interest)
+
+        Additional summary statistics:
+            bankruptcies_mean: Mean bankruptcies per period (after burn-in)
+            real_interest_rate_mean: Mean real interest rate (after burn-in)
+            avg_fragility_mean: Mean financial fragility (after burn-in)
+            price_ratio_mean: Mean price ratio (after burn-in)
     """
 
     # Time series (full)
@@ -120,6 +155,102 @@ class GrowthPlusMetrics:
     real_wage_final: float
     total_real_wage_growth: float
 
+    # Financial dynamics metrics
+    n_firm_bankruptcies: NDArray[np.int_]
+    n_bank_bankruptcies: NDArray[np.int_]
+    real_interest_rate: NDArray[np.floating]
+    avg_financial_fragility: NDArray[np.floating]
+    price_ratio: NDArray[np.floating]
+    price_dispersion: NDArray[np.floating]
+    equity_dispersion: NDArray[np.floating]
+    sales_dispersion: NDArray[np.floating]
+
+    # Growth rate distributions (final period)
+    output_growth_rates: NDArray[np.floating]
+    networth_growth_rates: NDArray[np.floating]
+
+    # Tiered distribution metrics (computed from growth rates)
+    output_growth_pct_within_tight: float
+    output_growth_pct_within_normal: float
+    output_growth_pct_outliers: float
+    networth_growth_pct_within_tight: float
+    networth_growth_pct_within_normal: float
+    networth_growth_pct_outliers: float
+
+    # Recession detection
+    recession_mask: NDArray[np.bool_]
+    n_recessions: int
+    avg_recession_length: float
+
+    # Minsky classification
+    minsky_hedge_pct: float
+    minsky_speculative_pct: float
+    minsky_ponzi_pct: float
+
+    # Additional summary statistics
+    bankruptcies_mean: float
+    real_interest_rate_mean: float
+    real_interest_rate_std: float
+    avg_fragility_mean: float
+    avg_fragility_std: float
+    price_ratio_mean: float
+    price_ratio_std: float
+    price_dispersion_mean: float
+    price_dispersion_std: float
+    equity_dispersion_mean: float
+    equity_dispersion_std: float
+    sales_dispersion_mean: float
+    sales_dispersion_std: float
+
+
+def _count_recession_episodes(recession_mask: NDArray[np.bool_]) -> tuple[int, float]:
+    """Count recession episodes and compute average length.
+
+    A recession episode is a sequence of consecutive True values.
+
+    Args:
+        recession_mask: Boolean array where True indicates a recession period.
+
+    Returns:
+        Tuple of (number of episodes, average episode length).
+    """
+    if not np.any(recession_mask):
+        return 0, 0.0
+
+    # Find start/end of each episode by detecting transitions
+    padded = np.concatenate([[False], recession_mask, [False]])
+    starts = np.where(padded[1:] & ~padded[:-1])[0]
+    ends = np.where(~padded[1:] & padded[:-1])[0]
+
+    n_episodes = len(starts)
+    if n_episodes == 0:
+        return 0, 0.0
+
+    lengths = ends - starts
+    avg_length = float(np.mean(lengths))
+
+    return n_episodes, avg_length
+
+
+def _compute_pct_within_range(
+    values: NDArray[np.floating], range_min: float, range_max: float
+) -> float:
+    """Compute percentage of values within a range.
+
+    Args:
+        values: Array of values to check.
+        range_min: Minimum of the range (inclusive).
+        range_max: Maximum of the range (inclusive).
+
+    Returns:
+        Fraction of valid (finite) values within [range_min, range_max].
+    """
+    valid = values[np.isfinite(values)]
+    if len(valid) == 0:
+        return 0.0
+    within = np.sum((valid >= range_min) & (valid <= range_max))
+    return float(within / len(valid))
+
 
 def compute_growth_plus_metrics(
     sim: bam.Simulation,
@@ -142,22 +273,6 @@ def compute_growth_plus_metrics(
 
     Returns:
         GrowthPlusMetrics dataclass containing all computed metrics
-
-    Required collection config for results:
-        collect={
-            "Producer": ["production", "labor_productivity"],
-            "Worker": ["wage", "employed"],
-            "Employer": ["n_vacancies"],
-            "Economy": True,
-            "aggregate": None,
-            "capture_timing": {
-                "Worker.wage": "workers_receive_wage",
-                "Worker.employed": "firms_run_production",
-                "Producer.production": "firms_run_production",
-                "Producer.labor_productivity": "firms_apply_productivity_growth",
-                "Employer.n_vacancies": "firms_decide_vacancies",
-            },
-        }
     """
     # =========================================================================
     # Extract raw data from results
@@ -165,10 +280,26 @@ def compute_growth_plus_metrics(
     inflation = results.economy_data["inflation"]
     avg_price = results.economy_data["avg_price"]
     production = results.role_data["Producer"]["production"]
+    inventory = results.role_data["Producer"]["inventory"]
     labor_productivity = results.role_data["Producer"]["labor_productivity"]
+    prices = results.role_data["Producer"]["price"]
     wages = results.role_data["Worker"]["wage"]
     employed = results.role_data["Worker"]["employed"]
     n_vacancies = results.role_data["Employer"]["n_vacancies"]
+    net_worth = results.role_data["Borrower"]["net_worth"]
+    total_funds = results.role_data["Borrower"]["total_funds"]
+    consumer_budget = results.role_data["Consumer"]["income_to_spend"]
+    n_firm_bankruptcies = np.array(
+        results.economy_data["n_firm_bankruptcies"], dtype=np.int_
+    )
+    n_bank_bankruptcies = np.array(
+        results.economy_data["n_bank_bankruptcies"], dtype=np.int_
+    )
+
+    # LoanBook data is stored as lists of arrays (one per period)
+    loan_principals = results.relationship_data["LoanBook"]["principal"]
+    loan_rates = results.relationship_data["LoanBook"]["rate"]
+    loan_source_ids = results.relationship_data["LoanBook"]["source_ids"]
 
     # =========================================================================
     # Compute time series metrics
@@ -296,11 +427,171 @@ def compute_growth_plus_metrics(
     # y = a + b*t, where b is the trend coefficient
     time_axis = np.arange(len(avg_productivity_ss))
     log_productivity = np.log(
-        np.where(avg_productivity_ss > 0, avg_productivity_ss, 1e-10)
+        np.where(avg_productivity_ss > 0, avg_productivity_ss, EPS)
     )
     # Use numpy polyfit for linear regression
     trend_coef, _ = np.polyfit(time_axis, log_productivity, 1)
     productivity_trend_coefficient = float(trend_coef)
+
+    # =========================================================================
+    # Compute financial dynamics metrics
+    # =========================================================================
+
+    # Real interest rate: weighted average nominal rate minus inflation
+    n_periods = len(inflation)
+    real_interest_rate = np.zeros(n_periods)
+    for t in range(n_periods):
+        principals_t = loan_principals[t]
+        rates_t = loan_rates[t]
+        if len(principals_t) > 0 and np.sum(principals_t) > 0:
+            weighted_nominal = float(
+                np.sum(rates_t * principals_t) / np.sum(principals_t)
+            )
+        else:
+            weighted_nominal = sim.r_bar  # Fallback to baseline rate
+        real_interest_rate[t] = weighted_nominal - inflation[t]
+
+    # Average financial fragility = total_wage_bill / total_net_worth
+    # This is the aggregate wage-bill to equity ratio for the economy
+    total_wage_bill = ops.sum(wages * employed.astype(float), axis=1)
+    total_net_worth = ops.sum(net_worth, axis=1)
+    # Safe division avoiding zero net worth
+    safe_total_nw = ops.where(ops.greater(total_net_worth, EPS), total_net_worth, EPS)
+    avg_financial_fragility = ops.divide(total_wage_bill, safe_total_nw)
+
+    # Price ratio: market price / market-clearing price
+    # Market price P = production-weighted average price (what consumers actually pay)
+    # Market-clearing price P* = total demand / total supply
+    safe_gdp = ops.where(ops.greater(gdp, EPS), gdp, EPS)
+    total_demand = ops.sum(consumer_budget, axis=1)
+    market_clearing_price = ops.divide(total_demand, safe_gdp)
+    price_ratio = ops.divide(avg_price, market_clearing_price)
+
+    # Dispersions (coefficient of variation = weighted_std / weighted_mean)
+    # Production-weighted std: sqrt(sum(w * (x - w_mean)^2) / sum(w))
+    # This weights dispersion by economic activity, reducing noise from small firms
+    safe_prod = np.where(production > 0, production, 0.0)
+    prod_sum = np.sum(safe_prod, axis=1, keepdims=True)
+    prod_weights = safe_prod / np.where(prod_sum > EPS, prod_sum, EPS)
+    weighted_price_mean = np.sum(prod_weights * prices, axis=1, keepdims=True)
+    weighted_price_var = np.sum(
+        prod_weights * (prices - weighted_price_mean) ** 2, axis=1
+    )
+    weighted_price_std = np.sqrt(np.maximum(weighted_price_var, 0.0))
+    w_mean_flat = weighted_price_mean.squeeze()
+    safe_w_mean = np.where(w_mean_flat > EPS, w_mean_flat, EPS)
+    price_dispersion = weighted_price_std / safe_w_mean
+
+    nw_mean = ops.mean(net_worth, axis=1)
+    equity_dispersion = ops.divide(
+        ops.std(net_worth, axis=1),
+        ops.where(ops.greater(np.abs(nw_mean), EPS), np.abs(nw_mean), EPS),
+    )
+
+    qty_sold = np.subtract(production, inventory)
+    sales = ops.multiply(prices, qty_sold)
+    sales_mean = ops.mean(sales, axis=1)
+    sales_dispersion = ops.divide(
+        ops.std(sales, axis=1),
+        ops.where(ops.greater(np.abs(sales_mean), EPS), np.abs(sales_mean), EPS),
+    )
+
+    # =========================================================================
+    # Compute growth rate distributions (GDP and net worth, after burn-in)
+    # =========================================================================
+    # Figure 3.6a shows GDP growth rate distribution across periods (not firm-level)
+    gdp_after_burnin = gdp[burn_in:]
+    output_growth_rates = np.diff(gdp_after_burnin) / gdp_after_burnin[:-1]
+
+    # Figure 3.6b: firm-level net worth growth rate (last period, cross-sectional)
+    # Exclude firms that went bankrupt (nw_final <= 0) or were just replaced (nw_prev <= 0)
+    nw_prev = net_worth[-2]  # All firms at period T-1
+    nw_final = net_worth[-1]  # All firms at period T
+    valid_firms = (nw_prev > 0) & (nw_final > 0)
+    nw_prev_valid = nw_prev[valid_firms]
+    nw_final_valid = nw_final[valid_firms]
+    networth_growth_rates = (nw_final_valid - nw_prev_valid) / nw_prev_valid
+
+    # =========================================================================
+    # Compute tiered distribution metrics
+    # =========================================================================
+    # Output growth rate distribution metrics
+    output_growth_pct_within_tight = _compute_pct_within_range(
+        output_growth_rates, -0.05, 0.05
+    )
+    output_growth_pct_within_normal = _compute_pct_within_range(
+        output_growth_rates, -0.10, 0.10
+    )
+    output_growth_pct_outliers = 1.0 - _compute_pct_within_range(
+        output_growth_rates, -0.15, 0.15
+    )
+
+    # Net worth growth rate distribution metrics
+    networth_growth_pct_within_tight = _compute_pct_within_range(
+        networth_growth_rates, -0.05, 0.05
+    )
+    networth_growth_pct_within_normal = _compute_pct_within_range(
+        networth_growth_rates, -0.10, 0.10
+    )
+    networth_growth_pct_outliers = 1.0 - _compute_pct_within_range(
+        networth_growth_rates, -0.50, 0.20
+    )
+
+    # =========================================================================
+    # Recession detection (peak-to-trough algorithm)
+    # =========================================================================
+    # Use peak-to-trough detection for broader recession episodes that match
+    # the book's recession shading pattern (includes slowdowns, partial recovery)
+    recession_mask = detect_recessions(log_gdp)
+    n_recessions, avg_recession_length = _count_recession_episodes(
+        recession_mask[burn_in:]
+    )
+
+    # =========================================================================
+    # Minsky classification (averaged over post-burn-in periods)
+    # =========================================================================
+    # Hedge: total_funds >= debt (can pay principal + interest)
+    # Speculative: interest <= total_funds < debt (can pay interest only)
+    # Ponzi: total_funds < interest (cannot even pay interest)
+    n_active_firms = sim.n_firms
+    n_periods_total = total_funds.shape[0]
+
+    hedge_pcts: list[float] = []
+    speculative_pcts: list[float] = []
+    ponzi_pcts: list[float] = []
+
+    for t in range(burn_in, n_periods_total):
+        tf = total_funds[t]
+        p = loan_principals[t]
+        r = loan_rates[t]
+        src = loan_source_ids[t]
+
+        debt_per_firm = np.zeros(n_active_firms)
+        interest_per_firm = np.zeros(n_active_firms)
+        if len(p) > 0:
+            np.add.at(debt_per_firm, src, p * (1.0 + r))
+            np.add.at(interest_per_firm, src, p * r)
+
+        hedge = tf >= debt_per_firm
+        ponzi = tf < interest_per_firm
+        speculative = (~hedge) & (~ponzi)
+
+        hedge_pcts.append(float(np.sum(hedge)) / n_active_firms)
+        speculative_pcts.append(float(np.sum(speculative)) / n_active_firms)
+        ponzi_pcts.append(float(np.sum(ponzi)) / n_active_firms)
+
+    minsky_hedge_pct = float(np.mean(hedge_pcts))
+    minsky_speculative_pct = float(np.mean(speculative_pcts))
+    minsky_ponzi_pct = float(np.mean(ponzi_pcts))
+
+    # Additional summary statistics (after burn-in)
+    bankruptcies_ss = n_firm_bankruptcies[burn_in:]
+    real_ir_ss = real_interest_rate[burn_in:]
+    fragility_ss = avg_financial_fragility[burn_in:]
+    price_ratio_ss = price_ratio[burn_in:]
+    price_disp_ss = price_dispersion[burn_in:]
+    equity_disp_ss = equity_dispersion[burn_in:]
+    sales_disp_ss = sales_dispersion[burn_in:]
 
     # =========================================================================
     # Return all metrics
@@ -345,22 +636,77 @@ def compute_growth_plus_metrics(
         real_wage_initial=real_wage_initial,
         real_wage_final=real_wage_final,
         total_real_wage_growth=total_real_wage_growth,
+        # Financial dynamics metrics
+        n_firm_bankruptcies=n_firm_bankruptcies,
+        n_bank_bankruptcies=n_bank_bankruptcies,
+        real_interest_rate=real_interest_rate,
+        avg_financial_fragility=avg_financial_fragility,
+        price_ratio=price_ratio,
+        price_dispersion=price_dispersion,
+        equity_dispersion=equity_dispersion,
+        sales_dispersion=sales_dispersion,
+        # Growth rate distributions
+        output_growth_rates=output_growth_rates,
+        networth_growth_rates=networth_growth_rates,
+        # Tiered distribution metrics
+        output_growth_pct_within_tight=output_growth_pct_within_tight,
+        output_growth_pct_within_normal=output_growth_pct_within_normal,
+        output_growth_pct_outliers=output_growth_pct_outliers,
+        networth_growth_pct_within_tight=networth_growth_pct_within_tight,
+        networth_growth_pct_within_normal=networth_growth_pct_within_normal,
+        networth_growth_pct_outliers=networth_growth_pct_outliers,
+        # Recession detection
+        recession_mask=recession_mask,
+        n_recessions=n_recessions,
+        avg_recession_length=avg_recession_length,
+        # Minsky classification
+        minsky_hedge_pct=minsky_hedge_pct,
+        minsky_speculative_pct=minsky_speculative_pct,
+        minsky_ponzi_pct=minsky_ponzi_pct,
+        # Additional summary statistics
+        bankruptcies_mean=float(np.mean(bankruptcies_ss)),
+        real_interest_rate_mean=float(np.mean(real_ir_ss)),
+        real_interest_rate_std=float(np.std(real_ir_ss)),
+        avg_fragility_mean=float(np.mean(fragility_ss)),
+        avg_fragility_std=float(np.std(fragility_ss)),
+        price_ratio_mean=float(np.mean(price_ratio_ss)),
+        price_ratio_std=float(np.std(price_ratio_ss)),
+        price_dispersion_mean=float(np.mean(price_disp_ss)),
+        price_dispersion_std=float(np.std(price_disp_ss)),
+        equity_dispersion_mean=float(np.mean(equity_disp_ss)),
+        equity_dispersion_std=float(np.std(equity_disp_ss)),
+        sales_dispersion_mean=float(np.mean(sales_disp_ss)),
+        sales_dispersion_std=float(np.std(sales_disp_ss)),
     )
 
 
 # Standard collection config for Growth+ scenario
 GROWTH_PLUS_COLLECT_CONFIG = {
-    "Producer": ["production", "labor_productivity"],
+    "Producer": ["production", "labor_productivity", "price", "inventory"],
     "Worker": ["wage", "employed"],
     "Employer": ["n_vacancies"],
+    "Borrower": ["net_worth", "gross_profit", "total_funds"],
+    "Consumer": ["income_to_spend"],
+    "LoanBook": ["principal", "rate", "source_ids"],
     "Economy": True,
     "aggregate": None,
     "capture_timing": {
-        "Worker.wage": "workers_receive_wage",
+        "Worker.wage": "firms_run_production",
         "Worker.employed": "firms_run_production",
         "Producer.production": "firms_run_production",
         "Producer.labor_productivity": "firms_apply_productivity_growth",
+        "Producer.price": "firms_adjust_price",
+        "Producer.inventory": "consumers_finalize_purchases",
         "Employer.n_vacancies": "firms_decide_vacancies",
+        "Borrower.net_worth": "firms_run_production",
+        "Borrower.gross_profit": "firms_collect_revenue",
+        "Borrower.total_funds": "firms_collect_revenue",
+        "Consumer.income_to_spend": "consumers_decide_income_to_spend",
+        "LoanBook.principal": "banks_provide_loans",
+        "LoanBook.rate": "banks_provide_loans",
+        "LoanBook.source_ids": "banks_provide_loans",
+        "Economy.n_firm_bankruptcies": "mark_bankrupt_firms",
+        "Economy.n_bank_bankruptcies": "mark_bankrupt_banks",
     },
 }
 
@@ -388,6 +734,7 @@ def load_growth_plus_targets() -> dict[str, dict[str, float]]:
     ts = data["time_series"]
     curves = data["curves"]
     dist = data["distributions"]
+    fin = data.get("financial_dynamics", {})
 
     return {
         "log_gdp": {
@@ -448,4 +795,82 @@ def load_growth_plus_targets() -> dict[str, dict[str, float]]:
             "skewness_min": dist["firm_size"]["targets"]["skewness_min"],
             "skewness_max": dist["firm_size"]["targets"]["skewness_max"],
         },
+        "bankruptcies": {
+            "mean_target": fin["bankruptcies"]["targets"]["mean_target"],
+            "mean_tolerance": fin["bankruptcies"]["targets"]["mean_tolerance"],
+        },
+        "real_interest_rate": {
+            "mean_target": fin["real_interest_rate"]["targets"]["mean_target"],
+            "mean_tolerance": fin["real_interest_rate"]["targets"]["mean_tolerance"],
+            "std_target": fin["real_interest_rate"]["targets"]["std_target"],
+            "std_tolerance": fin["real_interest_rate"]["targets"]["std_tolerance"],
+            "normal_min": fin["real_interest_rate"]["targets"]["normal_min"],
+            "normal_max": fin["real_interest_rate"]["targets"]["normal_max"],
+            "extreme_min": fin["real_interest_rate"]["targets"]["extreme_min"],
+            "extreme_max": fin["real_interest_rate"]["targets"]["extreme_max"],
+        },
+        "financial_fragility": {
+            "mean_target": fin["financial_fragility"]["targets"]["mean_target"],
+            "mean_tolerance": fin["financial_fragility"]["targets"]["mean_tolerance"],
+            "std_target": fin["financial_fragility"]["targets"]["std_target"],
+            "std_tolerance": fin["financial_fragility"]["targets"]["std_tolerance"],
+            "normal_min": fin["financial_fragility"]["targets"]["normal_min"],
+            "normal_max": fin["financial_fragility"]["targets"]["normal_max"],
+            "extreme_min": fin["financial_fragility"]["targets"]["extreme_min"],
+            "extreme_max": fin["financial_fragility"]["targets"]["extreme_max"],
+        },
+        "price_ratio": {
+            "mean_target": fin["price_ratio"]["targets"]["mean_target"],
+            "mean_tolerance": fin["price_ratio"]["targets"]["mean_tolerance"],
+            "std_target": fin["price_ratio"]["targets"]["std_target"],
+            "std_tolerance": fin["price_ratio"]["targets"]["std_tolerance"],
+            "normal_min": fin["price_ratio"]["targets"]["normal_min"],
+            "normal_max": fin["price_ratio"]["targets"]["normal_max"],
+            "extreme_min": fin["price_ratio"]["targets"]["extreme_min"],
+            "extreme_max": fin["price_ratio"]["targets"]["extreme_max"],
+        },
+        "price_dispersion": {
+            "mean_target": fin["price_dispersion"]["targets"]["mean_target"],
+            "mean_tolerance": fin["price_dispersion"]["targets"]["mean_tolerance"],
+            "std_target": fin["price_dispersion"]["targets"]["std_target"],
+            "std_tolerance": fin["price_dispersion"]["targets"]["std_tolerance"],
+            "normal_min": fin["price_dispersion"]["targets"]["normal_min"],
+            "normal_max": fin["price_dispersion"]["targets"]["normal_max"],
+            "extreme_min": fin["price_dispersion"]["targets"]["extreme_min"],
+            "extreme_max": fin["price_dispersion"]["targets"]["extreme_max"],
+        },
+        "equity_dispersion": {
+            "mean_target": fin["equity_dispersion"]["targets"]["mean_target"],
+            "mean_tolerance": fin["equity_dispersion"]["targets"]["mean_tolerance"],
+            "std_target": fin["equity_dispersion"]["targets"]["std_target"],
+            "std_tolerance": fin["equity_dispersion"]["targets"]["std_tolerance"],
+            "normal_min": fin["equity_dispersion"]["targets"]["normal_min"],
+            "normal_max": fin["equity_dispersion"]["targets"]["normal_max"],
+            "extreme_min": fin["equity_dispersion"]["targets"]["extreme_min"],
+            "extreme_max": fin["equity_dispersion"]["targets"]["extreme_max"],
+        },
+        "sales_dispersion": {
+            "mean_target": fin["sales_dispersion"]["targets"]["mean_target"],
+            "mean_tolerance": fin["sales_dispersion"]["targets"]["mean_tolerance"],
+            "std_target": fin["sales_dispersion"]["targets"]["std_target"],
+            "std_tolerance": fin["sales_dispersion"]["targets"]["std_tolerance"],
+            "normal_min": fin["sales_dispersion"]["targets"]["normal_min"],
+            "normal_max": fin["sales_dispersion"]["targets"]["normal_max"],
+            "extreme_min": fin["sales_dispersion"]["targets"]["extreme_min"],
+            "extreme_max": fin["sales_dispersion"]["targets"]["extreme_max"],
+        },
+        "minsky": {
+            "hedge_pct_target": fin["minsky_classification"]["targets"][
+                "hedge_pct_target"
+            ],
+            "hedge_pct_min": fin["minsky_classification"]["targets"]["hedge_pct_min"],
+            "hedge_pct_max": fin["minsky_classification"]["targets"]["hedge_pct_max"],
+            "ponzi_pct_target": fin["minsky_classification"]["targets"][
+                "ponzi_pct_target"
+            ],
+            "ponzi_pct_min": fin["minsky_classification"]["targets"]["ponzi_pct_min"],
+            "ponzi_pct_max": fin["minsky_classification"]["targets"]["ponzi_pct_max"],
+        },
+        # Raw financial_dynamics section for visualization code
+        "financial_dynamics": fin,
     }
