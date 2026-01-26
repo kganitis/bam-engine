@@ -21,8 +21,12 @@ from validation.core import (
     StabilityResult,
     ValidationScore,
     check_mean_tolerance,
+    check_outlier_penalty,
+    check_pct_within_target,
     check_range,
     score_mean_tolerance,
+    score_outlier_penalty,
+    score_pct_within_target,
     score_range,
 )
 from validation.metrics import (
@@ -837,6 +841,481 @@ def run_growth_plus_validation(
         )
     )
 
+    # Financial dynamics metrics
+    fin = targets["financial_dynamics"]
+
+    # Bankruptcies mean
+    bkr = fin["bankruptcies"]["targets"]
+    status = check_mean_tolerance(
+        metrics.bankruptcies_mean,
+        bkr["mean_target"],
+        bkr["mean_tolerance"],
+    )
+    score = score_mean_tolerance(
+        metrics.bankruptcies_mean,
+        bkr["mean_target"],
+        bkr["mean_tolerance"],
+    )
+    validation_results.append(
+        MetricResult(
+            "bankruptcies_mean",
+            status,
+            metrics.bankruptcies_mean,
+            f"mean: {bkr['mean_target']:.1f} ± {bkr['mean_tolerance']:.1f}",
+            score,
+            weights.get("bankruptcies_mean", 0.5),
+        )
+    )
+
+    # Real interest rate mean
+    rir = fin["real_interest_rate"]["targets"]
+    status = check_mean_tolerance(
+        metrics.real_interest_rate_mean,
+        rir["mean_target"],
+        rir["mean_tolerance"],
+    )
+    score = score_mean_tolerance(
+        metrics.real_interest_rate_mean,
+        rir["mean_target"],
+        rir["mean_tolerance"],
+    )
+    validation_results.append(
+        MetricResult(
+            "real_interest_rate_mean",
+            status,
+            metrics.real_interest_rate_mean,
+            f"mean: {rir['mean_target']:.2f} ± {rir['mean_tolerance']:.2f}",
+            score,
+            weights.get("real_interest_rate_mean", 0.5),
+        )
+    )
+
+    # Real interest rate std
+    status = check_mean_tolerance(
+        metrics.real_interest_rate_std,
+        rir["std_target"],
+        rir["std_tolerance"],
+    )
+    score = score_mean_tolerance(
+        metrics.real_interest_rate_std,
+        rir["std_target"],
+        rir["std_tolerance"],
+    )
+    validation_results.append(
+        MetricResult(
+            "real_interest_rate_std",
+            status,
+            metrics.real_interest_rate_std,
+            f"std: {rir['std_target']:.2f} ± {rir['std_tolerance']:.2f}",
+            score,
+            weights.get("real_interest_rate_std", 0.5),
+        )
+    )
+
+    # Financial fragility mean
+    frag = fin["financial_fragility"]["targets"]
+    status = check_mean_tolerance(
+        metrics.avg_fragility_mean,
+        frag["mean_target"],
+        frag["mean_tolerance"],
+    )
+    score = score_mean_tolerance(
+        metrics.avg_fragility_mean,
+        frag["mean_target"],
+        frag["mean_tolerance"],
+    )
+    validation_results.append(
+        MetricResult(
+            "financial_fragility_mean",
+            status,
+            metrics.avg_fragility_mean,
+            f"mean: {frag['mean_target']:.2f} ± {frag['mean_tolerance']:.2f}",
+            score,
+            weights.get("financial_fragility_mean", 0.5),
+        )
+    )
+
+    # Financial fragility std
+    status = check_mean_tolerance(
+        metrics.avg_fragility_std,
+        frag["std_target"],
+        frag["std_tolerance"],
+    )
+    score = score_mean_tolerance(
+        metrics.avg_fragility_std,
+        frag["std_target"],
+        frag["std_tolerance"],
+    )
+    validation_results.append(
+        MetricResult(
+            "financial_fragility_std",
+            status,
+            metrics.avg_fragility_std,
+            f"std: {frag['std_target']:.3f} ± {frag['std_tolerance']:.3f}",
+            score,
+            weights.get("financial_fragility_std", 0.5),
+        )
+    )
+
+    # Price ratio mean
+    pr = fin["price_ratio"]["targets"]
+    status = check_mean_tolerance(
+        metrics.price_ratio_mean,
+        pr["mean_target"],
+        pr["mean_tolerance"],
+    )
+    score = score_mean_tolerance(
+        metrics.price_ratio_mean,
+        pr["mean_target"],
+        pr["mean_tolerance"],
+    )
+    validation_results.append(
+        MetricResult(
+            "price_ratio_mean",
+            status,
+            metrics.price_ratio_mean,
+            f"mean: {pr['mean_target']:.2f} ± {pr['mean_tolerance']:.2f}",
+            score,
+            weights.get("price_ratio_mean", 0.5),
+        )
+    )
+
+    # Price ratio std
+    status = check_mean_tolerance(
+        metrics.price_ratio_std,
+        pr["std_target"],
+        pr["std_tolerance"],
+    )
+    score = score_mean_tolerance(
+        metrics.price_ratio_std,
+        pr["std_target"],
+        pr["std_tolerance"],
+    )
+    validation_results.append(
+        MetricResult(
+            "price_ratio_std",
+            status,
+            metrics.price_ratio_std,
+            f"std: {pr['std_target']:.2f} ± {pr['std_tolerance']:.2f}",
+            score,
+            weights.get("price_ratio_std", 0.5),
+        )
+    )
+
+    # Price dispersion mean
+    pd = fin["price_dispersion"]["targets"]
+    status = check_mean_tolerance(
+        metrics.price_dispersion_mean,
+        pd["mean_target"],
+        pd["mean_tolerance"],
+    )
+    score = score_mean_tolerance(
+        metrics.price_dispersion_mean,
+        pd["mean_target"],
+        pd["mean_tolerance"],
+    )
+    validation_results.append(
+        MetricResult(
+            "price_dispersion_mean",
+            status,
+            metrics.price_dispersion_mean,
+            f"mean: {pd['mean_target']:.2f} ± {pd['mean_tolerance']:.2f}",
+            score,
+            weights.get("price_dispersion_mean", 0.5),
+        )
+    )
+
+    # Price dispersion std
+    status = check_mean_tolerance(
+        metrics.price_dispersion_std,
+        pd["std_target"],
+        pd["std_tolerance"],
+    )
+    score = score_mean_tolerance(
+        metrics.price_dispersion_std,
+        pd["std_target"],
+        pd["std_tolerance"],
+    )
+    validation_results.append(
+        MetricResult(
+            "price_dispersion_std",
+            status,
+            metrics.price_dispersion_std,
+            f"std: {pd['std_target']:.3f} ± {pd['std_tolerance']:.3f}",
+            score,
+            weights.get("price_dispersion_std", 0.5),
+        )
+    )
+
+    # Equity dispersion mean
+    ed = fin["equity_dispersion"]["targets"]
+    status = check_mean_tolerance(
+        metrics.equity_dispersion_mean,
+        ed["mean_target"],
+        ed["mean_tolerance"],
+    )
+    score = score_mean_tolerance(
+        metrics.equity_dispersion_mean,
+        ed["mean_target"],
+        ed["mean_tolerance"],
+    )
+    validation_results.append(
+        MetricResult(
+            "equity_dispersion_mean",
+            status,
+            metrics.equity_dispersion_mean,
+            f"mean: {ed['mean_target']:.2f} ± {ed['mean_tolerance']:.2f}",
+            score,
+            weights.get("equity_dispersion_mean", 0.5),
+        )
+    )
+
+    # Equity dispersion std
+    status = check_mean_tolerance(
+        metrics.equity_dispersion_std,
+        ed["std_target"],
+        ed["std_tolerance"],
+    )
+    score = score_mean_tolerance(
+        metrics.equity_dispersion_std,
+        ed["std_target"],
+        ed["std_tolerance"],
+    )
+    validation_results.append(
+        MetricResult(
+            "equity_dispersion_std",
+            status,
+            metrics.equity_dispersion_std,
+            f"std: {ed['std_target']:.2f} ± {ed['std_tolerance']:.2f}",
+            score,
+            weights.get("equity_dispersion_std", 0.5),
+        )
+    )
+
+    # Sales dispersion mean
+    sd = fin["sales_dispersion"]["targets"]
+    status = check_mean_tolerance(
+        metrics.sales_dispersion_mean,
+        sd["mean_target"],
+        sd["mean_tolerance"],
+    )
+    score = score_mean_tolerance(
+        metrics.sales_dispersion_mean,
+        sd["mean_target"],
+        sd["mean_tolerance"],
+    )
+    validation_results.append(
+        MetricResult(
+            "sales_dispersion_mean",
+            status,
+            metrics.sales_dispersion_mean,
+            f"mean: {sd['mean_target']:.2f} ± {sd['mean_tolerance']:.2f}",
+            score,
+            weights.get("sales_dispersion_mean", 0.5),
+        )
+    )
+
+    # Sales dispersion std
+    status = check_mean_tolerance(
+        metrics.sales_dispersion_std,
+        sd["std_target"],
+        sd["std_tolerance"],
+    )
+    score = score_mean_tolerance(
+        metrics.sales_dispersion_std,
+        sd["std_target"],
+        sd["std_tolerance"],
+    )
+    validation_results.append(
+        MetricResult(
+            "sales_dispersion_std",
+            status,
+            metrics.sales_dispersion_std,
+            f"std: {sd['std_target']:.2f} ± {sd['std_tolerance']:.2f}",
+            score,
+            weights.get("sales_dispersion_std", 0.5),
+        )
+    )
+
+    # Minsky hedge percentage
+    minsky = fin["minsky_classification"]["targets"]
+    status = check_range(
+        metrics.minsky_hedge_pct,
+        minsky["hedge_pct_min"],
+        minsky["hedge_pct_max"],
+    )
+    score = score_range(
+        metrics.minsky_hedge_pct,
+        minsky["hedge_pct_min"],
+        minsky["hedge_pct_max"],
+    )
+    validation_results.append(
+        MetricResult(
+            "minsky_hedge_pct",
+            status,
+            metrics.minsky_hedge_pct,
+            f"range: [{minsky['hedge_pct_min'] * 100:.0f}%, {minsky['hedge_pct_max'] * 100:.0f}%]",
+            score,
+            weights.get("minsky_hedge_pct", 0.5),
+        )
+    )
+
+    # Minsky ponzi percentage
+    status = check_range(
+        metrics.minsky_ponzi_pct,
+        minsky["ponzi_pct_min"],
+        minsky["ponzi_pct_max"],
+    )
+    score = score_range(
+        metrics.minsky_ponzi_pct,
+        minsky["ponzi_pct_min"],
+        minsky["ponzi_pct_max"],
+    )
+    validation_results.append(
+        MetricResult(
+            "minsky_ponzi_pct",
+            status,
+            metrics.minsky_ponzi_pct,
+            f"range: [{minsky['ponzi_pct_min'] * 100:.0f}%, {minsky['ponzi_pct_max'] * 100:.0f}%]",
+            score,
+            weights.get("minsky_ponzi_pct", 0.5),
+        )
+    )
+
+    # --- Growth Rate Distribution Metrics (Tiered Validation) ---
+
+    # Output growth: percentage within tight range
+    ogd = fin["output_growth_distribution"]["targets"]
+    status = check_pct_within_target(
+        metrics.output_growth_pct_within_tight,
+        ogd["pct_within_tight_target"],
+        ogd["pct_within_tight_min"],
+    )
+    score = score_pct_within_target(
+        metrics.output_growth_pct_within_tight,
+        ogd["pct_within_tight_target"],
+        ogd["pct_within_tight_min"],
+    )
+    validation_results.append(
+        MetricResult(
+            "output_growth_pct_tight",
+            status,
+            metrics.output_growth_pct_within_tight,
+            f"target: {ogd['pct_within_tight_target'] * 100:.0f}% (min: {ogd['pct_within_tight_min'] * 100:.0f}%)",
+            score,
+            weights.get("output_growth_pct_tight", 1.0),
+        )
+    )
+
+    # Output growth: percentage within normal range
+    status = check_pct_within_target(
+        metrics.output_growth_pct_within_normal,
+        ogd["pct_within_normal_target"],
+        ogd["pct_within_normal_min"],
+    )
+    score = score_pct_within_target(
+        metrics.output_growth_pct_within_normal,
+        ogd["pct_within_normal_target"],
+        ogd["pct_within_normal_min"],
+    )
+    validation_results.append(
+        MetricResult(
+            "output_growth_pct_normal",
+            status,
+            metrics.output_growth_pct_within_normal,
+            f"target: {ogd['pct_within_normal_target'] * 100:.0f}% (min: {ogd['pct_within_normal_min'] * 100:.0f}%)",
+            score,
+            weights.get("output_growth_pct_normal", 0.5),
+        )
+    )
+
+    # Output growth: outlier penalty
+    status = check_outlier_penalty(
+        metrics.output_growth_pct_outliers,
+        ogd["max_outlier_pct"],
+    )
+    score = score_outlier_penalty(
+        metrics.output_growth_pct_outliers,
+        ogd["max_outlier_pct"],
+        ogd.get("outlier_penalty_weight", 2.0),
+    )
+    validation_results.append(
+        MetricResult(
+            "output_growth_outliers",
+            status,
+            metrics.output_growth_pct_outliers,
+            f"max: {ogd['max_outlier_pct'] * 100:.0f}%",
+            score,
+            weights.get("output_growth_outliers", 1.5),
+        )
+    )
+
+    # Net worth growth: percentage within tight range
+    nwd = fin["networth_growth_distribution"]["targets"]
+    status = check_pct_within_target(
+        metrics.networth_growth_pct_within_tight,
+        nwd["pct_within_tight_target"],
+        nwd["pct_within_tight_min"],
+    )
+    score = score_pct_within_target(
+        metrics.networth_growth_pct_within_tight,
+        nwd["pct_within_tight_target"],
+        nwd["pct_within_tight_min"],
+    )
+    validation_results.append(
+        MetricResult(
+            "networth_growth_pct_tight",
+            status,
+            metrics.networth_growth_pct_within_tight,
+            f"target: {nwd['pct_within_tight_target'] * 100:.0f}% (min: {nwd['pct_within_tight_min'] * 100:.0f}%)",
+            score,
+            weights.get("networth_growth_pct_tight", 1.0),
+        )
+    )
+
+    # Net worth growth: percentage within normal range
+    status = check_pct_within_target(
+        metrics.networth_growth_pct_within_normal,
+        nwd["pct_within_normal_target"],
+        nwd["pct_within_normal_min"],
+    )
+    score = score_pct_within_target(
+        metrics.networth_growth_pct_within_normal,
+        nwd["pct_within_normal_target"],
+        nwd["pct_within_normal_min"],
+    )
+    validation_results.append(
+        MetricResult(
+            "networth_growth_pct_normal",
+            status,
+            metrics.networth_growth_pct_within_normal,
+            f"target: {nwd['pct_within_normal_target'] * 100:.0f}% (min: {nwd['pct_within_normal_min'] * 100:.0f}%)",
+            score,
+            weights.get("networth_growth_pct_normal", 0.5),
+        )
+    )
+
+    # Net worth growth: outlier penalty
+    status = check_outlier_penalty(
+        metrics.networth_growth_pct_outliers,
+        nwd["max_outlier_pct"],
+    )
+    score = score_outlier_penalty(
+        metrics.networth_growth_pct_outliers,
+        nwd["max_outlier_pct"],
+        nwd.get("outlier_penalty_weight", 2.0),
+    )
+    validation_results.append(
+        MetricResult(
+            "networth_growth_outliers",
+            status,
+            metrics.networth_growth_pct_outliers,
+            f"max: {nwd['max_outlier_pct'] * 100:.0f}%",
+            score,
+            weights.get("networth_growth_outliers", 1.5),
+        )
+    )
+
     # Compute totals
     n_pass = sum(1 for r in validation_results if r.status == "PASS")
     n_warn = sum(1 for r in validation_results if r.status == "WARN")
@@ -894,7 +1373,7 @@ def print_growth_plus_report(result: ValidationScore) -> None:
     print("\nGROWTH METRICS:")
     print(f"  {'Metric':<28} {'Status':<6} {'Actual':>8}  {'Score':>6}  Target")
     print("  " + "-" * 74)
-    for r in result.metric_results[9:]:
+    for r in result.metric_results[9:12]:
         if "growth" in r.name:
             print(
                 f"  {r.name:<28} {r.status:<6} {r.actual * 100:>7.1f}%  {r.score:>6.3f}  ({r.target_desc})"
@@ -903,6 +1382,28 @@ def print_growth_plus_report(result: ValidationScore) -> None:
             print(
                 f"  {r.name:<28} {r.status:<6} {r.actual:>8.6f}  {r.score:>6.3f}  ({r.target_desc})"
             )
+
+    print("\nFINANCIAL DYNAMICS:")
+    print(f"  {'Metric':<28} {'Status':<6} {'Actual':>8}  {'Score':>6}  Target")
+    print("  " + "-" * 74)
+    for r in result.metric_results[12:27]:
+        if "pct" in r.name:
+            print(
+                f"  {r.name:<28} {r.status:<6} {r.actual * 100:>7.1f}%  {r.score:>6.3f}  ({r.target_desc})"
+            )
+        else:
+            print(
+                f"  {r.name:<28} {r.status:<6} {r.actual:>8.4f}  {r.score:>6.3f}  ({r.target_desc})"
+            )
+
+    print("\nGROWTH RATE DISTRIBUTIONS:")
+    print(f"  {'Metric':<28} {'Status':<6} {'Actual':>8}  {'Score':>6}  Target")
+    print("  " + "-" * 74)
+    for r in result.metric_results[27:]:
+        # All these metrics are percentages
+        print(
+            f"  {r.name:<28} {r.status:<6} {r.actual * 100:>7.1f}%  {r.score:>6.3f}  ({r.target_desc})"
+        )
 
     print("\n" + "=" * 78)
     print(

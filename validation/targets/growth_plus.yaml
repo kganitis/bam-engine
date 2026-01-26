@@ -373,3 +373,318 @@ derived_metrics:
     formula: "productivity / real_wage"
     target: 1.5                     # Productivity ~1.5x real wage
     tolerance: 0.3
+
+
+# -- FINANCIAL DYNAMICS TARGETS -----------------------------------------------
+#
+# Metrics from Figures 3.6 and 3.7 of the book, characterizing business cycles,
+# financial fragility, market structure, and Minsky classification.
+
+financial_dynamics:
+
+  # --------------------------------------------------------------------------
+  # Output Growth Rate Distribution (Figure 3.6a)
+  # --------------------------------------------------------------------------
+  # Log-rank plot of GDP growth rates across periods after burn-in.
+  # Tent-shaped distribution with negative rates (blue) on left,
+  # positive rates (red) on right.
+  #
+  # Book figure (a): Range -0.12 to 0.08, ~30% negative, ~70% positive
+  #
+  output_growth_distribution:
+    description: "Output growth rate distribution (log-rank plot)"
+    unit: "ratio"
+
+    book_values:
+      range_min: -0.12
+      range_max: 0.08
+      negative_pct: 0.30
+      positive_pct: 0.70
+
+    targets:
+      # Tiered range thresholds
+      tight_range_min: -0.05
+      tight_range_max: 0.05
+      normal_range_min: -0.10
+      normal_range_max: 0.10
+      extreme_range_min: -0.15
+      extreme_range_max: 0.15
+      # Percentage targets
+      pct_within_tight_target: 0.95
+      pct_within_tight_min: 0.90
+      pct_within_normal_target: 0.99
+      pct_within_normal_min: 0.96
+      # Outlier penalty
+      max_outlier_pct: 0.02
+      outlier_penalty_weight: 2.0
+      # Legacy (backward compat)
+      range_min: -0.15
+      range_max: 0.10
+      negative_pct_min: 0.15
+      negative_pct_max: 0.45
+      positive_pct_min: 0.55
+      positive_pct_max: 0.85
+
+  # --------------------------------------------------------------------------
+  # Net Worth Growth Rate Distribution (Figure 3.6b)
+  # --------------------------------------------------------------------------
+  # Log-rank plot of firm-level net worth (asset) growth rates at last period.
+  # Cross-sectional distribution showing each firm's asset growth.
+  #
+  # Book figure (b): Range -0.35 to 0.15, ~40% negative, ~60% positive
+  #
+  networth_growth_distribution:
+    description: "Firm-level net worth growth rate distribution"
+    unit: "ratio"
+
+    book_values:
+      range_min: -0.35
+      range_max: 0.15
+      negative_pct: 0.40
+      positive_pct: 0.60
+
+    targets:
+      # Tiered range thresholds
+      tight_range_min: -0.05
+      tight_range_max: 0.05
+      normal_range_min: -0.10
+      normal_range_max: 0.10
+      extreme_range_min: -0.50
+      extreme_range_max: 0.20
+      # Percentage targets
+      pct_within_tight_target: 0.75
+      pct_within_tight_min: 0.60
+      pct_within_normal_target: 0.90
+      pct_within_normal_min: 0.80
+      # Outlier penalty
+      max_outlier_pct: 0.05
+      outlier_penalty_weight: 2.0
+      # Legacy (backward compat)
+      range_min: -0.50
+      range_max: 0.20
+      negative_pct_min: 0.15
+      negative_pct_max: 0.50
+      positive_pct_min: 0.50
+      positive_pct_max: 0.85
+
+  # --------------------------------------------------------------------------
+  # Number of Firm Bankruptcies (Figure 3.6d)
+  # --------------------------------------------------------------------------
+  # Bankruptcies per period show spikes during recessions.
+  #
+  # Book figure (d): Range 0-7, typical 1-3
+  #
+  bankruptcies:
+    description: "Number of firm bankruptcies per period"
+    unit: "count"
+    scales_with_population: true
+
+    book_values:
+      range_min: 0
+      range_max: 7
+      typical: 2
+
+    targets:
+      mean_target: 2.0
+      mean_tolerance: 1.5
+      extreme_max: 10
+
+  # --------------------------------------------------------------------------
+  # Real Interest Rate (Figure 3.6c)
+  # --------------------------------------------------------------------------
+  # Weighted average real interest rate across active loans.
+  #
+  # Book figure (c): Range -0.04 to 0.14, oscillates around mean ~0.05
+  # Most values fall between 0.02 and 0.08 (normal range).
+  #
+  real_interest_rate:
+    description: "Weighted average real interest rate"
+    unit: "ratio"
+    scales_with_population: false
+
+    book_values:
+      range_min: -0.04
+      range_max: 0.14
+      mean: 0.05
+      std: 0.02
+
+    targets:
+      mean_target: 0.05
+      mean_tolerance: 0.02
+      std_target: 0.02
+      std_tolerance: 0.01
+      normal_min: 0.00              # 0% - most values above this
+      normal_max: 0.10              # 10% - most values below this
+      extreme_min: -0.05            # -5% - hard lower bound
+      extreme_max: 0.15             # 15% - hard upper bound
+
+  # --------------------------------------------------------------------------
+  # Financial Fragility (Figure 3.7a)
+  # --------------------------------------------------------------------------
+  # Total wage bill / total net worth ratio for the economy.
+  # Increases before recessions, decreases during.
+  #
+  # Book figure (a): Range 0.05-0.12, procyclical pattern
+  #
+  financial_fragility:
+    description: "Average wage-bill to equity ratio"
+    unit: "ratio"
+    scales_with_population: false
+
+    book_values:
+      range_min: 0.05
+      range_max: 0.12
+      mean: 0.08
+      std: 0.015
+
+    targets:
+      mean_target: 0.08
+      mean_tolerance: 0.03
+      std_target: 0.015
+      std_tolerance: 0.01
+      normal_min: 0.05
+      normal_max: 0.12
+      extreme_min: 0.02
+      extreme_max: 0.15
+
+  # --------------------------------------------------------------------------
+  # Price Ratio (Figure 3.7b)
+  # --------------------------------------------------------------------------
+  # Ratio of market price to market-clearing price (P / P*).
+  # Measures market power; decreases during expansions, increases in recessions.
+  #
+  # Book figure (b): Range 1.1-1.7, countercyclical
+  #
+  price_ratio:
+    description: "Ratio of market price to market-clearing price"
+    unit: "ratio"
+    scales_with_population: false
+
+    book_values:
+      range_min: 1.1
+      range_max: 1.7
+      mean: 1.35
+      std: 0.13
+
+    targets:
+      mean_target: 1.35
+      mean_tolerance: 0.15
+      std_target: 0.13
+      std_tolerance: 0.05
+      normal_min: 1.1
+      normal_max: 1.8
+      extreme_min: 1.0
+      extreme_max: 2.0
+
+  # --------------------------------------------------------------------------
+  # Price Dispersion (Figure 3.7c)
+  # --------------------------------------------------------------------------
+  # Coefficient of variation of posted prices.
+  # Decreases during recessions as bankruptcies reduce heterogeneity.
+  #
+  # Book figure (c): Range 0.18-0.38
+  #
+  price_dispersion:
+    description: "Coefficient of variation of prices"
+    unit: "ratio"
+    scales_with_population: false
+
+    book_values:
+      range_min: 0.18
+      range_max: 0.38
+      mean: 0.28
+      std: 0.05
+
+    targets:
+      mean_target: 0.28
+      mean_tolerance: 0.08
+      std_target: 0.05
+      std_tolerance: 0.03
+      normal_min: 0.20
+      normal_max: 0.35
+      extreme_min: 0.15
+      extreme_max: 0.40
+
+  # --------------------------------------------------------------------------
+  # Equity Dispersion (Figure 3.7d - blue line)
+  # --------------------------------------------------------------------------
+  # Coefficient of variation of net worth.
+  # Increases during expansions, decreases during recessions.
+  #
+  # Book figure (d) blue line: Range 0.5-3.5, procyclical
+  #
+  equity_dispersion:
+    description: "Coefficient of variation of firm net worth"
+    unit: "ratio"
+    scales_with_population: false
+
+    book_values:
+      range_min: 0.5
+      range_max: 2.7
+      mean: 1.5
+      std: 0.6
+
+    targets:
+      mean_target: 1.5
+      mean_tolerance: 0.5
+      std_target: 0.6
+      std_tolerance: 0.3
+      normal_min: 0.6
+      normal_max: 2.5
+      extreme_min: 0.3
+      extreme_max: 3.0
+
+  # --------------------------------------------------------------------------
+  # Sales Dispersion (Figure 3.7d - red line)
+  # --------------------------------------------------------------------------
+  # Coefficient of variation of production/sales.
+  # Similar pattern to equity dispersion.
+  #
+  # Book figure (d) red line: Range 0.5-3.5, procyclical
+  #
+  sales_dispersion:
+    description: "Coefficient of variation of firm sales"
+    unit: "ratio"
+    scales_with_population: false
+
+    book_values:
+      range_min: 0.5
+      range_max: 3.5
+      mean: 1.5
+      std: 0.8
+
+    targets:
+      mean_target: 1.5
+      mean_tolerance: 0.5
+      std_target: 0.8
+      std_tolerance: 0.4
+      normal_min: 0.5
+      normal_max: 3.0
+      extreme_min: 0.3
+      extreme_max: 3.5
+
+  # --------------------------------------------------------------------------
+  # Minsky Classification (averaged over post-burn-in periods)
+  # --------------------------------------------------------------------------
+  # Firms classified by financial stability using total_funds vs debt/interest:
+  # - Hedge: total_funds >= debt (can pay principal + interest)
+  # - Speculative: interest <= total_funds < debt (can pay interest but not full debt)
+  # - Ponzi: total_funds < interest (cannot even pay interest)
+  #
+  # Book text: ~2/3 Hedge, <1/10 Ponzi
+  #
+  minsky_classification:
+    description: "Firm financial stability taxonomy"
+
+    book_values:
+      hedge_pct: 0.67
+      speculative_pct: 0.23
+      ponzi_pct: 0.10
+
+    targets:
+      hedge_pct_target: 0.67
+      hedge_pct_min: 0.40
+      hedge_pct_max: 0.85
+      ponzi_pct_target: 0.10
+      ponzi_pct_min: 0.02
+      ponzi_pct_max: 0.50

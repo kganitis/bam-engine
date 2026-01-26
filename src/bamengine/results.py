@@ -166,16 +166,16 @@ class _DataCollector:
             is_rel = self._is_relationship(name)
 
             if name == "Economy":
-                # Economy uses capture_after for all metrics
-                if self.capture_after:
-                    if var_spec is True:
-                        vars_to_capture = self.ECONOMY_METRICS
-                    else:
-                        vars_to_capture = var_spec
-                    for var_name in vars_to_capture:
-                        event_to_vars[self.capture_after].append(
-                            ("Economy", var_name, False)
-                        )
+                # Economy metrics: check capture_timing first, then capture_after
+                if var_spec is True:
+                    vars_to_capture = self.ECONOMY_METRICS
+                else:
+                    vars_to_capture = var_spec
+                for var_name in vars_to_capture:
+                    key = f"Economy.{var_name}"
+                    event = self.capture_timing.get(key, self.capture_after)
+                    if event:
+                        event_to_vars[event].append(("Economy", var_name, False))
             else:
                 # Role or Relationship data
                 try:

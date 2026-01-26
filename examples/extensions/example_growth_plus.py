@@ -43,6 +43,7 @@ For detailed validation with bounds and statistical annotations, run:
 
 import bamengine as bam
 from bamengine import Float, event, ops, role
+from validation.metrics._utils import detect_recessions
 
 # %%
 # Define Custom Role: RnD
@@ -161,16 +162,21 @@ if __name__ == "__main__":
 
     # Run simulation
     COLLECT_CONFIG = {
-        "Producer": ["production", "labor_productivity"],
+        "Producer": ["production", "labor_productivity", "price"],
         "Worker": ["wage", "employed"],
         "Employer": ["n_vacancies"],
+        "Borrower": ["net_worth", "gross_profit"],
         "Economy": True,
-        "aggregate": None,  # Collect per-agent data (2D arrays)
+        "aggregate": None,
         "capture_timing": {
             "Worker.wage": "workers_receive_wage",
             "Worker.employed": "firms_run_production",
             "Producer.production": "firms_run_production",
+            "Producer.price": "firms_adjust_price",
             "Employer.n_vacancies": "firms_decide_vacancies",
+            "Borrower.net_worth": "firms_update_net_worth",
+            "Borrower.gross_profit": "firms_collect_revenue",
+            "Economy.n_firm_bankruptcies": "mark_bankrupt_firms",
         },
     }
     results = sim.run(collect=COLLECT_CONFIG)
@@ -256,7 +262,7 @@ if __name__ == "__main__":
     # Visualize
     periods = ops.arange(burn_in, n_periods)
     fig, axes = plt.subplots(4, 2, figsize=(14, 20))
-    fig.suptitle("Growth+ Model (Section 3.8)", fontsize=16, y=0.995)
+    fig.suptitle("Growth+ Model (Section 3.9.2)", fontsize=16, y=0.995)
 
     axes[0, 0].plot(periods, log_gdp[burn_in:], linewidth=1, color="#2E86AB")
     axes[0, 0].set_title("Real GDP (Growing)", fontweight="bold")
@@ -333,6 +339,129 @@ if __name__ == "__main__":
     axes[3, 1].set_xlabel("Production")
     axes[3, 1].set_ylabel("Frequency")
     axes[3, 1].grid(True, linestyle="--", alpha=0.3)
+
+    plt.tight_layout()
+    plt.show()
+
+    # Financial Dynamics Visualization
+    # ---------------------------------
+    # Extract additional data for financial dynamics
+    prices = results.get_array("Producer", "price")
+    net_worth = results.get_array("Borrower", "net_worth")
+    gross_profit = results.get_array("Borrower", "gross_profit")
+    bankruptcies = np.array(results.economy_data["n_firm_bankruptcies"])
+
+    # Price dispersion (coefficient of variation)
+    price_std = ops.std(prices, axis=1)
+    price_mean = ops.mean(prices, axis=1)
+    price_dispersion = ops.divide(price_std, price_mean)
+
+    # Equity dispersion
+    nw_std = ops.std(net_worth, axis=1)
+    nw_mean = ops.mean(net_worth, axis=1)
+    equity_dispersion = ops.divide(
+        nw_std, ops.where(ops.greater(nw_mean, 0), nw_mean, 1.0)
+    )
+
+    # Sales dispersion
+    sales_std = ops.std(production, axis=1)
+    sales_mean = ops.mean(production, axis=1)
+    sales_dispersion = ops.divide(
+        sales_std, ops.where(ops.greater(sales_mean, 0), sales_mean, 1.0)
+    )
+
+    # Recession detection (peak-to-trough algorithm for broader episodes)
+    recession_mask = detect_recessions(log_gdp)
+
+    # Minsky classification (final period)
+    bor = sim.get_role("Borrower")
+    loans = sim.get_relationship("LoanBook")
+    firm_debt = np.array(loans.total_by_borrower())
+    gp = bor.gross_profit.copy()
+    n_active = np.sum(gp != 0)
+    hedge_count = np.sum(gp >= firm_debt)
+    speculative_count = np.sum((gp >= 0) & (gp < firm_debt))
+    ponzi_count = np.sum(gp < 0)
+
+    print(f"\nMinsky Classification (N={n_active} active firms):")
+    print(f"  Hedge:       {hedge_count / n_active * 100:5.1f}%")
+    print(f"  Speculative: {speculative_count / n_active * 100:5.1f}%")
+    print(f"  Ponzi:       {ponzi_count / n_active * 100:5.1f}%")
+
+    # Plot financial dynamics
+    fig2, axes2 = plt.subplots(2, 2, figsize=(14, 10))
+    fig2.suptitle("Growth+ Financial Dynamics", fontsize=16, y=0.995)
+
+    def add_recession_bands(ax, periods, mask):
+        if not np.any(mask):
+            return
+        in_rec = False
+        start_idx = 0
+        for i, is_rec in enumerate(mask):
+            if is_rec and not in_rec:
+                start_idx = i
+                in_rec = True
+            elif not is_rec and in_rec:
+                ax.axvspan(periods[start_idx], periods[i - 1], alpha=0.2, color="gray")
+                in_rec = False
+        if in_rec:
+            ax.axvspan(periods[start_idx], periods[-1], alpha=0.2, color="gray")
+
+    # Bankruptcies
+    add_recession_bands(axes2[0, 0], periods, recession_mask[burn_in:])
+    axes2[0, 0].plot(periods, bankruptcies[burn_in:], linewidth=1, color="#E74C3C")
+    axes2[0, 0].set_title("Firm Bankruptcies per Period", fontweight="bold")
+    axes2[0, 0].set_ylabel("Number of Bankruptcies")
+    axes2[0, 0].set_xlabel("t")
+    axes2[0, 0].set_ylim(bottom=0)
+    axes2[0, 0].grid(True, linestyle="--", alpha=0.3)
+
+    # Price dispersion
+    add_recession_bands(axes2[0, 1], periods, recession_mask[burn_in:])
+    axes2[0, 1].plot(periods, price_dispersion[burn_in:], linewidth=1, color="#A23B72")
+    axes2[0, 1].set_title("Price Dispersion (CV)", fontweight="bold")
+    axes2[0, 1].set_ylabel("Coefficient of Variation")
+    axes2[0, 1].set_xlabel("t")
+    axes2[0, 1].grid(True, linestyle="--", alpha=0.3)
+
+    # Equity and Sales dispersion
+    add_recession_bands(axes2[1, 0], periods, recession_mask[burn_in:])
+    axes2[1, 0].plot(
+        periods,
+        equity_dispersion[burn_in:],
+        linewidth=1,
+        color="#2E86AB",
+        label="Equity",
+    )
+    axes2[1, 0].plot(
+        periods, sales_dispersion[burn_in:], linewidth=1, color="#E74C3C", label="Sales"
+    )
+    axes2[1, 0].set_title("Equity & Sales Dispersion", fontweight="bold")
+    axes2[1, 0].set_ylabel("Coefficient of Variation")
+    axes2[1, 0].set_xlabel("t")
+    axes2[1, 0].legend(loc="upper right", fontsize=8)
+    axes2[1, 0].grid(True, linestyle="--", alpha=0.3)
+
+    # Output growth distribution (final snapshot)
+    prev_period_prod = results.get_array("Producer", "production")[-2, :]
+    curr_period_prod = results.get_array("Producer", "production")[-1, :]
+    output_growth_rates = ops.divide(
+        curr_period_prod - prev_period_prod,
+        ops.where(ops.greater(prev_period_prod, 0), prev_period_prod, 1.0),
+    )
+    valid_growth = output_growth_rates[np.isfinite(output_growth_rates)]
+    axes2[1, 1].hist(
+        valid_growth,
+        bins=20,
+        density=True,
+        edgecolor="black",
+        alpha=0.7,
+        color="#6A994E",
+    )
+    axes2[1, 1].set_title("Output Growth Rate Distribution", fontweight="bold")
+    axes2[1, 1].set_xlabel("Growth Rate")
+    axes2[1, 1].set_ylabel("Density")
+    axes2[1, 1].grid(True, linestyle="--", alpha=0.3)
 
     plt.tight_layout()
     plt.show()
