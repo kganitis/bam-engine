@@ -14,6 +14,8 @@ Or use programmatically:
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 from scipy.stats import skew
 
@@ -25,6 +27,39 @@ from validation.metrics import (
     compute_baseline_metrics,
     load_baseline_targets,
 )
+
+_OUTPUT_DIR = Path(__file__).parent / "output" / "baseline"
+
+_PANEL_NAMES = [
+    "1_gdp",
+    "2_unemployment",
+    "3_inflation",
+    "4_productivity_wage",
+    "5_phillips",
+    "6_okun",
+    "7_beveridge",
+    "8_firm_size",
+]
+
+
+def _save_panels(fig, axes, output_dir, panel_names, dpi=150):
+    """Save each subplot as an individual image and a combined figure."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+
+    for ax, name in zip(axes.flat, panel_names, strict=True):
+        extent = (
+            ax.get_tightbbox(renderer)
+            .transformed(fig.dpi_scale_trans.inverted())
+            .padded(0.15)
+        )
+        fig.savefig(output_dir / f"{name}.png", bbox_inches=extent, dpi=dpi)
+
+    fig.savefig(output_dir / "combined.png", bbox_inches="tight", dpi=dpi)
+    print(f"Saved {len(panel_names)} panels + combined figure to {output_dir}/")
 
 
 def visualize_baseline_results(
@@ -537,6 +572,7 @@ def visualize_baseline_results(
     )
 
     plt.tight_layout()
+    _save_panels(fig, axes, _OUTPUT_DIR, _PANEL_NAMES)
     plt.show()
 
 
