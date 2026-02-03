@@ -55,7 +55,7 @@ Standard BAM model behavior - validates unemployment, inflation, GDP, Phillips/O
 
 ### Growth+ (Section 3.9.2)
 
-Endogenous productivity growth via R&D investment - adds productivity growth, wage growth, and trend validation.
+Endogenous productivity growth via R&D investment - adds productivity growth, wage growth, financial dynamics, and trend validation.
 
 ## API Reference
 
@@ -70,8 +70,6 @@ Endogenous productivity growth via R&D investment - adds productivity growth, wa
 
 - `run_baseline_scenario(seed, n_periods, burn_in, show_plot) -> BaselineMetrics` - Run baseline with visualization
 - `run_growth_plus_scenario(seed, n_periods, burn_in, show_plot) -> GrowthPlusMetrics` - Run Growth+ with visualization
-- `visualize_baseline_results(metrics, bounds, burn_in)` - Detailed baseline visualization
-- `visualize_growth_plus_results(metrics, bounds, burn_in)` - Detailed Growth+ visualization
 
 ### Report Functions
 
@@ -80,12 +78,12 @@ Endogenous productivity growth via R&D investment - adds productivity growth, wa
 - `print_growth_plus_report(result)` - Formatted Growth+ report
 - `print_growth_plus_stability_report(result)` - Formatted Growth+ stability report
 
-### Growth+ Extension
+### Growth+ Extension (RnD Role)
 
-The package includes the RnD role and custom events for the Growth+ scenario:
+The R&D extension for Growth+ is in the `extensions/` package:
 
 ```python
-from validation.scenarios.growth_plus_extension import RnD, FirmsComputeRnDIntensity
+from extensions.rnd import RnD, FirmsComputeRnDIntensity
 
 # Use in custom simulations
 sim = bam.Simulation.init(sigma_min=0.0, sigma_max=0.1, sigma_decay=-1.0)
@@ -98,6 +96,8 @@ sim.use_role(RnD)
 - `StabilityResult` - Multi-seed result with mean/std/pass_rate
 - `MetricResult` - Individual metric validation result
 - `MetricStats` - Per-metric statistics across seeds
+- `MetricSpec` - Declarative specification for a validation metric
+- `Scenario` - Bundles metric specs, config, and compute function
 - `BaselineMetrics` - Computed metrics for baseline scenario
 - `GrowthPlusMetrics` - Computed metrics for Growth+ scenario
 
@@ -105,39 +105,84 @@ sim.use_role(RnD)
 
 - `score_mean_tolerance(actual, target, tolerance)` - Score based on distance from target
 - `score_range(actual, min_val, max_val)` - Score based on range position
+- `score_pct_within_target(actual, target, min_pct)` - Score for percentage checks
+- `score_outlier_penalty(outlier_pct, max_pct)` - Penalize excess outliers
 - `compute_combined_score(stability)` - Combined score for calibration ranking
+
+### Engine Functions
+
+- `validate(scenario, seed, n_periods, **config)` - Generic validation engine
+- `stability_test(scenario, seeds, n_periods, **config)` - Generic stability testing
+- `evaluate_metric(spec, metrics, targets)` - Evaluate single metric
+- `load_targets(scenario)` - Load YAML targets for scenario
 
 ### Constants
 
-- `DEFAULT_STABILITY_SEEDS = [0, 42, 123, 456, 789]`
+- `DEFAULT_STABILITY_SEEDS = list(range(20))` - 20 seeds for stability testing
 - `BASELINE_WEIGHTS` - Metric weights for baseline scenario
 - `GROWTH_PLUS_WEIGHTS` - Metric weights for Growth+ scenario
 
 ## Target Files
 
-Target values are defined in YAML files with inline documentation:
+Target values are defined in YAML files with standardized keys:
 
-- `validation/targets/baseline.yaml` - Baseline scenario targets
-- `validation/targets/growth_plus.yaml` - Growth+ scenario targets
+- `validation/targets/baseline.yaml` - Baseline scenario targets (22 metrics)
+- `validation/targets/growth_plus.yaml` - Growth+ scenario targets (39 metrics)
+
+YAML structure uses standardized keys:
+
+- `target`, `tolerance` for MEAN_TOLERANCE checks
+- `min`, `max` for RANGE checks
+- `target`, `min` for PCT_WITHIN checks
+- `max_outlier`, `penalty_weight` for OUTLIER checks
 
 ## Module Structure
 
 ```
 validation/
-├── __init__.py              # Package exports
-├── core.py                  # Types, dataclasses, scoring functions
-├── runners.py               # Validation runner functions
-├── metrics/                 # Metrics computation subpackage
-│   ├── __init__.py          # Re-exports all metrics
-│   ├── _utils.py            # Shared utilities
-│   ├── baseline.py          # Baseline scenario metrics
-│   └── growth_plus.py       # Growth+ scenario metrics
-├── scenarios/               # Scenario visualization subpackage
-│   ├── __init__.py          # Re-exports all scenarios
-│   ├── baseline.py          # Baseline scenario visualization
-│   ├── growth_plus.py       # Growth+ scenario visualization
-│   └── growth_plus_extension.py  # RnD role and custom events
+├── __init__.py              # Package exports and thin wrappers
+├── types.py                 # Core types: MetricSpec, Scenario, CheckType, etc.
+├── scoring.py               # Scoring and status check functions
+├── engine.py                # Generic validate() and stability_test()
+├── reporting.py             # Report printing functions
+├── scenarios/
+│   ├── __init__.py          # Re-exports scenarios
+│   ├── baseline.py          # Baseline: metrics + computation + run_scenario()
+│   ├── baseline_viz.py      # Baseline visualization functions
+│   ├── growth_plus.py       # Growth+: metrics + computation + run_scenario()
+│   └── growth_plus_viz.py   # Growth+ visualization functions
 └── targets/
     ├── baseline.yaml        # Baseline target values
     └── growth_plus.yaml     # Growth+ target values
+
+extensions/                  # Separate package for model extensions
+└── rnd/
+    ├── __init__.py          # Exports RnD role and events
+    ├── role.py              # RnD role definition
+    └── events.py            # R&D pipeline events
 ```
+
+## Architecture
+
+The validation package uses a **MetricSpec abstraction** for declarative metric validation:
+
+```python
+MetricSpec(
+    name="unemployment_rate_mean",
+    field="unemployment_mean",  # Attribute on Metrics dataclass
+    check_type=CheckType.MEAN_TOLERANCE,
+    target_path="metrics.unemployment_rate_mean",  # Path in YAML
+    weight=1.5,
+    group=MetricGroup.TIME_SERIES,
+)
+```
+
+The generic `validate()` engine:
+
+1. Loads targets from YAML
+1. Runs simulation with scenario config
+1. Computes metrics using scenario's compute function
+1. Evaluates each MetricSpec against targets
+1. Returns weighted ValidationScore
+
+This design enables easy addition of new metrics (just add MetricSpec + field) and new scenarios (just create new scenario file).

@@ -1,1262 +1,1286 @@
-"""Growth+ scenario visualization.
+"""Growth+ scenario definition (Section 3.9.2).
 
-This module provides detailed visualization for the Growth+ scenario from
-section 3.9.2 of Delli Gatti et al. (2011). The visualization includes
-target bounds, statistical annotations, and validation status indicators.
+This module defines the Growth+ validation scenario from Delli Gatti et al. (2011).
+It contains the metrics dataclass, computation function, and scenario configuration.
 
-Run as a script for standalone execution:
-    python -m validation.scenarios.growth_plus
+The Growth+ scenario extends the baseline with endogenous productivity growth
+through R&D investment.
 
-Or use programmatically:
-    from validation.scenarios.growth_plus import run_scenario, visualize_growth_plus_results
-    result = run_scenario(seed=42, show_plot=True)
+For visualization, see growth_plus_viz.py.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
-from scipy.stats import skew
+import yaml
+from numpy.typing import NDArray
+from scipy import stats
+from scipy.signal import find_peaks
 
 import bamengine as bam
-from bamengine import ops
-from validation.metrics import (
-    GROWTH_PLUS_COLLECT_CONFIG,
-    GrowthPlusMetrics,
-    compute_growth_plus_metrics,
-    load_growth_plus_targets,
-)
-from validation.scenarios.growth_plus_extension import RnD
+from bamengine import SimulationResults, ops
+from bamengine.utils import EPS
+from validation.scenarios._utils import adjust_burn_in, filter_outliers_iqr
+from validation.types import CheckType, MetricFormat, MetricGroup, MetricSpec, Scenario
 
-_OUTPUT_DIR = Path(__file__).parent / "output" / "growth_plus"
-
-_PANEL_NAMES = [
-    "1_gdp",
-    "2_unemployment",
-    "3_inflation",
-    "4_productivity_wage",
-    "5_phillips",
-    "6_okun",
-    "7_beveridge",
-    "8_firm_size",
-]
-
-_FINANCIAL_PANEL_NAMES = [
-    "9_output_growth_dist",
-    "10_networth_growth_dist",
-    "11_real_interest",
-    "12_bankruptcies",
-    "13_fragility",
-    "14_price_ratio",
-    "15_price_dispersion",
-    "16_equity_sales_dispersion",
-]
+# =============================================================================
+# Metrics Dataclass
+# =============================================================================
 
 
-def _save_panels(fig, axes, output_dir, panel_names, dpi=150):
-    """Save each subplot as an individual image and a combined figure."""
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+@dataclass
+class GrowthPlusMetrics:
+    """All computed metrics from a Growth+ simulation run.
 
-    fig.canvas.draw()
-    renderer = fig.canvas.get_renderer()
-
-    for ax, name in zip(axes.flat, panel_names, strict=True):
-        extent = (
-            ax.get_tightbbox(renderer)
-            .transformed(fig.dpi_scale_trans.inverted())
-            .padded(0.15)
-        )
-        fig.savefig(output_dir / f"{name}.png", bbox_inches=extent, dpi=dpi)
-
-    fig.savefig(output_dir / "combined.png", bbox_inches="tight", dpi=dpi)
-    print(f"Saved {len(panel_names)} panels + combined figure to {output_dir}/")
-
-
-def _shade_beyond_extreme(ax, extreme_min, extreme_max, axis="y"):
-    """Shade areas beyond extreme bounds darker than the transition zone.
-
-    Creates a visual hierarchy:
-    - Normal zone (white): within normal bounds
-    - Transition zone (alpha=0.1 red): between extreme and normal bounds
-    - Beyond extreme (alpha=0.25 red): outside extreme bounds — clearly dangerous
-
-    Must be called AFTER all data is plotted so axis limits are set by the data.
+    Includes time series, curve correlations, distribution metrics,
+    growth-specific metrics, and financial dynamics.
     """
-    alpha = 0.25
-    color = "red"
-    if axis == "y":
-        ymin, ymax = ax.get_ylim()
-        if ymin < extreme_min:
-            ax.axhspan(ymin, extreme_min, alpha=alpha, color=color, zorder=0)
-        if ymax > extreme_max:
-            ax.axhspan(extreme_max, ymax, alpha=alpha, color=color, zorder=0)
-        ax.set_ylim(ymin, ymax)
-    else:
-        xmin, xmax = ax.get_xlim()
-        if xmin < extreme_min:
-            ax.axvspan(xmin, extreme_min, alpha=alpha, color=color, zorder=0)
-        if xmax > extreme_max:
-            ax.axvspan(extreme_max, xmax, alpha=alpha, color=color, zorder=0)
-        ax.set_xlim(xmin, xmax)
+
+    # Time series (full, for visualization)
+    unemployment: NDArray[np.floating]
+    inflation: NDArray[np.floating]
+    log_gdp: NDArray[np.floating]
+    real_wage: NDArray[np.floating]
+    avg_productivity: NDArray[np.floating]
+    vacancy_rate: NDArray[np.floating]
+
+    # Curve data
+    wage_inflation: NDArray[np.floating]
+    gdp_growth: NDArray[np.floating]
+    unemployment_growth: NDArray[np.floating]
+
+    # Distribution data
+    final_production: NDArray[np.floating]
+
+    # Summary statistics
+    unemployment_mean: float
+    unemployment_std: float
+    unemployment_max: float
+    unemployment_pct_in_bounds: float
+    inflation_mean: float
+    inflation_std: float
+    inflation_max: float
+    inflation_min: float
+    inflation_pct_in_bounds: float
+    log_gdp_mean: float
+    log_gdp_std: float
+    real_wage_mean: float
+    real_wage_std: float
+    vacancy_rate_mean: float
+    vacancy_rate_pct_in_bounds: float  # Percentage of periods in [0.08, 0.20]
+
+    # Correlations
+    phillips_corr: float
+    okun_corr: float
+    beveridge_corr: float
+
+    # Distribution metrics
+    firm_size_skewness: float
+    firm_size_pct_below_threshold: float
+    firm_size_tail_ratio: float  # max(production) / median(production)
+    firm_size_pct_below_medium: float  # pct below medium threshold (100)
+
+    # Growth-specific metrics
+    productivity_growth_rate: NDArray[np.floating]
+    productivity_trend_coefficient: float
+    initial_productivity: float
+    final_productivity: float
+    total_productivity_growth: float
+    real_wage_initial: float
+    real_wage_final: float
+    total_real_wage_growth: float
+    log_gdp_trend_coefficient: float
+    log_gdp_total_growth: float
+
+    # Productivity-wage co-movement
+    productivity_wage_correlation: float  # Detrended correlation
+    wage_productivity_ratio_mean: float  # Mean of wage/productivity ratio
+    wage_productivity_ratio_std: float  # Std of wage/productivity ratio
+
+    # Financial dynamics
+    n_firm_bankruptcies: NDArray[np.int_]
+    n_bank_bankruptcies: NDArray[np.int_]
+    real_interest_rate: NDArray[np.floating]
+    avg_financial_fragility: NDArray[np.floating]
+    price_ratio: NDArray[np.floating]
+    price_dispersion: NDArray[np.floating]
+    equity_dispersion: NDArray[np.floating]
+    sales_dispersion: NDArray[np.floating]
+
+    # Growth rate distributions
+    output_growth_rates: NDArray[np.floating]
+    networth_growth_rates: NDArray[np.floating]
+
+    # Tiered distribution metrics
+    output_growth_pct_within_tight: float
+    output_growth_pct_within_normal: float
+    output_growth_pct_outliers: float
+    networth_growth_pct_within_tight: float
+    networth_growth_pct_within_normal: float
+    networth_growth_pct_outliers: float
+
+    # Recession detection
+    recession_mask: NDArray[np.bool_]
+    n_recessions: int
+    avg_recession_length: float
+
+    # Minsky classification
+    minsky_hedge_pct: float
+    minsky_speculative_pct: float
+    minsky_ponzi_pct: float
+
+    # Summary statistics
+    bankruptcies_mean: float
+    real_interest_rate_mean: float
+    real_interest_rate_std: float
+    avg_fragility_mean: float
+    avg_fragility_std: float
+    price_ratio_mean: float
+    price_ratio_std: float
+    price_dispersion_mean: float
+    price_dispersion_std: float
+    equity_dispersion_mean: float
+    equity_dispersion_std: float
+    sales_dispersion_mean: float
+    sales_dispersion_std: float
 
 
-def visualize_growth_plus_results(
-    metrics: GrowthPlusMetrics,
-    bounds: dict,
-    burn_in: int = 500,
-) -> None:
-    """Create visualization plots for Growth+ scenario with bounds and targets.
+# =============================================================================
+# Helper Functions
+# =============================================================================
 
-    Produces an 8-panel figure showing time series and macroeconomic curves
-    with validation bounds, target lines, and statistical annotations.
 
-    Parameters
-    ----------
-    metrics : GrowthPlusMetrics
-        Computed metrics from the simulation.
-    bounds : dict
-        Target bounds from validation YAML.
-    burn_in : int
-        Number of burn-in periods (already applied to metrics).
-    """
-    import matplotlib.pyplot as plt
+def _smooth_series(x: NDArray[np.floating], window: int = 5) -> NDArray[np.floating]:
+    """Apply centered moving average smoothing."""
+    if window < 1:
+        return x
+    if window == 1:
+        return x.copy()
 
-    # Time axis for plots
-    periods = ops.arange(burn_in, len(metrics.unemployment))
+    kernel = np.ones(window) / window
+    smoothed = np.convolve(x, kernel, mode="same")
 
-    # Extract time series after burn-in
-    log_gdp = metrics.log_gdp[burn_in:]
-    inflation_pct = metrics.inflation[burn_in:] * 100
-    unemployment_pct = metrics.unemployment[burn_in:] * 100
-    real_wage_trimmed = metrics.real_wage[burn_in:]
-    avg_productivity_trimmed = metrics.avg_productivity[burn_in:]
+    half = window // 2
+    if half > 0:
+        smoothed[:half] = x[:half]
+        smoothed[-half:] = x[-half:]
 
-    # Curve data (already aligned in metrics computation)
-    wage_inflation_trimmed = metrics.wage_inflation[burn_in - 1 :]
-    unemployment_phillips = metrics.unemployment[burn_in:]
-    gdp_growth_trimmed = metrics.gdp_growth[burn_in - 1 :]
-    unemployment_growth_trimmed = metrics.unemployment_growth[burn_in - 1 :]
-    vacancy_rate_trimmed = metrics.vacancy_rate[burn_in:]
-    unemployment_beveridge = metrics.unemployment[burn_in:]
+    return smoothed
 
-    # Final period firm production for distribution
-    final_production = metrics.final_production
 
-    # Use pre-computed correlations from metrics
-    phillips_corr = metrics.phillips_corr
-    okun_corr = metrics.okun_corr
-    beveridge_corr = metrics.beveridge_corr
+def _detect_recessions(
+    log_gdp: NDArray[np.floating],
+    smoothing_window: int = 5,
+    peak_prominence: float = 0.03,
+    peak_distance: int = 20,
+    min_gap: int = 10,
+    extension_after_trough: int = 10,
+) -> NDArray[np.bool_]:
+    """Detect recession episodes using peak-to-trough algorithm."""
+    if len(log_gdp) < smoothing_window * 2:
+        return np.zeros(len(log_gdp), dtype=bool)
 
-    # Recession mask for shading
-    recession_mask = metrics.recession_mask[burn_in:]
+    smoothed = _smooth_series(log_gdp, window=smoothing_window)
 
-    print(f"Plotting {len(periods)} periods (after {burn_in}-period burn-in)")
-
-    def add_recession_bands_local(ax, periods, mask):
-        """Shade recession periods on plot."""
-        if not np.any(mask):
-            return
-        in_recession = False
-        start_idx = 0
-        for i, is_rec in enumerate(mask):
-            if is_rec and not in_recession:
-                start_idx = i
-                in_recession = True
-            elif not is_rec and in_recession:
-                ax.axvspan(periods[start_idx], periods[i - 1], alpha=0.2, color="gray")
-                in_recession = False
-        if in_recession:
-            ax.axvspan(periods[start_idx], periods[-1], alpha=0.2, color="gray")
-
-    fig, axes = plt.subplots(4, 2, figsize=(14, 20))
-    fig.suptitle(
-        "Growth+ Model Results (Section 3.9.2) - Endogenous Productivity Growth",
-        fontsize=16,
-        y=0.995,
+    peaks, _ = find_peaks(smoothed, prominence=peak_prominence, distance=peak_distance)
+    troughs, _ = find_peaks(
+        -smoothed, prominence=peak_prominence, distance=peak_distance
     )
 
-    # Helper function for statistics annotation
-    def add_stats_box(ax, data, bounds_key, is_pct=False):
-        """Add statistics annotation box to axis."""
-        b = bounds[bounds_key]
-        scale = 100 if is_pct else 1
-        actual_mean = np.mean(data)
-        actual_std = np.std(data)
-        target_mean = b["mean_target"] * scale
-        normal_min = b["normal_min"] * scale
-        normal_max = b["normal_max"] * scale
-        in_bounds = np.sum((data >= normal_min) & (data <= normal_max)) / len(data)
+    n_periods = len(log_gdp)
+    recession_mask = np.zeros(n_periods, dtype=bool)
 
-        if is_pct:
-            stats_text = f"mu = {actual_mean:.1f}% (target: {target_mean:.1f}%)\nsigma = {actual_std:.1f}%\n{in_bounds * 100:.0f}% in bounds"
+    for peak in peaks:
+        future_troughs = troughs[troughs > peak]
+        if len(future_troughs) > 0:
+            trough = future_troughs[0]
+            end = min(trough + extension_after_trough, n_periods)
+            recession_mask[peak:end] = True
+
+    # Bridge short gaps
+    if np.any(recession_mask):
+        padded = np.concatenate([[False], recession_mask, [False]])
+        starts = np.where(padded[1:] & ~padded[:-1])[0]
+        ends = np.where(~padded[1:] & padded[:-1])[0]
+
+        for i in range(len(ends) - 1):
+            gap = starts[i + 1] - ends[i]
+            if gap < min_gap:
+                recession_mask[ends[i] : starts[i + 1]] = True
+
+    return recession_mask
+
+
+def _count_recession_episodes(recession_mask: NDArray[np.bool_]) -> tuple[int, float]:
+    """Count recession episodes and compute average length."""
+    if not np.any(recession_mask):
+        return 0, 0.0
+
+    padded = np.concatenate([[False], recession_mask, [False]])
+    starts = np.where(padded[1:] & ~padded[:-1])[0]
+    ends = np.where(~padded[1:] & padded[:-1])[0]
+
+    n_episodes = len(starts)
+    if n_episodes == 0:
+        return 0, 0.0
+
+    lengths = ends - starts
+    avg_length = float(np.mean(lengths))
+
+    return n_episodes, avg_length
+
+
+def _compute_pct_within_range(
+    values: NDArray[np.floating], range_min: float, range_max: float
+) -> float:
+    """Compute percentage of values within a range."""
+    valid = values[np.isfinite(values)]
+    if len(valid) == 0:
+        return 0.0
+    within = np.sum((valid >= range_min) & (valid <= range_max))
+    return float(within / len(valid))
+
+
+def _compute_detrended_correlation(
+    x: NDArray[np.floating], y: NDArray[np.floating]
+) -> float:
+    """Compute correlation of linearly detrended series.
+
+    Removes linear trend from each series before computing correlation,
+    which measures cyclical co-movement rather than trend co-movement.
+    """
+    if len(x) < 10 or len(y) < 10:
+        return 0.0
+    t = np.arange(len(x))
+    # Remove linear trend from each series
+    x_trend = np.polyval(np.polyfit(t, x, 1), t)
+    y_trend = np.polyval(np.polyfit(t, y, 1), t)
+    x_detrended = x - x_trend
+    y_detrended = y - y_trend
+    return float(np.corrcoef(x_detrended, y_detrended)[0, 1])
+
+
+# =============================================================================
+# Metrics Computation
+# =============================================================================
+
+
+def compute_growth_plus_metrics(
+    sim: bam.Simulation,
+    results: SimulationResults,
+    burn_in: int = 500,
+    firm_size_threshold: float = 150.0,
+    firm_size_threshold_medium: float = 100.0,
+) -> GrowthPlusMetrics:
+    """Compute all validation metrics from Growth+ simulation results."""
+    # Extract raw data
+    inflation = results.economy_data["inflation"]
+    avg_price = results.economy_data["avg_price"]
+    production = results.role_data["Producer"]["production"]
+    inventory = results.role_data["Producer"]["inventory"]
+    labor_productivity = results.role_data["Producer"]["labor_productivity"]
+    prices = results.role_data["Producer"]["price"]
+    wages = results.role_data["Worker"]["wage"]
+    employed = results.role_data["Worker"]["employed"]
+    n_vacancies = results.role_data["Employer"]["n_vacancies"]
+    net_worth = results.role_data["Borrower"]["net_worth"]
+    total_funds = results.role_data["Borrower"]["total_funds"]
+    consumer_budget = results.role_data["Consumer"]["income_to_spend"]
+    n_firm_bankruptcies = np.array(
+        results.economy_data["n_firm_bankruptcies"], dtype=np.int_
+    )
+    n_bank_bankruptcies = np.array(
+        results.economy_data["n_bank_bankruptcies"], dtype=np.int_
+    )
+
+    loan_principals = results.relationship_data["LoanBook"]["principal"]
+    loan_rates = results.relationship_data["LoanBook"]["rate"]
+    loan_source_ids = results.relationship_data["LoanBook"]["source_ids"]
+
+    # Compute time series
+    unemployment = 1 - ops.mean(employed.astype(float), axis=1)
+    gdp = ops.sum(production, axis=1)
+    log_gdp = ops.log(gdp)
+
+    weighted_productivity = ops.sum(
+        ops.multiply(labor_productivity, production), axis=1
+    )
+    avg_productivity = ops.divide(weighted_productivity, gdp)
+
+    employed_wages_sum = ops.sum(ops.where(employed, wages, 0.0), axis=1)
+    employed_count = ops.sum(employed, axis=1)
+    avg_employed_wage = ops.where(
+        ops.greater(employed_count, 0),
+        ops.divide(employed_wages_sum, employed_count),
+        0.0,
+    )
+    real_wage = ops.divide(avg_employed_wage, avg_price)
+
+    total_vacancies = ops.sum(n_vacancies, axis=1)
+    vacancy_rate = ops.divide(total_vacancies, sim.n_households)
+
+    # Curve data
+    wage_inflation = ops.divide(
+        avg_employed_wage[1:] - avg_employed_wage[:-1],
+        ops.where(ops.greater(avg_employed_wage[:-1], 0), avg_employed_wage[:-1], 1.0),
+    )
+    gdp_growth = ops.divide(gdp[1:] - gdp[:-1], gdp[:-1])
+    unemployment_growth = ops.divide(
+        unemployment[1:] - unemployment[:-1],
+        ops.where(ops.greater(unemployment[:-1], 0), unemployment[:-1], 1.0),
+    )
+    productivity_growth_rate = ops.divide(
+        avg_productivity[1:] - avg_productivity[:-1],
+        ops.where(ops.greater(avg_productivity[:-1], 0), avg_productivity[:-1], 1.0),
+    )
+
+    # Apply burn-in
+    unemployment_ss = unemployment[burn_in:]
+    inflation_ss = inflation[burn_in:]
+    log_gdp_ss = log_gdp[burn_in:]
+    real_wage_ss = real_wage[burn_in:]
+    vacancy_rate_ss = vacancy_rate[burn_in:]
+    avg_productivity_ss = avg_productivity[burn_in:]
+
+    wage_inflation_ss = wage_inflation[burn_in - 1 :]
+    gdp_growth_ss = gdp_growth[burn_in - 1 :]
+    unemployment_growth_ss = unemployment_growth[burn_in - 1 :]
+
+    # Correlations
+    phillips_corr = float(np.corrcoef(unemployment_ss, wage_inflation_ss)[0, 1])
+    unemp_filtered, gdp_filtered = filter_outliers_iqr(
+        unemployment_growth_ss, gdp_growth_ss
+    )
+    okun_corr = float(np.corrcoef(unemp_filtered, gdp_filtered)[0, 1])
+    beveridge_corr = float(np.corrcoef(unemployment_ss, vacancy_rate_ss)[0, 1])
+
+    # Distribution metrics
+    final_production_arr = production[-1]
+    firm_size_skewness = float(stats.skew(final_production_arr))
+    firm_size_pct_below = float(
+        np.sum(final_production_arr < firm_size_threshold) / len(final_production_arr)
+    )
+    median_production = float(np.median(final_production_arr))
+    firm_size_tail_ratio = (
+        float(np.max(final_production_arr) / median_production)
+        if median_production > 0
+        else 0.0
+    )
+    firm_size_pct_below_medium = float(
+        np.sum(final_production_arr < firm_size_threshold_medium)
+        / len(final_production_arr)
+    )
+
+    # Growth-specific metrics
+    initial_productivity = float(avg_productivity_ss[0])
+    final_productivity_val = float(avg_productivity_ss[-1])
+    total_productivity_growth = (
+        (final_productivity_val - initial_productivity) / initial_productivity
+        if initial_productivity > 0
+        else 0.0
+    )
+
+    real_wage_initial = float(real_wage_ss[0])
+    real_wage_final = float(real_wage_ss[-1])
+    total_real_wage_growth = (
+        (real_wage_final - real_wage_initial) / real_wage_initial
+        if real_wage_initial > 0
+        else 0.0
+    )
+
+    time_axis = np.arange(len(avg_productivity_ss))
+    log_productivity = np.log(
+        np.where(avg_productivity_ss > 0, avg_productivity_ss, EPS)
+    )
+    trend_coef, _ = np.polyfit(time_axis, log_productivity, 1)
+    productivity_trend_coefficient = float(trend_coef)
+
+    log_gdp_trend_coef, _ = np.polyfit(time_axis, log_gdp_ss, 1)
+    log_gdp_trend_coefficient = float(log_gdp_trend_coef)
+    log_gdp_total_growth = float(log_gdp_ss[-1] - log_gdp_ss[0])
+
+    # Productivity-wage co-movement metrics
+    productivity_wage_correlation = _compute_detrended_correlation(
+        avg_productivity_ss, real_wage_ss
+    )
+
+    # Wage-to-productivity ratio
+    wage_prod_ratio = ops.divide(real_wage_ss, avg_productivity_ss)
+    wage_productivity_ratio_mean = float(np.mean(wage_prod_ratio))
+    wage_productivity_ratio_std = float(np.std(wage_prod_ratio))
+
+    # Financial dynamics
+    n_periods = len(inflation)
+    real_interest_rate = np.zeros(n_periods)
+    for t in range(n_periods):
+        principals_t = loan_principals[t]
+        rates_t = loan_rates[t]
+        if len(principals_t) > 0 and np.sum(principals_t) > 0:
+            weighted_nominal = float(
+                np.sum(rates_t * principals_t) / np.sum(principals_t)
+            )
         else:
-            stats_text = f"mu = {actual_mean:.2f} (target: {target_mean:.2f})\nsigma = {actual_std:.3f}\n{in_bounds * 100:.0f}% in bounds"
+            weighted_nominal = sim.r_bar
+        real_interest_rate[t] = weighted_nominal - inflation[t]
 
-        ax.text(
-            0.98,
-            0.97,
-            stats_text,
-            transform=ax.transAxes,
-            fontsize=8,
-            verticalalignment="top",
-            horizontalalignment="right",
-            bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
-        )
+    total_wage_bill = ops.sum(wages * employed.astype(float), axis=1)
+    total_net_worth = ops.sum(net_worth, axis=1)
+    safe_total_nw = ops.where(ops.greater(total_net_worth, EPS), total_net_worth, EPS)
+    avg_financial_fragility = ops.divide(total_wage_bill, safe_total_nw)
 
-    def add_corr_stats_box(ax, actual_corr, bounds_key):
-        """Add correlation statistics box to curve axis."""
-        b = bounds[bounds_key]
-        corr_min, corr_max = b["min"], b["max"]
-        in_range = corr_min <= actual_corr <= corr_max
-        status = "PASS" if in_range else "WARN"
-        color = "lightgreen" if in_range else "lightyellow"
+    safe_gdp = ops.where(ops.greater(gdp, EPS), gdp, EPS)
+    total_demand = ops.sum(consumer_budget, axis=1)
+    market_clearing_price = ops.divide(total_demand, safe_gdp)
+    price_ratio = ops.divide(avg_price, market_clearing_price)
 
-        stats_text = (
-            f"r = {actual_corr:.2f}\n"
-            f"Range: [{corr_min:.2f}, {corr_max:.2f}]\n"
-            f"Status: {status}"
-        )
-        ax.text(
-            0.02,
-            0.97,
-            stats_text,
-            transform=ax.transAxes,
-            fontsize=8,
-            verticalalignment="top",
-            horizontalalignment="left",
-            bbox=dict(boxstyle="round", facecolor=color, alpha=0.7),
-        )
+    # Dispersions
+    safe_prod = np.where(production > 0, production, 0.0)
+    prod_sum = np.sum(safe_prod, axis=1, keepdims=True)
+    prod_weights = safe_prod / np.where(prod_sum > EPS, prod_sum, EPS)
+    weighted_price_mean = np.sum(prod_weights * prices, axis=1, keepdims=True)
+    weighted_price_var = np.sum(
+        prod_weights * (prices - weighted_price_mean) ** 2, axis=1
+    )
+    weighted_price_std = np.sqrt(np.maximum(weighted_price_var, 0.0))
+    w_mean_flat = weighted_price_mean.squeeze()
+    safe_w_mean = np.where(w_mean_flat > EPS, w_mean_flat, EPS)
+    price_dispersion = weighted_price_std / safe_w_mean
 
-    # Top 2x2: Time series panels
-    # ---------------------------
-
-    # Panel (0,0): Log Real GDP (Growing in Growth+ scenario)
-    ax = axes[0, 0]
-    # Recession bands (shaded gray)
-    add_recession_bands_local(ax, periods, recession_mask)
-    # Extreme bounds (shaded red zones)
-    ax.axhspan(
-        bounds["log_gdp"]["extreme_min"],
-        bounds["log_gdp"]["normal_min"],
-        alpha=0.1,
-        color="red",
-        label="Extreme zone",
-    )
-    ax.axhspan(
-        bounds["log_gdp"]["normal_max"],
-        bounds["log_gdp"]["extreme_max"],
-        alpha=0.1,
-        color="red",
-    )
-    # Data
-    ax.plot(periods, log_gdp, linewidth=1, color="#2E86AB", label="Log GDP")
-    # Normal bounds
-    ax.axhline(
-        bounds["log_gdp"]["normal_min"],
-        color="green",
-        linestyle="--",
-        alpha=0.5,
-        label="Normal bounds",
-    )
-    ax.axhline(
-        bounds["log_gdp"]["normal_max"], color="green", linestyle="--", alpha=0.5
-    )
-    # Mean target
-    ax.axhline(
-        bounds["log_gdp"]["mean_target"],
-        color="blue",
-        linestyle="-.",
-        alpha=0.5,
-        label="Mean target",
-    )
-    ax.set_title("Real GDP (Growing)", fontsize=12, fontweight="bold")
-    ax.set_ylabel("Log output")
-    ax.set_xlabel("t")
-    ax.grid(True, linestyle="--", alpha=0.3)
-    ax.legend(loc="upper left", fontsize=7)
-    # Stats box at lower right to avoid legend overlap
-    b = bounds["log_gdp"]
-    actual_mean = np.mean(log_gdp)
-    actual_std = np.std(log_gdp)
-    in_bounds = np.sum(
-        (log_gdp >= b["normal_min"]) & (log_gdp <= b["normal_max"])
-    ) / len(log_gdp)
-    ax.text(
-        0.98,
-        0.03,
-        f"mu = {actual_mean:.2f} (target: {b['mean_target']:.2f})\nsigma = {actual_std:.3f}\n{in_bounds * 100:.0f}% in bounds",
-        transform=ax.transAxes,
-        fontsize=8,
-        verticalalignment="bottom",
-        horizontalalignment="right",
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
-    )
-    _shade_beyond_extreme(ax, b["extreme_min"], b["extreme_max"])
-
-    # Panel (0,1): Unemployment Rate
-    ax = axes[0, 1]
-    # Extreme bounds (shaded red zones)
-    ax.axhspan(
-        bounds["unemployment"]["extreme_min"] * 100,
-        bounds["unemployment"]["normal_min"] * 100,
-        alpha=0.1,
-        color="red",
-    )
-    ax.axhspan(
-        bounds["unemployment"]["normal_max"] * 100,
-        bounds["unemployment"]["extreme_max"] * 100,
-        alpha=0.1,
-        color="red",
-    )
-    # Data
-    ax.plot(periods, unemployment_pct, linewidth=1, color="#A23B72")
-    # Normal bounds
-    ax.axhline(
-        bounds["unemployment"]["normal_min"] * 100,
-        color="green",
-        linestyle="--",
-        alpha=0.5,
-    )
-    ax.axhline(
-        bounds["unemployment"]["normal_max"] * 100,
-        color="green",
-        linestyle="--",
-        alpha=0.5,
-    )
-    # Mean target
-    ax.axhline(
-        bounds["unemployment"]["mean_target"] * 100,
-        color="blue",
-        linestyle="-.",
-        alpha=0.5,
-    )
-    ax.set_title("Unemployment Rate", fontsize=12, fontweight="bold")
-    ax.set_ylabel("Unemployment Rate (%)")
-    ax.set_xlabel("t")
-    ax.grid(True, linestyle="--", alpha=0.3)
-    ax.set_ylim(bottom=0)
-    add_stats_box(ax, unemployment_pct, "unemployment", is_pct=True)
-    _shade_beyond_extreme(
-        ax,
-        bounds["unemployment"]["extreme_min"] * 100,
-        bounds["unemployment"]["extreme_max"] * 100,
+    nw_mean = ops.mean(net_worth, axis=1)
+    equity_dispersion = ops.divide(
+        ops.std(net_worth, axis=1),
+        ops.where(ops.greater(np.abs(nw_mean), EPS), np.abs(nw_mean), EPS),
     )
 
-    # Panel (1,0): Annual Inflation Rate
-    ax = axes[1, 0]
-    # Extreme bounds (shaded red zones)
-    ax.axhspan(
-        bounds["inflation"]["extreme_min"] * 100,
-        bounds["inflation"]["normal_min"] * 100,
-        alpha=0.1,
-        color="red",
-    )
-    ax.axhspan(
-        bounds["inflation"]["normal_max"] * 100,
-        bounds["inflation"]["extreme_max"] * 100,
-        alpha=0.1,
-        color="red",
-    )
-    # Data
-    ax.plot(periods, inflation_pct, linewidth=1, color="#F18F01")
-    ax.axhline(0, color="black", linestyle="-", alpha=0.3, linewidth=0.5)
-    # Normal bounds
-    ax.axhline(
-        bounds["inflation"]["normal_min"] * 100,
-        color="green",
-        linestyle="--",
-        alpha=0.5,
-    )
-    ax.axhline(
-        bounds["inflation"]["normal_max"] * 100,
-        color="green",
-        linestyle="--",
-        alpha=0.5,
-    )
-    # Mean target
-    ax.axhline(
-        bounds["inflation"]["mean_target"] * 100,
-        color="blue",
-        linestyle="-.",
-        alpha=0.5,
-    )
-    ax.set_title("Annualized Rate of Inflation", fontsize=12, fontweight="bold")
-    ax.set_ylabel("Yearly inflation rate (%)")
-    ax.set_xlabel("t")
-    ax.grid(True, linestyle="--", alpha=0.3)
-    add_stats_box(ax, inflation_pct, "inflation", is_pct=True)
-    _shade_beyond_extreme(
-        ax,
-        bounds["inflation"]["extreme_min"] * 100,
-        bounds["inflation"]["extreme_max"] * 100,
+    qty_sold = np.subtract(production, inventory)
+    sales = ops.multiply(prices, qty_sold)
+    sales_mean = ops.mean(sales, axis=1)
+    sales_dispersion = ops.divide(
+        ops.std(sales, axis=1),
+        ops.where(ops.greater(np.abs(sales_mean), EPS), np.abs(sales_mean), EPS),
     )
 
-    # Panel (1,1): Productivity and Real Wage Co-movement (two-line plot)
-    # Both grow over time in Growth+ scenario - this is figure (d) in Section 3.9.2
-    ax = axes[1, 1]
-    # Data: Two separate growing lines
-    ax.plot(
-        periods,
-        avg_productivity_trimmed,
-        linewidth=1,
-        color="#E74C3C",
-        label="Productivity",
+    # Growth rate distributions
+    gdp_after_burnin = gdp[burn_in:]
+    output_growth_rates = np.diff(gdp_after_burnin) / gdp_after_burnin[:-1]
+
+    nw_prev = net_worth[-2]
+    nw_final = net_worth[-1]
+    valid_firms = (nw_prev > 0) & (nw_final > 0)
+    nw_prev_valid = nw_prev[valid_firms]
+    nw_final_valid = nw_final[valid_firms]
+    networth_growth_rates = (nw_final_valid - nw_prev_valid) / nw_prev_valid
+
+    # Tiered distribution metrics
+    output_growth_pct_within_tight = _compute_pct_within_range(
+        output_growth_rates, -0.05, 0.05
     )
-    ax.plot(periods, real_wage_trimmed, linewidth=1, color="#6A994E", label="Real Wage")
-    ax.set_title("Productivity & Real Wage Co-movement", fontsize=12, fontweight="bold")
-    ax.set_ylabel("Value")
-    ax.set_xlabel("t")
-    ax.legend(loc="lower right", fontsize=7)
-    ax.grid(True, linestyle="--", alpha=0.3)
-    # Add growth stats box at upper left
-    growth_text = (
-        f"Productivity: {metrics.initial_productivity:.2f} -> {metrics.final_productivity:.2f}\n"
-        f"Growth: {metrics.total_productivity_growth * 100:.0f}%\n"
-        f"Real Wage: {metrics.real_wage_initial:.2f} -> {metrics.real_wage_final:.2f}\n"
-        f"Growth: {metrics.total_real_wage_growth * 100:.0f}%"
+    output_growth_pct_within_normal = _compute_pct_within_range(
+        output_growth_rates, -0.10, 0.10
     )
-    ax.text(
-        0.02,
-        0.97,
-        growth_text,
-        transform=ax.transAxes,
-        fontsize=8,
-        verticalalignment="top",
-        horizontalalignment="left",
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+    output_growth_pct_outliers = 1.0 - _compute_pct_within_range(
+        output_growth_rates, -0.15, 0.15
     )
 
-    # Bottom 2x2: Macroeconomic curves
-    # --------------------------------
-
-    # Panel (2,0): Phillips Curve (stronger in Growth+: -0.19)
-    ax = axes[2, 0]
-    ax.scatter(
-        unemployment_phillips, wage_inflation_trimmed, s=10, alpha=0.5, color="#2E86AB"
+    networth_growth_pct_within_tight = _compute_pct_within_range(
+        networth_growth_rates, -0.05, 0.05
     )
-    # Add regression and target lines
-    x_mean, y_mean = np.mean(unemployment_phillips), np.mean(wage_inflation_trimmed)
-    x_std, y_std = np.std(unemployment_phillips), np.std(wage_inflation_trimmed)
-    if x_std > 0:
-        x_range = np.array([unemployment_phillips.min(), unemployment_phillips.max()])
-        # Actual regression line
-        actual_slope = phillips_corr * (y_std / x_std)
-        y_actual = y_mean + actual_slope * (x_range - x_mean)
-        ax.plot(
-            x_range,
-            y_actual,
-            color="#2E86AB",
-            linewidth=2,
-            alpha=0.8,
-            label=f"Actual (r={phillips_corr:.2f})",
-        )
-        # Target line (Phillips target is -0.19 for Growth+)
-        target_corr = bounds["phillips_corr"]["target"]
-        target_slope = target_corr * (y_std / x_std)
-        y_target = y_mean + target_slope * (x_range - x_mean)
-        ax.plot(
-            x_range,
-            y_target,
-            "g--",
-            linewidth=2,
-            alpha=0.7,
-            label=f"Target (r={target_corr:.2f})",
-        )
-    ax.set_title("Phillips Curve (Target: -0.19)", fontsize=12, fontweight="bold")
-    ax.set_xlabel("Unemployment Rate")
-    ax.set_ylabel("Wage Inflation Rate")
-    ax.legend(fontsize=8, loc="lower right")
-    ax.grid(True, linestyle="--", alpha=0.3)
-    # Stats box at lower left
-    b = bounds["phillips_corr"]
-    corr_min, corr_max = b["min"], b["max"]
-    in_range = corr_min <= phillips_corr <= corr_max
-    status = "PASS" if in_range else "WARN"
-    color = "lightgreen" if in_range else "lightyellow"
-    ax.text(
-        0.02,
-        0.03,
-        f"r = {phillips_corr:.2f}\nRange: [{corr_min:.2f}, {corr_max:.2f}]\nStatus: {status}",
-        transform=ax.transAxes,
-        fontsize=8,
-        verticalalignment="bottom",
-        horizontalalignment="left",
-        bbox=dict(boxstyle="round", facecolor=color, alpha=0.7),
+    networth_growth_pct_within_normal = _compute_pct_within_range(
+        networth_growth_rates, -0.10, 0.10
+    )
+    networth_growth_pct_outliers = 1.0 - _compute_pct_within_range(
+        networth_growth_rates, -0.50, 0.20
     )
 
-    # Panel (2,1): Okun Curve
-    ax = axes[2, 1]
-    ax.scatter(
-        unemployment_growth_trimmed, gdp_growth_trimmed, s=2, alpha=0.5, color="#A23B72"
-    )
-    # Add regression and target lines
-    x_mean, y_mean = np.mean(unemployment_growth_trimmed), np.mean(gdp_growth_trimmed)
-    x_std, y_std = np.std(unemployment_growth_trimmed), np.std(gdp_growth_trimmed)
-    if x_std > 0:
-        x_range = np.array(
-            [unemployment_growth_trimmed.min(), unemployment_growth_trimmed.max()]
-        )
-        # Actual regression line
-        actual_slope = okun_corr * (y_std / x_std)
-        y_actual = y_mean + actual_slope * (x_range - x_mean)
-        ax.plot(
-            x_range,
-            y_actual,
-            color="#A23B72",
-            linewidth=2,
-            alpha=0.8,
-            label=f"Actual (r={okun_corr:.2f})",
-        )
-        # Target line
-        target_corr = bounds["okun_corr"]["target"]
-        target_slope = target_corr * (y_std / x_std)
-        y_target = y_mean + target_slope * (x_range - x_mean)
-        ax.plot(
-            x_range,
-            y_target,
-            "g--",
-            linewidth=2,
-            alpha=0.7,
-            label=f"Target (r={target_corr:.2f})",
-        )
-    ax.set_title("Okun Curve", fontsize=12, fontweight="bold")
-    ax.set_xlabel("Unemployment Growth Rate")
-    ax.set_ylabel("Output Growth Rate")
-    ax.legend(fontsize=8, loc="lower left")
-    ax.grid(True, linestyle="--", alpha=0.3)
-    # Stats box at upper right
-    b = bounds["okun_corr"]
-    corr_min, corr_max = b["min"], b["max"]
-    in_range = corr_min <= okun_corr <= corr_max
-    status = "PASS" if in_range else "WARN"
-    color = "lightgreen" if in_range else "lightyellow"
-    ax.text(
-        0.98,
-        0.97,
-        f"r = {okun_corr:.2f}\nRange: [{corr_min:.2f}, {corr_max:.2f}]\nStatus: {status}",
-        transform=ax.transAxes,
-        fontsize=8,
-        verticalalignment="top",
-        horizontalalignment="right",
-        bbox=dict(boxstyle="round", facecolor=color, alpha=0.7),
+    # Recession detection
+    recession_mask = _detect_recessions(log_gdp)
+    n_recessions, avg_recession_length = _count_recession_episodes(
+        recession_mask[burn_in:]
     )
 
-    # Panel (3,0): Beveridge Curve
-    ax = axes[3, 0]
-    ax.scatter(
-        unemployment_beveridge, vacancy_rate_trimmed, s=10, alpha=0.5, color="#F18F01"
-    )
-    # Add regression and target lines
-    x_mean, y_mean = np.mean(unemployment_beveridge), np.mean(vacancy_rate_trimmed)
-    x_std, y_std = np.std(unemployment_beveridge), np.std(vacancy_rate_trimmed)
-    if x_std > 0:
-        x_range = np.array([unemployment_beveridge.min(), unemployment_beveridge.max()])
-        # Actual regression line
-        actual_slope = beveridge_corr * (y_std / x_std)
-        y_actual = y_mean + actual_slope * (x_range - x_mean)
-        ax.plot(
-            x_range,
-            y_actual,
-            color="#F18F01",
-            linewidth=2,
-            alpha=0.8,
-            label=f"Actual (r={beveridge_corr:.2f})",
-        )
-        # Target line
-        target_corr = bounds["beveridge_corr"]["target"]
-        target_slope = target_corr * (y_std / x_std)
-        y_target = y_mean + target_slope * (x_range - x_mean)
-        ax.plot(
-            x_range,
-            y_target,
-            "g--",
-            linewidth=2,
-            alpha=0.7,
-            label=f"Target (r={target_corr:.2f})",
-        )
-    ax.set_title("Beveridge Curve", fontsize=12, fontweight="bold")
-    ax.set_xlabel("Unemployment Rate")
-    ax.set_ylabel("Vacancy Rate")
-    ax.legend(fontsize=8, loc="upper right")
-    ax.grid(True, linestyle="--", alpha=0.3)
-    add_corr_stats_box(ax, beveridge_corr, "beveridge_corr")
+    # Minsky classification
+    n_active_firms = sim.n_firms
+    n_periods_total = total_funds.shape[0]
 
-    # Panel (3,1): Firm Size Distribution (larger due to productivity growth)
-    ax = axes[3, 1]
-    threshold = bounds["firm_size"]["threshold"]
-    pct_below_target = bounds["firm_size"]["pct_below_target"]
-    pct_below_actual = np.sum(final_production < threshold) / len(final_production)
-    skewness_actual = skew(final_production)
-    skewness_min = bounds["firm_size"]["skewness_min"]
-    skewness_max = bounds["firm_size"]["skewness_max"]
-    skewness_in_range = skewness_min <= skewness_actual <= skewness_max
-    ax.hist(final_production, bins=15, edgecolor="black", alpha=0.7, color="#6A994E")
-    ax.axvline(
-        x=threshold,
-        color="#A23B72",
-        linestyle="--",
-        linewidth=3,
-        alpha=0.7,
-        label=f"Threshold ({threshold:.0f})",
-    )
-    ax.set_title("Firm Size Distribution", fontsize=12, fontweight="bold")
-    ax.set_xlabel("Production")
-    ax.set_ylabel("Frequency")
-    ax.legend(fontsize=8, loc="upper right")
-    ax.grid(True, linestyle="--", alpha=0.3)
-    # Stats box with skewness (upper right below legend to avoid overlap)
-    skew_status = "PASS" if skewness_in_range else "WARN"
-    skew_color = "lightgreen" if skewness_in_range else "lightyellow"
-    ax.text(
-        0.98,
-        0.70,
-        f"{pct_below_actual * 100:.0f}% below threshold\n(Target: {pct_below_target * 100:.0f}%)\n"
-        f"Skew: {skewness_actual:.2f} [{skewness_min:.1f}, {skewness_max:.1f}]\n"
-        f"Status: {skew_status}",
-        transform=ax.transAxes,
-        fontsize=8,
-        ha="right",
-        va="top",
-        bbox=dict(boxstyle="round", facecolor=skew_color, alpha=0.7),
-    )
+    hedge_pcts: list[float] = []
+    speculative_pcts: list[float] = []
+    ponzi_pcts: list[float] = []
 
-    plt.tight_layout()
-    _save_panels(fig, axes, _OUTPUT_DIR, _PANEL_NAMES)
-    plt.show()
+    for t in range(burn_in, n_periods_total):
+        tf = total_funds[t]
+        p = loan_principals[t]
+        r = loan_rates[t]
+        src = loan_source_ids[t]
 
+        debt_per_firm = np.zeros(n_active_firms)
+        interest_per_firm = np.zeros(n_active_firms)
+        if len(p) > 0:
+            np.add.at(debt_per_firm, src, p * (1.0 + r))
+            np.add.at(interest_per_firm, src, p * r)
 
-def visualize_financial_dynamics(
-    metrics: GrowthPlusMetrics,
-    bounds: dict,
-    burn_in: int = 500,
-) -> None:
-    """Create financial dynamics visualization (Figures 3.6 and 3.7).
+        hedge = tf >= debt_per_firm
+        ponzi = tf < interest_per_firm
+        speculative = (~hedge) & (~ponzi)
 
-    Produces an 8-panel figure showing growth distributions, real interest rate,
-    bankruptcies, financial fragility, price ratio, and dispersion metrics
-    with recession bands overlaid.
+        hedge_pcts.append(float(np.sum(hedge)) / n_active_firms)
+        speculative_pcts.append(float(np.sum(speculative)) / n_active_firms)
+        ponzi_pcts.append(float(np.sum(ponzi)) / n_active_firms)
 
-    Parameters
-    ----------
-    metrics : GrowthPlusMetrics
-        Computed metrics from the simulation.
-    bounds : dict
-        Target bounds from validation YAML.
-    burn_in : int
-        Number of burn-in periods.
-    """
-    import matplotlib.pyplot as plt
+    minsky_hedge_pct = float(np.mean(hedge_pcts))
+    minsky_speculative_pct = float(np.mean(speculative_pcts))
+    minsky_ponzi_pct = float(np.mean(ponzi_pcts))
 
-    periods = np.arange(burn_in, len(metrics.unemployment))
-    recession_mask = metrics.recession_mask[burn_in:]
-    fin_bounds = bounds.get("financial_dynamics", {})
+    # Summary statistics
+    bankruptcies_ss = n_firm_bankruptcies[burn_in:]
+    real_ir_ss = real_interest_rate[burn_in:]
+    fragility_ss = avg_financial_fragility[burn_in:]
+    price_ratio_ss = price_ratio[burn_in:]
+    price_disp_ss = price_dispersion[burn_in:]
+    equity_disp_ss = equity_dispersion[burn_in:]
+    sales_disp_ss = sales_dispersion[burn_in:]
 
-    fig, axes = plt.subplots(4, 2, figsize=(14, 20))
-    fig.suptitle(
-        "Growth+ Financial Dynamics (Figures 3.6 & 3.7)",
-        fontsize=16,
-        y=0.995,
-    )
-
-    def add_recession_bands(ax, periods, recession_mask):
-        """Shade recession periods on plot."""
-        if not np.any(recession_mask):
-            return
-        in_recession = False
-        start_idx = 0
-        for i, is_rec in enumerate(recession_mask):
-            if is_rec and not in_recession:
-                start_idx = i
-                in_recession = True
-            elif not is_rec and in_recession:
-                ax.axvspan(periods[start_idx], periods[i - 1], alpha=0.2, color="gray")
-                in_recession = False
-        if in_recession:
-            ax.axvspan(periods[start_idx], periods[-1], alpha=0.2, color="gray")
-
-    # Figure 3.6a: Output Growth Rate Distribution (Log-Rank Plot)
-    ax = axes[0, 0]
-    output_growth = metrics.output_growth_rates
-    output_growth_filtered = output_growth[np.isfinite(output_growth)]
-    if len(output_growth_filtered) > 0:
-        # Get target bounds from YAML
-        ogd_bounds = fin_bounds.get("output_growth_distribution", {}).get("targets", {})
-
-        # Add tiered range bands (before plotting data)
-        tight_min = ogd_bounds.get("tight_range_min", -0.05)
-        tight_max = ogd_bounds.get("tight_range_max", 0.05)
-        normal_min = ogd_bounds.get("normal_range_min", -0.10)
-        normal_max = ogd_bounds.get("normal_range_max", 0.10)
-        extreme_min = ogd_bounds.get("extreme_range_min", -0.15)
-        extreme_max = ogd_bounds.get("extreme_range_max", 0.15)
-
-        # Extreme zones only (red shading)
-        ax.axvspan(extreme_min, normal_min, alpha=0.15, color="red", zorder=0)
-        ax.axvspan(normal_max, extreme_max, alpha=0.15, color="red", zorder=0)
-
-        # Normal bounds (dashed orange lines)
-        ax.axvline(normal_min, color="orange", linestyle="--", alpha=0.7, zorder=1)
-        ax.axvline(normal_max, color="orange", linestyle="--", alpha=0.7, zorder=1)
-
-        # Tight bounds (dashed green lines)
-        ax.axvline(tight_min, color="green", linestyle="--", alpha=0.7, zorder=1)
-        ax.axvline(tight_max, color="green", linestyle="--", alpha=0.7, zorder=1)
-
-        # Separate negative and positive growth rates
-        negative_growth = output_growth_filtered[output_growth_filtered < 0]
-        positive_growth = output_growth_filtered[output_growth_filtered >= 0]
-
-        # Sort and compute ranks for negative (ascending: most negative to zero)
-        neg_sorted = np.sort(negative_growth)
-        neg_ranks = np.arange(1, len(neg_sorted) + 1)
-
-        # Sort and compute ranks for positive (descending: zero to most positive)
-        pos_sorted = np.sort(positive_growth)[::-1]
-        pos_ranks = np.arange(1, len(pos_sorted) + 1)
-
-        # Plot as scatter with log-scale Y-axis
-        if len(neg_sorted) > 0:
-            ax.scatter(neg_sorted, neg_ranks, s=10, alpha=0.7, color="#2E86AB")
-        if len(pos_sorted) > 0:
-            ax.scatter(pos_sorted, pos_ranks, s=10, alpha=0.7, color="#E74C3C")
-        ax.set_yscale("log")
-
-        # Stats box with tiered percentages
-        n_total = len(output_growth_filtered)
-        pct_tight = (
-            np.sum(
-                (output_growth_filtered >= tight_min)
-                & (output_growth_filtered <= tight_max)
-            )
-            / n_total
-        )
-        pct_normal = (
-            np.sum(
-                (output_growth_filtered >= normal_min)
-                & (output_growth_filtered <= normal_max)
-            )
-            / n_total
-        )
-        pct_outliers = (
-            1
-            - np.sum(
-                (output_growth_filtered >= extreme_min)
-                & (output_growth_filtered <= extreme_max)
-            )
-            / n_total
-        )
-
-        target_tight = ogd_bounds.get("pct_within_tight_target", 0.95)
-        target_normal = ogd_bounds.get("pct_within_normal_target", 0.99)
-        max_outlier = ogd_bounds.get("max_outlier_pct", 0.02)
-
-        status_color = (
-            "lightgreen"
-            if (pct_tight >= target_tight * 0.9 and pct_outliers <= max_outlier * 2)
-            else "lightyellow"
-        )
-        ax.text(
-            0.02,
-            0.97,
-            f"N = {n_total}\n"
-            f"Tight: {pct_tight * 100:.1f}% (target: {target_tight * 100:.0f}%)\n"
-            f"Normal: {pct_normal * 100:.1f}% (target: {target_normal * 100:.0f}%)\n"
-            f"Outliers: {pct_outliers * 100:.1f}% (max: {max_outlier * 100:.0f}%)",
-            transform=ax.transAxes,
-            fontsize=8,
-            verticalalignment="top",
-            bbox=dict(boxstyle="round", facecolor=status_color, alpha=0.7),
-        )
-    ax.set_title("Output Growth Rate Distribution", fontsize=12, fontweight="bold")
-    ax.set_xlabel("Output growth rate")
-    ax.set_ylabel("Log-rank")
-    ax.grid(True, linestyle="--", alpha=0.3)
-    _shade_beyond_extreme(ax, extreme_min, extreme_max, axis="x")
-
-    # Figure 3.6b: Net Worth Growth Rate Distribution (Log-Rank Plot)
-    ax = axes[0, 1]
-    networth_growth = metrics.networth_growth_rates
-    networth_growth_filtered = networth_growth[np.isfinite(networth_growth)]
-    if len(networth_growth_filtered) > 0:
-        # Get target bounds from YAML
-        nwd_bounds = fin_bounds.get("networth_growth_distribution", {}).get(
-            "targets", {}
-        )
-
-        # Add tiered range bands (before plotting data)
-        tight_min = nwd_bounds.get("tight_range_min", -0.05)
-        tight_max = nwd_bounds.get("tight_range_max", 0.05)
-        normal_min = nwd_bounds.get("normal_range_min", -0.10)
-        normal_max = nwd_bounds.get("normal_range_max", 0.10)
-        extreme_min = nwd_bounds.get("extreme_range_min", -0.50)
-        extreme_max = nwd_bounds.get("extreme_range_max", 0.20)
-
-        # Extreme zones only (red shading)
-        ax.axvspan(extreme_min, normal_min, alpha=0.15, color="red", zorder=0)
-        ax.axvspan(normal_max, extreme_max, alpha=0.15, color="red", zorder=0)
-
-        # Normal bounds (dashed orange lines)
-        ax.axvline(normal_min, color="orange", linestyle="--", alpha=0.7, zorder=1)
-        ax.axvline(normal_max, color="orange", linestyle="--", alpha=0.7, zorder=1)
-
-        # Tight bounds (dashed green lines)
-        ax.axvline(tight_min, color="green", linestyle="--", alpha=0.7, zorder=1)
-        ax.axvline(tight_max, color="green", linestyle="--", alpha=0.7, zorder=1)
-
-        # Separate negative and positive growth rates
-        neg_nw = networth_growth_filtered[networth_growth_filtered < 0]
-        pos_nw = networth_growth_filtered[networth_growth_filtered >= 0]
-
-        # Sort and compute ranks
-        neg_sorted = np.sort(neg_nw)
-        neg_ranks = np.arange(1, len(neg_sorted) + 1)
-        pos_sorted = np.sort(pos_nw)[::-1]
-        pos_ranks = np.arange(1, len(pos_sorted) + 1)
-
-        # Plot as scatter with log-scale Y-axis
-        if len(neg_sorted) > 0:
-            ax.scatter(neg_sorted, neg_ranks, s=10, alpha=0.7, color="#2E86AB")
-        if len(pos_sorted) > 0:
-            ax.scatter(pos_sorted, pos_ranks, s=10, alpha=0.7, color="#E74C3C")
-        ax.set_yscale("log")
-
-        # Stats box with tiered percentages
-        n_total = len(networth_growth_filtered)
-        pct_tight = (
-            np.sum(
-                (networth_growth_filtered >= tight_min)
-                & (networth_growth_filtered <= tight_max)
-            )
-            / n_total
-        )
-        pct_normal = (
-            np.sum(
-                (networth_growth_filtered >= normal_min)
-                & (networth_growth_filtered <= normal_max)
-            )
-            / n_total
-        )
-        pct_outliers = (
-            1
-            - np.sum(
-                (networth_growth_filtered >= extreme_min)
-                & (networth_growth_filtered <= extreme_max)
-            )
-            / n_total
-        )
-
-        target_tight = nwd_bounds.get("pct_within_tight_target", 0.75)
-        target_normal = nwd_bounds.get("pct_within_normal_target", 0.90)
-        max_outlier = nwd_bounds.get("max_outlier_pct", 0.05)
-
-        status_color = (
-            "lightgreen"
-            if (pct_tight >= target_tight * 0.8 and pct_outliers <= max_outlier * 2)
-            else "lightyellow"
-        )
-        ax.text(
-            0.02,
-            0.97,
-            f"N = {n_total}\n"
-            f"Tight: {pct_tight * 100:.1f}% (target: {target_tight * 100:.0f}%)\n"
-            f"Normal: {pct_normal * 100:.1f}% (target: {target_normal * 100:.0f}%)\n"
-            f"Outliers: {pct_outliers * 100:.1f}% (max: {max_outlier * 100:.0f}%)",
-            transform=ax.transAxes,
-            fontsize=8,
-            verticalalignment="top",
-            bbox=dict(boxstyle="round", facecolor=status_color, alpha=0.7),
-        )
-    ax.set_title(
-        "Firms' Asset Growth Rate Distribution", fontsize=12, fontweight="bold"
-    )
-    ax.set_xlabel("Firms' asset growth rate")
-    ax.set_ylabel("Log-rank")
-    ax.grid(True, linestyle="--", alpha=0.3)
-    _shade_beyond_extreme(ax, extreme_min, extreme_max, axis="x")
-
-    # Figure 3.6c: Real Interest Rate
-    ax = axes[1, 0]
-    real_interest = metrics.real_interest_rate[burn_in:]
-    rir_bounds = fin_bounds.get("real_interest_rate", {}).get("targets", {})
-
-    # Get bounds from targets (with defaults matching book figure)
-    extreme_min = rir_bounds.get("extreme_min", -0.05)
-    extreme_max = rir_bounds.get("extreme_max", 0.15)
-    normal_min = rir_bounds.get("normal_min", 0.00)
-    normal_max = rir_bounds.get("normal_max", 0.10)
-
-    # Extreme bounds (shaded red zones)
-    ax.axhspan(
-        extreme_min * 100,
-        normal_min * 100,
-        alpha=0.1,
-        color="red",
-    )
-    ax.axhspan(
-        normal_max * 100,
-        extreme_max * 100,
-        alpha=0.1,
-        color="red",
+    return GrowthPlusMetrics(
+        unemployment=unemployment,
+        inflation=inflation,
+        log_gdp=log_gdp,
+        real_wage=real_wage,
+        avg_productivity=avg_productivity,
+        vacancy_rate=vacancy_rate,
+        wage_inflation=wage_inflation,
+        gdp_growth=gdp_growth,
+        unemployment_growth=unemployment_growth,
+        final_production=final_production_arr,
+        unemployment_mean=float(np.mean(unemployment_ss)),
+        unemployment_std=float(np.std(unemployment_ss)),
+        unemployment_max=float(np.max(unemployment_ss)),
+        unemployment_pct_in_bounds=float(
+            np.sum((unemployment_ss >= 0.02) & (unemployment_ss <= 0.15))
+            / len(unemployment_ss)
+        ),
+        inflation_mean=float(np.mean(inflation_ss)),
+        inflation_std=float(np.std(inflation_ss)),
+        inflation_max=float(np.max(inflation_ss)),
+        inflation_min=float(np.min(inflation_ss)),
+        inflation_pct_in_bounds=float(
+            np.mean((inflation_ss >= -0.02) & (inflation_ss <= 0.10))
+        ),
+        log_gdp_mean=float(np.mean(log_gdp_ss)),
+        log_gdp_std=float(np.std(log_gdp_ss)),
+        real_wage_mean=float(np.mean(real_wage_ss)),
+        real_wage_std=float(np.std(real_wage_ss)),
+        vacancy_rate_mean=float(np.mean(vacancy_rate_ss)),
+        vacancy_rate_pct_in_bounds=float(
+            np.mean((vacancy_rate_ss >= 0.08) & (vacancy_rate_ss <= 0.20))
+        ),
+        phillips_corr=phillips_corr,
+        okun_corr=okun_corr,
+        beveridge_corr=beveridge_corr,
+        firm_size_skewness=firm_size_skewness,
+        firm_size_pct_below_threshold=firm_size_pct_below,
+        firm_size_tail_ratio=firm_size_tail_ratio,
+        firm_size_pct_below_medium=firm_size_pct_below_medium,
+        productivity_growth_rate=productivity_growth_rate,
+        productivity_trend_coefficient=productivity_trend_coefficient,
+        initial_productivity=initial_productivity,
+        final_productivity=final_productivity_val,
+        total_productivity_growth=total_productivity_growth,
+        real_wage_initial=real_wage_initial,
+        real_wage_final=real_wage_final,
+        total_real_wage_growth=total_real_wage_growth,
+        log_gdp_trend_coefficient=log_gdp_trend_coefficient,
+        log_gdp_total_growth=log_gdp_total_growth,
+        productivity_wage_correlation=productivity_wage_correlation,
+        wage_productivity_ratio_mean=wage_productivity_ratio_mean,
+        wage_productivity_ratio_std=wage_productivity_ratio_std,
+        n_firm_bankruptcies=n_firm_bankruptcies,
+        n_bank_bankruptcies=n_bank_bankruptcies,
+        real_interest_rate=real_interest_rate,
+        avg_financial_fragility=avg_financial_fragility,
+        price_ratio=price_ratio,
+        price_dispersion=price_dispersion,
+        equity_dispersion=equity_dispersion,
+        sales_dispersion=sales_dispersion,
+        output_growth_rates=output_growth_rates,
+        networth_growth_rates=networth_growth_rates,
+        output_growth_pct_within_tight=output_growth_pct_within_tight,
+        output_growth_pct_within_normal=output_growth_pct_within_normal,
+        output_growth_pct_outliers=output_growth_pct_outliers,
+        networth_growth_pct_within_tight=networth_growth_pct_within_tight,
+        networth_growth_pct_within_normal=networth_growth_pct_within_normal,
+        networth_growth_pct_outliers=networth_growth_pct_outliers,
+        recession_mask=recession_mask,
+        n_recessions=n_recessions,
+        avg_recession_length=avg_recession_length,
+        minsky_hedge_pct=minsky_hedge_pct,
+        minsky_speculative_pct=minsky_speculative_pct,
+        minsky_ponzi_pct=minsky_ponzi_pct,
+        bankruptcies_mean=float(np.mean(bankruptcies_ss)),
+        real_interest_rate_mean=float(np.mean(real_ir_ss)),
+        real_interest_rate_std=float(np.std(real_ir_ss)),
+        avg_fragility_mean=float(np.mean(fragility_ss)),
+        avg_fragility_std=float(np.std(fragility_ss)),
+        price_ratio_mean=float(np.mean(price_ratio_ss)),
+        price_ratio_std=float(np.std(price_ratio_ss)),
+        price_dispersion_mean=float(np.mean(price_disp_ss)),
+        price_dispersion_std=float(np.std(price_disp_ss)),
+        equity_dispersion_mean=float(np.mean(equity_disp_ss)),
+        equity_dispersion_std=float(np.std(equity_disp_ss)),
+        sales_dispersion_mean=float(np.mean(sales_disp_ss)),
+        sales_dispersion_std=float(np.std(sales_disp_ss)),
     )
 
-    # Plot data
-    ax.plot(periods, real_interest * 100, linewidth=1, color="#F18F01")
-    ax.axhline(0, color="black", linestyle="-", alpha=0.3, linewidth=0.5)
 
-    # Normal bounds (green dashed lines)
-    ax.axhline(
-        normal_min * 100,
-        color="green",
-        linestyle="--",
-        alpha=0.5,
+# =============================================================================
+# Collection Configuration
+# =============================================================================
+
+COLLECT_CONFIG = {
+    "Producer": ["production", "labor_productivity", "price", "inventory"],
+    "Worker": ["wage", "employed"],
+    "Employer": ["n_vacancies"],
+    "Borrower": ["net_worth", "gross_profit", "total_funds"],
+    "Consumer": ["income_to_spend"],
+    "LoanBook": ["principal", "rate", "source_ids"],
+    "Economy": True,
+    "aggregate": None,
+    "capture_timing": {
+        "Worker.wage": "firms_run_production",
+        "Worker.employed": "firms_run_production",
+        "Producer.production": "firms_run_production",
+        "Producer.labor_productivity": "firms_apply_productivity_growth",
+        "Producer.price": "firms_adjust_price",
+        "Producer.inventory": "consumers_finalize_purchases",
+        "Employer.n_vacancies": "firms_decide_vacancies",
+        "Borrower.net_worth": "firms_run_production",
+        "Borrower.gross_profit": "firms_collect_revenue",
+        "Borrower.total_funds": "firms_collect_revenue",
+        "Consumer.income_to_spend": "consumers_decide_income_to_spend",
+        "LoanBook.principal": "banks_provide_loans",
+        "LoanBook.rate": "banks_provide_loans",
+        "LoanBook.source_ids": "banks_provide_loans",
+        "Economy.n_firm_bankruptcies": "mark_bankrupt_firms",
+        "Economy.n_bank_bankruptcies": "mark_bankrupt_banks",
+    },
+}
+
+# =============================================================================
+# Default Configuration
+# =============================================================================
+
+DEFAULT_CONFIG = {
+    "n_firms": 100,
+    "n_households": 500,
+    "n_banks": 10,
+    "new_firm_size_factor": 0.5,
+    "new_firm_production_factor": 0.5,
+    "new_firm_wage_factor": 0.5,
+    "new_firm_price_markup": 1.5,
+    # Growth+ R&D parameters
+    "sigma_min": 0.0,
+    "sigma_max": 0.1,
+    "sigma_decay": -1.0,
+}
+
+# =============================================================================
+# Metric Specifications
+# =============================================================================
+
+METRIC_SPECS = [
+    # Time series metrics
+    MetricSpec(
+        name="unemployment_rate_mean",
+        field="unemployment_mean",
+        check_type=CheckType.MEAN_TOLERANCE,
+        target_path="metrics.unemployment_rate_mean",
+        weight=1.5,
+        group=MetricGroup.TIME_SERIES,
+    ),
+    MetricSpec(
+        name="unemployment_hard_ceiling",
+        field="unemployment_max",
+        check_type=CheckType.BOOLEAN,
+        target_path="metrics.unemployment_hard_ceiling",
+        weight=3.0,
+        group=MetricGroup.TIME_SERIES,
+        threshold=0.30,
+        invert=True,
+        target_desc="< 30% (model stability)",
+    ),
+    MetricSpec(
+        name="unemployment_std",
+        field="unemployment_std",
+        check_type=CheckType.RANGE,
+        target_path="metrics.unemployment_std",
+        weight=1.5,
+        group=MetricGroup.TIME_SERIES,
+    ),
+    MetricSpec(
+        name="unemployment_pct_in_bounds",
+        field="unemployment_pct_in_bounds",
+        check_type=CheckType.PCT_WITHIN,
+        target_path="metrics.unemployment_pct_in_bounds",
+        weight=1.5,
+        group=MetricGroup.TIME_SERIES,
+        format=MetricFormat.PERCENT,
+    ),
+    MetricSpec(
+        name="inflation_rate_mean",
+        field="inflation_mean",
+        check_type=CheckType.MEAN_TOLERANCE,
+        target_path="metrics.inflation_rate_mean",
+        weight=1.5,
+        group=MetricGroup.TIME_SERIES,
+    ),
+    MetricSpec(
+        name="inflation_hard_ceiling_upper",
+        field="inflation_max",
+        check_type=CheckType.BOOLEAN,
+        target_path="metrics.inflation_hard_ceiling_upper",
+        weight=3.0,
+        group=MetricGroup.TIME_SERIES,
+        threshold=0.25,
+        invert=True,  # max must be < 25%
+        target_desc="< 25% (model stability)",
+    ),
+    MetricSpec(
+        name="inflation_hard_floor",
+        field="inflation_min",
+        check_type=CheckType.BOOLEAN,
+        target_path="metrics.inflation_hard_floor",
+        weight=3.0,
+        group=MetricGroup.TIME_SERIES,
+        threshold=-0.15,
+        invert=False,  # min must be > -15%
+        target_desc="> -15% (model stability)",
+    ),
+    MetricSpec(
+        name="inflation_non_degenerate",
+        field="inflation_mean",
+        check_type=CheckType.RANGE,
+        target_path="metrics.inflation_non_degenerate",
+        weight=2.0,
+        group=MetricGroup.TIME_SERIES,
+    ),
+    MetricSpec(
+        name="inflation_pct_in_bounds",
+        field="inflation_pct_in_bounds",
+        check_type=CheckType.PCT_WITHIN,
+        target_path="metrics.inflation_pct_in_bounds",
+        weight=1.5,
+        group=MetricGroup.TIME_SERIES,
+        format=MetricFormat.PERCENT,
+    ),
+    MetricSpec(
+        name="log_gdp_mean",
+        field="log_gdp_mean",
+        check_type=CheckType.MEAN_TOLERANCE,
+        target_path="metrics.log_gdp_mean",
+        weight=1.0,
+        group=MetricGroup.TIME_SERIES,
+    ),
+    MetricSpec(
+        name="log_gdp_trend",
+        field="log_gdp_trend_coefficient",
+        check_type=CheckType.RANGE,
+        target_path="metrics.log_gdp_trend",
+        weight=2.0,
+        group=MetricGroup.TIME_SERIES,
+        format=MetricFormat.TREND,
+    ),
+    MetricSpec(
+        name="log_gdp_trend_positive",
+        field="log_gdp_trend_coefficient",
+        check_type=CheckType.BOOLEAN,
+        target_path="metrics.log_gdp_trend_positive",
+        weight=2.0,
+        group=MetricGroup.TIME_SERIES,
+        threshold=0.0,
+        target_desc="> 0 (must be positive)",
+    ),
+    MetricSpec(
+        name="log_gdp_total_growth",
+        field="log_gdp_total_growth",
+        check_type=CheckType.RANGE,
+        target_path="metrics.log_gdp_total_growth",
+        weight=1.0,
+        group=MetricGroup.TIME_SERIES,
+        format=MetricFormat.TREND,
+    ),
+    MetricSpec(
+        name="vacancy_rate_mean",
+        field="vacancy_rate_mean",
+        check_type=CheckType.MEAN_TOLERANCE,
+        target_path="metrics.vacancy_rate_mean",
+        weight=0.5,
+        group=MetricGroup.TIME_SERIES,
+    ),
+    MetricSpec(
+        name="vacancy_rate_pct_in_bounds",
+        field="vacancy_rate_pct_in_bounds",
+        check_type=CheckType.PCT_WITHIN,
+        target_path="metrics.vacancy_rate_pct_in_bounds",
+        weight=0.5,
+        group=MetricGroup.TIME_SERIES,
+        format=MetricFormat.PERCENT,
+    ),
+    # Curve correlations
+    MetricSpec(
+        name="phillips_correlation",
+        field="phillips_corr",
+        check_type=CheckType.RANGE,
+        target_path="metrics.phillips_correlation",
+        weight=1.5,
+        group=MetricGroup.CURVES,
+    ),
+    MetricSpec(
+        name="phillips_negative_sign",
+        field="phillips_corr",
+        check_type=CheckType.RANGE,
+        target_path="metrics.phillips_negative_sign",
+        weight=3.0,  # CRITICAL - structural validity
+        group=MetricGroup.CURVES,
+        target_desc="correlation must be < 0",
+    ),
+    MetricSpec(
+        name="okun_correlation",
+        field="okun_corr",
+        check_type=CheckType.RANGE,
+        target_path="metrics.okun_correlation",
+        weight=3.0,  # CRITICAL: Okun's Law is fundamental macroeconomic relationship
+        group=MetricGroup.CURVES,
+    ),
+    MetricSpec(
+        name="okun_weak_fail",
+        field="okun_corr",
+        check_type=CheckType.BOOLEAN,
+        target_path="metrics.okun_weak_fail",
+        weight=3.0,
+        group=MetricGroup.CURVES,
+        threshold=-0.50,
+        invert=True,  # PASS if r < -0.50, FAIL if r >= -0.50
+        target_desc="< -0.50 (minimum acceptable)",
+    ),
+    MetricSpec(
+        name="beveridge_correlation",
+        field="beveridge_corr",
+        check_type=CheckType.RANGE,
+        target_path="metrics.beveridge_correlation",
+        weight=2.0,
+        group=MetricGroup.CURVES,
+    ),
+    MetricSpec(
+        name="beveridge_negative_sign",
+        field="beveridge_corr",
+        check_type=CheckType.RANGE,
+        target_path="metrics.beveridge_negative_sign",
+        weight=3.0,  # CRITICAL - structural validity
+        group=MetricGroup.CURVES,
+        target_desc="correlation must be < 0",
+    ),
+    # Distribution metrics
+    MetricSpec(
+        name="firm_size_skewness",
+        field="firm_size_skewness",
+        check_type=CheckType.MEAN_TOLERANCE,
+        target_path="metrics.firm_size_skewness",
+        weight=1.5,
+        group=MetricGroup.DISTRIBUTION,
+    ),
+    MetricSpec(
+        name="firm_size_pct_below",
+        field="firm_size_pct_below_threshold",
+        check_type=CheckType.RANGE,
+        target_path="metrics.firm_size_pct_below",
+        weight=0.5,
+        group=MetricGroup.DISTRIBUTION,
+        format=MetricFormat.PERCENT,
+    ),
+    MetricSpec(
+        name="firm_size_tail_ratio",
+        field="firm_size_tail_ratio",
+        check_type=CheckType.RANGE,
+        target_path="metrics.firm_size_tail_ratio",
+        weight=0.75,
+        group=MetricGroup.DISTRIBUTION,
+    ),
+    MetricSpec(
+        name="firm_size_pct_below_medium",
+        field="firm_size_pct_below_medium",
+        check_type=CheckType.PCT_WITHIN,
+        target_path="metrics.firm_size_pct_below_medium",
+        weight=0.5,
+        group=MetricGroup.DISTRIBUTION,
+        format=MetricFormat.PERCENT,
+    ),
+    # Growth metrics
+    MetricSpec(
+        name="productivity_growth",
+        field="total_productivity_growth",
+        check_type=CheckType.RANGE,
+        target_path="metrics.productivity_growth",
+        weight=1.5,
+        group=MetricGroup.GROWTH,
+        format=MetricFormat.PERCENT,
+    ),
+    MetricSpec(
+        name="real_wage_growth",
+        field="total_real_wage_growth",
+        check_type=CheckType.RANGE,
+        target_path="metrics.real_wage_growth",
+        weight=1.0,
+        group=MetricGroup.GROWTH,
+        format=MetricFormat.PERCENT,
+    ),
+    # Productivity-Wage Co-movement
+    MetricSpec(
+        name="productivity_wage_correlation",
+        field="productivity_wage_correlation",
+        check_type=CheckType.RANGE,
+        target_path="metrics.productivity_wage_correlation",
+        weight=2.0,  # CRITICAL - key validation from Figure 3.4(d)
+        group=MetricGroup.GROWTH,
+    ),
+    MetricSpec(
+        name="wage_productivity_ratio_mean",
+        field="wage_productivity_ratio_mean",
+        check_type=CheckType.MEAN_TOLERANCE,
+        target_path="metrics.wage_productivity_ratio_mean",
+        weight=1.5,  # IMPORTANT
+        group=MetricGroup.GROWTH,
+    ),
+    MetricSpec(
+        name="wage_productivity_ratio_std",
+        field="wage_productivity_ratio_std",
+        check_type=CheckType.RANGE,
+        target_path="metrics.wage_productivity_ratio_std",
+        weight=1.5,  # IMPORTANT - detects divergence
+        group=MetricGroup.GROWTH,
+    ),
+    MetricSpec(
+        name="productivity_trend",
+        field="productivity_trend_coefficient",
+        check_type=CheckType.RANGE,
+        target_path="metrics.productivity_trend",
+        weight=1.0,
+        group=MetricGroup.GROWTH,
+        format=MetricFormat.TREND,
+    ),
+    MetricSpec(
+        name="n_recessions",
+        field="n_recessions",
+        check_type=CheckType.RANGE,
+        target_path="metrics.n_recessions",
+        weight=1.5,
+        group=MetricGroup.GROWTH,
+        format=MetricFormat.INTEGER,
+    ),
+    MetricSpec(
+        name="avg_recession_length",
+        field="avg_recession_length",
+        check_type=CheckType.RANGE,
+        target_path="metrics.avg_recession_length",
+        weight=0.5,
+        group=MetricGroup.GROWTH,
+    ),
+    # Financial dynamics
+    MetricSpec(
+        name="bankruptcies_mean",
+        field="bankruptcies_mean",
+        check_type=CheckType.MEAN_TOLERANCE,
+        target_path="metrics.bankruptcies_mean",
+        weight=0.5,
+        group=MetricGroup.FINANCIAL,
+    ),
+    MetricSpec(
+        name="real_interest_rate_mean",
+        field="real_interest_rate_mean",
+        check_type=CheckType.MEAN_TOLERANCE,
+        target_path="metrics.real_interest_rate_mean",
+        weight=0.5,
+        group=MetricGroup.FINANCIAL,
+    ),
+    MetricSpec(
+        name="real_interest_rate_std",
+        field="real_interest_rate_std",
+        check_type=CheckType.MEAN_TOLERANCE,
+        target_path="metrics.real_interest_rate_std",
+        weight=0.5,
+        group=MetricGroup.FINANCIAL,
+    ),
+    MetricSpec(
+        name="financial_fragility_mean",
+        field="avg_fragility_mean",
+        check_type=CheckType.MEAN_TOLERANCE,
+        target_path="metrics.financial_fragility_mean",
+        weight=0.5,
+        group=MetricGroup.FINANCIAL,
+    ),
+    MetricSpec(
+        name="financial_fragility_std",
+        field="avg_fragility_std",
+        check_type=CheckType.MEAN_TOLERANCE,
+        target_path="metrics.financial_fragility_std",
+        weight=0.5,
+        group=MetricGroup.FINANCIAL,
+    ),
+    MetricSpec(
+        name="price_ratio_mean",
+        field="price_ratio_mean",
+        check_type=CheckType.MEAN_TOLERANCE,
+        target_path="metrics.price_ratio_mean",
+        weight=0.5,
+        group=MetricGroup.FINANCIAL,
+    ),
+    MetricSpec(
+        name="price_ratio_std",
+        field="price_ratio_std",
+        check_type=CheckType.MEAN_TOLERANCE,
+        target_path="metrics.price_ratio_std",
+        weight=0.5,
+        group=MetricGroup.FINANCIAL,
+    ),
+    MetricSpec(
+        name="price_dispersion_mean",
+        field="price_dispersion_mean",
+        check_type=CheckType.MEAN_TOLERANCE,
+        target_path="metrics.price_dispersion_mean",
+        weight=0.5,
+        group=MetricGroup.FINANCIAL,
+    ),
+    MetricSpec(
+        name="price_dispersion_std",
+        field="price_dispersion_std",
+        check_type=CheckType.MEAN_TOLERANCE,
+        target_path="metrics.price_dispersion_std",
+        weight=0.5,
+        group=MetricGroup.FINANCIAL,
+    ),
+    MetricSpec(
+        name="equity_dispersion_mean",
+        field="equity_dispersion_mean",
+        check_type=CheckType.MEAN_TOLERANCE,
+        target_path="metrics.equity_dispersion_mean",
+        weight=0.5,
+        group=MetricGroup.FINANCIAL,
+    ),
+    MetricSpec(
+        name="equity_dispersion_std",
+        field="equity_dispersion_std",
+        check_type=CheckType.MEAN_TOLERANCE,
+        target_path="metrics.equity_dispersion_std",
+        weight=0.5,
+        group=MetricGroup.FINANCIAL,
+    ),
+    MetricSpec(
+        name="sales_dispersion_mean",
+        field="sales_dispersion_mean",
+        check_type=CheckType.MEAN_TOLERANCE,
+        target_path="metrics.sales_dispersion_mean",
+        weight=0.5,
+        group=MetricGroup.FINANCIAL,
+    ),
+    MetricSpec(
+        name="sales_dispersion_std",
+        field="sales_dispersion_std",
+        check_type=CheckType.MEAN_TOLERANCE,
+        target_path="metrics.sales_dispersion_std",
+        weight=0.5,
+        group=MetricGroup.FINANCIAL,
+    ),
+    MetricSpec(
+        name="minsky_hedge_pct",
+        field="minsky_hedge_pct",
+        check_type=CheckType.RANGE,
+        target_path="metrics.minsky_hedge_pct",
+        weight=0.5,
+        group=MetricGroup.FINANCIAL,
+        format=MetricFormat.PERCENT,
+    ),
+    MetricSpec(
+        name="minsky_ponzi_pct",
+        field="minsky_ponzi_pct",
+        check_type=CheckType.RANGE,
+        target_path="metrics.minsky_ponzi_pct",
+        weight=0.5,
+        group=MetricGroup.FINANCIAL,
+        format=MetricFormat.PERCENT,
+    ),
+    # Growth rate distributions
+    MetricSpec(
+        name="output_growth_pct_tight",
+        field="output_growth_pct_within_tight",
+        check_type=CheckType.PCT_WITHIN,
+        target_path="metrics.output_growth_pct_tight",
+        weight=1.0,
+        group=MetricGroup.GROWTH_RATE_DIST,
+        format=MetricFormat.PERCENT,
+    ),
+    MetricSpec(
+        name="output_growth_pct_normal",
+        field="output_growth_pct_within_normal",
+        check_type=CheckType.PCT_WITHIN,
+        target_path="metrics.output_growth_pct_normal",
+        weight=0.5,
+        group=MetricGroup.GROWTH_RATE_DIST,
+        format=MetricFormat.PERCENT,
+    ),
+    MetricSpec(
+        name="output_growth_outliers",
+        field="output_growth_pct_outliers",
+        check_type=CheckType.OUTLIER,
+        target_path="metrics.output_growth_outliers",
+        weight=1.5,
+        group=MetricGroup.GROWTH_RATE_DIST,
+        format=MetricFormat.PERCENT,
+    ),
+    MetricSpec(
+        name="networth_growth_pct_tight",
+        field="networth_growth_pct_within_tight",
+        check_type=CheckType.PCT_WITHIN,
+        target_path="metrics.networth_growth_pct_tight",
+        weight=1.0,
+        group=MetricGroup.GROWTH_RATE_DIST,
+        format=MetricFormat.PERCENT,
+    ),
+    MetricSpec(
+        name="networth_growth_pct_normal",
+        field="networth_growth_pct_within_normal",
+        check_type=CheckType.PCT_WITHIN,
+        target_path="metrics.networth_growth_pct_normal",
+        weight=0.5,
+        group=MetricGroup.GROWTH_RATE_DIST,
+        format=MetricFormat.PERCENT,
+    ),
+    MetricSpec(
+        name="networth_growth_outliers",
+        field="networth_growth_pct_outliers",
+        check_type=CheckType.OUTLIER,
+        target_path="metrics.networth_growth_outliers",
+        weight=1.5,
+        group=MetricGroup.GROWTH_RATE_DIST,
+        format=MetricFormat.PERCENT,
+    ),
+]
+
+
+# =============================================================================
+# Setup Hook for RnD Extension
+# =============================================================================
+
+
+def _setup_rnd(sim: bam.Simulation | None) -> None:
+    """Setup hook to import and attach RnD extension."""
+    if sim is None:
+        # Pre-import call - just import to register events
+        from extensions.rnd import RnD
+    else:
+        # Attach RnD role to simulation
+        from extensions.rnd import RnD
+
+        sim.use_role(RnD)
+
+
+# =============================================================================
+# Compute Metrics Wrapper
+# =============================================================================
+
+
+def _compute_metrics_wrapper(
+    sim: bam.Simulation, results: SimulationResults, burn_in: int
+) -> GrowthPlusMetrics:
+    """Wrapper for compute_growth_plus_metrics that loads params from YAML."""
+    targets_path = Path(__file__).parent.parent / "targets" / "growth_plus.yaml"
+    with open(targets_path) as f:
+        targets = yaml.safe_load(f)
+
+    params = targets["metadata"]["params"]
+
+    return compute_growth_plus_metrics(
+        sim,
+        results,
+        burn_in=burn_in,
+        firm_size_threshold=params["firm_size_threshold"],
+        firm_size_threshold_medium=params["firm_size_threshold_medium"],
     )
-    ax.axhline(
-        normal_max * 100,
-        color="green",
-        linestyle="--",
-        alpha=0.5,
-    )
 
-    # Mean target line
-    if "mean_target" in rir_bounds:
-        ax.axhline(
-            rir_bounds["mean_target"] * 100,
-            color="blue",
-            linestyle="-.",
-            alpha=0.5,
-            label=f"Target: {rir_bounds['mean_target'] * 100:.1f}%",
-        )
-    ax.set_title("Real Interest Rate", fontsize=12, fontweight="bold")
-    ax.set_ylabel("Real Interest Rate (%)")
-    ax.set_xlabel("t")
-    ax.legend(fontsize=8, loc="upper right")
-    ax.grid(True, linestyle="--", alpha=0.3)
 
-    # Stats box with mean, std, and % in bounds
-    actual_mean = np.mean(real_interest)
-    actual_std = np.std(real_interest)
-    in_bounds = np.sum(
-        (real_interest >= normal_min) & (real_interest <= normal_max)
-    ) / len(real_interest)
-    ax.text(
-        0.02,
-        0.97,
-        f"mu = {actual_mean * 100:.2f}%\nsigma = {actual_std * 100:.2f}%\n{in_bounds * 100:.0f}% in bounds",
-        transform=ax.transAxes,
-        fontsize=8,
-        verticalalignment="top",
-        horizontalalignment="left",
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
-    )
-    _shade_beyond_extreme(ax, extreme_min * 100, extreme_max * 100)
+# =============================================================================
+# Scenario Definition
+# =============================================================================
 
-    # Figure 3.6d: Number of Bankruptcies
-    ax = axes[1, 1]
-    bankruptcies = metrics.n_firm_bankruptcies[burn_in:]
-    ax.plot(periods, bankruptcies, linewidth=1, color="#E74C3C")
-    bkr_bounds = fin_bounds.get("bankruptcies", {}).get("targets", {})
-    if "mean_target" in bkr_bounds:
-        ax.axhline(
-            bkr_bounds["mean_target"],
-            color="blue",
-            linestyle="-.",
-            alpha=0.5,
-            label=f"Target: {bkr_bounds['mean_target']:.1f}",
-        )
-    ax.set_title("Firm Bankruptcies per Period", fontsize=12, fontweight="bold")
-    ax.set_ylabel("Number of Bankruptcies")
-    ax.set_xlabel("t")
-    ax.set_ylim(bottom=0)
-    ax.legend(fontsize=8, loc="upper right")
-    ax.grid(True, linestyle="--", alpha=0.3)
-    ax.text(
-        0.02,
-        0.97,
-        f"mean = {np.mean(bankruptcies):.2f}\nmax = {np.max(bankruptcies)}",
-        transform=ax.transAxes,
-        fontsize=8,
-        verticalalignment="top",
-        horizontalalignment="left",
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
-    )
+SCENARIO = Scenario(
+    name="growth_plus",
+    metric_specs=METRIC_SPECS,
+    collect_config=COLLECT_CONFIG,
+    targets_file="growth_plus.yaml",
+    default_config=DEFAULT_CONFIG,
+    compute_metrics=_compute_metrics_wrapper,
+    setup_hook=_setup_rnd,
+)
 
-    # Figure 3.7a: Financial Fragility
-    ax = axes[2, 0]
-    fragility = metrics.avg_financial_fragility[burn_in:]
-    frag_bounds = fin_bounds.get("financial_fragility", {}).get("targets", {})
 
-    # Get bounds from targets (with defaults matching book figure)
-    extreme_min = frag_bounds.get("extreme_min", 0.02)
-    extreme_max = frag_bounds.get("extreme_max", 0.15)
-    normal_min = frag_bounds.get("normal_min", 0.05)
-    normal_max = frag_bounds.get("normal_max", 0.12)
+# =============================================================================
+# Public API
+# =============================================================================
 
-    # Add recession bands (shaded gray)
-    add_recession_bands(ax, periods, recession_mask)
 
-    # Extreme bounds (shaded red zones)
-    ax.axhspan(
-        extreme_min,
-        normal_min,
-        alpha=0.1,
-        color="red",
-    )
-    ax.axhspan(
-        normal_max,
-        extreme_max,
-        alpha=0.1,
-        color="red",
-    )
+def load_growth_plus_targets() -> dict[str, Any]:
+    """Load Growth+ validation targets from YAML for visualization."""
+    targets_path = Path(__file__).parent.parent / "targets" / "growth_plus.yaml"
+    with open(targets_path) as f:
+        data = yaml.safe_load(f)
 
-    # Plot data
-    ax.plot(periods, fragility, linewidth=1, color="#6A994E")
+    viz = data["metadata"]["visualization"]
+    ts = viz["time_series"]
+    curves = viz["curves"]
+    dist = viz["distributions"]
+    fin = viz.get("financial_dynamics", {})
 
-    # Normal bounds (green dashed lines)
-    ax.axhline(
-        normal_min,
-        color="green",
-        linestyle="--",
-        alpha=0.5,
-    )
-    ax.axhline(
-        normal_max,
-        color="green",
-        linestyle="--",
-        alpha=0.5,
-    )
+    def _transform_curve_targets(raw: dict[str, Any]) -> dict[str, Any]:
+        """Transform curve targets to expected keys for visualization."""
+        return {
+            "target": raw.get("correlation_target"),
+            "min": raw.get("correlation_min"),
+            "max": raw.get("correlation_max"),
+        }
 
-    # Mean target line
-    if "mean_target" in frag_bounds:
-        ax.axhline(
-            frag_bounds["mean_target"],
-            color="blue",
-            linestyle="-.",
-            alpha=0.5,
-            label=f"Target: {frag_bounds['mean_target']:.2f}",
-        )
-    ax.set_title("Financial Fragility", fontsize=12, fontweight="bold")
-    ax.set_ylabel("Avg(Wage Bill / Net Worth)")
-    ax.set_xlabel("t")
-    ax.legend(fontsize=8, loc="upper right")
-    ax.grid(True, linestyle="--", alpha=0.3)
+    def _transform_firm_size_targets(raw: dict[str, Any]) -> dict[str, Any]:
+        """Transform firm size targets to expected keys for visualization."""
+        return {
+            "threshold": raw.get("threshold_small"),
+            "threshold_medium": raw.get("threshold_medium"),
+            "pct_below_target": raw.get("pct_below_small_target"),
+            "pct_below_min": raw.get("pct_below_small_min"),
+            "pct_below_max": raw.get("pct_below_small_max"),
+            "pct_below_medium_target": raw.get("pct_below_medium_target"),
+            "pct_below_medium_min": raw.get("pct_below_medium_min"),
+            "skewness_target": raw.get("skewness_target"),
+            "skewness_tolerance": raw.get("skewness_tolerance"),
+            "tail_ratio_min": raw.get("tail_ratio_min"),
+            "tail_ratio_max": raw.get("tail_ratio_max"),
+        }
 
-    # Stats box with mean, std, and % in bounds
-    actual_mean = np.mean(fragility)
-    actual_std = np.std(fragility)
-    in_bounds = np.sum((fragility >= normal_min) & (fragility <= normal_max)) / len(
-        fragility
-    )
-    ax.text(
-        0.02,
-        0.97,
-        f"mu = {actual_mean:.3f}\nsigma = {actual_std:.4f}\n{in_bounds * 100:.0f}% in bounds",
-        transform=ax.transAxes,
-        fontsize=8,
-        verticalalignment="top",
-        horizontalalignment="left",
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
-    )
-    _shade_beyond_extreme(ax, extreme_min, extreme_max)
+    return {
+        "log_gdp": ts["log_gdp"]["targets"],
+        "unemployment": ts["unemployment_rate"]["targets"],
+        "inflation": ts["inflation_rate"]["targets"],
+        "productivity": ts["productivity"]["targets"],
+        "real_wage": ts["real_wage"]["targets"],
+        "phillips_corr": _transform_curve_targets(curves["phillips"]["targets"]),
+        "okun_corr": _transform_curve_targets(curves["okun"]["targets"]),
+        "beveridge_corr": _transform_curve_targets(curves["beveridge"]["targets"]),
+        "firm_size": _transform_firm_size_targets(dist["firm_size"]["targets"]),
+        "financial_dynamics": fin,
+    }
 
-    # Figure 3.7b: Price Ratio (Market Price / Clearing Price)
-    ax = axes[2, 1]
-    price_ratio = metrics.price_ratio[burn_in:]
-    pr_bounds = fin_bounds.get("price_ratio", {}).get("targets", {})
 
-    # Get bounds from targets
-    pr_extreme_min = pr_bounds.get("extreme_min", 1.05)
-    pr_extreme_max = pr_bounds.get("extreme_max", 1.75)
-    pr_normal_min = pr_bounds.get("normal_min", 1.15)
-    pr_normal_max = pr_bounds.get("normal_max", 1.55)
-
-    # Recession bands
-    add_recession_bands(ax, periods, recession_mask)
-
-    # Extreme bounds (shaded red zones)
-    ax.axhspan(pr_extreme_min, pr_normal_min, alpha=0.1, color="red")
-    ax.axhspan(pr_normal_max, pr_extreme_max, alpha=0.1, color="red")
-
-    # Plot data
-    ax.plot(periods, price_ratio, linewidth=1, color="#2E86AB")
-    ax.axhline(1.0, color="black", linestyle="-", alpha=0.3, linewidth=0.5)
-
-    # Normal bounds (green dashed lines)
-    ax.axhline(pr_normal_min, color="green", linestyle="--", alpha=0.5)
-    ax.axhline(pr_normal_max, color="green", linestyle="--", alpha=0.5)
-
-    # Mean target line
-    if "mean_target" in pr_bounds:
-        ax.axhline(
-            pr_bounds["mean_target"],
-            color="blue",
-            linestyle="-.",
-            alpha=0.5,
-            label=f"Target: {pr_bounds['mean_target']:.2f}",
-        )
-    ax.set_title("Price Ratio (P / P*)", fontsize=12, fontweight="bold")
-    ax.set_ylabel("Market Price / Clearing Price")
-    ax.set_xlabel("t")
-    ax.legend(fontsize=8, loc="upper right")
-    ax.grid(True, linestyle="--", alpha=0.3)
-
-    # Stats box with mean, std, and % in bounds
-    pr_actual_mean = np.mean(price_ratio)
-    pr_actual_std = np.std(price_ratio)
-    pr_in_bounds = np.sum(
-        (price_ratio >= pr_normal_min) & (price_ratio <= pr_normal_max)
-    ) / len(price_ratio)
-    ax.text(
-        0.02,
-        0.97,
-        f"mu = {pr_actual_mean:.3f}\nsigma = {pr_actual_std:.3f}\n{pr_in_bounds * 100:.0f}% in bounds",
-        transform=ax.transAxes,
-        fontsize=8,
-        verticalalignment="top",
-        horizontalalignment="left",
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
-    )
-    _shade_beyond_extreme(ax, pr_extreme_min, pr_extreme_max)
-
-    # Figure 3.7c: Price Dispersion
-    ax = axes[3, 0]
-    price_disp = metrics.price_dispersion[burn_in:]
-    pd_bounds = fin_bounds.get("price_dispersion", {}).get("targets", {})
-
-    # Get bounds from targets
-    pd_extreme_min = pd_bounds.get("extreme_min", 0.15)
-    pd_extreme_max = pd_bounds.get("extreme_max", 0.40)
-    pd_normal_min = pd_bounds.get("normal_min", 0.20)
-    pd_normal_max = pd_bounds.get("normal_max", 0.35)
-
-    # Recession bands
-    add_recession_bands(ax, periods, recession_mask)
-
-    # Extreme bounds (shaded red zones)
-    ax.axhspan(pd_extreme_min, pd_normal_min, alpha=0.1, color="red")
-    ax.axhspan(pd_normal_max, pd_extreme_max, alpha=0.1, color="red")
-
-    # Plot data
-    ax.plot(periods, price_disp, linewidth=1, color="#A23B72")
-
-    # Normal bounds (green dashed lines)
-    ax.axhline(pd_normal_min, color="green", linestyle="--", alpha=0.5)
-    ax.axhline(pd_normal_max, color="green", linestyle="--", alpha=0.5)
-
-    # Mean target line
-    if "mean_target" in pd_bounds:
-        ax.axhline(
-            pd_bounds["mean_target"],
-            color="blue",
-            linestyle="-.",
-            alpha=0.5,
-            label=f"Target: {pd_bounds['mean_target']:.2f}",
-        )
-    ax.set_title("Price Dispersion (CV)", fontsize=12, fontweight="bold")
-    ax.set_ylabel("Coefficient of Variation")
-    ax.set_xlabel("t")
-    ax.legend(fontsize=8, loc="upper right")
-    ax.grid(True, linestyle="--", alpha=0.3)
-
-    # Stats box with mean, std, and % in bounds
-    pd_actual_mean = np.mean(price_disp)
-    pd_actual_std = np.std(price_disp)
-    pd_in_bounds = np.sum(
-        (price_disp >= pd_normal_min) & (price_disp <= pd_normal_max)
-    ) / len(price_disp)
-    ax.text(
-        0.02,
-        0.97,
-        f"mu = {pd_actual_mean:.3f}\nsigma = {pd_actual_std:.4f}\n{pd_in_bounds * 100:.0f}% in bounds",
-        transform=ax.transAxes,
-        fontsize=8,
-        verticalalignment="top",
-        horizontalalignment="left",
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
-    )
-    _shade_beyond_extreme(ax, pd_extreme_min, pd_extreme_max)
-
-    # Figure 3.7d: Equity and Sales Dispersion
-    ax = axes[3, 1]
-    equity_disp = metrics.equity_dispersion[burn_in:]
-    sales_disp = metrics.sales_dispersion[burn_in:]
-    eq_bounds = fin_bounds.get("equity_dispersion", {}).get("targets", {})
-    sl_bounds = fin_bounds.get("sales_dispersion", {}).get("targets", {})
-
-    # Combined bounds (use wider sales range to cover both series)
-    es_extreme_min = min(
-        eq_bounds.get("extreme_min", 0.3), sl_bounds.get("extreme_min", 0.3)
-    )
-    es_extreme_max = max(
-        eq_bounds.get("extreme_max", 3.0), sl_bounds.get("extreme_max", 3.5)
-    )
-    es_normal_min = min(
-        eq_bounds.get("normal_min", 0.6), sl_bounds.get("normal_min", 0.5)
-    )
-    es_normal_max = max(
-        eq_bounds.get("normal_max", 2.5), sl_bounds.get("normal_max", 3.0)
-    )
-
-    # Recession bands
-    add_recession_bands(ax, periods, recession_mask)
-
-    # Extreme bounds (shaded red zones)
-    ax.axhspan(es_extreme_min, es_normal_min, alpha=0.1, color="red")
-    ax.axhspan(es_normal_max, es_extreme_max, alpha=0.1, color="red")
-
-    # Plot data
-    ax.plot(periods, equity_disp, linewidth=1, color="#2E86AB", label="Equity")
-    ax.plot(periods, sales_disp, linewidth=1, color="#E74C3C", label="Sales")
-
-    # Normal bounds (green dashed lines)
-    ax.axhline(es_normal_min, color="green", linestyle="--", alpha=0.5)
-    ax.axhline(es_normal_max, color="green", linestyle="--", alpha=0.5)
-
-    ax.set_title("Equity & Sales Dispersion", fontsize=12, fontweight="bold")
-    ax.set_ylabel("Coefficient of Variation")
-    ax.set_xlabel("t")
-    ax.legend(fontsize=8, loc="upper right")
-    ax.grid(True, linestyle="--", alpha=0.3)
-
-    # Stats box with both series
-    eq_mean = np.mean(equity_disp)
-    eq_std = np.std(equity_disp)
-    sl_mean = np.mean(sales_disp)
-    sl_std = np.std(sales_disp)
-    eq_in = np.sum(
-        (equity_disp >= eq_bounds.get("normal_min", 0.6))
-        & (equity_disp <= eq_bounds.get("normal_max", 2.5))
-    ) / len(equity_disp)
-    sl_in = np.sum(
-        (sales_disp >= sl_bounds.get("normal_min", 0.5))
-        & (sales_disp <= sl_bounds.get("normal_max", 3.0))
-    ) / len(sales_disp)
-    ax.text(
-        0.02,
-        0.97,
-        f"Equity: mu={eq_mean:.2f} sigma={eq_std:.2f} {eq_in * 100:.0f}% in\n"
-        f"Sales:  mu={sl_mean:.2f} sigma={sl_std:.2f} {sl_in * 100:.0f}% in",
-        transform=ax.transAxes,
-        fontsize=8,
-        verticalalignment="top",
-        horizontalalignment="left",
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
-    )
-    _shade_beyond_extreme(ax, es_extreme_min, es_extreme_max)
-
-    plt.tight_layout()
-    _save_panels(fig, axes, _OUTPUT_DIR, _FINANCIAL_PANEL_NAMES)
-    plt.show()
-
-    # Print Minsky classification summary
-    print("\nMinsky Classification (Avg over Post-Burn-in Periods):")
-    print(f"  Hedge:       {metrics.minsky_hedge_pct * 100:5.1f}% (target: ~67%)")
-    print(f"  Speculative: {metrics.minsky_speculative_pct * 100:5.1f}% (target: ~23%)")
-    print(f"  Ponzi:       {metrics.minsky_ponzi_pct * 100:5.1f}% (target: ~10%)")
-    print("\nRecession Statistics:")
-    print(f"  Number of recessions: {metrics.n_recessions}")
-    print(f"  Avg recession length: {metrics.avg_recession_length:.1f} periods")
+# =============================================================================
+# Scenario Runner
+# =============================================================================
 
 
 def run_scenario(
@@ -1266,7 +1290,7 @@ def run_scenario(
     burn_in: int = 500,
     show_plot: bool = True,
 ) -> GrowthPlusMetrics:
-    """Run Growth+ scenario simulation with visualization.
+    """Run Growth+ scenario simulation with optional visualization.
 
     Parameters
     ----------
@@ -1284,6 +1308,8 @@ def run_scenario(
     GrowthPlusMetrics
         Computed metrics from the simulation.
     """
+    from extensions.rnd import RnD
+
     # Initialize simulation with calibrated Growth+ parameters
     sim = bam.Simulation.init(
         n_firms=100,
@@ -1316,15 +1342,15 @@ def run_scenario(
     )
 
     # Run simulation
-    results = sim.run(collect=GROWTH_PLUS_COLLECT_CONFIG)
+    results = sim.run(collect=COLLECT_CONFIG)
 
     print(f"\nSimulation completed: {results.metadata['n_periods']} periods")
     print(f"Runtime: {results.metadata['runtime_seconds']:.2f} seconds")
 
+    burn_in = adjust_burn_in(burn_in, n_periods, verbose=True)
+
     # Compute metrics
-    metrics = compute_growth_plus_metrics(
-        sim, results, burn_in=burn_in, firm_size_threshold=150.0
-    )
+    metrics = _compute_metrics_wrapper(sim, results, burn_in)
 
     print(
         f"\nComputed metrics for {len(metrics.unemployment) - burn_in} periods (after burn-in)"
@@ -1335,8 +1361,13 @@ def run_scenario(
         f"  Total productivity growth: {metrics.total_productivity_growth * 100:.1f}%"
     )
 
-    # Visualize if requested
+    # Visualize if requested (lazy import to avoid circular dependency)
     if show_plot:
+        from validation.scenarios.growth_plus_viz import (
+            visualize_financial_dynamics,
+            visualize_growth_plus_results,
+        )
+
         bounds = load_growth_plus_targets()
         visualize_growth_plus_results(metrics, bounds, burn_in=burn_in)
         visualize_financial_dynamics(metrics, bounds, burn_in=burn_in)

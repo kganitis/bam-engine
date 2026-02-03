@@ -1,7 +1,7 @@
-"""Growth+ extension: RnD role and custom events.
+"""R&D events for Growth+ extension.
 
-This module provides the RnD role and three custom events for the Growth+
-scenario from section 3.8 of Delli Gatti et al. (2011).
+This module provides the three custom events for the Growth+ scenario
+from section 3.8 of Delli Gatti et al. (2011).
 
 The extension adds endogenous productivity growth via R&D investment:
 - Firms invest a portion of profits in R&D (sigma = RnD share)
@@ -43,35 +43,7 @@ increment drawn from an exponential distribution with scale parameter :math:`\\m
 from __future__ import annotations
 
 import bamengine as bam
-from bamengine import Float, event, ops, role
-
-
-@role
-class RnD:
-    """R&D state for Growth+ extension.
-
-    Tracks R&D investment decisions and productivity increments for firms.
-
-    Parameters
-    ----------
-    sigma : Float
-        R&D share of profits (0.0 to 0.1). Higher values mean more
-        investment in R&D. Decreases with financial fragility.
-    rnd_intensity : Float
-        Expected productivity gain (mu). Scale parameter for the
-        exponential distribution from which actual gains are drawn.
-    productivity_increment : Float
-        Actual productivity increment (z) drawn each period.
-        Added to labor_productivity.
-    fragility : Float
-        Financial fragility metric (W/A = wage_bill / net_worth).
-        High fragility leads to lower R&D investment.
-    """
-
-    sigma: Float
-    rnd_intensity: Float
-    productivity_increment: Float
-    fragility: Float
+from bamengine import event, ops
 
 
 @event(
@@ -200,11 +172,3 @@ class FirmsDeductRnDExpenditure:
         one_minus_sigma = ops.subtract(1.0, rnd.sigma)
         new_retained = ops.multiply(bor.retained_profit, one_minus_sigma)
         ops.assign(bor.retained_profit, new_retained)
-
-
-__all__ = [
-    "RnD",
-    "FirmsComputeRnDIntensity",
-    "FirmsApplyProductivityGrowth",
-    "FirmsDeductRnDExpenditure",
-]
