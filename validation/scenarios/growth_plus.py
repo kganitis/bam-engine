@@ -119,9 +119,12 @@ class GrowthPlusMetrics:
     output_growth_pct_within_tight: float
     output_growth_pct_within_normal: float
     output_growth_pct_outliers: float
+    output_growth_tent_r2: float
+    output_growth_positive_frac: float
     networth_growth_pct_within_tight: float
     networth_growth_pct_within_normal: float
     networth_growth_pct_outliers: float
+    networth_growth_tent_r2: float
 
     # Recession detection
     recession_mask: NDArray[np.bool_]
@@ -137,16 +140,32 @@ class GrowthPlusMetrics:
     bankruptcies_mean: float
     real_interest_rate_mean: float
     real_interest_rate_std: float
+    real_interest_rate_pct_in_bounds: float
     avg_fragility_mean: float
-    avg_fragility_std: float
+    financial_fragility_cv: float  # Coefficient of variation (std/mean)
+    fragility_gdp_correlation: float  # Detrended pro-cyclical correlation with GDP
     price_ratio_mean: float
-    price_ratio_std: float
+    price_ratio_cv: float  # Coefficient of variation (std/mean)
+    price_ratio_min: float  # Minimum value (floor check)
+    price_ratio_p5: float  # 5th percentile (low-end behavior)
+    price_ratio_gdp_correlation: (
+        float  # Detrended counter-cyclical correlation with GDP
+    )
     price_dispersion_mean: float
-    price_dispersion_std: float
+    price_dispersion_cv: float  # Coefficient of variation (std/mean)
+    price_dispersion_gdp_correlation: (
+        float  # Detrended pro-cyclical correlation with GDP
+    )
     equity_dispersion_mean: float
-    equity_dispersion_std: float
+    equity_dispersion_cv: float  # Coefficient of variation (std/mean)
+    equity_dispersion_gdp_correlation: (
+        float  # Detrended pro-cyclical correlation with GDP
+    )
     sales_dispersion_mean: float
-    sales_dispersion_std: float
+    sales_dispersion_cv: float  # Coefficient of variation (std/mean)
+    sales_dispersion_gdp_correlation: (
+        float  # Detrended pro-cyclical correlation with GDP
+    )
 
 
 # =============================================================================
@@ -262,6 +281,98 @@ def _compute_detrended_correlation(
     x_detrended = x - x_trend
     y_detrended = y - y_trend
     return float(np.corrcoef(x_detrended, y_detrended)[0, 1])
+
+
+def _compute_cv(series: NDArray[np.floating]) -> float:
+    """Compute coefficient of variation (std / mean)."""
+    mean_val = float(np.mean(series))
+    return float(np.std(series) / max(mean_val, EPS))
+
+
+def _compute_gdp_cyclicality(
+    series: NDArray[np.floating], gdp: NDArray[np.floating]
+) -> float:
+    """Compute detrended correlation of smoothed series with smoothed GDP.
+
+    Both ``series`` and ``gdp`` are smoothed internally so callers can pass
+    raw (unsmoothed) arrays.
+    """
+    smoothed = _smooth_series(series)
+    smoothed_gdp = _smooth_series(gdp)
+    return _compute_detrended_correlation(smoothed, smoothed_gdp)
+
+
+def _compute_tent_shape_r2(
+    growth_rates: NDArray[np.floating], trim_pct: float = 0.10
+) -> float:
+    """Compute R-squared measuring Laplace tent-shape fit of growth rate distribution.
+
+    A Laplace distribution appears as a straight line (tent shape) on a
+    log-rank plot. This function measures how well the empirical distribution
+    matches that linear pattern by fitting log(rank) ~ growth_rate on each
+    side and averaging the R-squared values.
+
+    The outermost ``trim_pct`` of points on each side are excluded because
+    the book notes that "both tails happen to be sensibly fatter than
+    predicted by the Laplace model" (Delli Gatti et al., 2011).
+
+    Parameters
+    ----------
+    growth_rates : NDArray
+        Array of growth rate values.
+    trim_pct : float
+        Fraction of outermost points to trim on each side (default 0.10).
+
+    Returns
+    -------
+    float
+        Average R-squared across negative and positive sides, or 0.0 if
+        insufficient data.
+    """
+    valid = growth_rates[np.isfinite(growth_rates)]
+    if len(valid) < 20:
+        return 0.0
+
+    negative = valid[valid < 0]
+    positive = valid[valid >= 0]
+
+    if len(negative) < 10 or len(positive) < 10:
+        return 0.0
+
+    r2_values: list[float] = []
+
+    for side_data, reverse in [(negative, False), (positive, True)]:
+        sorted_data = np.sort(side_data)
+        if reverse:
+            sorted_data = sorted_data[::-1]
+        n = len(sorted_data)
+        ranks = np.arange(1, n + 1)
+        log_ranks = np.log(ranks)
+
+        # Trim outermost points (fat-tail region)
+        # Note: remaining points keep their original rank positions
+        # (not re-ranked after trimming), standard for log-rank analysis
+        n_trim = max(1, int(n * trim_pct))
+        trimmed_data = sorted_data[n_trim:]
+        trimmed_log_ranks = log_ranks[n_trim:]
+
+        if len(trimmed_data) < 5:
+            continue
+
+        # Linear regression: log(rank) = a * growth_rate + b
+        coeffs = np.polyfit(trimmed_data, trimmed_log_ranks, 1)
+        predicted = np.polyval(coeffs, trimmed_data)
+
+        ss_res = np.sum((trimmed_log_ranks - predicted) ** 2)
+        ss_tot = np.sum((trimmed_log_ranks - np.mean(trimmed_log_ranks)) ** 2)
+
+        if ss_tot > 0:
+            r2_values.append(1.0 - ss_res / ss_tot)
+
+    if len(r2_values) == 0:
+        return 0.0
+
+    return float(np.mean(r2_values))
 
 
 # =============================================================================
@@ -486,6 +597,15 @@ def compute_growth_plus_metrics(
         output_growth_rates, -0.15, 0.15
     )
 
+    output_growth_tent_r2 = _compute_tent_shape_r2(output_growth_rates, trim_pct=0.10)
+
+    valid_output_growth = output_growth_rates[np.isfinite(output_growth_rates)]
+    output_growth_positive_frac = (
+        float(np.sum(valid_output_growth >= 0) / len(valid_output_growth))
+        if len(valid_output_growth) > 0
+        else 0.0
+    )
+
     networth_growth_pct_within_tight = _compute_pct_within_range(
         networth_growth_rates, -0.05, 0.05
     )
@@ -494,6 +614,10 @@ def compute_growth_plus_metrics(
     )
     networth_growth_pct_outliers = 1.0 - _compute_pct_within_range(
         networth_growth_rates, -0.50, 0.20
+    )
+
+    networth_growth_tent_r2 = _compute_tent_shape_r2(
+        networth_growth_rates, trim_pct=0.10
     )
 
     # Recession detection
@@ -538,10 +662,36 @@ def compute_growth_plus_metrics(
     bankruptcies_ss = n_firm_bankruptcies[burn_in:]
     real_ir_ss = real_interest_rate[burn_in:]
     fragility_ss = avg_financial_fragility[burn_in:]
+
+    # Financial fragility CV and pro-cyclicality (Minsky hypothesis)
+    financial_fragility_cv = _compute_cv(fragility_ss)
+    fragility_gdp_correlation = _compute_gdp_cyclicality(fragility_ss, log_gdp_ss)
+
     price_ratio_ss = price_ratio[burn_in:]
+
+    # Price ratio derived metrics
+    price_ratio_mean_val = float(np.mean(price_ratio_ss))
+    price_ratio_cv = _compute_cv(price_ratio_ss)
+    price_ratio_min_val = float(np.min(price_ratio_ss))
+    price_ratio_p5_val = float(np.percentile(price_ratio_ss, 5))
+    price_ratio_gdp_corr = _compute_gdp_cyclicality(price_ratio_ss, log_gdp_ss)
+
     price_disp_ss = price_dispersion[burn_in:]
+
+    # Price dispersion CV and pro-cyclicality
+    price_dispersion_cv = _compute_cv(price_disp_ss)
+    price_dispersion_gdp_correlation = _compute_gdp_cyclicality(
+        price_disp_ss, log_gdp_ss
+    )
+
     equity_disp_ss = equity_dispersion[burn_in:]
     sales_disp_ss = sales_dispersion[burn_in:]
+
+    # Equity and sales dispersion CV and pro-cyclicality
+    equity_dispersion_cv = _compute_cv(equity_disp_ss)
+    equity_dispersion_gdp_corr = _compute_gdp_cyclicality(equity_disp_ss, log_gdp_ss)
+    sales_dispersion_cv = _compute_cv(sales_disp_ss)
+    sales_dispersion_gdp_corr = _compute_gdp_cyclicality(sales_disp_ss, log_gdp_ss)
 
     return GrowthPlusMetrics(
         unemployment=unemployment,
@@ -609,9 +759,12 @@ def compute_growth_plus_metrics(
         output_growth_pct_within_tight=output_growth_pct_within_tight,
         output_growth_pct_within_normal=output_growth_pct_within_normal,
         output_growth_pct_outliers=output_growth_pct_outliers,
+        output_growth_tent_r2=output_growth_tent_r2,
+        output_growth_positive_frac=output_growth_positive_frac,
         networth_growth_pct_within_tight=networth_growth_pct_within_tight,
         networth_growth_pct_within_normal=networth_growth_pct_within_normal,
         networth_growth_pct_outliers=networth_growth_pct_outliers,
+        networth_growth_tent_r2=networth_growth_tent_r2,
         recession_mask=recession_mask,
         n_recessions=n_recessions,
         avg_recession_length=avg_recession_length,
@@ -621,16 +774,26 @@ def compute_growth_plus_metrics(
         bankruptcies_mean=float(np.mean(bankruptcies_ss)),
         real_interest_rate_mean=float(np.mean(real_ir_ss)),
         real_interest_rate_std=float(np.std(real_ir_ss)),
+        real_interest_rate_pct_in_bounds=float(
+            np.mean((real_ir_ss >= 0.0) & (real_ir_ss <= 0.10))
+        ),
         avg_fragility_mean=float(np.mean(fragility_ss)),
-        avg_fragility_std=float(np.std(fragility_ss)),
-        price_ratio_mean=float(np.mean(price_ratio_ss)),
-        price_ratio_std=float(np.std(price_ratio_ss)),
+        financial_fragility_cv=financial_fragility_cv,
+        fragility_gdp_correlation=fragility_gdp_correlation,
+        price_ratio_mean=price_ratio_mean_val,
+        price_ratio_cv=price_ratio_cv,
+        price_ratio_min=price_ratio_min_val,
+        price_ratio_p5=price_ratio_p5_val,
+        price_ratio_gdp_correlation=price_ratio_gdp_corr,
         price_dispersion_mean=float(np.mean(price_disp_ss)),
-        price_dispersion_std=float(np.std(price_disp_ss)),
+        price_dispersion_cv=price_dispersion_cv,
+        price_dispersion_gdp_correlation=price_dispersion_gdp_correlation,
         equity_dispersion_mean=float(np.mean(equity_disp_ss)),
-        equity_dispersion_std=float(np.std(equity_disp_ss)),
+        equity_dispersion_cv=equity_dispersion_cv,
+        equity_dispersion_gdp_correlation=equity_dispersion_gdp_corr,
         sales_dispersion_mean=float(np.mean(sales_disp_ss)),
-        sales_dispersion_std=float(np.std(sales_disp_ss)),
+        sales_dispersion_cv=sales_dispersion_cv,
+        sales_dispersion_gdp_correlation=sales_dispersion_gdp_corr,
     )
 
 
@@ -992,7 +1155,7 @@ METRIC_SPECS = [
         field="bankruptcies_mean",
         check_type=CheckType.MEAN_TOLERANCE,
         target_path="metrics.bankruptcies_mean",
-        weight=0.5,
+        weight=1.0,
         group=MetricGroup.FINANCIAL,
     ),
     MetricSpec(
@@ -1012,6 +1175,15 @@ METRIC_SPECS = [
         group=MetricGroup.FINANCIAL,
     ),
     MetricSpec(
+        name="real_interest_rate_pct_in_bounds",
+        field="real_interest_rate_pct_in_bounds",
+        check_type=CheckType.PCT_WITHIN,
+        target_path="metrics.real_interest_rate_pct_in_bounds",
+        weight=0.5,
+        group=MetricGroup.FINANCIAL,
+        format=MetricFormat.PERCENT,
+    ),
+    MetricSpec(
         name="financial_fragility_mean",
         field="avg_fragility_mean",
         check_type=CheckType.MEAN_TOLERANCE,
@@ -1020,11 +1192,19 @@ METRIC_SPECS = [
         group=MetricGroup.FINANCIAL,
     ),
     MetricSpec(
-        name="financial_fragility_std",
-        field="avg_fragility_std",
+        name="financial_fragility_cv",
+        field="financial_fragility_cv",
         check_type=CheckType.MEAN_TOLERANCE,
-        target_path="metrics.financial_fragility_std",
-        weight=0.5,
+        target_path="metrics.financial_fragility_cv",
+        weight=1.0,
+        group=MetricGroup.FINANCIAL,
+    ),
+    MetricSpec(
+        name="fragility_gdp_correlation",
+        field="fragility_gdp_correlation",
+        check_type=CheckType.RANGE,
+        target_path="metrics.fragility_gdp_correlation",
+        weight=2.0,  # VERY IMPORTANT - key Minsky validation
         group=MetricGroup.FINANCIAL,
     ),
     MetricSpec(
@@ -1032,14 +1212,41 @@ METRIC_SPECS = [
         field="price_ratio_mean",
         check_type=CheckType.MEAN_TOLERANCE,
         target_path="metrics.price_ratio_mean",
-        weight=0.5,
+        weight=0.75,
         group=MetricGroup.FINANCIAL,
     ),
     MetricSpec(
-        name="price_ratio_std",
-        field="price_ratio_std",
+        name="price_ratio_cv",
+        field="price_ratio_cv",
         check_type=CheckType.MEAN_TOLERANCE,
-        target_path="metrics.price_ratio_std",
+        target_path="metrics.price_ratio_cv",
+        weight=1.0,
+        group=MetricGroup.FINANCIAL,
+    ),
+    MetricSpec(
+        name="price_ratio_floor",
+        field="price_ratio_min",
+        check_type=CheckType.BOOLEAN,
+        target_path="metrics.price_ratio_floor",
+        weight=3.0,  # CRITICAL - structural validity
+        group=MetricGroup.FINANCIAL,
+        threshold=1.0,
+        invert=False,  # PASS if min > 1.0
+        target_desc="> 1.0 (price ratio floor)",
+    ),
+    MetricSpec(
+        name="price_ratio_gdp_correlation",
+        field="price_ratio_gdp_correlation",
+        check_type=CheckType.RANGE,
+        target_path="metrics.price_ratio_gdp_correlation",
+        weight=1.5,
+        group=MetricGroup.FINANCIAL,
+    ),
+    MetricSpec(
+        name="price_ratio_low_end",
+        field="price_ratio_p5",
+        check_type=CheckType.RANGE,
+        target_path="metrics.price_ratio_low_end",
         weight=0.5,
         group=MetricGroup.FINANCIAL,
     ),
@@ -1048,15 +1255,23 @@ METRIC_SPECS = [
         field="price_dispersion_mean",
         check_type=CheckType.MEAN_TOLERANCE,
         target_path="metrics.price_dispersion_mean",
-        weight=0.5,
+        weight=0.75,
         group=MetricGroup.FINANCIAL,
     ),
     MetricSpec(
-        name="price_dispersion_std",
-        field="price_dispersion_std",
+        name="price_dispersion_cv",
+        field="price_dispersion_cv",
         check_type=CheckType.MEAN_TOLERANCE,
-        target_path="metrics.price_dispersion_std",
-        weight=0.5,
+        target_path="metrics.price_dispersion_cv",
+        weight=1.0,
+        group=MetricGroup.FINANCIAL,
+    ),
+    MetricSpec(
+        name="price_dispersion_gdp_correlation",
+        field="price_dispersion_gdp_correlation",
+        check_type=CheckType.RANGE,
+        target_path="metrics.price_dispersion_gdp_correlation",
+        weight=1.5,
         group=MetricGroup.FINANCIAL,
     ),
     MetricSpec(
@@ -1068,11 +1283,19 @@ METRIC_SPECS = [
         group=MetricGroup.FINANCIAL,
     ),
     MetricSpec(
-        name="equity_dispersion_std",
-        field="equity_dispersion_std",
+        name="equity_dispersion_cv",
+        field="equity_dispersion_cv",
         check_type=CheckType.MEAN_TOLERANCE,
-        target_path="metrics.equity_dispersion_std",
-        weight=0.5,
+        target_path="metrics.equity_dispersion_cv",
+        weight=1.0,
+        group=MetricGroup.FINANCIAL,
+    ),
+    MetricSpec(
+        name="equity_dispersion_gdp_correlation",
+        field="equity_dispersion_gdp_correlation",
+        check_type=CheckType.RANGE,
+        target_path="metrics.equity_dispersion_gdp_correlation",
+        weight=1.5,
         group=MetricGroup.FINANCIAL,
     ),
     MetricSpec(
@@ -1084,11 +1307,19 @@ METRIC_SPECS = [
         group=MetricGroup.FINANCIAL,
     ),
     MetricSpec(
-        name="sales_dispersion_std",
-        field="sales_dispersion_std",
+        name="sales_dispersion_cv",
+        field="sales_dispersion_cv",
         check_type=CheckType.MEAN_TOLERANCE,
-        target_path="metrics.sales_dispersion_std",
-        weight=0.5,
+        target_path="metrics.sales_dispersion_cv",
+        weight=1.0,
+        group=MetricGroup.FINANCIAL,
+    ),
+    MetricSpec(
+        name="sales_dispersion_gdp_correlation",
+        field="sales_dispersion_gdp_correlation",
+        check_type=CheckType.RANGE,
+        target_path="metrics.sales_dispersion_gdp_correlation",
+        weight=1.5,
         group=MetricGroup.FINANCIAL,
     ),
     MetricSpec(
@@ -1138,6 +1369,23 @@ METRIC_SPECS = [
         format=MetricFormat.PERCENT,
     ),
     MetricSpec(
+        name="output_growth_tent_r2",
+        field="output_growth_tent_r2",
+        check_type=CheckType.RANGE,
+        target_path="metrics.output_growth_tent_r2",
+        weight=2.0,
+        group=MetricGroup.GROWTH_RATE_DIST,
+    ),
+    MetricSpec(
+        name="output_growth_positive_frac",
+        field="output_growth_positive_frac",
+        check_type=CheckType.RANGE,
+        target_path="metrics.output_growth_positive_frac",
+        weight=0.5,
+        group=MetricGroup.GROWTH_RATE_DIST,
+        format=MetricFormat.PERCENT,
+    ),
+    MetricSpec(
         name="networth_growth_pct_tight",
         field="networth_growth_pct_within_tight",
         check_type=CheckType.PCT_WITHIN,
@@ -1163,6 +1411,14 @@ METRIC_SPECS = [
         weight=1.5,
         group=MetricGroup.GROWTH_RATE_DIST,
         format=MetricFormat.PERCENT,
+    ),
+    MetricSpec(
+        name="networth_growth_tent_r2",
+        field="networth_growth_tent_r2",
+        check_type=CheckType.RANGE,
+        target_path="metrics.networth_growth_tent_r2",
+        weight=1.5,
+        group=MetricGroup.GROWTH_RATE_DIST,
     ),
 ]
 
@@ -1250,6 +1506,8 @@ def load_growth_plus_targets() -> dict[str, Any]:
 
     def _transform_firm_size_targets(raw: dict[str, Any]) -> dict[str, Any]:
         """Transform firm size targets to expected keys for visualization."""
+        skew_target = raw.get("skewness_target")
+        skew_tol = raw.get("skewness_tolerance")
         return {
             "threshold": raw.get("threshold_small"),
             "threshold_medium": raw.get("threshold_medium"),
@@ -1258,8 +1516,10 @@ def load_growth_plus_targets() -> dict[str, Any]:
             "pct_below_max": raw.get("pct_below_small_max"),
             "pct_below_medium_target": raw.get("pct_below_medium_target"),
             "pct_below_medium_min": raw.get("pct_below_medium_min"),
-            "skewness_target": raw.get("skewness_target"),
-            "skewness_tolerance": raw.get("skewness_tolerance"),
+            "skewness_target": skew_target,
+            "skewness_tolerance": skew_tol,
+            "skewness_min": skew_target - skew_tol,
+            "skewness_max": skew_target + skew_tol,
             "tail_ratio_min": raw.get("tail_ratio_min"),
             "tail_ratio_max": raw.get("tail_ratio_max"),
         }
