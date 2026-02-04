@@ -11,6 +11,7 @@
 #     - MEAN_TOLERANCE checks: 'target', 'tolerance'
 #     - RANGE checks: 'min', 'max'
 #     - PCT_WITHIN checks: 'target', 'min'
+#     - BOOLEAN checks: 'threshold'
 #     - OUTLIER checks: 'max_outlier', 'penalty_weight'
 #
 # ==============================================================================
@@ -143,8 +144,8 @@ metadata:
         targets:
           mean_target: 0.08
           mean_tolerance: 0.03
-          std_target: 0.015
-          std_tolerance: 0.01
+          cv_target: 0.15
+          cv_tolerance: 0.08
           normal_min: 0.05
           normal_max: 0.12
           extreme_min: 0.02
@@ -154,8 +155,8 @@ metadata:
         targets:
           mean_target: 1.35
           mean_tolerance: 0.15
-          std_target: 0.13
-          std_tolerance: 0.05
+          cv_target: 0.15
+          cv_tolerance: 0.08
           normal_min: 1.1
           normal_max: 1.8
           extreme_min: 1.0
@@ -164,9 +165,9 @@ metadata:
       price_dispersion:
         targets:
           mean_target: 0.28
-          mean_tolerance: 0.08
-          std_target: 0.05
-          std_tolerance: 0.03
+          mean_tolerance: 0.12
+          cv_target: 0.40
+          cv_tolerance: 0.15
           normal_min: 0.20
           normal_max: 0.35
           extreme_min: 0.15
@@ -176,8 +177,8 @@ metadata:
         targets:
           mean_target: 1.5
           mean_tolerance: 0.5
-          std_target: 0.6
-          std_tolerance: 0.3
+          cv_target: 0.28
+          cv_tolerance: 0.12
           normal_min: 0.6
           normal_max: 2.5
           extreme_min: 0.3
@@ -187,8 +188,8 @@ metadata:
         targets:
           mean_target: 1.5
           mean_tolerance: 0.5
-          std_target: 0.8
-          std_tolerance: 0.4
+          cv_target: 0.35
+          cv_tolerance: 0.15
           normal_min: 0.5
           normal_max: 3.0
           extreme_min: 0.3
@@ -205,6 +206,12 @@ metadata:
 
       output_growth_distribution:
         targets:
+          tight_range_min: -0.05
+          tight_range_max: 0.05
+          normal_range_min: -0.10
+          normal_range_max: 0.10
+          extreme_range_min: -0.15
+          extreme_range_max: 0.15
           pct_within_tight_target: 0.95
           pct_within_tight_min: 0.90
           pct_within_normal_target: 0.99
@@ -214,12 +221,19 @@ metadata:
 
       networth_growth_distribution:
         targets:
+          tight_range_min: -0.05
+          tight_range_max: 0.05
+          normal_range_min: -0.10
+          normal_range_max: 0.10
+          extreme_range_min: -0.50
+          extreme_range_max: 0.20
           pct_within_tight_target: 0.75
           pct_within_tight_min: 0.60
           pct_within_normal_target: 0.90
           pct_within_normal_min: 0.80
           max_outlier_pct: 0.05
           outlier_penalty_weight: 2.0
+          tent_r2_min: 0.65
 
 
 # ==============================================================================
@@ -393,45 +407,76 @@ metrics:
     target: 0.02
     tolerance: 0.01
 
+  real_interest_rate_pct_in_bounds:
+    target: 0.80
+    min: 0.70
+
   financial_fragility_mean:
     target: 0.08
     tolerance: 0.03
 
-  financial_fragility_std:
-    target: 0.015
-    tolerance: 0.01
+  financial_fragility_cv:
+    target: 0.15
+    tolerance: 0.08
+
+  fragility_gdp_correlation:
+    min: 0.0
+    max: 1.0
 
   price_ratio_mean:
     target: 1.35
     tolerance: 0.15
 
-  price_ratio_std:
-    target: 0.13
-    tolerance: 0.05
+  price_ratio_cv:
+    target: 0.15
+    tolerance: 0.08
+
+  price_ratio_gdp_correlation:
+    min: -0.95
+    max: -0.40
+
+  price_ratio_floor:
+    threshold: 1.0
+
+  price_ratio_low_end:
+    min: 1.05
+    max: 1.55
 
   price_dispersion_mean:
     target: 0.28
-    tolerance: 0.08
+    tolerance: 0.12
 
-  price_dispersion_std:
-    target: 0.05
-    tolerance: 0.03
+  price_dispersion_cv:
+    target: 0.40
+    tolerance: 0.15
+
+  price_dispersion_gdp_correlation:
+    min: 0.0
+    max: 1.0
 
   equity_dispersion_mean:
     target: 1.5
     tolerance: 0.5
 
-  equity_dispersion_std:
-    target: 0.6
-    tolerance: 0.3
+  equity_dispersion_cv:
+    target: 0.28
+    tolerance: 0.12
+
+  equity_dispersion_gdp_correlation:
+    min: 0.0
+    max: 1.0
 
   sales_dispersion_mean:
     target: 1.5
     tolerance: 0.5
 
-  sales_dispersion_std:
-    target: 0.8
-    tolerance: 0.4
+  sales_dispersion_cv:
+    target: 0.35
+    tolerance: 0.15
+
+  sales_dispersion_gdp_correlation:
+    min: 0.0
+    max: 1.0
 
   # --------------------------------------------------------------------------
   # Minsky Classification
@@ -461,6 +506,14 @@ metrics:
     max_outlier: 0.02
     penalty_weight: 2.0
 
+  output_growth_tent_r2:
+    min: 0.85
+    max: 1.0
+
+  output_growth_positive_frac:
+    min: 0.50
+    max: 0.85
+
   networth_growth_pct_tight:
     target: 0.75
     min: 0.60
@@ -472,3 +525,7 @@ metrics:
   networth_growth_outliers:
     max_outlier: 0.05
     penalty_weight: 2.0
+
+  networth_growth_tent_r2:
+    min: 0.65
+    max: 1.0

@@ -97,6 +97,20 @@ def _shade_beyond_extreme(ax, extreme_min, extreme_max, axis="y"):
         ax.set_xlim(xmin, xmax)
 
 
+def _add_cv_cyclicality_box(ax, mean, cv, cyclicality_corr, label="pro-cyc"):
+    """Add stats box showing pre-computed mean, CV, and cyclicality correlation."""
+    ax.text(
+        0.02,
+        0.97,
+        f"mu = {mean:.3f}\nCV = {cv:.3f}\n{label} r = {cyclicality_corr:.2f}",
+        transform=ax.transAxes,
+        fontsize=8,
+        verticalalignment="top",
+        horizontalalignment="left",
+        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+    )
+
+
 def visualize_growth_plus_results(
     metrics: GrowthPlusMetrics,
     bounds: dict,
@@ -718,30 +732,11 @@ def visualize_financial_dynamics(
             ax.scatter(pos_sorted, pos_ranks, s=10, alpha=0.7, color="#E74C3C")
         ax.set_yscale("log")
 
-        # Stats box with tiered percentages
+        # Use pre-computed metrics instead of recomputing
         n_total = len(output_growth_filtered)
-        pct_tight = (
-            np.sum(
-                (output_growth_filtered >= tight_min)
-                & (output_growth_filtered <= tight_max)
-            )
-            / n_total
-        )
-        pct_normal = (
-            np.sum(
-                (output_growth_filtered >= normal_min)
-                & (output_growth_filtered <= normal_max)
-            )
-            / n_total
-        )
-        pct_outliers = (
-            1
-            - np.sum(
-                (output_growth_filtered >= extreme_min)
-                & (output_growth_filtered <= extreme_max)
-            )
-            / n_total
-        )
+        pct_tight = metrics.output_growth_pct_within_tight
+        pct_normal = metrics.output_growth_pct_within_normal
+        pct_outliers = metrics.output_growth_pct_outliers
 
         target_tight = ogd_bounds.get("pct_within_tight_target", 0.95)
         target_normal = ogd_bounds.get("pct_within_normal_target", 0.99)
@@ -758,7 +753,9 @@ def visualize_financial_dynamics(
             f"N = {n_total}\n"
             f"Tight: {pct_tight * 100:.1f}% (target: {target_tight * 100:.0f}%)\n"
             f"Normal: {pct_normal * 100:.1f}% (target: {target_normal * 100:.0f}%)\n"
-            f"Outliers: {pct_outliers * 100:.1f}% (max: {max_outlier * 100:.0f}%)",
+            f"Outliers: {pct_outliers * 100:.1f}% (max: {max_outlier * 100:.0f}%)\n"
+            f"Tent R\u00b2: {metrics.output_growth_tent_r2:.3f}\n"
+            f"Pos growth: {metrics.output_growth_positive_frac * 100:.1f}%",
             transform=ax.transAxes,
             fontsize=8,
             verticalalignment="top",
@@ -817,30 +814,11 @@ def visualize_financial_dynamics(
             ax.scatter(pos_sorted, pos_ranks, s=10, alpha=0.7, color="#E74C3C")
         ax.set_yscale("log")
 
-        # Stats box with tiered percentages
+        # Use pre-computed metrics instead of recomputing
         n_total = len(networth_growth_filtered)
-        pct_tight = (
-            np.sum(
-                (networth_growth_filtered >= tight_min)
-                & (networth_growth_filtered <= tight_max)
-            )
-            / n_total
-        )
-        pct_normal = (
-            np.sum(
-                (networth_growth_filtered >= normal_min)
-                & (networth_growth_filtered <= normal_max)
-            )
-            / n_total
-        )
-        pct_outliers = (
-            1
-            - np.sum(
-                (networth_growth_filtered >= extreme_min)
-                & (networth_growth_filtered <= extreme_max)
-            )
-            / n_total
-        )
+        pct_tight = metrics.networth_growth_pct_within_tight
+        pct_normal = metrics.networth_growth_pct_within_normal
+        pct_outliers = metrics.networth_growth_pct_outliers
 
         target_tight = nwd_bounds.get("pct_within_tight_target", 0.75)
         target_normal = nwd_bounds.get("pct_within_normal_target", 0.90)
@@ -857,7 +835,8 @@ def visualize_financial_dynamics(
             f"N = {n_total}\n"
             f"Tight: {pct_tight * 100:.1f}% (target: {target_tight * 100:.0f}%)\n"
             f"Normal: {pct_normal * 100:.1f}% (target: {target_normal * 100:.0f}%)\n"
-            f"Outliers: {pct_outliers * 100:.1f}% (max: {max_outlier * 100:.0f}%)",
+            f"Outliers: {pct_outliers * 100:.1f}% (max: {max_outlier * 100:.0f}%)\n"
+            f"Tent R\u00b2: {metrics.networth_growth_tent_r2:.3f}",
             transform=ax.transAxes,
             fontsize=8,
             verticalalignment="top",
@@ -1037,21 +1016,11 @@ def visualize_financial_dynamics(
     ax.legend(fontsize=8, loc="upper right")
     ax.grid(True, linestyle="--", alpha=0.3)
 
-    # Stats box with mean, std, and % in bounds
-    actual_mean = np.mean(fragility)
-    actual_std = np.std(fragility)
-    in_bounds = np.sum((fragility >= normal_min) & (fragility <= normal_max)) / len(
-        fragility
-    )
-    ax.text(
-        0.02,
-        0.97,
-        f"mu = {actual_mean:.3f}\nsigma = {actual_std:.4f}\n{in_bounds * 100:.0f}% in bounds",
-        transform=ax.transAxes,
-        fontsize=8,
-        verticalalignment="top",
-        horizontalalignment="left",
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+    _add_cv_cyclicality_box(
+        ax,
+        metrics.avg_fragility_mean,
+        metrics.financial_fragility_cv,
+        metrics.fragility_gdp_correlation,
     )
     _shade_beyond_extreme(ax, extreme_min, extreme_max)
 
@@ -1096,21 +1065,12 @@ def visualize_financial_dynamics(
     ax.legend(fontsize=8, loc="upper right")
     ax.grid(True, linestyle="--", alpha=0.3)
 
-    # Stats box with mean, std, and % in bounds
-    pr_actual_mean = np.mean(price_ratio)
-    pr_actual_std = np.std(price_ratio)
-    pr_in_bounds = np.sum(
-        (price_ratio >= pr_normal_min) & (price_ratio <= pr_normal_max)
-    ) / len(price_ratio)
-    ax.text(
-        0.02,
-        0.97,
-        f"mu = {pr_actual_mean:.3f}\nsigma = {pr_actual_std:.3f}\n{pr_in_bounds * 100:.0f}% in bounds",
-        transform=ax.transAxes,
-        fontsize=8,
-        verticalalignment="top",
-        horizontalalignment="left",
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+    _add_cv_cyclicality_box(
+        ax,
+        metrics.price_ratio_mean,
+        metrics.price_ratio_cv,
+        metrics.price_ratio_gdp_correlation,
+        label="counter-cyc",
     )
     _shade_beyond_extreme(ax, pr_extreme_min, pr_extreme_max)
 
@@ -1154,21 +1114,11 @@ def visualize_financial_dynamics(
     ax.legend(fontsize=8, loc="upper right")
     ax.grid(True, linestyle="--", alpha=0.3)
 
-    # Stats box with mean, std, and % in bounds
-    pd_actual_mean = np.mean(price_disp)
-    pd_actual_std = np.std(price_disp)
-    pd_in_bounds = np.sum(
-        (price_disp >= pd_normal_min) & (price_disp <= pd_normal_max)
-    ) / len(price_disp)
-    ax.text(
-        0.02,
-        0.97,
-        f"mu = {pd_actual_mean:.3f}\nsigma = {pd_actual_std:.4f}\n{pd_in_bounds * 100:.0f}% in bounds",
-        transform=ax.transAxes,
-        fontsize=8,
-        verticalalignment="top",
-        horizontalalignment="left",
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+    _add_cv_cyclicality_box(
+        ax,
+        metrics.price_dispersion_mean,
+        metrics.price_dispersion_cv,
+        metrics.price_dispersion_gdp_correlation,
     )
     _shade_beyond_extreme(ax, pd_extreme_min, pd_extreme_max)
 
@@ -1214,24 +1164,12 @@ def visualize_financial_dynamics(
     ax.legend(fontsize=8, loc="upper right")
     ax.grid(True, linestyle="--", alpha=0.3)
 
-    # Stats box with both series
-    eq_mean = np.mean(equity_disp)
-    eq_std = np.std(equity_disp)
-    sl_mean = np.mean(sales_disp)
-    sl_std = np.std(sales_disp)
-    eq_in = np.sum(
-        (equity_disp >= eq_bounds.get("normal_min", 0.6))
-        & (equity_disp <= eq_bounds.get("normal_max", 2.5))
-    ) / len(equity_disp)
-    sl_in = np.sum(
-        (sales_disp >= sl_bounds.get("normal_min", 0.5))
-        & (sales_disp <= sl_bounds.get("normal_max", 3.0))
-    ) / len(sales_disp)
+    # Stats box with both series (using pre-computed metrics)
     ax.text(
         0.02,
         0.97,
-        f"Equity: mu={eq_mean:.2f} sigma={eq_std:.2f} {eq_in * 100:.0f}% in\n"
-        f"Sales:  mu={sl_mean:.2f} sigma={sl_std:.2f} {sl_in * 100:.0f}% in",
+        f"Equity: mu={metrics.equity_dispersion_mean:.2f} CV={metrics.equity_dispersion_cv:.3f} pro-cyc r={metrics.equity_dispersion_gdp_correlation:.2f}\n"
+        f"Sales:  mu={metrics.sales_dispersion_mean:.2f} CV={metrics.sales_dispersion_cv:.3f} pro-cyc r={metrics.sales_dispersion_gdp_correlation:.2f}",
         transform=ax.transAxes,
         fontsize=8,
         verticalalignment="top",
