@@ -144,7 +144,6 @@ def compute_baseline_metrics(
 
     # Apply burn-in
     unemployment_ss = unemployment[burn_in:]
-    inflation_ss = inflation[burn_in:]
     log_gdp_ss = log_gdp[burn_in:]
     real_wage_ss = real_wage[burn_in:]
     avg_productivity_ss = avg_productivity[burn_in:]
@@ -166,11 +165,12 @@ def compute_baseline_metrics(
         np.corrcoef(unemployment_ss[:-1], unemployment_ss[1:])[0, 1]
     )
 
-    # Inflation dynamics
+    # Inflation dynamics (computed on full series, not post-burn-in)
+    # This matches the book's Figure 3.2(c) which shows all 1000 periods
     inflation_pct_in_bounds = float(
         np.mean(
-            (inflation_ss >= inflation_extreme_bounds[0])
-            & (inflation_ss <= inflation_extreme_bounds[1])
+            (inflation >= inflation_extreme_bounds[0])
+            & (inflation <= inflation_extreme_bounds[1])
         )
     )
 
@@ -222,8 +222,8 @@ def compute_baseline_metrics(
         unemployment_max=unemployment_max,
         unemployment_pct_in_bounds=unemployment_pct_in_bounds,
         unemployment_autocorr=unemployment_autocorr,
-        inflation_mean=float(np.mean(inflation_ss)),
-        inflation_std=float(np.std(inflation_ss)),
+        inflation_mean=float(np.mean(inflation)),
+        inflation_std=float(np.std(inflation)),
         inflation_pct_in_bounds=inflation_pct_in_bounds,
         log_gdp_mean=float(np.mean(log_gdp_ss)),
         log_gdp_std=float(np.std(log_gdp_ss)),

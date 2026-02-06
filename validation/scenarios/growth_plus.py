@@ -460,7 +460,6 @@ def compute_growth_plus_metrics(
 
     # Apply burn-in
     unemployment_ss = unemployment[burn_in:]
-    inflation_ss = inflation[burn_in:]
     log_gdp_ss = log_gdp[burn_in:]
     real_wage_ss = real_wage[burn_in:]
     vacancy_rate_ss = vacancy_rate[burn_in:]
@@ -726,12 +725,14 @@ def compute_growth_plus_metrics(
             np.sum((unemployment_ss >= 0.02) & (unemployment_ss <= 0.15))
             / len(unemployment_ss)
         ),
-        inflation_mean=float(np.mean(inflation_ss)),
-        inflation_std=float(np.std(inflation_ss)),
-        inflation_max=float(np.max(inflation_ss)),
-        inflation_min=float(np.min(inflation_ss)),
+        # Inflation metrics computed on full series (not post-burn-in)
+        # This matches the book's Figure 3.2(c) which shows all 1000 periods
+        inflation_mean=float(np.mean(inflation)),
+        inflation_std=float(np.std(inflation)),
+        inflation_max=float(np.max(inflation)),
+        inflation_min=float(np.min(inflation)),
         inflation_pct_in_bounds=float(
-            np.mean((inflation_ss >= -0.02) & (inflation_ss <= 0.10))
+            np.mean((inflation >= -0.02) & (inflation <= 0.10))
         ),
         log_gdp_mean=float(np.mean(log_gdp_ss)),
         log_gdp_std=float(np.std(log_gdp_ss)),
