@@ -63,6 +63,10 @@ class Config:
     max_loan_to_net_worth : float, optional
         Maximum loan as multiple of borrower's net worth (default: 2.0).
         Caps individual loans at X × net_worth. Set to 0 for no limit.
+    max_leverage : float, optional
+        Maximum leverage ratio (fragility cap) for interest rate calculation.
+        Caps the fragility used in rate formula to prevent extreme rates.
+        Set to 0 for no limit. Default: 100.0.
     cap_factor : float or None, optional
         Cap factor for breakeven price calculation (>= 1.0 if specified).
         If None, no cap is applied.
@@ -91,7 +95,7 @@ class Config:
         breakeven floor. Default: True.
     fragility_cap_method : str, optional
         How to cap financial fragility: "credit_demand" (cap at B) or
-        "none" (no cap). Default: "credit_demand".
+        "none" (no cap). Default: "none".
     new_firm_size_factor : float, optional
         Scale factor for new firm net worth vs survivor mean. Default: 0.5.
     new_firm_production_factor : float, optional
@@ -174,6 +178,7 @@ class Config:
     max_loan_to_net_worth: float = (
         2.0  # Max loan as multiple of net worth (0 = no limit)
     )
+    max_leverage: float = 100.0  # Cap for fragility in interest rate calc (0 = no cap)
 
     # Optional parameters
     cap_factor: float | None = None
@@ -189,7 +194,7 @@ class Config:
     matching_method: str = "sequential"  # "sequential" or "simultaneous"
     job_search_method: str = "vacancies_only"  # "vacancies_only" or "all_firms"
     price_cut_allow_increase: bool = True  # Allow price increase when cutting
-    fragility_cap_method: str = "credit_demand"  # "credit_demand" or "none"
+    fragility_cap_method: str = "none"  # "credit_demand" or "none"
 
     # New firm entry parameters
     new_firm_size_factor: float = 0.9  # Net worth scale factor vs survivor mean

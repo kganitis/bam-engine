@@ -76,6 +76,8 @@ def tiny_sched() -> Simulation:
         equity_base_init=5.0,
         # Disable loan-to-net-worth cap for deterministic test behavior
         max_loan_to_net_worth=0.0,
+        # Disable max_leverage cap for deterministic test behavior
+        max_leverage=0.0,
     )
 
 

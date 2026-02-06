@@ -462,7 +462,7 @@ class ConfigValidator:
             # Implementation variant parameters
             "contract_poisson_mean": (0, None),
             "max_loan_to_net_worth": (0.0, None),
-            "max_leverage": (1.0, None),
+            "max_leverage": (0.0, None),
             "cap_factor": (1.0, None),
             # New firm parameters (non-negative)
             "new_firm_size_factor": (0.0, None),

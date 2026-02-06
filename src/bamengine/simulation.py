@@ -882,6 +882,7 @@ class Simulation:
             r_bar=p["r_bar"],
             v=p["v"],
             max_loan_to_net_worth=p["max_loan_to_net_worth"],
+            max_leverage=p["max_leverage"],
             cap_factor=p.get("cap_factor"),
             # Implementation variants
             contract_poisson_mean=p["contract_poisson_mean"],
@@ -918,7 +919,6 @@ class Simulation:
             # Ratio parameters used in initialization
             "min_wage_ratio",
             "net_worth_ratio",
-            "max_leverage",
         }
         known_keys = config_fields | simulation_keys
         extra_params = {k: v for k, v in p.items() if k not in known_keys}

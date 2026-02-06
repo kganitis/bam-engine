@@ -672,6 +672,7 @@ class BanksProvideLoans:
             h_phi=sim.config.h_phi,
             loan_priority_method=sim.config.loan_priority_method,
             max_loan_to_net_worth=sim.config.max_loan_to_net_worth,
+            max_leverage=sim.config.max_leverage,
         )
 
 
