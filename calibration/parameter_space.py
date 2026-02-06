@@ -20,36 +20,41 @@ from typing import Any
 
 PARAMETER_GRIDS: dict[str, dict[str, list[Any]]] = {
     "baseline": {
+        "new_firm_size_factor": [0.5, 0.7, 0.8, 0.9],
+        "new_firm_production_factor": [0.5, 0.7, 0.8, 0.9, 1.0],
+        "new_firm_wage_factor": [0.5, 0.7, 0.8, 0.9, 1.0],
+        "new_firm_price_markup": [1.0, 1.10, 1.25, 1.50],
+        "max_loan_to_net_worth": [0, 2, 5],
+        "firing_method": ["random", "expensive"],
+        "matching_method": ["sequential", "simultaneous"],
+        "job_search_method": ["vacancies_only", "all_firms"],
+    },
+    "growth_plus": {
+        # R&D extension parameter (Growth+ specific)
+        # "sigma_decay": [-2.0, -1.5, -1.0, -0.5],
         # New firm entry parameters
         "new_firm_size_factor": [0.5, 0.7, 0.8, 0.9],
         "new_firm_production_factor": [0.5, 0.7, 0.8, 0.9, 1.0],
         "new_firm_wage_factor": [0.5, 0.7, 0.8, 0.9, 1.0],
-        "new_firm_price_markup": [1.0, 1.25, 1.50],
-    },
-    "growth_plus": {
-        # R&D extension parameter (Growth+ specific)
-        "sigma_decay": [-2.0, -1.5, -1.0, -0.5],
-        # New firm entry parameters
-        "new_firm_size_factor": [0.25, 0.5, 0.7, 0.8, 0.9],
-        "new_firm_production_factor": [0.25, 0.5, 0.7, 0.8, 0.9, 1.0],
-        "new_firm_wage_factor": [0.25, 0.5, 0.7, 0.8, 0.9, 1.0],
-        "new_firm_price_markup": [1.0, 1.25, 1.50, 1.75, 2.0],
+        "new_firm_price_markup": [1.0, 1.10, 1.25, 1.50],
+        "max_loan_to_net_worth": [0, 2, 5],
+        "firing_method": ["random", "expensive"],
+        "matching_method": ["sequential", "simultaneous"],
+        "job_search_method": ["vacancies_only", "all_firms"],
     },
 }
 
 # =============================================================================
-# Scenario-specific default values
+# Scenario-specific parameter overrides
 # =============================================================================
 
-DEFAULT_VALUES_BY_SCENARIO: dict[str, dict[str, Any]] = {
-    "baseline": {
-        "new_firm_size_factor": 0.9,
-        "new_firm_production_factor": 0.9,
-        "new_firm_wage_factor": 0.9,
-        "new_firm_price_markup": 1.0,
-    },
+# For baseline: empty dict means engine defaults.yml are used for all params.
+# For growth_plus: explicit overrides for R&D extension and different starting points.
+SCENARIO_OVERRIDES: dict[str, dict[str, Any]] = {
+    "baseline": {},  # Use engine defaults from defaults.yml
     "growth_plus": {
-        "sigma_decay": -1.0,
+        "sigma_decay": -1.0,  # R&D extension param (not in engine defaults)
+        # different defaults for new firm entry parameters
         "new_firm_size_factor": 0.5,
         "new_firm_production_factor": 0.5,
         "new_firm_wage_factor": 0.5,
@@ -63,7 +68,7 @@ DEFAULT_VALUES_BY_SCENARIO: dict[str, dict[str, Any]] = {
 
 # Keep old names for backwards compatibility with existing code
 PARAMETER_GRID: dict[str, list[Any]] = PARAMETER_GRIDS["baseline"]
-DEFAULT_VALUES: dict[str, Any] = DEFAULT_VALUES_BY_SCENARIO["baseline"]
+DEFAULT_VALUES: dict[str, Any] = SCENARIO_OVERRIDES["baseline"]
 
 
 # =============================================================================
@@ -97,7 +102,7 @@ def get_parameter_grid(scenario: str = "baseline") -> dict[str, list[Any]]:
 
 
 def get_default_values(scenario: str = "baseline") -> dict[str, Any]:
-    """Get the default values for a scenario.
+    """Get the scenario-specific parameter overrides.
 
     Parameters
     ----------
@@ -107,19 +112,20 @@ def get_default_values(scenario: str = "baseline") -> dict[str, Any]:
     Returns
     -------
     dict
-        Default values for the scenario.
+        Scenario overrides. For baseline, returns empty dict (engine defaults).
+        For growth_plus, returns R&D and new firm parameter overrides.
 
     Raises
     ------
     ValueError
         If scenario is not recognized.
     """
-    if scenario not in DEFAULT_VALUES_BY_SCENARIO:
+    if scenario not in SCENARIO_OVERRIDES:
         raise ValueError(
             f"Unknown scenario: {scenario}. "
-            f"Available: {list(DEFAULT_VALUES_BY_SCENARIO.keys())}"
+            f"Available: {list(SCENARIO_OVERRIDES.keys())}"
         )
-    return DEFAULT_VALUES_BY_SCENARIO[scenario]
+    return SCENARIO_OVERRIDES[scenario]
 
 
 def generate_combinations(

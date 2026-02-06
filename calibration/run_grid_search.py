@@ -20,7 +20,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from multiprocessing import Pool
 from pathlib import Path
 
 # Add project root to path for imports
@@ -50,54 +50,40 @@ def generate_combinations(scenario: str = "baseline"):
     list[dict]
         List of valid parameter combinations.
     """
+    from itertools import product
+
     grid = get_parameter_grid(scenario)
-
-    # Extract new firm parameters (common to both scenarios)
-    size_factors = grid.get("new_firm_size_factor", [0.5])
-    prod_factors = grid.get("new_firm_production_factor", [0.5])
-    wage_factors = grid.get("new_firm_wage_factor", [0.5])
-    price_markups = grid.get("new_firm_price_markup", [1.0])
-
-    # Extract scenario-specific parameters
-    sigma_decays = grid.get("sigma_decay", [None])  # Only for growth_plus
+    param_names = list(grid.keys())
+    param_values = list(grid.values())
 
     combinations = []
-    for size in size_factors:
-        for prod in prod_factors:
-            if prod >= size:  # Constraint: production >= size
-                for wage in wage_factors:
-                    for markup in price_markups:
-                        for sigma in sigma_decays:
-                            params = {
-                                "new_firm_size_factor": size,
-                                "new_firm_production_factor": prod,
-                                "new_firm_wage_factor": wage,
-                                "new_firm_price_markup": markup,
-                            }
-                            if sigma is not None:
-                                params["sigma_decay"] = sigma
-                            combinations.append(params)
+    for values in product(*param_values):
+        params = dict(zip(param_names, values, strict=True))
+
+        # Constraint: production_factor >= size_factor
+        size = params.get("new_firm_size_factor", 0)
+        prod = params.get("new_firm_production_factor", 1)
+        if prod >= size:
+            combinations.append(params)
+
     return combinations
 
 
-def screen_single(params: dict, scenario: str, n_periods: int) -> tuple:
+def screen_single(args: tuple) -> tuple:
     """Screen a single parameter combination.
 
     Parameters
     ----------
-    params : dict
-        Parameter configuration.
-    scenario : str
-        Scenario name ("baseline" or "growth_plus").
-    n_periods : int
-        Number of simulation periods.
+    args : tuple
+        (params, scenario, n_periods) tuple for imap compatibility.
 
     Returns
     -------
     tuple
         (params, score, n_pass, n_warn, n_fail)
     """
-    validate, _ = get_validation_funcs(scenario)
+    params, scenario, n_periods = args
+    validate, _, _, _ = get_validation_funcs(scenario)
     result = validate(seed=0, n_periods=n_periods, **params)
     return params, result.total_score, result.n_pass, result.n_warn, result.n_fail
 
@@ -159,7 +145,7 @@ Examples:
     args = parser.parse_args()
 
     # Get validation functions for scenario
-    _, run_stability = get_validation_funcs(args.scenario)
+    _, run_stability, _, _ = get_validation_funcs(args.scenario)
 
     combinations = generate_combinations(args.scenario)
     print(f"Scenario: {args.scenario}")
@@ -176,16 +162,17 @@ Examples:
     print("=" * 70)
 
     results = []
-    with ProcessPoolExecutor(max_workers=args.workers) as executor:
-        futures = [
-            executor.submit(screen_single, p, args.scenario, args.periods)
-            for p in combinations
-        ]
-        for i, future in enumerate(as_completed(futures)):
-            params, score, n_pass, n_warn, n_fail = future.result()
-            results.append((params, score, n_pass, n_warn, n_fail))
-            if (i + 1) % 100 == 0 or (i + 1) == len(combinations):
-                print(f"  Screened {i + 1}/{len(combinations)}")
+    # Prepare arguments for imap_unordered
+    task_args = [(p, args.scenario, args.periods) for p in combinations]
+
+    with Pool(processes=args.workers) as pool:
+        # imap_unordered yields results as they complete (not in order)
+        for i, result in enumerate(
+            pool.imap_unordered(screen_single, task_args, chunksize=1)
+        ):
+            results.append(result)
+            if (i + 1) % 50 == 0 or (i + 1) == len(combinations):
+                print(f"  Screened {i + 1}/{len(combinations)}", flush=True)
 
     # Sort by score
     results.sort(key=lambda x: x[1], reverse=True)
@@ -196,16 +183,8 @@ Examples:
     print("=" * 70)
     for i, (params, score, n_pass, n_warn, n_fail) in enumerate(results[: args.top_k]):
         print(f"#{i + 1}: score={score:.4f} (P:{n_pass}/W:{n_warn}/F:{n_fail})")
-        print(
-            f"    size={params['new_firm_size_factor']}, "
-            f"prod={params['new_firm_production_factor']}"
-        )
-        print(
-            f"    wage={params['new_firm_wage_factor']}, "
-            f"markup={params['new_firm_price_markup']}"
-        )
-        if "sigma_decay" in params:
-            print(f"    sigma_decay={params['sigma_decay']}")
+        for key, value in params.items():
+            print(f"    {key}: {value}")
 
     # Phase 2: Stability test top k
     print()
@@ -248,12 +227,8 @@ Examples:
             f"#{i + 1}: Combined={combined:.4f} "
             f"(mean={mean:.3f}±{std:.3f}, pass={pass_rate:.0%})"
         )
-        print(f"    new_firm_size_factor: {params['new_firm_size_factor']}")
-        print(f"    new_firm_production_factor: {params['new_firm_production_factor']}")
-        print(f"    new_firm_wage_factor: {params['new_firm_wage_factor']}")
-        print(f"    new_firm_price_markup: {params['new_firm_price_markup']}")
-        if "sigma_decay" in params:
-            print(f"    sigma_decay: {params['sigma_decay']}")
+        for key, value in params.items():
+            print(f"    {key}: {value}")
 
     # Save results
     output = {
