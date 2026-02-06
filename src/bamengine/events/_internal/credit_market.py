@@ -147,7 +147,7 @@ def firms_decide_credit_demand(bor: Borrower) -> None:
 def firms_calc_financial_fragility(
     bor: Borrower,
     *,
-    fragility_cap_method: str = "credit_demand",
+    fragility_cap_method: str = "none",
 ) -> None:
     """
     Calculate firm projected financial fragility metric for loan applications.
@@ -537,6 +537,7 @@ def banks_provide_loans(
     h_phi: float,
     loan_priority_method: str = "by_net_worth",
     max_loan_to_net_worth: float = 0.0,
+    max_leverage: float = 0.0,
 ) -> None:
     """
     Banks process applications and provide loans ranked by net worth.
@@ -639,7 +640,18 @@ def banks_provide_loans(
 
         final_borrowers = queue[mask]
         final_amounts = max_grant[mask]
-        final_rates = r_bar * (1.0 + h_phi * frag[mask])
+        # Cap fragility for interest rate calculation if max_leverage is set
+        frag_for_rate = frag[mask]
+        if max_leverage > 0.0:
+            frag_for_rate = np.minimum(frag_for_rate, max_leverage)
+            if log.isEnabledFor(logging.DEBUG):
+                capped_count = np.sum(frag[mask] > max_leverage)
+                if capped_count > 0:
+                    log.debug(
+                        f"    Bank {k}: Capped fragility for {capped_count} borrower(s) "
+                        f"at max_leverage={max_leverage}"
+                    )
+        final_rates = r_bar * (1.0 + h_phi * frag_for_rate)
 
         # extra validation, should never trigger
         if final_borrowers.size == 0:  # pragma: no cover
