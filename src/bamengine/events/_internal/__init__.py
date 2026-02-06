@@ -53,7 +53,7 @@ from .goods_market import (
 )
 from .labor_market import (
     adjust_minimum_wage,
-    calc_annual_inflation_rate,
+    calc_inflation_rate,
     firms_calc_wage_bill,
     firms_decide_wage_offer,
     firms_hire_workers,
@@ -88,7 +88,7 @@ __all__: list[str] = [
     "firms_decide_desired_labor",
     "firms_decide_vacancies",
     # labor market
-    "calc_annual_inflation_rate",
+    "calc_inflation_rate",
     "adjust_minimum_wage",
     "firms_calc_wage_bill",
     "firms_decide_wage_offer",

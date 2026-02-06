@@ -13,7 +13,7 @@ Event Classes
    :toctree: ../generated
    :nosignatures:
 
-   CalcAnnualInflationRate
+   CalcInflationRate
    AdjustMinimumWage
    FirmsDecideWageOffer
    WorkersDecideFirmsToApply

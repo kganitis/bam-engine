@@ -164,7 +164,7 @@ events:
   - firms_fire_excess_workers
 
   # Labor market
-  - calc_annual_inflation_rate
+  - calc_inflation_rate
   - adjust_minimum_wage
   - firms_decide_wage_offer
   - workers_decide_firms_to_apply
@@ -316,7 +316,7 @@ events:
   - firms_fire_excess_workers
 
   # Labor market
-  - calc_annual_inflation_rate
+  - calc_inflation_rate
   - adjust_minimum_wage
   - firms_decide_wage_offer
   - workers_decide_firms_to_apply

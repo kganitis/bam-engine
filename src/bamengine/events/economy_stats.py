@@ -47,7 +47,7 @@ class UpdateAvgMktPrice:
 
     See Also
     --------
-    CalcAnnualInflationRate : Uses price history for inflation
+    CalcInflationRate : Uses price history for inflation
     bamengine.events._internal.production.update_avg_mkt_price : Implementation
     """
 

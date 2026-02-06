@@ -346,6 +346,7 @@ class ConfigValidator:
             "firing_method",
             "matching_method",
             "job_search_method",
+            "inflation_method",
         ]
         for key in str_enum_params:
             if key not in cfg:
@@ -477,6 +478,7 @@ class ConfigValidator:
             "firing_method": {"random", "expensive"},
             "matching_method": {"sequential", "simultaneous"},
             "job_search_method": {"vacancies_only", "all_firms"},
+            "inflation_method": {"yoy", "annualized"},
         }
 
         # Vector parameters (validated separately by _validate_float1d)
