@@ -43,7 +43,6 @@ For detailed validation with bounds and statistical annotations, run:
 
 import bamengine as bam
 from bamengine import Float, event, ops, role
-from validation.metrics._utils import detect_recessions
 
 # %%
 # Define Custom Role: RnD
@@ -137,8 +136,15 @@ class FirmsDeductRnDExpenditure:
 # Run the simulation only when executed directly.
 
 if __name__ == "__main__":
+    import sys
+    from pathlib import Path
+
     import matplotlib.pyplot as plt
     import numpy as np
+
+    # Add project root to sys.path for validation package access
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from validation.scenarios.growth_plus import _detect_recessions
 
     # Initialize simulation with Growth+ parameters
     sim = bam.Simulation.init(
@@ -371,12 +377,12 @@ if __name__ == "__main__":
     )
 
     # Recession detection (peak-to-trough algorithm for broader episodes)
-    recession_mask = detect_recessions(log_gdp)
+    recession_mask = _detect_recessions(log_gdp)
 
     # Minsky classification (final period)
     bor = sim.get_role("Borrower")
     loans = sim.get_relationship("LoanBook")
-    firm_debt = np.array(loans.total_by_borrower())
+    firm_debt = np.array(loans.debt_per_borrower(n_borrowers=sim.n_firms))
     gp = bor.gross_profit.copy()
     n_active = np.sum(gp != 0)
     hedge_count = np.sum(gp >= firm_debt)
