@@ -891,6 +891,7 @@ class Simulation:
             matching_method=p["matching_method"],
             job_search_method=p["job_search_method"],
             price_cut_allow_increase=p["price_cut_allow_increase"],
+            inflation_method=p["inflation_method"],
             # New firm entry parameters
             new_firm_size_factor=p["new_firm_size_factor"],
             new_firm_production_factor=p["new_firm_production_factor"],

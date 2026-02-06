@@ -87,7 +87,7 @@ from bamengine.events.goods_market import (
 )
 from bamengine.events.labor_market import (
     AdjustMinimumWage,
-    CalcAnnualInflationRate,
+    CalcInflationRate,
     FirmsCalcWageBill,
     FirmsDecideWageOffer,
     FirmsHireWorkers,
@@ -121,7 +121,7 @@ __all__ = [
     "FirmsDecideDesiredLabor",
     "FirmsDecideVacancies",
     # Labor market events (7)
-    "CalcAnnualInflationRate",
+    "CalcInflationRate",
     "AdjustMinimumWage",
     "FirmsDecideWageOffer",
     "WorkersDecideFirmsToApply",

@@ -15,10 +15,19 @@ from bamengine.simulation import Simulation
 # ============================================================================
 
 
-def test_calc_annual_inflation_rate_executes():
-    """CalcAnnualInflationRate executes without error."""
+def test_calc_inflation_rate_executes():
+    """CalcInflationRate executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = get_event("calc_annual_inflation_rate")()
+    event = get_event("calc_inflation_rate")()
+    event.execute(sim)  # Should not crash
+
+
+def test_calc_inflation_rate_with_annualized_method():
+    """CalcInflationRate executes with annualized method."""
+    sim = Simulation.init(
+        n_firms=10, n_households=50, seed=42, inflation_method="annualized"
+    )
+    event = get_event("calc_inflation_rate")()
     event.execute(sim)  # Should not crash
 
 
@@ -75,7 +84,7 @@ def test_labor_market_event_chain_executes():
 
     # Execute in sequence
     events = [
-        "calc_annual_inflation_rate",
+        "calc_inflation_rate",
         "adjust_minimum_wage",
         "firms_decide_wage_offer",
         "workers_decide_firms_to_apply",

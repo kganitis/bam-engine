@@ -9,7 +9,7 @@ Event Sequence
 --------------
 The labor market events execute in this order:
 
-1. CalcAnnualInflationRate - Calculate year-over-year inflation rate
+1. CalcInflationRate - Calculate inflation rate (configurable method)
 2. AdjustMinimumWage - Update minimum wage based on inflation (periodic)
 3. FirmsDecideWageOffer - Firms post wage offers with random markup
 4. WorkersDecideFirmsToApply - Unemployed workers select firms to apply to
@@ -23,7 +23,7 @@ round begins. This repeats max_M times to process all applications.
 Design Notes
 ------------
 - Events operate on employer and worker roles (Employer, Worker)
-- Economy-level state (min_wage, inflation) updated by CalcAnnualInflationRate/AdjustMinimumWage
+- Economy-level state (min_wage, inflation) updated by CalcInflationRate/AdjustMinimumWage
 - Loyalty rule: workers whose contracts expired (not fired) apply to previous employer first
 - Wage offers constrained by minimum wage floor
 - Contract duration: θ + Poisson(λ=10) periods
@@ -69,31 +69,59 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 @event
-class CalcAnnualInflationRate:
+class CalcInflationRate:
     """
-    Calculate and store the annual inflation rate for the current period.
+    Calculate and store the inflation rate for the current period.
 
-    The inflation rate measures the year-over-year change in the average market
-    price level. This is used by AdjustMinimumWage to index the minimum wage to
-    inflation. Requires at least 5 periods of price history.
+    The inflation rate measures the change in the average market price level.
+    This is used by AdjustMinimumWage to index the minimum wage to inflation.
+    The calculation method is configurable via ``inflation_method`` parameter.
+
+    Methods
+    -------
+    ``"yoy"`` (year-over-year, default)
+        Compares current price to price 4 periods ago. Requires at least 5
+        periods of price history. This is the traditional annual inflation
+        calculation.
+
+    ``"annualized"`` (annualized quarterly rate)
+        Computes quarterly rate and annualizes it: :math:`(1 + q)^4 - 1`.
+        Requires only 2 periods of history. More responsive to recent price
+        changes but can be more volatile.
 
     Algorithm
     ---------
+    For ``method="yoy"``:
+
     1. Check if price history has at least 5 periods (:math:`t \\geq 4`)
     2. If insufficient history, set :math:`\\pi_t = 0` and skip
     3. Otherwise, calculate: :math:`\\pi_t = (\\bar{P}_t - \\bar{P}_{t-4}) / \\bar{P}_{t-4}`
     4. Append :math:`\\pi_t` to inflation history
 
+    For ``method="annualized"``:
+
+    1. Check if price history has at least 2 periods
+    2. If insufficient history, set :math:`\\pi_t = 0` and skip
+    3. Calculate quarterly rate: :math:`q_t = (\\bar{P}_t - \\bar{P}_{t-1}) / \\bar{P}_{t-1}`
+    4. Annualize: :math:`\\pi_t = (1 + q_t)^4 - 1`
+    5. Append :math:`\\pi_t` to inflation history
+
     Mathematical Notation
     ---------------------
+    Year-over-year:
+
     .. math::
         \\pi_t = \\frac{\\bar{P}_t - \\bar{P}_{t-4}}{\\bar{P}_{t-4}}
 
+    Annualized:
+
+    .. math::
+        \\pi_t = \\left(1 + \\frac{\\bar{P}_t - \\bar{P}_{t-1}}{\\bar{P}_{t-1}}\\right)^4 - 1
+
     where:
 
-    - :math:`\\pi_t`: annual inflation rate at period t
+    - :math:`\\pi_t`: inflation rate at period t
     - :math:`\\bar{P}_t`: average market price at period t
-    - :math:`\\bar{P}_{t-4}`: average market price 4 periods ago (year-over-year)
 
     Examples
     --------
@@ -101,31 +129,42 @@ class CalcAnnualInflationRate:
 
     >>> import bamengine as be
     >>> sim = be.Simulation.init(n_firms=100, seed=42)
-    >>> event = sim.get_event("calc_annual_inflation_rate")
+    >>> event = sim.get_event("calc_inflation_rate")
     >>> event.execute(sim)
 
     Check inflation history:
 
-    >>> # Need at least 5 periods for non-zero inflation
+    >>> # Need at least 5 periods for non-zero YoY inflation
     >>> for _ in range(5):
     ...     sim.step()
     >>> sim.ec.inflation_history[-1]  # doctest: +SKIP
     0.023
 
-    Inflation requires 5 periods of history:
+    Inflation requires 5 periods of history for YoY method:
 
     >>> sim = be.Simulation.init(n_firms=10, seed=42)
-    >>> event = sim.get_event("calc_annual_inflation_rate")
+    >>> event = sim.get_event("calc_inflation_rate")
     >>> event.execute(sim)
     >>> sim.ec.inflation_history[-1]
     0.0
+
+    Using annualized method (only needs 2 periods):
+
+    >>> sim = be.Simulation.init(n_firms=100, seed=42, inflation_method="annualized")
+    >>> sim.step()  # First period
+    >>> sim.step()  # Second period - now can calculate
+    >>> # Annualized inflation available after 2 periods
+    >>> len(sim.ec.inflation_history) >= 2
+    True
 
     Notes
     -----
     This event must execute before AdjustMinimumWage in each period.
 
-    During the first 4 periods (t < 4), inflation is set to 0.0 since there is
-    insufficient history for year-over-year calculation.
+    For the year-over-year method, during the first 4 periods (t < 4), inflation
+    is set to 0.0 since there is insufficient history.
+
+    For the annualized method, only the first period (t = 0) has zero inflation.
 
     The inflation rate is stored in Economy.inflation_history for later use by
     minimum wage adjustment.
@@ -134,13 +173,13 @@ class CalcAnnualInflationRate:
     --------
     AdjustMinimumWage : Uses inflation to update minimum wage
     Economy : Global economy state with price/inflation history
-    bamengine.events._internal.labor_market.calc_annual_inflation_rate : Implementation
+    bamengine.events._internal.labor_market.calc_inflation_rate : Implementation
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.events._internal.labor_market import calc_annual_inflation_rate
+        from bamengine.events._internal.labor_market import calc_inflation_rate
 
-        calc_annual_inflation_rate(sim.ec)
+        calc_inflation_rate(sim.ec, method=sim.config.inflation_method)
 
 
 @event

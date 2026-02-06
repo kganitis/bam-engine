@@ -22,7 +22,7 @@ def test_all_labor_market_events_registered():
     """All labor market events are registered."""
     events = list_events()
 
-    assert "calc_annual_inflation_rate" in events
+    assert "calc_inflation_rate" in events
     assert "adjust_minimum_wage" in events
     assert "firms_decide_wage_offer" in events
     assert "workers_decide_firms_to_apply" in events

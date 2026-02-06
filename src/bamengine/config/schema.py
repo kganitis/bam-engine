@@ -201,3 +201,6 @@ class Config:
     new_firm_production_factor: float = 0.9  # Production scale factor vs survivor mean
     new_firm_wage_factor: float = 0.9  # Wage offer scale factor vs survivor mean
     new_firm_price_markup: float = 1.0  # Price = avg_mkt_price * markup
+
+    # Inflation calculation method
+    inflation_method: str = "yoy"  # "yoy" (year-over-year) or "annualized"

@@ -13,7 +13,7 @@ import pytest
 
 from bamengine.events._internal.labor_market import (
     adjust_minimum_wage,
-    calc_annual_inflation_rate,
+    calc_inflation_rate,
     firms_decide_wage_offer,
     firms_hire_workers,
     workers_decide_firms_to_apply,
@@ -47,7 +47,7 @@ def test_event_labor_market(tiny_sched: Simulation) -> None:
 
     # Event-2
     prev_floor = sch.ec.min_wage
-    calc_annual_inflation_rate(sch.ec)
+    calc_inflation_rate(sch.ec)
     adjust_minimum_wage(sch.ec, sch.wrk)
 
     firms_decide_wage_offer(
@@ -91,7 +91,7 @@ def test_labor_market_post_state_consistency(tiny_sched: Simulation) -> None:
     sch = tiny_sched
     _run_planning(sch)
 
-    calc_annual_inflation_rate(sch.ec)
+    calc_inflation_rate(sch.ec)
     adjust_minimum_wage(sch.ec, sch.wrk)
     firms_decide_wage_offer(sch.emp, w_min=sch.ec.min_wage, h_xi=sch.h_xi, rng=sch.rng)
     workers_decide_firms_to_apply(sch.wrk, sch.emp, max_M=sch.max_M, rng=sch.rng)

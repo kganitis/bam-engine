@@ -15,7 +15,7 @@ from numpy.typing import NDArray
 from bamengine import Rng, make_rng
 from bamengine.events._internal.labor_market import (
     adjust_minimum_wage,
-    calc_annual_inflation_rate,
+    calc_inflation_rate,
     firms_decide_wage_offer,
     firms_hire_workers,
     workers_decide_firms_to_apply,
@@ -63,21 +63,51 @@ def _mini_state(
     return emp, wrk, rng, M
 
 
-def test_calc_annual_inflation_rate_min_history() -> None:
-    from bamengine.events._internal.labor_market import calc_annual_inflation_rate
-
+def test_calc_inflation_rate_yoy_min_history() -> None:
+    """YoY method requires 5 periods of history, returns 0 if less."""
     ec = mock_economy(avg_mkt_price_history=np.array([1.0, 1.1, 1.2, 1.3]))
-    calc_annual_inflation_rate(ec)
+    calc_inflation_rate(ec, method="yoy")
     assert ec.inflation_history[-1] == 0.0
 
 
-def test_calc_annual_inflation_rate_prev_nonpositive() -> None:
-    from bamengine.events._internal.labor_market import calc_annual_inflation_rate
-
+def test_calc_inflation_rate_yoy_prev_nonpositive() -> None:
+    """YoY method returns 0 if previous price is non-positive."""
     # t = 4 (len=5); p_{t-4} is index 0 -> set to 0.0 to trigger branch
     ec = mock_economy(avg_mkt_price_history=np.array([0.0, 1.0, 1.1, 1.2, 1.3]))
-    calc_annual_inflation_rate(ec)
+    calc_inflation_rate(ec, method="yoy")
     assert ec.inflation_history[-1] == 0.0
+
+
+def test_calc_inflation_rate_annualized_min_history() -> None:
+    """Annualized method requires 2 periods, returns 0 if less."""
+    ec = mock_economy(avg_mkt_price_history=np.array([1.0]))
+    calc_inflation_rate(ec, method="annualized")
+    assert ec.inflation_history[-1] == 0.0
+
+
+def test_calc_inflation_rate_annualized_basic() -> None:
+    """Annualized method: (1 + quarterly_rate)^4 - 1."""
+    # 10% quarterly growth -> annualized = 1.1^4 - 1 = 0.4641
+    ec = mock_economy(avg_mkt_price_history=np.array([1.0, 1.1]))
+    calc_inflation_rate(ec, method="annualized")
+    expected = (1.1**4) - 1.0  # ~46.41%
+    assert ec.inflation_history[-1] == pytest.approx(expected)
+
+
+def test_calc_inflation_rate_annualized_prev_nonpositive() -> None:
+    """Annualized method returns 0 if previous price is non-positive."""
+    ec = mock_economy(avg_mkt_price_history=np.array([0.0, 1.0]))
+    calc_inflation_rate(ec, method="annualized")
+    assert ec.inflation_history[-1] == 0.0
+
+
+def test_calc_inflation_rate_annualized_deflation() -> None:
+    """Annualized method handles deflation correctly."""
+    # 5% quarterly decline -> annualized = 0.95^4 - 1 = -0.1855
+    ec = mock_economy(avg_mkt_price_history=np.array([1.0, 0.95]))
+    calc_inflation_rate(ec, method="annualized")
+    expected = (0.95**4) - 1.0  # ~-18.55%
+    assert ec.inflation_history[-1] == pytest.approx(expected)
 
 
 @pytest.mark.parametrize(
@@ -100,7 +130,7 @@ def test_adjust_minimum_wage_edges(prices: NDArray[np.float64], direction: str) 
         n=2, employer=np.array([0, -1], dtype=np.intp), wage=np.array([1.5, 0.0])
     )
     old = ec.min_wage
-    calc_annual_inflation_rate(ec)
+    calc_inflation_rate(ec, method="yoy")
     adjust_minimum_wage(ec, wrk)
     if direction == "up":
         assert ec.min_wage > old
@@ -122,7 +152,7 @@ def test_adjust_minimum_wage_revision() -> None:
     wrk = mock_worker(
         n=2, employer=np.array([0, -1], dtype=np.intp), wage=np.array([0.9, 0.0])
     )
-    calc_annual_inflation_rate(ec)
+    calc_inflation_rate(ec, method="yoy")
     adjust_minimum_wage(ec, wrk)
     assert ec.min_wage == pytest.approx(1.20)  # +20 % inflation
     # Employed worker wage should be updated to new minimum

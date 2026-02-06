@@ -24,48 +24,97 @@ from bamengine.utils import select_top_k_indices_sorted
 log = logging.getLogger(__name__)
 
 
-def calc_annual_inflation_rate(ec: Economy) -> None:
+def calc_inflation_rate(ec: Economy, *, method: str = "yoy") -> None:
     """
-    Calculate year-over-year inflation from price history.
+    Calculate inflation rate and append to history.
+
+    Parameters
+    ----------
+    ec : Economy
+        Economy object containing price history and inflation history.
+    method : str, optional
+        Calculation method: "yoy" (year-over-year) or "annualized".
+        Default is "yoy".
 
     See Also
     --------
-    bamengine.events.labor_market.CalcAnnualInflationRate : Full documentation
+    bamengine.events.labor_market.CalcInflationRate : Full documentation
     """
     info_enabled = log.isEnabledFor(logging.INFO)
     if info_enabled:
-        log.info("--- Calculating Annual Inflation Rate ---")
+        log.info(f"--- Calculating Inflation Rate (method={method}) ---")
     hist = ec.avg_mkt_price_history
-    if hist.size <= 4:
-        if info_enabled:
-            log.info(
-                "  Not enough history to calculate annual inflation (<5 periods). "
+
+    if method == "annualized":
+        # Annualized method: (1 + quarterly_rate)^4 - 1
+        # Needs at least 2 periods of history
+        if hist.size < 2:
+            if info_enabled:
+                log.info(
+                    "  Not enough history to calculate inflation (<2 periods). "
+                    "Setting to 0.0."
+                )
+            ec.inflation_history = np.append(ec.inflation_history, 0.0)
+            return
+
+        p_now = hist[-1]
+        p_prev = hist[-2]  # Price from previous period
+
+        if p_prev <= 0:
+            log.warning(
+                "  Cannot calculate inflation, previous price level was zero or negative. "
                 "Setting to 0.0."
             )
-        ec.inflation_history = np.append(ec.inflation_history, 0.0)
-        return
+            inflation = 0.0
+        else:
+            quarterly_rate = (p_now - p_prev) / p_prev
+            inflation = (1.0 + quarterly_rate) ** 4 - 1.0
 
-    p_now = hist[-1]
-    p_prev = hist[-5]  # Price from 4 periods ago (e.g., if t=5, compare p_5 and p_1)
-
-    if p_prev <= 0:
-        log.warning(
-            "  Cannot calculate inflation, previous price level was zero or negative. "
-            "Setting to 0.0."
-        )
-        inflation = 0.0
+        ec.inflation_history = np.append(ec.inflation_history, inflation)
+        if info_enabled:
+            log.info(
+                f"  Annualized inflation calculated for period t={hist.size - 1}: {inflation:+.3%}"
+            )
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug(
+                f"    Calculation: (1 + (p_now={p_now:.3f} - p_prev={p_prev:.3f}) / p_prev)^4 - 1"
+            )
     else:
-        inflation = (p_now - p_prev) / p_prev
+        # Year-over-year method (default): compare P_t to P_{t-4}
+        # Needs at least 5 periods of history
+        if hist.size <= 4:
+            if info_enabled:
+                log.info(
+                    "  Not enough history to calculate annual inflation (<5 periods). "
+                    "Setting to 0.0."
+                )
+            ec.inflation_history = np.append(ec.inflation_history, 0.0)
+            return
 
-    ec.inflation_history = np.append(ec.inflation_history, inflation)
+        p_now = hist[-1]
+        p_prev = hist[
+            -5
+        ]  # Price from 4 periods ago (e.g., if t=5, compare p_5 and p_1)
+
+        if p_prev <= 0:
+            log.warning(
+                "  Cannot calculate inflation, previous price level was zero or negative. "
+                "Setting to 0.0."
+            )
+            inflation = 0.0
+        else:
+            inflation = (p_now - p_prev) / p_prev
+
+        ec.inflation_history = np.append(ec.inflation_history, inflation)
+        if info_enabled:
+            log.info(
+                f"  Annual inflation calculated for period t={hist.size - 1}: {inflation:+.3%}"
+            )
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug(f"    Calculation: (p_now={p_now:.3f} / p_t-4={p_prev:.3f}) - 1")
+
     if info_enabled:
-        log.info(
-            f"  Annual inflation calculated for period t={hist.size - 1}: {inflation:+.3%}"
-        )
-    if log.isEnabledFor(logging.DEBUG):
-        log.debug(f"    Calculation: (p_now={p_now:.3f} / p_t-4={p_prev:.3f}) - 1")
-    if info_enabled:
-        log.info("--- Annual Inflation Calculation complete ---")
+        log.info("--- Inflation Calculation complete ---")
 
 
 def adjust_minimum_wage(ec: Economy, wrk: Worker) -> None:
