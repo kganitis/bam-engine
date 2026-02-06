@@ -51,11 +51,22 @@ metrics = run_baseline_scenario(seed=0, show_plot=False)
 
 ### Baseline (Section 3.9.1)
 
-Standard BAM model behavior - validates unemployment, inflation, GDP, Phillips/Okun/Beveridge curves, firm size distribution.
+Standard BAM model behavior — 25 metrics across 3 categories (TIME_SERIES, CURVES, DISTRIBUTION). Validates unemployment, inflation, GDP, real wages, vacancy rates, Phillips/Okun/Beveridge curve correlations, and firm size distribution.
 
 ### Growth+ (Section 3.9.2)
 
-Endogenous productivity growth via R&D investment - adds productivity growth, wage growth, financial dynamics, and trend validation.
+Endogenous productivity growth via R&D investment — 65 metrics across 6 categories:
+
+| Category         | Count | Key Metrics                                                                |
+| ---------------- | ----- | -------------------------------------------------------------------------- |
+| TIME_SERIES      | 14    | Unemployment, inflation, GDP trend/growth, vacancy rates                   |
+| CURVES           | 6     | Phillips, Okun, Beveridge correlations                                     |
+| DISTRIBUTION     | 4     | Firm size metrics (skewness, tail ratios)                                  |
+| GROWTH           | 11    | Productivity/wage growth, co-movement, recession detection                 |
+| FINANCIAL        | 20    | Interest rates, fragility, price ratio, dispersions, Minsky classification |
+| GROWTH_RATE_DIST | 10    | Tent-shape R², bounds checks, outlier percentages                          |
+
+Notable additions over baseline: GDP cyclicality correlations (Minsky hypothesis validation), coefficient of variation for financial variables, and Laplace distribution fit (tent-shape R²) for growth rate distributions.
 
 ## API Reference
 
@@ -74,9 +85,11 @@ Endogenous productivity growth via R&D investment - adds productivity growth, wa
 ### Report Functions
 
 - `print_validation_report(result)` - Formatted baseline report
-- `print_stability_report(result)` - Formatted stability report
+- `print_baseline_stability_report(result)` - Formatted baseline stability report
 - `print_growth_plus_report(result)` - Formatted Growth+ report
 - `print_growth_plus_stability_report(result)` - Formatted Growth+ stability report
+- `print_report(result)` - Generic report (auto-detects scenario)
+- `print_stability_report(result)` - Generic stability report
 
 ### Growth+ Extension (RnD Role)
 
@@ -93,21 +106,28 @@ sim.use_role(RnD)
 ### Core Types
 
 - `ValidationScore` - Single validation result with metrics and total score
-- `StabilityResult` - Multi-seed result with mean/std/pass_rate
-- `MetricResult` - Individual metric validation result
-- `MetricStats` - Per-metric statistics across seeds
-- `MetricSpec` - Declarative specification for a validation metric
-- `Scenario` - Bundles metric specs, config, and compute function
-- `BaselineMetrics` - Computed metrics for baseline scenario
-- `GrowthPlusMetrics` - Computed metrics for Growth+ scenario
+- `StabilityResult` - Multi-seed result with mean/std/pass_rate + per-metric `MetricStats`
+- `MetricResult` - Individual metric validation result (name, status, actual, score, weight)
+- `MetricStats` - Per-metric stability: mean_value, std_value, mean_score, std_score, pass_rate
+- `MetricSpec` - Declarative specification: name, field, check_type, target_path, weight, group
+- `Scenario` - Bundles metric_specs, collect_config, compute_metrics, setup_hook
+- `BaselineMetrics` - Computed metrics for baseline scenario (25 fields)
+- `GrowthPlusMetrics` - Computed metrics for Growth+ scenario (70+ fields)
+- `CheckType` - Enum: MEAN_TOLERANCE, RANGE, PCT_WITHIN, OUTLIER, BOOLEAN
+- `MetricGroup` - Enum: TIME_SERIES, CURVES, DISTRIBUTION, GROWTH, FINANCIAL, GROWTH_RATE_DIST
+- `Status` - Enum: PASS, WARN, FAIL
 
 ### Scoring Functions
 
-- `score_mean_tolerance(actual, target, tolerance)` - Score based on distance from target
-- `score_range(actual, min_val, max_val)` - Score based on range position
-- `score_pct_within_target(actual, target, min_pct)` - Score for percentage checks
-- `score_outlier_penalty(outlier_pct, max_pct)` - Penalize excess outliers
-- `compute_combined_score(stability)` - Combined score for calibration ranking
+- `score_mean_tolerance(actual, target, tolerance)` - Score based on distance from target (0-1)
+- `score_range(actual, min_val, max_val)` - Score based on range position (0-1)
+- `score_pct_within_target(actual, target, min_pct)` - Score for percentage checks (0-1)
+- `score_outlier_penalty(outlier_pct, max_pct)` - Penalize excess outliers (0-1)
+- `check_mean_tolerance(actual, target, tolerance)` - Status check (PASS/WARN/FAIL) for mean tolerance
+- `check_range(actual, min_val, max_val)` - Status check for range
+- `check_pct_within_target(actual, target, min_pct)` - Status check for percentage within target
+- `check_outlier_penalty(outlier_pct, max_pct)` - Status check for outlier penalty
+- `compute_combined_score(stability)` - Combined score: `mean_score * pass_rate * (1 - std_score)`
 
 ### Engine Functions
 
@@ -115,6 +135,11 @@ sim.use_role(RnD)
 - `stability_test(scenario, seeds, n_periods, **config)` - Generic stability testing
 - `evaluate_metric(spec, metrics, targets)` - Evaluate single metric
 - `load_targets(scenario)` - Load YAML targets for scenario
+
+### Calibration Support
+
+- `get_validation_func(scenario)` - Get the validation function for a scenario
+- `get_validation_funcs(scenario)` - Get `(validator, stability_runner, report_printer, stability_printer)` tuple
 
 ### Constants
 
@@ -126,15 +151,18 @@ sim.use_role(RnD)
 
 Target values are defined in YAML files with standardized keys:
 
-- `validation/targets/baseline.yaml` - Baseline scenario targets (22 metrics)
-- `validation/targets/growth_plus.yaml` - Growth+ scenario targets (39 metrics)
+- `validation/targets/baseline.yaml` - Baseline scenario targets (25 metrics)
+- `validation/targets/growth_plus.yaml` - Growth+ scenario targets (65 metrics)
 
-YAML structure uses standardized keys:
+YAML structure uses standardized keys per check type:
 
-- `target`, `tolerance` for MEAN_TOLERANCE checks
-- `min`, `max` for RANGE checks
-- `target`, `min` for PCT_WITHIN checks
-- `max_outlier`, `penalty_weight` for OUTLIER checks
+| CheckType        | YAML Keys                       | Purpose                           |
+| ---------------- | ------------------------------- | --------------------------------- |
+| `MEAN_TOLERANCE` | `target`, `tolerance`           | Value within target +/- tolerance |
+| `RANGE`          | `min`, `max`                    | Value within [min, max]           |
+| `PCT_WITHIN`     | `target`, `min`                 | Percentage meeting threshold      |
+| `OUTLIER`        | `max_outlier`, `penalty_weight` | Penalize excess outliers          |
+| `BOOLEAN`        | `threshold` (in MetricSpec)     | Simple > or < check               |
 
 ## Module Structure
 
@@ -147,13 +175,17 @@ validation/
 ├── reporting.py             # Report printing functions
 ├── scenarios/
 │   ├── __init__.py          # Re-exports scenarios
+│   ├── _utils.py            # Shared utilities: IQR filtering, burn-in adjustment
 │   ├── baseline.py          # Baseline: metrics + computation + run_scenario()
-│   ├── baseline_viz.py      # Baseline visualization functions
+│   ├── baseline_viz.py      # Baseline visualization (8-panel)
 │   ├── growth_plus.py       # Growth+: metrics + computation + run_scenario()
-│   └── growth_plus_viz.py   # Growth+ visualization functions
+│   ├── growth_plus_viz.py   # Growth+ visualization (16-panel + recession bands)
+│   └── output/              # Saved visualization panels
+│       ├── baseline/        # Individual baseline scenario panels
+│       └── growth-plus/     # Individual growth+ scenario panels
 └── targets/
-    ├── baseline.yaml        # Baseline target values
-    └── growth_plus.yaml     # Growth+ target values
+    ├── baseline.yaml        # Baseline target values (25 metrics)
+    └── growth_plus.yaml     # Growth+ target values (65 metrics)
 
 extensions/                  # Separate package for model extensions
 └── rnd/

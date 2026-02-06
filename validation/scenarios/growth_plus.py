@@ -276,11 +276,15 @@ def _compute_detrended_correlation(
         return 0.0
     t = np.arange(len(x))
     # Remove linear trend from each series
-    x_trend = np.polyval(np.polyfit(t, x, 1), t)
-    y_trend = np.polyval(np.polyfit(t, y, 1), t)
+    try:
+        x_trend = np.polyval(np.polyfit(t, x, 1), t)
+        y_trend = np.polyval(np.polyfit(t, y, 1), t)
+    except np.linalg.LinAlgError:
+        return 0.0
     x_detrended = x - x_trend
     y_detrended = y - y_trend
-    return float(np.corrcoef(x_detrended, y_detrended)[0, 1])
+    corr = np.corrcoef(x_detrended, y_detrended)[0, 1]
+    return float(corr) if np.isfinite(corr) else 0.0
 
 
 def _compute_cv(series: NDArray[np.floating]) -> float:
@@ -360,7 +364,12 @@ def _compute_tent_shape_r2(
             continue
 
         # Linear regression: log(rank) = a * growth_rate + b
-        coeffs = np.polyfit(trimmed_data, trimmed_log_ranks, 1)
+        try:
+            coeffs = np.polyfit(trimmed_data, trimmed_log_ranks, 1)
+        except np.linalg.LinAlgError:
+            # SVD can fail on degenerate data (e.g., constant values)
+            continue
+
         predicted = np.polyval(coeffs, trimmed_data)
 
         ss_res = np.sum((trimmed_log_ranks - predicted) ** 2)
@@ -507,11 +516,17 @@ def compute_growth_plus_metrics(
     log_productivity = np.log(
         np.where(avg_productivity_ss > 0, avg_productivity_ss, EPS)
     )
-    trend_coef, _ = np.polyfit(time_axis, log_productivity, 1)
-    productivity_trend_coefficient = float(trend_coef)
+    try:
+        trend_coef, _ = np.polyfit(time_axis, log_productivity, 1)
+        productivity_trend_coefficient = float(trend_coef)
+    except np.linalg.LinAlgError:
+        productivity_trend_coefficient = 0.0
 
-    log_gdp_trend_coef, _ = np.polyfit(time_axis, log_gdp_ss, 1)
-    log_gdp_trend_coefficient = float(log_gdp_trend_coef)
+    try:
+        log_gdp_trend_coef, _ = np.polyfit(time_axis, log_gdp_ss, 1)
+        log_gdp_trend_coefficient = float(log_gdp_trend_coef)
+    except np.linalg.LinAlgError:
+        log_gdp_trend_coefficient = 0.0
     log_gdp_total_growth = float(log_gdp_ss[-1] - log_gdp_ss[0])
 
     # Productivity-wage co-movement metrics
@@ -1578,10 +1593,13 @@ def run_scenario(
         n_periods=n_periods,
         seed=seed,
         logging={"default_level": "ERROR"},
+        # Override default parameters to match Growth+ calibration
         new_firm_size_factor=0.5,
         new_firm_production_factor=0.5,
         new_firm_wage_factor=0.5,
         new_firm_price_markup=1.5,
+        max_loan_to_net_worth=5,
+        job_search_method="all_firms",
         # Growth+ R&D parameters
         sigma_min=0.0,
         sigma_max=0.1,
