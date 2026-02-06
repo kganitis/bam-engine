@@ -84,7 +84,6 @@ def visualize_baseline_results(
 
     # Extract time series after burn-in
     log_gdp = metrics.log_gdp[burn_in:]
-    inflation_pct = metrics.inflation[burn_in:] * 100
     unemployment_pct = metrics.unemployment[burn_in:] * 100
     real_wage_trimmed = metrics.real_wage[burn_in:]
     avg_productivity_trimmed = metrics.avg_productivity[burn_in:]
@@ -272,7 +271,12 @@ def visualize_baseline_results(
     add_stats_box(ax, unemployment_pct, "unemployment", is_pct=True)
 
     # Panel (1,0): Annual Inflation Rate
+    # NOTE: Unlike other panels, inflation shows ALL periods (no burn-in) with x-axis in years,
+    # matching Figure 3.2(c) in Delli Gatti et al. (2011)
     ax = axes[1, 0]
+    # Full inflation series (all periods, no burn-in)
+    inflation_full_pct = metrics.inflation * 100
+    years = ops.arange(0, len(metrics.inflation)) / 4  # Convert quarters to years
     # Extreme bounds (shaded red zones)
     ax.axhspan(
         bounds["inflation"]["extreme_min"] * 100,
@@ -286,8 +290,8 @@ def visualize_baseline_results(
         alpha=0.1,
         color="red",
     )
-    # Data
-    ax.plot(periods, inflation_pct, linewidth=1, color="#F18F01")
+    # Data - plot all periods
+    ax.plot(years, inflation_full_pct, linewidth=1, color="#F18F01")
     ax.axhline(0, color="black", linestyle="-", alpha=0.3, linewidth=0.5)
     # Normal bounds
     ax.axhline(
@@ -311,9 +315,10 @@ def visualize_baseline_results(
     )
     ax.set_title("Annualized Rate of Inflation", fontsize=12, fontweight="bold")
     ax.set_ylabel("Yearly inflation rate (%)")
-    ax.set_xlabel("t")
+    ax.set_xlabel("Years (cumulated quarters)")
     ax.grid(True, linestyle="--", alpha=0.3)
-    add_stats_box(ax, inflation_pct, "inflation", is_pct=True)
+    # Stats box uses full-period data (matching the plot and validation metrics)
+    add_stats_box(ax, inflation_full_pct, "inflation", is_pct=True)
 
     # Panel (1,1): Productivity and Real Wage Co-movement (two-line plot)
     ax = axes[1, 1]
