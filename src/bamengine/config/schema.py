@@ -66,25 +66,25 @@ class Config:
     max_leverage : float, optional
         Maximum leverage ratio (fragility cap) for interest rate calculation.
         Caps the fragility used in rate formula to prevent extreme rates.
-        Set to 0 for no limit. Default: 100.0.
+        Set to 0 for no limit. Default: 10.0.
     cap_factor : float or None, optional
         Cap factor for breakeven price calculation (>= 1.0 if specified).
         If None, no cap is applied.
     contract_poisson_mean : int, optional
         Mean of Poisson distribution added to theta for contract duration.
-        If 0, contracts last exactly theta periods. Default: 10.
+        If 0, contracts last exactly theta periods. Default: 0.
     loan_priority_method : str, optional
         How banks rank loan applicants: "by_net_worth" (descending),
         "by_leverage" (ascending), or "by_appearance" (first-come-first-served).
         Default: "by_leverage".
     firing_method : str, optional
         How firms select workers to fire: "random" or "expensive"
-        (highest wage first). Default: "expensive".
+        (highest wage first). Default: "random".
     matching_method : str, optional
         How workers and firms are matched in labor market:
         "sequential" = workers shuffled, apply one at a time (efficient)
         "simultaneous" = all workers apply at once, creating crowding at
-        high-wage firms (creates natural unemployment). Default: "sequential".
+        high-wage firms (creates natural unemployment). Default: "simultaneous".
     job_search_method : str, optional
         How unemployed workers sample firms for job applications:
         "vacancies_only" = sample only from firms with open vacancies (default)
@@ -97,13 +97,13 @@ class Config:
         How to cap financial fragility: "credit_demand" (cap at B) or
         "none" (no cap). Default: "none".
     new_firm_size_factor : float, optional
-        Scale factor for new firm net worth vs survivor mean. Default: 0.5.
+        Scale factor for new firm net worth vs survivor mean. Default: 0.8.
     new_firm_production_factor : float, optional
-        Scale factor for new firm production vs survivor mean. Default: 0.8.
+        Scale factor for new firm production vs survivor mean. Default: 0.9.
     new_firm_wage_factor : float, optional
         Scale factor for new firm wage offer vs survivor mean. Default: 0.9.
     new_firm_price_markup : float, optional
-        Price markup for new firms vs avg market price. Default: 1.1.
+        Price markup for new firms vs avg market price. Default: 1.0.
 
     Examples
     --------
@@ -178,26 +178,26 @@ class Config:
     max_loan_to_net_worth: float = (
         2.0  # Max loan as multiple of net worth (0 = no limit)
     )
-    max_leverage: float = 100.0  # Cap for fragility in interest rate calc (0 = no cap)
+    max_leverage: float = 10.0  # Cap for fragility in interest rate calc (0 = no cap)
 
     # Optional parameters
     cap_factor: float | None = None
 
     # Implementation variant parameters
     contract_poisson_mean: int = (
-        10  # Mean for Poisson addition to theta (0 = theta-only)
+        0  # Mean for Poisson addition to theta (0 = theta-only)
     )
     loan_priority_method: str = (
         "by_leverage"  # "by_net_worth", "by_leverage", "by_appearance"
     )
-    firing_method: str = "expensive"  # "random" or "expensive"
-    matching_method: str = "sequential"  # "sequential" or "simultaneous"
+    firing_method: str = "random"  # "random" or "expensive"
+    matching_method: str = "simultaneous"  # "sequential" or "simultaneous"
     job_search_method: str = "vacancies_only"  # "vacancies_only" or "all_firms"
     price_cut_allow_increase: bool = True  # Allow price increase when cutting
     fragility_cap_method: str = "none"  # "credit_demand" or "none"
 
     # New firm entry parameters
-    new_firm_size_factor: float = 0.9  # Net worth scale factor vs survivor mean
+    new_firm_size_factor: float = 0.8  # Net worth scale factor vs survivor mean
     new_firm_production_factor: float = 0.9  # Production scale factor vs survivor mean
     new_firm_wage_factor: float = 0.9  # Wage offer scale factor vs survivor mean
     new_firm_price_markup: float = 1.0  # Price = avg_mkt_price * markup
