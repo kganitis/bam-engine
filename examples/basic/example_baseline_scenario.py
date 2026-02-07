@@ -29,7 +29,7 @@ sim = bam.Simulation.init(
     n_households=3000,
     n_banks=10,
     n_periods=1000,
-    seed=12345,
+    seed=0,
     logging={"default_level": "ERROR"},
 )
 
