@@ -1561,7 +1561,7 @@ def load_growth_plus_targets() -> dict[str, Any]:
 
 def run_scenario(
     *,
-    seed: int = 2,
+    seed: int = 0,
     n_periods: int = 1000,
     burn_in: int = 500,
     show_plot: bool = True,
@@ -1655,4 +1655,4 @@ def run_scenario(
 
 
 if __name__ == "__main__":
-    run_scenario(seed=12345, n_periods=1000, burn_in=500, show_plot=True)
+    run_scenario(seed=0, n_periods=1000, burn_in=500, show_plot=True)
