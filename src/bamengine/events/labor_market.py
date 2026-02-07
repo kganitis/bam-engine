@@ -240,7 +240,7 @@ class AdjustMinimumWage:
 
     Notes
     -----
-    This event must execute after CalcAnnualInflationRate in each period.
+    This event must execute after CalcInflationRate in each period.
 
     The revision only occurs on specific periods determined by min_wage_rev_period
     (e.g., if min_wage_rev_period=4, revisions occur at t=4, 8, 12, ...).
@@ -249,7 +249,7 @@ class AdjustMinimumWage:
 
     See Also
     --------
-    CalcAnnualInflationRate : Calculates inflation rate used for adjustment
+    CalcInflationRate : Calculates inflation rate used for adjustment
     FirmsDecideWageOffer : Wage offers must satisfy minimum wage constraint
     Economy : Global economy state with min_wage field
     bamengine.events._internal.labor_market.adjust_minimum_wage : Implementation

@@ -37,7 +37,7 @@ Once initialized, run the simulation for a number of periods using
 
 .. code-block:: python
 
-   >>> results = sim.run(n_periods=100)
+   >>> results = sim.run(n_periods=100, collect=True)
    >>> print(f"Final unemployment rate: {sim.ec.unemp_rate_history[-1]:.2%}")
    Final unemployment rate: 4.20%
 
@@ -57,7 +57,7 @@ collected during the simulation:
 
    >>> results.n_periods
    100
-   >>> results.economy["unemployment_rate"]  # array of unemployment rates
+   >>> results.economy_data["unemployment_rate"]  # array of unemployment rates
    array([0.052, 0.048, 0.044, ...])
 
 If you have ``pandas`` installed, you can export results to DataFrames for
