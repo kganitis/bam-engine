@@ -340,7 +340,9 @@ metrics:
 
   firm_size_skewness:
     target: 3.0       # Moderate right-skewness
-    tolerance: 2.5    # Accepts [0.5, 5.5] with gradual decay
+    tolerance: 2.0    # PASS: [1.0, 5.0] with gradual score decay
+    min: 1.0          # FAIL below this
+    max: 10.0         # FAIL above this; anything in [1.0, 10.0] is at most WARN
 
   firm_size_pct_below:
     min: 0.85
