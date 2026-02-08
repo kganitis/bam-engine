@@ -1538,6 +1538,8 @@ def load_growth_plus_targets() -> dict[str, Any]:
             "skewness_tolerance": skew_tol,
             "skewness_min": skew_target - skew_tol,
             "skewness_max": skew_target + skew_tol,
+            "skewness_hard_min": raw.get("skewness_hard_min"),
+            "skewness_hard_max": raw.get("skewness_hard_max"),
             "tail_ratio_min": raw.get("tail_ratio_min"),
             "tail_ratio_max": raw.get("tail_ratio_max"),
         }
