@@ -113,7 +113,9 @@ metadata:
           pct_below_medium_target: 0.45
           pct_below_medium_min: 0.35
           skewness_target: 3.0
-          skewness_tolerance: 2.5
+          skewness_tolerance: 2.0
+          skewness_hard_min: 1.0
+          skewness_hard_max: 10.0
           tail_ratio_min: 2.0
           tail_ratio_max: 10.0
 

@@ -631,6 +631,16 @@ def visualize_growth_plus_results(
         bounds["firm_size"]["skewness_target"],
         bounds["firm_size"]["skewness_tolerance"],
     )
+    # Apply hard min/max cap (same logic as engine.py)
+    hard_min = bounds["firm_size"].get("skewness_hard_min")
+    hard_max = bounds["firm_size"].get("skewness_hard_max")
+    if hard_min is not None or hard_max is not None:
+        if (hard_min is not None and skewness_actual < hard_min) or (
+            hard_max is not None and skewness_actual > hard_max
+        ):
+            skew_status = "FAIL"
+        elif skew_status == "FAIL":
+            skew_status = "WARN"
     skew_color = STATUS_COLORS[skew_status]
     ax.text(
         0.98,
