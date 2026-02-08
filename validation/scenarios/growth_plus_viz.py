@@ -399,8 +399,9 @@ def visualize_growth_plus_results(
     ax.set_ylabel("Yearly inflation rate (%)")
     ax.set_xlabel("Years (cumulated quarters)")
     ax.grid(True, linestyle="--", alpha=0.3)
-    # Stats box uses full-period data (matching the plot and validation metrics)
-    add_stats_box(ax, inflation_full_pct, "inflation", is_pct=True)
+    # Stats box uses post-burn-in data (matching validation metrics)
+    inflation_ss_pct = metrics.inflation[burn_in:] * 100
+    add_stats_box(ax, inflation_ss_pct, "inflation", is_pct=True)
     _shade_beyond_extreme(
         ax,
         bounds["inflation"]["extreme_min"] * 100,
