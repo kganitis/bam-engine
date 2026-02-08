@@ -23,6 +23,7 @@ from scipy.stats import skew
 
 from bamengine import ops
 from validation.scenarios.baseline import BaselineMetrics
+from validation.scoring import STATUS_COLORS, check_range
 
 _OUTPUT_DIR = Path(__file__).parent / "output" / "baseline"
 
@@ -143,9 +144,8 @@ def visualize_baseline_results(
         """Add correlation statistics box to curve axis."""
         b = bounds[bounds_key]
         corr_min, corr_max = b["min"], b["max"]
-        in_range = corr_min <= actual_corr <= corr_max
-        status = "PASS" if in_range else "WARN"
-        color = "lightgreen" if in_range else "lightyellow"
+        status = check_range(actual_corr, corr_min, corr_max)
+        color = STATUS_COLORS[status]
 
         stats_text = (
             f"r = {actual_corr:.2f}\n"
@@ -422,9 +422,8 @@ def visualize_baseline_results(
     # Stats box at lower left
     b = bounds["phillips_corr"]
     corr_min, corr_max = b["min"], b["max"]
-    in_range = corr_min <= phillips_corr <= corr_max
-    status = "PASS" if in_range else "WARN"
-    color = "lightgreen" if in_range else "lightyellow"
+    status = check_range(phillips_corr, corr_min, corr_max)
+    color = STATUS_COLORS[status]
     ax.text(
         0.02,
         0.03,
@@ -479,9 +478,8 @@ def visualize_baseline_results(
     # Stats box at upper right
     b = bounds["okun_corr"]
     corr_min, corr_max = b["min"], b["max"]
-    in_range = corr_min <= okun_corr <= corr_max
-    status = "PASS" if in_range else "WARN"
-    color = "lightgreen" if in_range else "lightyellow"
+    status = check_range(okun_corr, corr_min, corr_max)
+    color = STATUS_COLORS[status]
     ax.text(
         0.98,
         0.97,
@@ -541,7 +539,6 @@ def visualize_baseline_results(
     skewness_actual = skew(final_production)
     skewness_min = bounds["firm_size"]["skewness_min"]
     skewness_max = bounds["firm_size"]["skewness_max"]
-    skewness_in_range = skewness_min <= skewness_actual <= skewness_max
     ax.hist(final_production, bins=10, edgecolor="black", alpha=0.7, color="#6A994E")
     ax.axvline(
         x=threshold,
@@ -557,8 +554,8 @@ def visualize_baseline_results(
     ax.legend(fontsize=8, loc="upper right")
     ax.grid(True, linestyle="--", alpha=0.3)
     # Stats box with skewness (below legend at upper right)
-    skew_status = "PASS" if skewness_in_range else "WARN"
-    skew_color = "lightgreen" if skewness_in_range else "lightyellow"
+    skew_status = check_range(skewness_actual, skewness_min, skewness_max)
+    skew_color = STATUS_COLORS[skew_status]
     ax.text(
         0.98,
         0.70,

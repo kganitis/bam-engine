@@ -23,6 +23,14 @@ from scipy.stats import skew
 
 from bamengine import ops
 from validation.scenarios.growth_plus import GrowthPlusMetrics
+from validation.scoring import (
+    STATUS_COLORS,
+    check_mean_tolerance,
+    check_outlier_penalty,
+    check_pct_within_target,
+    check_range,
+    worst_status,
+)
 
 _OUTPUT_DIR = Path(__file__).parent / "output" / "growth-plus"
 
@@ -217,9 +225,8 @@ def visualize_growth_plus_results(
         """Add correlation statistics box to curve axis."""
         b = bounds[bounds_key]
         corr_min, corr_max = b["min"], b["max"]
-        in_range = corr_min <= actual_corr <= corr_max
-        status = "PASS" if in_range else "WARN"
-        color = "lightgreen" if in_range else "lightyellow"
+        status = check_range(actual_corr, corr_min, corr_max)
+        color = STATUS_COLORS[status]
 
         stats_text = (
             f"r = {actual_corr:.2f}\n"
@@ -487,9 +494,8 @@ def visualize_growth_plus_results(
     # Stats box at lower left
     b = bounds["phillips_corr"]
     corr_min, corr_max = b["min"], b["max"]
-    in_range = corr_min <= phillips_corr <= corr_max
-    status = "PASS" if in_range else "WARN"
-    color = "lightgreen" if in_range else "lightyellow"
+    status = check_range(phillips_corr, corr_min, corr_max)
+    color = STATUS_COLORS[status]
     ax.text(
         0.02,
         0.03,
@@ -544,9 +550,8 @@ def visualize_growth_plus_results(
     # Stats box at upper right
     b = bounds["okun_corr"]
     corr_min, corr_max = b["min"], b["max"]
-    in_range = corr_min <= okun_corr <= corr_max
-    status = "PASS" if in_range else "WARN"
-    color = "lightgreen" if in_range else "lightyellow"
+    status = check_range(okun_corr, corr_min, corr_max)
+    color = STATUS_COLORS[status]
     ax.text(
         0.98,
         0.97,
@@ -606,7 +611,6 @@ def visualize_growth_plus_results(
     skewness_actual = skew(final_production)
     skewness_min = bounds["firm_size"]["skewness_min"]
     skewness_max = bounds["firm_size"]["skewness_max"]
-    skewness_in_range = skewness_min <= skewness_actual <= skewness_max
     ax.hist(final_production, bins=15, edgecolor="black", alpha=0.7, color="#6A994E")
     ax.axvline(
         x=threshold,
@@ -622,8 +626,12 @@ def visualize_growth_plus_results(
     ax.legend(fontsize=8, loc="upper right")
     ax.grid(True, linestyle="--", alpha=0.3)
     # Stats box with skewness (upper right below legend to avoid overlap)
-    skew_status = "PASS" if skewness_in_range else "WARN"
-    skew_color = "lightgreen" if skewness_in_range else "lightyellow"
+    skew_status = check_mean_tolerance(
+        skewness_actual,
+        bounds["firm_size"]["skewness_target"],
+        bounds["firm_size"]["skewness_tolerance"],
+    )
+    skew_color = STATUS_COLORS[skew_status]
     ax.text(
         0.98,
         0.70,
@@ -748,11 +756,13 @@ def visualize_financial_dynamics(
         target_normal = ogd_bounds.get("pct_within_normal_target", 0.99)
         max_outlier = ogd_bounds.get("max_outlier_pct", 0.02)
 
-        status_color = (
-            "lightgreen"
-            if (pct_tight >= target_tight * 0.9 and pct_outliers <= max_outlier * 2)
-            else "lightyellow"
-        )
+        min_tight = ogd_bounds.get("pct_within_tight_min", 0.90)
+        box_color = STATUS_COLORS[
+            worst_status(
+                check_pct_within_target(pct_tight, target_tight, min_tight),
+                check_outlier_penalty(pct_outliers, max_outlier),
+            )
+        ]
         ax.text(
             0.02,
             0.97,
@@ -765,7 +775,7 @@ def visualize_financial_dynamics(
             transform=ax.transAxes,
             fontsize=8,
             verticalalignment="top",
-            bbox=dict(boxstyle="round", facecolor=status_color, alpha=0.7),
+            bbox=dict(boxstyle="round", facecolor=box_color, alpha=0.7),
         )
     ax.set_title("Output Growth Rate Distribution", fontsize=12, fontweight="bold")
     ax.set_xlabel("Output growth rate")
@@ -830,11 +840,13 @@ def visualize_financial_dynamics(
         target_normal = nwd_bounds.get("pct_within_normal_target", 0.90)
         max_outlier = nwd_bounds.get("max_outlier_pct", 0.05)
 
-        status_color = (
-            "lightgreen"
-            if (pct_tight >= target_tight * 0.8 and pct_outliers <= max_outlier * 2)
-            else "lightyellow"
-        )
+        min_tight = nwd_bounds.get("pct_within_tight_min", 0.60)
+        box_color = STATUS_COLORS[
+            worst_status(
+                check_pct_within_target(pct_tight, target_tight, min_tight),
+                check_outlier_penalty(pct_outliers, max_outlier),
+            )
+        ]
         ax.text(
             0.02,
             0.97,
@@ -846,7 +858,7 @@ def visualize_financial_dynamics(
             transform=ax.transAxes,
             fontsize=8,
             verticalalignment="top",
-            bbox=dict(boxstyle="round", facecolor=status_color, alpha=0.7),
+            bbox=dict(boxstyle="round", facecolor=box_color, alpha=0.7),
         )
     ax.set_title(
         "Firms' Asset Growth Rate Distribution", fontsize=12, fontweight="bold"

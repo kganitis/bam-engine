@@ -193,3 +193,23 @@ def compute_combined_score(stability: StabilityResult) -> float:
         Combined score (higher is better).
     """
     return stability.mean_score * stability.pass_rate * (1 - stability.std_score)
+
+
+# =============================================================================
+# Status Helpers
+# =============================================================================
+
+STATUS_COLORS: dict[Status, str] = {
+    "PASS": "lightgreen",
+    "WARN": "lightyellow",
+    "FAIL": "lightcoral",
+}
+
+
+def worst_status(*statuses: Status) -> Status:
+    """Return the most severe status from the given statuses."""
+    if "FAIL" in statuses:
+        return "FAIL"
+    if "WARN" in statuses:
+        return "WARN"
+    return "PASS"
