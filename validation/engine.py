@@ -122,6 +122,15 @@ def evaluate_metric(
         tolerance = target_section["tolerance"]
         status = check_mean_tolerance(actual, target, tolerance)
         score = score_mean_tolerance(actual, target, tolerance)
+        min_val = target_section.get("min")
+        max_val = target_section.get("max")
+        if min_val is not None or max_val is not None:
+            if (min_val is not None and actual < min_val) or (
+                max_val is not None and actual > max_val
+            ):
+                status = "FAIL"
+            elif status == "FAIL":
+                status = "WARN"
         if spec.target_desc is not None:
             target_desc = spec.target_desc
         else:
