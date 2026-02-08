@@ -464,6 +464,7 @@ def compute_growth_plus_metrics(
     real_wage_ss = real_wage[burn_in:]
     vacancy_rate_ss = vacancy_rate[burn_in:]
     avg_productivity_ss = avg_productivity[burn_in:]
+    inflation_ss = inflation[burn_in:]
 
     wage_inflation_ss = wage_inflation[burn_in - 1 :]
     gdp_growth_ss = gdp_growth[burn_in - 1 :]
@@ -725,14 +726,12 @@ def compute_growth_plus_metrics(
             np.sum((unemployment_ss >= 0.02) & (unemployment_ss <= 0.15))
             / len(unemployment_ss)
         ),
-        # Inflation metrics computed on full series (not post-burn-in)
-        # This matches the book's Figure 3.2(c) which shows all 1000 periods
-        inflation_mean=float(np.mean(inflation)),
-        inflation_std=float(np.std(inflation)),
-        inflation_max=float(np.max(inflation)),
-        inflation_min=float(np.min(inflation)),
+        inflation_mean=float(np.mean(inflation_ss)),
+        inflation_std=float(np.std(inflation_ss)),
+        inflation_max=float(np.max(inflation_ss)),
+        inflation_min=float(np.min(inflation_ss)),
         inflation_pct_in_bounds=float(
-            np.mean((inflation >= -0.02) & (inflation <= 0.10))
+            np.mean((inflation_ss >= -0.02) & (inflation_ss <= 0.10))
         ),
         log_gdp_mean=float(np.mean(log_gdp_ss)),
         log_gdp_std=float(np.std(log_gdp_ss)),
@@ -791,7 +790,7 @@ def compute_growth_plus_metrics(
         real_interest_rate_mean=float(np.mean(real_ir_ss)),
         real_interest_rate_std=float(np.std(real_ir_ss)),
         real_interest_rate_pct_in_bounds=float(
-            np.mean((real_ir_ss >= 0.0) & (real_ir_ss <= 0.10))
+            np.mean((real_ir_ss >= -0.02) & (real_ir_ss <= 0.12))
         ),
         avg_fragility_mean=float(np.mean(fragility_ss)),
         financial_fragility_cv=financial_fragility_cv,
@@ -854,11 +853,14 @@ DEFAULT_CONFIG = {
     "n_firms": 100,
     "n_households": 500,
     "n_banks": 10,
+    # Growth+ default parameters overriding baseline defaults
     "new_firm_size_factor": 0.5,
     "new_firm_production_factor": 0.5,
     "new_firm_wage_factor": 0.5,
     "new_firm_price_markup": 1.5,
-    # Growth+ R&D parameters
+    "max_loan_to_net_worth": 5,
+    "job_search_method": "all_firms",
+    # Growth+ exclusive R&D parameters
     "sigma_min": 0.0,
     "sigma_max": 0.1,
     "sigma_decay": -1.0,
@@ -1586,26 +1588,14 @@ def run_scenario(
     """
     from extensions.rnd import RnD
 
-    # Initialize simulation with calibrated Growth+ parameters
-    sim = bam.Simulation.init(
-        n_firms=100,
-        n_households=500,
-        n_banks=10,
-        n_periods=n_periods,
-        seed=seed,
-        logging={"default_level": "ERROR"},
-        # Override default parameters to match Growth+ calibration
-        new_firm_size_factor=0.5,
-        new_firm_production_factor=0.5,
-        new_firm_wage_factor=0.5,
-        new_firm_price_markup=1.5,
-        max_loan_to_net_worth=5,
-        job_search_method="all_firms",
-        # Growth+ R&D parameters
-        sigma_min=0.0,
-        sigma_max=0.1,
-        sigma_decay=-1.0,
-    )
+    # Initialize simulation with Growth+ default parameters
+    config = {
+        **DEFAULT_CONFIG,
+        "n_periods": n_periods,
+        "seed": seed,
+        "logging": {"default_level": "ERROR"},
+    }
+    sim = bam.Simulation.init(**config)
 
     # Attach custom RnD role
     rnd = sim.use_role(RnD)

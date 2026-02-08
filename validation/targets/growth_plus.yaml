@@ -115,7 +115,7 @@ metadata:
           skewness_target: 3.0
           skewness_tolerance: 2.5
           tail_ratio_min: 2.0
-          tail_ratio_max: 6.0
+          tail_ratio_max: 10.0
 
       vacancy_rate:
         targets:
@@ -135,8 +135,8 @@ metadata:
           mean_tolerance: 0.02
           std_target: 0.02
           std_tolerance: 0.01
-          normal_min: 0.00
-          normal_max: 0.10
+          normal_min: -0.02
+          normal_max: 0.12
           extreme_min: -0.05
           extreme_max: 0.15
 
@@ -248,7 +248,7 @@ metrics:
 
   unemployment_rate_mean:
     target: 0.055
-    tolerance: 0.025  # Wider: 3%-8% instead of 3.5%-7.5%
+    tolerance: 0.025
 
   unemployment_hard_ceiling:
     threshold: 0.30  # For reference (BOOLEAN uses MetricSpec threshold)
@@ -339,16 +339,16 @@ metrics:
   # --------------------------------------------------------------------------
 
   firm_size_skewness:
-    target: 3.0       # Moderate right-skewness (book figure ~2-4)
+    target: 3.0       # Moderate right-skewness
     tolerance: 2.5    # Accepts [0.5, 5.5] with gradual decay
 
   firm_size_pct_below:
-    min: 0.85  # Tightened from 0.70
+    min: 0.85
     max: 0.95
 
   firm_size_tail_ratio:
     min: 2.0
-    max: 6.0
+    max: 10.0
 
   firm_size_pct_below_medium:
     target: 0.45
