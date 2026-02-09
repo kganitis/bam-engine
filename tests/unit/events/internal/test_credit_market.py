@@ -131,10 +131,9 @@ def test_calc_credit_metrics_fragility() -> None:
         n=3,
         queue_h=1,
         credit_demand=np.array([5.0, 8.0, 0.0]),
-        net_worth=np.array([10.0, 0.0, 5.0]),  # second firm zero ⇒ CAP_FRAG
+        net_worth=np.array([10.0, 1.0, 5.0]),
     )
     firms_calc_financial_fragility(bor)
-    # fragility = min(B/A, B): [5/10=0.5, capped to B=8, 0/5=0]
     expected = np.array([0.5, 8.0, 0.0])
     np.testing.assert_allclose(bor.projected_fragility, expected, rtol=1e-12)
 
@@ -672,23 +671,6 @@ def test_decide_credit_supply_clips_negative_equity_to_zero() -> None:
     banks_decide_credit_supply(lend, v=0.2)
     expected = np.array([50.0, 0.0, 0.0])  # 10/0.2, clipped negatives/zeros to 0
     np.testing.assert_allclose(lend.credit_supply, expected, atol=1e-12)
-
-
-def test_calc_credit_metrics_general_cap_for_tiny_positive_net_worth() -> None:
-    """
-    When A is tiny but positive ⇒ B/A very large; function must cap fragility to B, then
-    Here B=1, A=1e-12 ⇒ raw l≈1e12 ⇒ capped to B=1 ⇒ f = 1.
-    """
-    bor = mock_borrower(
-        n=1,
-        queue_h=1,
-        credit_demand=np.array([1.0]),  # B
-        net_worth=np.array([1e-12]),  # tiny positive A
-    )
-    firms_calc_financial_fragility(bor)
-    assert bor.projected_fragility is not None
-    # fragility = min(B/A, B) capped to B=1
-    np.testing.assert_allclose(bor.projected_fragility, np.array([1.0]), atol=1e-12)
 
 
 def test_prepare_applications_no_lenders_early_exit() -> None:

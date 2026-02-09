@@ -144,11 +144,7 @@ def firms_decide_credit_demand(bor: Borrower) -> None:
         log.info("--- Credit Demand Decision complete ---")
 
 
-def firms_calc_financial_fragility(
-    bor: Borrower,
-    *,
-    fragility_cap_method: str = "none",
-) -> None:
+def firms_calc_financial_fragility(bor: Borrower) -> None:
     """
     Calculate firm projected financial fragility metric for loan applications.
 
@@ -169,33 +165,6 @@ def firms_calc_financial_fragility(
 
     # Core Rule
     np.divide(bor.credit_demand, bor.net_worth, out=frag, where=bor.net_worth > 0.0)
-
-    # Cap fragility for borrowers with zero or negative net worth at amount B
-    zero_nw_mask = bor.net_worth <= EPS
-    if np.any(zero_nw_mask):
-        num_zero_nw = np.sum(zero_nw_mask)
-        log.warning(
-            f"  {num_zero_nw} borrower(s) have zero/negative net worth. "
-            f"Capping their financial fragility to their credit demand amount."
-        )
-        frag[zero_nw_mask] = bor.credit_demand[zero_nw_mask]
-
-    # Apply a global fragility cap for all borrowers (if enabled).
-    # This handles borrowers whose fragility may have exploded due to
-    # very small (but positive) net worth, capping them at amount B.
-    if fragility_cap_method == "credit_demand":
-        general_cap_mask = frag > bor.credit_demand
-        if np.any(general_cap_mask) and info_enabled:
-            num_generally_capped = np.sum(general_cap_mask)
-            log.info(
-                f"  Capping fragility for {num_generally_capped} borrower(s) "
-                f"whose calculated fragility exceeded the allowed limit."
-            )
-        np.minimum(frag, bor.credit_demand, out=frag)
-    else:
-        # fragility_cap_method == "none" - skip global cap
-        if info_enabled:
-            log.info("  Fragility cap disabled (fragility_cap_method='none').")
 
     # Logging
     if info_enabled:
