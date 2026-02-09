@@ -400,10 +400,7 @@ class FirmsCalcFinancialFragility:
             firms_calc_financial_fragility,
         )
 
-        firms_calc_financial_fragility(
-            sim.bor,
-            fragility_cap_method=sim.config.fragility_cap_method,
-        )
+        firms_calc_financial_fragility(sim.bor)
 
 
 @event

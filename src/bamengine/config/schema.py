@@ -93,9 +93,6 @@ class Config:
     price_cut_allow_increase : bool, optional
         Whether to allow price increase when trying to cut due to
         breakeven floor. Default: True.
-    fragility_cap_method : str, optional
-        How to cap financial fragility: "credit_demand" (cap at B) or
-        "none" (no cap). Default: "none".
     new_firm_size_factor : float, optional
         Scale factor for new firm net worth vs survivor mean. Default: 0.8.
     new_firm_production_factor : float, optional
@@ -194,7 +191,6 @@ class Config:
     matching_method: str = "simultaneous"  # "sequential" or "simultaneous"
     job_search_method: str = "vacancies_only"  # "vacancies_only" or "all_firms"
     price_cut_allow_increase: bool = True  # Allow price increase when cutting
-    fragility_cap_method: str = "none"  # "credit_demand" or "none"
 
     # New firm entry parameters
     new_firm_size_factor: float = 0.8  # Net worth scale factor vs survivor mean
