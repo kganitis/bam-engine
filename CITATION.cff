@@ -11,8 +11,8 @@ authors:
     given-names: Konstantinos
     email: ganitiskostas@gmail.com
     affiliation: University of Piraeus, Greece
-version: 0.2.1
-date-released: 2026-01-21
+version: 0.2.2
+date-released: 2026-02-09
 repository-code: "https://github.com/kganitis/bam-engine"
 url: "https://kganitis.github.io/bam-engine/"
 license: MIT

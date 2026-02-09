@@ -1,4 +1,4 @@
-name: Validation Tests
+name: Model Validation
 
 on:
   push:

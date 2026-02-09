@@ -10,6 +10,44 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 
    Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.
 
+[0.2.2] - 2026-02-09
+--------------------
+
+This release completes the Growth+ scenario (Section 3.9.2 of Delli Gatti et al., 2011), bringing its
+validation metrics, financial dynamics analysis, and visualizations in line with the book, and re-calibrates
+model defaults accordingly.
+
+Added
+~~~~~
+
+* Growth+ financial dynamics metrics: Minsky classification, recession detection, GDP cyclicality
+  correlations, Laplace tent-shape R², CV-based dispersion checks
+* ``max_leverage`` and ``inflation_method`` configuration parameters
+* Relationship data collection in ``SimulationResults``; new ``n_firm_bankruptcies``, ``n_bank_bankruptcies`` economy metrics
+* ``extensions/rnd/`` standalone package (R&D extension extracted from validation)
+
+Changed
+~~~~~~~
+
+**Breaking**
+
+* Re-calibrated defaults: ``new_firm_size_factor`` 0.9→0.8, ``max_loan_to_net_worth`` 100→2,
+  ``max_leverage`` uncapped→10, ``matching_method`` "sequential"→"simultaneous";
+  removed ``cap_factor`` and ``fragility_cap_method``
+* Restructured validation package: ``validation.core``/``runners``/``metrics`` → ``validation.types``/``scoring``/``engine``
+* ``CalcAnnualInflationRate`` → ``CalcInflationRate`` (pipeline key: ``calc_inflation_rate``)
+* R&D import path: ``from extensions.rnd import RnD`` (was in validation package)
+
+**Events Pipeline**
+
+* ``firms_calc_breakeven_price`` and ``firms_adjust_price`` events moved to production phase (before ``firms_run_production``)
+
+Known Issues
+~~~~~~~~~~~~
+
+* Growth+ seed stability test failures are a calibration issue and will be addressed in a future release.
+  The baseline scenario passes the stability test at 100%.
+
 [0.2.1] - 2026-01-21
 --------------------
 
