@@ -156,7 +156,6 @@ ignore = [
     "W505",   # Doc line too long (math equations in docstrings)
     "B008",   # Allow function calls in defaults (make_rng() pattern for testing)
     "B024",   # Allow abstract base class without abstract methods (marker classes)
-    "UP038",  # isinstance(x, (A, B)) is clearer than isinstance(x, A | B)
     "RUF001", # Ambiguous unicode char in string (false positives with special chars)
     "RUF002", # Ambiguous unicode char in docstring (curly quotes from docs)
     "RUF003", # Ambiguous unicode char in comment (multiplication sign, etc.)
