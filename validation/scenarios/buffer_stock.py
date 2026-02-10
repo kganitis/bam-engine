@@ -25,6 +25,7 @@ from scipy import stats
 
 import bamengine as bam
 from bamengine import SimulationResults, ops
+from validation.scenarios._configs import SMALL_ECONOMY_CONFIG
 from validation.scenarios._utils import adjust_burn_in, filter_outliers_iqr
 from validation.types import CheckType, MetricFormat, MetricGroup, MetricSpec, Scenario
 
@@ -522,21 +523,7 @@ COLLECT_CONFIG = {
 # =============================================================================
 
 DEFAULT_CONFIG: dict[str, Any] = {
-    "n_firms": 100,
-    "n_households": 500,
-    "n_banks": 10,
-    # Buffer-stock extension parameter
-    "buffer_stock_h": 2.0,
-    # Growth+ R&D parameters (Section 3.9.3 builds on Growth+)
-    "new_firm_size_factor": 0.5,
-    "new_firm_production_factor": 0.5,
-    "new_firm_wage_factor": 0.5,
-    "new_firm_price_markup": 1.5,
-    "max_loan_to_net_worth": 5,
-    "job_search_method": "all_firms",
-    "sigma_min": 0.0,
-    "sigma_max": 0.1,
-    "sigma_decay": -1.0,
+    **SMALL_ECONOMY_CONFIG,
 }
 
 # =============================================================================
@@ -822,12 +809,18 @@ def _setup_buffer_stock(sim: bam.Simulation | None) -> None:
         from extensions.rnd import RnD
     else:
         # Attach both extensions to simulation
-        from extensions.buffer_stock import BUFFER_STOCK_EVENTS, BufferStock
-        from extensions.rnd import RND_EVENTS, RnD
+        from extensions.buffer_stock import (
+            BUFFER_STOCK_CONFIG,
+            BUFFER_STOCK_EVENTS,
+            BufferStock,
+        )
+        from extensions.rnd import RND_CONFIG, RND_EVENTS, RnD
 
         sim.use_role(BufferStock, n_agents=sim.n_households)
         sim.use_role(RnD)
         sim.use_events(*RND_EVENTS, *BUFFER_STOCK_EVENTS)
+        sim.use_config(RND_CONFIG)
+        sim.use_config(BUFFER_STOCK_CONFIG)
 
 
 # =============================================================================
@@ -935,8 +928,12 @@ def run_scenario(
     BufferStockMetrics
         Computed metrics from the simulation.
     """
-    from extensions.buffer_stock import BUFFER_STOCK_EVENTS, BufferStock
-    from extensions.rnd import RND_EVENTS, RnD
+    from extensions.buffer_stock import (
+        BUFFER_STOCK_CONFIG,
+        BUFFER_STOCK_EVENTS,
+        BufferStock,
+    )
+    from extensions.rnd import RND_CONFIG, RND_EVENTS, RnD
 
     config = {
         **DEFAULT_CONFIG,
@@ -948,6 +945,8 @@ def run_scenario(
     sim.use_role(BufferStock, n_agents=sim.n_households)
     sim.use_role(RnD)
     sim.use_events(*RND_EVENTS, *BUFFER_STOCK_EVENTS)
+    sim.use_config(RND_CONFIG)
+    sim.use_config(BUFFER_STOCK_CONFIG)
 
     print("Buffer-stock simulation initialized:")
     print(f"  - {sim.n_firms} firms")

@@ -24,6 +24,7 @@ from scipy.signal import find_peaks
 import bamengine as bam
 from bamengine import SimulationResults, ops
 from bamengine.utils import EPS
+from validation.scenarios._configs import SMALL_ECONOMY_CONFIG
 from validation.scenarios._utils import adjust_burn_in, filter_outliers_iqr
 from validation.types import CheckType, MetricFormat, MetricGroup, MetricSpec, Scenario
 
@@ -849,21 +850,8 @@ COLLECT_CONFIG = {
 # Default Configuration
 # =============================================================================
 
-DEFAULT_CONFIG = {
-    "n_firms": 100,
-    "n_households": 500,
-    "n_banks": 10,
-    # Growth+ default parameters overriding baseline defaults
-    "new_firm_size_factor": 0.5,
-    "new_firm_production_factor": 0.5,
-    "new_firm_wage_factor": 0.5,
-    "new_firm_price_markup": 1.5,
-    "max_loan_to_net_worth": 5,
-    "job_search_method": "all_firms",
-    # Growth+ exclusive R&D parameters
-    "sigma_min": 0.0,
-    "sigma_max": 0.1,
-    "sigma_decay": -1.0,
+DEFAULT_CONFIG: dict[str, Any] = {
+    **SMALL_ECONOMY_CONFIG,
 }
 
 # =============================================================================
@@ -1453,10 +1441,11 @@ def _setup_rnd(sim: bam.Simulation | None) -> None:
         from extensions.rnd import RnD
     else:
         # Attach RnD role and events to simulation
-        from extensions.rnd import RND_EVENTS, RnD
+        from extensions.rnd import RND_CONFIG, RND_EVENTS, RnD
 
         sim.use_role(RnD)
         sim.use_events(*RND_EVENTS)
+        sim.use_config(RND_CONFIG)
 
 
 # =============================================================================
@@ -1589,7 +1578,7 @@ def run_scenario(
     GrowthPlusMetrics
         Computed metrics from the simulation.
     """
-    from extensions.rnd import RND_EVENTS, RnD
+    from extensions.rnd import RND_CONFIG, RND_EVENTS, RnD
 
     # Initialize simulation with Growth+ default parameters
     config = {
@@ -1600,9 +1589,10 @@ def run_scenario(
     }
     sim = bam.Simulation.init(**config)
 
-    # Attach custom RnD role and events
+    # Attach custom RnD role, events, and config
     rnd = sim.use_role(RnD)
     sim.use_events(*RND_EVENTS)
+    sim.use_config(RND_CONFIG)
 
     print("Growth+ simulation initialized:")
     print(f"  - {sim.n_firms} firms")

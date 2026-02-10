@@ -5,11 +5,12 @@ adding endogenous productivity growth through R&D investment.
 
 Usage::
 
-    from extensions.rnd import RnD, RND_EVENTS
+    from extensions.rnd import RnD, RND_EVENTS, RND_CONFIG
 
-    sim = bam.Simulation.init(sigma_min=0.0, sigma_max=0.1, sigma_decay=-1.0, **config)
+    sim = bam.Simulation.init(**config)
     sim.use_role(RnD)
     sim.use_events(*RND_EVENTS)
+    sim.use_config(RND_CONFIG)
     results = sim.run()
 
 Components:
@@ -18,6 +19,7 @@ Components:
     - FirmsApplyProductivityGrowth: Event applying productivity gains
     - FirmsDeductRnDExpenditure: Event adjusting retained profits
     - RND_EVENTS: List of all R&D event classes for use with ``sim.use_events()``
+    - RND_CONFIG: Default R&D parameters for use with ``sim.use_config()``
 """
 
 from __future__ import annotations
@@ -35,9 +37,16 @@ RND_EVENTS = [
     FirmsDeductRnDExpenditure,
 ]
 
+RND_CONFIG = {
+    "sigma_min": 0.0,
+    "sigma_max": 0.1,
+    "sigma_decay": -1.0,
+}
+
 __all__ = [
     "RnD",
     "RND_EVENTS",
+    "RND_CONFIG",
     "FirmsComputeRnDIntensity",
     "FirmsApplyProductivityGrowth",
     "FirmsDeductRnDExpenditure",

@@ -6,11 +6,16 @@ based on buffer-stock saving theory.
 
 Usage::
 
-    from extensions.buffer_stock import BufferStock, BUFFER_STOCK_EVENTS
+    from extensions.buffer_stock import (
+        BufferStock,
+        BUFFER_STOCK_EVENTS,
+        BUFFER_STOCK_CONFIG,
+    )
 
-    sim = bam.Simulation.init(buffer_stock_h=1.0, **config)
+    sim = bam.Simulation.init(**config)
     sim.use_role(BufferStock, n_agents=sim.n_households)
     sim.use_events(*BUFFER_STOCK_EVENTS)
+    sim.use_config(BUFFER_STOCK_CONFIG)
     results = sim.run()
 
 Components
@@ -101,6 +106,10 @@ BUFFER_STOCK_EVENTS = [
     ConsumersDecideBufferStockSpending,
 ]
 
+BUFFER_STOCK_CONFIG = {
+    "buffer_stock_h": 2.0,
+}
+
 
 def attach_buffer_stock(sim: bam.Simulation) -> BufferStock:
     """Attach the BufferStock role to a simulation with household-sized arrays.
@@ -125,6 +134,7 @@ def attach_buffer_stock(sim: bam.Simulation) -> BufferStock:
 __all__ = [
     "BufferStock",
     "BUFFER_STOCK_EVENTS",
+    "BUFFER_STOCK_CONFIG",
     "ConsumersCalcBufferStockPropensity",
     "ConsumersDecideBufferStockSpending",
     "attach_buffer_stock",
