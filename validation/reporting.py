@@ -183,3 +183,13 @@ def print_growth_plus_report(result: ValidationScore) -> None:
 def print_growth_plus_stability_report(result: StabilityResult) -> None:
     """Print Growth+ stability report (legacy API)."""
     print_stability_report(result, "GROWTH+ SEED STABILITY TEST")
+
+
+def print_buffer_stock_report(result: ValidationScore) -> None:
+    """Print buffer-stock validation report."""
+    print_report(result, "BUFFER-STOCK SCENARIO VALIDATION")
+
+
+def print_buffer_stock_stability_report(result: StabilityResult) -> None:
+    """Print buffer-stock stability report."""
+    print_stability_report(result, "BUFFER-STOCK SEED STABILITY TEST")

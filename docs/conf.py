@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.abspath(".."))  # For validation and calibration pack
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "BAM Engine"
-copyright = "2024, Kostas Ganitis"
+copyright = "2026, Kostas Ganitis"
 author = "Kostas Ganitis"
 
 # The version info for the project you're documenting

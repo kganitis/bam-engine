@@ -34,13 +34,19 @@ Usage:
     score = run_growth_plus_validation(seed=0)
     print(f"Growth+ score: {score.total_score:.3f}")
 
+    # Buffer-stock scenario
+    from validation import run_buffer_stock_validation
+    score = run_buffer_stock_validation(seed=0)
+    print(f"Buffer-stock score: {score.total_score:.3f}")
+
     # Run scenarios with visualization
     from validation import run_baseline_scenario, run_growth_plus_scenario
     run_baseline_scenario(seed=0, show_plot=True)
     run_growth_plus_scenario(seed=2, show_plot=True)
 
-    # For Growth+ extension (RnD role and events), import from extensions:
+    # For extensions, import from extensions package:
     from extensions.rnd import RnD
+    from extensions.buffer_stock import attach_buffer_stock
 """
 
 from __future__ import annotations
@@ -53,6 +59,8 @@ from validation.engine import evaluate_metric, load_targets, stability_test, val
 # Reporting functions
 from validation.reporting import (
     print_baseline_stability_report,
+    print_buffer_stock_report,
+    print_buffer_stock_stability_report,
     print_growth_plus_report,
     print_growth_plus_stability_report,
     print_report,
@@ -69,6 +77,21 @@ from validation.scenarios.baseline import (
     BaselineMetrics,
     compute_baseline_metrics,
     load_baseline_targets,
+)
+
+# Buffer-stock scenario
+from validation.scenarios.buffer_stock import (
+    COLLECT_CONFIG as BUFFER_STOCK_COLLECT_CONFIG,
+)
+from validation.scenarios.buffer_stock import (
+    DEFAULT_CONFIG as BUFFER_STOCK_DEFAULT_CONFIG,
+)
+from validation.scenarios.buffer_stock import METRIC_SPECS as BUFFER_STOCK_METRIC_SPECS
+from validation.scenarios.buffer_stock import SCENARIO as BUFFER_STOCK_SCENARIO
+from validation.scenarios.buffer_stock import (
+    BufferStockMetrics,
+    compute_buffer_stock_metrics,
+    load_buffer_stock_targets,
 )
 from validation.scenarios.growth_plus import (
     COLLECT_CONFIG as GROWTH_PLUS_COLLECT_CONFIG,
@@ -124,6 +147,7 @@ def _derive_weights(specs: list[MetricSpec]) -> dict[str, float]:
 
 BASELINE_WEIGHTS = _derive_weights(BASELINE_METRIC_SPECS)
 GROWTH_PLUS_WEIGHTS = _derive_weights(GROWTH_PLUS_METRIC_SPECS)
+BUFFER_STOCK_WEIGHTS = _derive_weights(BUFFER_STOCK_METRIC_SPECS)
 
 
 # =============================================================================
@@ -264,12 +288,81 @@ def run_baseline_scenario(**kwargs: Any) -> BaselineMetrics:
     return run_scenario(**kwargs)
 
 
+def run_buffer_stock_validation(
+    *,
+    seed: int = 0,
+    n_periods: int = 1000,
+    **config_overrides: Any,
+) -> ValidationScore:
+    """Run buffer-stock validation and return scored result.
+
+    Parameters
+    ----------
+    seed : int
+        Random seed for reproducibility.
+    n_periods : int
+        Number of simulation periods.
+    **config_overrides
+        Any simulation config parameters to override.
+
+    Returns
+    -------
+    ValidationScore
+        Validation result with total score and per-metric results.
+    """
+    return validate(
+        BUFFER_STOCK_SCENARIO,
+        seed=seed,
+        n_periods=n_periods,
+        **config_overrides,
+    )
+
+
+def run_buffer_stock_stability_test(
+    seeds: list[int] | int = 5,
+    n_periods: int = 1000,
+    **config_overrides: Any,
+) -> StabilityResult:
+    """Run buffer-stock validation across multiple seeds.
+
+    Parameters
+    ----------
+    seeds : list[int] or int
+        List of seeds or number of seeds to test.
+    n_periods : int
+        Number of simulation periods per seed.
+    **config_overrides
+        Any simulation config parameters to override.
+
+    Returns
+    -------
+    StabilityResult
+        Aggregated results across all seeds.
+    """
+    return stability_test(
+        BUFFER_STOCK_SCENARIO,
+        seeds=seeds,
+        n_periods=n_periods,
+        **config_overrides,
+    )
+
+
 def run_growth_plus_scenario(**kwargs: Any) -> GrowthPlusMetrics:
     """Run Growth+ scenario with visualization.
 
     See validation.scenarios.growth_plus.run_scenario for parameters.
     """
     from validation.scenarios.growth_plus import run_scenario
+
+    return run_scenario(**kwargs)
+
+
+def run_buffer_stock_scenario(**kwargs: Any) -> BufferStockMetrics:
+    """Run buffer-stock scenario with visualization.
+
+    See validation.scenarios.buffer_stock.run_scenario for parameters.
+    """
+    from validation.scenarios.buffer_stock import run_scenario
 
     return run_scenario(**kwargs)
 
@@ -307,6 +400,13 @@ def get_validation_funcs(
             run_growth_plus_stability_test,
             print_growth_plus_report,
             print_growth_plus_stability_report,
+        )
+    elif scenario == "buffer_stock":
+        return (
+            run_buffer_stock_validation,
+            run_buffer_stock_stability_test,
+            print_buffer_stock_report,
+            print_buffer_stock_stability_report,
         )
     else:
         raise ValueError(f"Unknown scenario: {scenario}")
@@ -366,6 +466,8 @@ __all__ = [
     "print_baseline_stability_report",
     "print_growth_plus_report",
     "print_growth_plus_stability_report",
+    "print_buffer_stock_report",
+    "print_buffer_stock_stability_report",
     # Baseline scenario
     "BASELINE_SCENARIO",
     "BASELINE_COLLECT_CONFIG",
@@ -382,14 +484,26 @@ __all__ = [
     "GrowthPlusMetrics",
     "compute_growth_plus_metrics",
     "load_growth_plus_targets",
+    # Buffer-stock scenario
+    "BUFFER_STOCK_SCENARIO",
+    "BUFFER_STOCK_COLLECT_CONFIG",
+    "BUFFER_STOCK_DEFAULT_CONFIG",
+    "BUFFER_STOCK_METRIC_SPECS",
+    "BUFFER_STOCK_WEIGHTS",
+    "BufferStockMetrics",
+    "compute_buffer_stock_metrics",
+    "load_buffer_stock_targets",
     # Wrapper functions
     "run_validation",
     "run_stability_test",
     "run_growth_plus_validation",
     "run_growth_plus_stability_test",
+    "run_buffer_stock_validation",
+    "run_buffer_stock_stability_test",
     # Scenario visualization
     "run_baseline_scenario",
     "run_growth_plus_scenario",
+    "run_buffer_stock_scenario",
     # Calibration support
     "get_validation_funcs",
     "get_validation_func",

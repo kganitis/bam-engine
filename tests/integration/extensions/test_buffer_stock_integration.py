@@ -1,0 +1,123 @@
+"""Integration tests for the buffer-stock consumption extension.
+
+These tests run short simulations to verify the extension integrates
+correctly with the full BAM engine pipeline.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+import pytest
+
+import bamengine as bam
+
+
+@pytest.fixture
+def buffer_stock_sim():
+    """Create a simulation with BufferStock extension for integration tests."""
+    from extensions.buffer_stock import attach_buffer_stock
+
+    sim = bam.Simulation.init(
+        n_firms=10,
+        n_households=50,
+        n_banks=3,
+        seed=42,
+        buffer_stock_h=1.0,
+        logging={"default_level": "ERROR"},
+    )
+    attach_buffer_stock(sim)
+    return sim
+
+
+class TestBufferStockIntegration:
+    """Integration tests running short simulations."""
+
+    def test_extension_attaches(self):
+        """BufferStock role attaches and events register."""
+        from extensions.buffer_stock import attach_buffer_stock
+
+        sim = bam.Simulation.init(
+            n_firms=5,
+            n_households=10,
+            n_banks=2,
+            seed=0,
+            buffer_stock_h=1.0,
+            logging={"default_level": "ERROR"},
+        )
+        buf = attach_buffer_stock(sim)
+        assert buf is not None
+        assert len(buf.prev_income) == sim.n_households
+        assert len(buf.propensity) == sim.n_households
+
+    def test_short_simulation_runs(self, buffer_stock_sim):
+        """50-period simulation completes without errors."""
+        results = buffer_stock_sim.run(n_periods=50, collect=True)
+        assert results.metadata["n_periods"] == 50
+
+    def test_pipeline_events_replaced(self, buffer_stock_sim):
+        """Original propensity/spending events are replaced."""
+        pipeline = buffer_stock_sim.pipeline
+
+        event_names = [e.name for e in pipeline.events]
+
+        # Buffer-stock events should be in pipeline
+        assert "consumers_calc_buffer_stock_propensity" in event_names
+        assert "consumers_decide_buffer_stock_spending" in event_names
+
+        # Original events should NOT be in pipeline
+        assert "consumers_calc_propensity" not in event_names
+        assert "consumers_decide_income_to_spend" not in event_names
+
+    def test_savings_stay_non_negative(self, buffer_stock_sim):
+        """After 100 periods, no household has negative savings."""
+        buffer_stock_sim.run(n_periods=100, collect=False)
+        con = buffer_stock_sim.get_role("Consumer")
+        assert np.all(con.savings >= 0.0)
+
+    def test_deterministic_with_seed(self):
+        """Same seed produces identical results."""
+        from extensions.buffer_stock import attach_buffer_stock
+
+        savings_runs = []
+        for _ in range(2):
+            sim = bam.Simulation.init(
+                n_firms=10,
+                n_households=50,
+                n_banks=3,
+                seed=42,
+                buffer_stock_h=1.0,
+                logging={"default_level": "ERROR"},
+            )
+            attach_buffer_stock(sim)
+            sim.run(n_periods=50)
+            con = sim.get_role("Consumer")
+            savings_runs.append(con.savings.copy())
+
+        np.testing.assert_array_equal(savings_runs[0], savings_runs[1])
+
+    def test_composable_with_rnd(self):
+        """Can combine BufferStock + RnD extensions.
+
+        NOTE: This test must run last because importing RnD registers its
+        events globally (via @event(after=...)), which pollutes the pipeline
+        for any subsequent Simulation.init() in the same process.
+        """
+        from extensions.buffer_stock import attach_buffer_stock
+        from extensions.rnd import RnD
+
+        sim = bam.Simulation.init(
+            n_firms=10,
+            n_households=50,
+            n_banks=3,
+            seed=42,
+            buffer_stock_h=1.0,
+            sigma_min=0.0,
+            sigma_max=0.1,
+            sigma_decay=-1.0,
+            logging={"default_level": "ERROR"},
+        )
+        sim.use_role(RnD)
+        attach_buffer_stock(sim)
+
+        results = sim.run(n_periods=50, collect=True)
+        assert results.metadata["n_periods"] == 50
