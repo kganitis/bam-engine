@@ -4,7 +4,7 @@ Roles
 .. automodule:: bamengine.roles
    :no-members:
 
-The ``bamengine.roles`` package defines the six role classes that represent
+The ``bamengine.roles`` package defines the seven role classes that represent
 different aspects of agent behavior in the BAM model.
 
 .. currentmodule:: bamengine.roles
@@ -20,4 +20,5 @@ Role Submodules
    borrower
    worker
    consumer
+   shareholder
    lender

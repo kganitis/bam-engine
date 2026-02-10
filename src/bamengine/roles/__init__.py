@@ -1,7 +1,7 @@
 """
 Role (Component) classes for BAM Engine agents.
 
-This package defines the six role classes that represent different aspects
+This package defines the seven role classes that represent different aspects
 of agent behavior in the BAM model. Each role is a dataclass containing
 NumPy arrays for agent state, enabling efficient vectorized operations.
 
@@ -18,7 +18,7 @@ Agent-Role Mapping
 In the BAM model, agents have multiple roles:
 
 - **Firms** (n_firms): Producer + Employer + Borrower
-- **Households** (n_households): Worker + Consumer
+- **Households** (n_households): Worker + Consumer + Shareholder
 - **Banks** (n_banks): Lender
 
 For example, firm 5 has state in Producer[5], Employer[5], and Borrower[5].
@@ -35,6 +35,8 @@ Worker : Role
     Employment and wage state for households
 Consumer : Role
     Consumption and savings state for households
+Shareholder : Role
+    Per-period dividend income for households
 Lender : Role
     Credit supply and interest rate state for banks
 
@@ -79,6 +81,7 @@ from bamengine.roles.consumer import Consumer
 from bamengine.roles.employer import Employer
 from bamengine.roles.lender import Lender
 from bamengine.roles.producer import Producer
+from bamengine.roles.shareholder import Shareholder
 from bamengine.roles.worker import Worker
 
 __all__ = [
@@ -87,5 +90,6 @@ __all__ = [
     "Employer",
     "Lender",
     "Producer",
+    "Shareholder",
     "Worker",
 ]

@@ -88,7 +88,15 @@ from bamengine.core.pipeline import Pipeline, create_default_pipeline
 from bamengine.economy import Economy
 
 # Import roles BEFORE relationships (LoanBook needs roles to be registered first)
-from bamengine.roles import Borrower, Consumer, Employer, Lender, Producer, Worker
+from bamengine.roles import (
+    Borrower,
+    Consumer,
+    Employer,
+    Lender,
+    Producer,
+    Shareholder,
+    Worker,
+)
 
 # isort: off
 from bamengine.relationships import LoanBook  # Must import after roles
@@ -221,6 +229,8 @@ class Simulation:
         Lender role (bank state).
     con : :class:`~bamengine.roles.Consumer`
         Consumer role (household consumption state).
+    sh : :class:`~bamengine.roles.Shareholder`
+        Shareholder role (household per-period dividend income).
     pipeline : :class:`~bamengine.core.Pipeline`
         Event pipeline controlling simulation execution order.
     lb : :class:`~bamengine.relationships.LoanBook`
@@ -307,6 +317,7 @@ class Simulation:
     bor: Borrower
     lend: Lender
     con: Consumer
+    sh: Shareholder
 
     # event pipeline
     pipeline: Pipeline
@@ -865,6 +876,7 @@ class Simulation:
             shop_visits_head=shop_visits_head,
             shop_visits_targets=shop_visits_targets,
         )
+        sh = Shareholder(dividends=np.zeros(p["n_households"]))
 
         # Create config object
         cfg = Config(
@@ -952,6 +964,7 @@ class Simulation:
             "Borrower": bor,
             "Lender": lend,
             "Consumer": con,
+            "Shareholder": sh,
         }
 
         return cls(
@@ -963,6 +976,7 @@ class Simulation:
             lend=lend,
             lb=LoanBook(),
             con=con,
+            sh=sh,
             config=cfg,
             pipeline=pipeline,
             n_firms=p["n_firms"],
@@ -1174,7 +1188,15 @@ class Simulation:
         from bamengine.results import _DataCollector
 
         # All available role names
-        all_roles = ["Producer", "Worker", "Employer", "Borrower", "Lender", "Consumer"]
+        all_roles = [
+            "Producer",
+            "Worker",
+            "Employer",
+            "Borrower",
+            "Lender",
+            "Consumer",
+            "Shareholder",
+        ]
 
         # Default capture timing - there are 2 options (comment/uncomment one)
         # OPTION 1: Capture data after net worth is updated but

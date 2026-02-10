@@ -362,6 +362,7 @@ class TestUseRole:
         assert "Borrower" in sim._role_instances
         assert "Lender" in sim._role_instances
         assert "Consumer" in sim._role_instances
+        assert "Shareholder" in sim._role_instances
 
         # And they should be the same as the direct attributes
         assert sim._role_instances["Producer"] is sim.prod
@@ -370,6 +371,7 @@ class TestUseRole:
         assert sim._role_instances["Borrower"] is sim.bor
         assert sim._role_instances["Lender"] is sim.lend
         assert sim._role_instances["Consumer"] is sim.con
+        assert sim._role_instances["Shareholder"] is sim.sh
 
     def test_custom_roles_property_backward_compatible(self) -> None:
         """_custom_roles property aliases _role_instances for backward compat."""
