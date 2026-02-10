@@ -176,7 +176,6 @@ def test_pipeline_insert_before():
             "firms_decide_desired_production",
             "firms_adjust_price",
         ],
-        apply_hooks=False,
     )
 
     pipeline.insert_before("firms_adjust_price", FirmsCalcBreakevenPrice)
@@ -194,7 +193,6 @@ def test_pipeline_insert_before_by_name():
             "firms_decide_desired_production",
             "firms_adjust_price",
         ],
-        apply_hooks=False,
     )
 
     pipeline.insert_before("firms_adjust_price", "firms_calc_breakeven_price")
@@ -207,7 +205,6 @@ def test_pipeline_insert_before_not_found():
     """insert_before raises error if target event not found."""
     pipeline = Pipeline.from_event_list(
         ["firms_decide_desired_production"],
-        apply_hooks=False,
     )
 
     with pytest.raises(ValueError, match="not found in pipeline"):
@@ -221,7 +218,6 @@ def test_pipeline_insert_before_list():
             "firms_decide_desired_production",
             "firms_adjust_price",
         ],
-        apply_hooks=False,
     )
 
     # Insert a list of events before firms_adjust_price
@@ -248,7 +244,6 @@ def test_pipeline_insert_before_at_start():
             "firms_decide_desired_production",
             "firms_adjust_price",
         ],
-        apply_hooks=False,
     )
 
     pipeline.insert_before(

@@ -191,7 +191,7 @@ def event(
     1. Making the class inherit from Event (if not already)
     2. Applying @dataclass(slots=True)
     3. Handling registration automatically
-    4. Optionally registering pipeline hooks for automatic positioning
+    4. Optionally storing pipeline hook metadata for explicit positioning
 
     Parameters
     ----------
@@ -201,7 +201,7 @@ def event(
         Optional custom name for the event. If None, uses class name (snake_case).
     after : str | None
         Insert this event immediately after the target event in the pipeline.
-        Hooks are applied automatically when pipelines are created.
+        Hooks are applied explicitly via ``sim.use_events()`` or ``pipeline.apply_hooks()``.
     before : str | None
         Insert this event immediately before the target event in the pipeline.
     replace : str | None
@@ -242,14 +242,14 @@ def event(
     >>> @event(after="firms_pay_dividends")
     ... class MyCustomEvent:
     ...     def execute(self, sim: Simulation) -> None:
-    ...         pass  # This event auto-inserts after firms_pay_dividends
+    ...         pass  # Applied via sim.use_events(MyCustomEvent)
 
     With pipeline hook (inserted before another event):
 
     >>> @event(before="firms_adjust_price")
     ... class PrePricingCheck:
     ...     def execute(self, sim: Simulation) -> None:
-    ...         pass  # This event auto-inserts before firms_adjust_price
+    ...         pass  # Applied via sim.use_events(PrePricingCheck)
 
     With pipeline hook (replaces another event):
 
@@ -260,21 +260,20 @@ def event(
 
     Notes
     -----
-    Pipeline hooks are applied automatically when ``Pipeline.from_yaml()``
-    or ``Pipeline.from_event_list()`` is called. Events must be imported
-    before ``Simulation.init()`` for hooks to take effect.
+    Pipeline hooks are stored as class attributes (``_hook_after``,
+    ``_hook_before``, ``_hook_replace``) and applied explicitly via
+    ``sim.use_events()`` or ``pipeline.apply_hooks()``.
 
     Multiple events can target the same hook point. They are inserted in
-    registration order (first registered = closest to target event).
+    the order passed to ``apply_hooks()`` (first = closest to target event).
 
     See Also
     --------
     :class:`~bamengine.core.Pipeline` : Pipeline that applies hooks
-    :func:`~bamengine.core.registry.register_event_hook` : Low-level hook registration
+    :meth:`~bamengine.simulation.Simulation.use_events` : Apply hooks to simulation
     """
     # Import here to avoid circular imports
     from bamengine.core.event import Event
-    from bamengine.core.registry import register_event_hook
 
     # Validate hook parameters: at most one hook type allowed
     hooks_specified = sum(x is not None for x in [after, before, replace])
@@ -314,15 +313,12 @@ def event(
         # Apply dataclass decorator
         cls = dataclass(**dataclass_kwargs)(cls)
 
-        # Register pipeline hook if specified
+        # Store pipeline hook metadata on the class itself
         # cls.name is now set (either custom or auto-generated from __init_subclass__)
         if hooks_specified > 0:
-            register_event_hook(
-                cls.name,  # type: ignore[attr-defined]
-                after=after,
-                before=before,
-                replace=replace,
-            )
+            cls._hook_after = after  # type: ignore[attr-defined]
+            cls._hook_before = before  # type: ignore[attr-defined]
+            cls._hook_replace = replace  # type: ignore[attr-defined]
 
         return cls
 

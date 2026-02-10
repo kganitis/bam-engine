@@ -45,8 +45,8 @@ Usage:
     run_growth_plus_scenario(seed=2, show_plot=True)
 
     # For extensions, import from extensions package:
-    from extensions.rnd import RnD
-    from extensions.buffer_stock import attach_buffer_stock
+    from extensions.rnd import RnD, RND_EVENTS
+    from extensions.buffer_stock import BufferStock, BUFFER_STOCK_EVENTS
 """
 
 from __future__ import annotations

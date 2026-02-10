@@ -61,8 +61,8 @@ class FirmsComputeRnDIntensity:
     Requires extension parameters: sigma_min, sigma_max, sigma_decay
     Firms with non-positive profits have sigma = 0 (no R&D).
 
-    Note: This event is automatically inserted after 'firms_pay_dividends'
-    via the ``@event(after=...)`` hook.
+    Note: This event is positioned after 'firms_pay_dividends' via the
+    ``@event(after=...)`` hook. Apply with ``sim.use_events(*RND_EVENTS)``.
     """
 
     def execute(self, sim: bam.Simulation) -> None:
@@ -116,8 +116,8 @@ class FirmsApplyProductivityGrowth:
 
     This implements equation 3.15 from Macroeconomics from the Bottom-up.
 
-    Note: This event is automatically inserted after 'firms_compute_rnd_intensity'
-    via the ``@event(after=...)`` hook.
+    Note: This event is positioned after 'firms_compute_rnd_intensity' via the
+    ``@event(after=...)`` hook. Apply with ``sim.use_events(*RND_EVENTS)``.
     """
 
     def execute(self, sim: bam.Simulation) -> None:
@@ -158,8 +158,8 @@ class FirmsDeductRnDExpenditure:
     This implements the (1-sigma) factor in equation 3.16,
     ensuring retained profits account for R&D spending.
 
-    Note: This event is automatically inserted after 'firms_apply_productivity_growth'
-    via the ``@event(after=...)`` hook.
+    Note: This event is positioned after 'firms_apply_productivity_growth' via the
+    ``@event(after=...)`` hook. Apply with ``sim.use_events(*RND_EVENTS)``.
     """
 
     def execute(self, sim: bam.Simulation) -> None:

@@ -1355,18 +1355,22 @@ class Simulation:
                 f"Registered roles: {registered}"
             ) from None
 
-    def use_role(self, role_cls: type) -> Any:
+    def use_role(self, role_cls: type, *, n_agents: int | None = None) -> Any:
         """
         Instantiate and attach a custom role to the simulation.
 
-        Creates a role instance with zeroed arrays sized for n_firms and
-        stores it in the simulation. If the role is already attached,
-        returns the existing instance.
+        Creates a role instance with zeroed arrays and stores it in the
+        simulation. If the role is already attached, returns the existing
+        instance.
 
         Parameters
         ----------
         role_cls : type
             Role class to instantiate (decorated with @role).
+        n_agents : int, optional
+            Number of agents (array size). Defaults to n_firms.
+            Use ``sim.n_households`` for household-level roles,
+            ``sim.n_banks`` for bank-level roles.
 
         Returns
         -------
@@ -1375,6 +1379,8 @@ class Simulation:
 
         Examples
         --------
+        Firm-level role (default):
+
         >>> from bamengine import role, Float
         >>> @role
         ... class RnD:
@@ -1385,11 +1391,15 @@ class Simulation:
         >>> rnd.sigma.shape
         (100,)
 
-        Notes
-        -----
-        Role instances are created with zeroed arrays of size n_firms.
-        For household-level roles (requiring n_households arrays), you
-        should instantiate and attach manually via get_role().
+        Household-level role:
+
+        >>> @role
+        ... class BufferStock:
+        ...     prev_income: Float
+        ...     propensity: Float
+        >>> buf = sim.use_role(BufferStock, n_agents=sim.n_households)
+        >>> buf.prev_income.shape
+        (500,)
         """
         role_name = getattr(role_cls, "name", None) or role_cls.__name__
 
@@ -1398,9 +1408,34 @@ class Simulation:
             return self._role_instances[role_name]
 
         # Create instance with zeroed arrays
-        instance = self._create_role_instance(role_cls, self.n_firms)
+        n = n_agents if n_agents is not None else self.n_firms
+        instance = self._create_role_instance(role_cls, n)
         self._role_instances[role_name] = instance
         return instance
+
+    def use_events(self, *event_classes: type[Any]) -> None:
+        """
+        Apply event hooks to the simulation pipeline.
+
+        For each event class with hook metadata
+        (``@event(after=..., before=..., replace=...)``), applies the hook
+        to the current pipeline. Classes without hook metadata are silently
+        skipped.
+
+        Parameters
+        ----------
+        *event_classes : type
+            Event classes decorated with ``@event(after=..., before=..., or replace=...)``.
+
+        Examples
+        --------
+        >>> from extensions.rnd import RND_EVENTS
+        >>> sim.use_events(*RND_EVENTS)
+
+        >>> from extensions.buffer_stock import BUFFER_STOCK_EVENTS
+        >>> sim.use_events(*BUFFER_STOCK_EVENTS)
+        """
+        self.pipeline.apply_hooks(*event_classes)
 
     def _create_role_instance(self, role_cls: type, n_agents: int) -> Any:
         """

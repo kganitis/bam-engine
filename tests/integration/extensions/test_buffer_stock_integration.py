@@ -15,7 +15,7 @@ import bamengine as bam
 @pytest.fixture
 def buffer_stock_sim():
     """Create a simulation with BufferStock extension for integration tests."""
-    from extensions.buffer_stock import attach_buffer_stock
+    from extensions.buffer_stock import BUFFER_STOCK_EVENTS, BufferStock
 
     sim = bam.Simulation.init(
         n_firms=10,
@@ -25,7 +25,8 @@ def buffer_stock_sim():
         buffer_stock_h=1.0,
         logging={"default_level": "ERROR"},
     )
-    attach_buffer_stock(sim)
+    sim.use_role(BufferStock, n_agents=sim.n_households)
+    sim.use_events(*BUFFER_STOCK_EVENTS)
     return sim
 
 
@@ -34,7 +35,7 @@ class TestBufferStockIntegration:
 
     def test_extension_attaches(self):
         """BufferStock role attaches and events register."""
-        from extensions.buffer_stock import attach_buffer_stock
+        from extensions.buffer_stock import BUFFER_STOCK_EVENTS, BufferStock
 
         sim = bam.Simulation.init(
             n_firms=5,
@@ -44,7 +45,8 @@ class TestBufferStockIntegration:
             buffer_stock_h=1.0,
             logging={"default_level": "ERROR"},
         )
-        buf = attach_buffer_stock(sim)
+        buf = sim.use_role(BufferStock, n_agents=sim.n_households)
+        sim.use_events(*BUFFER_STOCK_EVENTS)
         assert buf is not None
         assert len(buf.prev_income) == sim.n_households
         assert len(buf.propensity) == sim.n_households
@@ -76,7 +78,7 @@ class TestBufferStockIntegration:
 
     def test_deterministic_with_seed(self):
         """Same seed produces identical results."""
-        from extensions.buffer_stock import attach_buffer_stock
+        from extensions.buffer_stock import BUFFER_STOCK_EVENTS, BufferStock
 
         savings_runs = []
         for _ in range(2):
@@ -88,7 +90,8 @@ class TestBufferStockIntegration:
                 buffer_stock_h=1.0,
                 logging={"default_level": "ERROR"},
             )
-            attach_buffer_stock(sim)
+            sim.use_role(BufferStock, n_agents=sim.n_households)
+            sim.use_events(*BUFFER_STOCK_EVENTS)
             sim.run(n_periods=50)
             con = sim.get_role("Consumer")
             savings_runs.append(con.savings.copy())
@@ -96,14 +99,9 @@ class TestBufferStockIntegration:
         np.testing.assert_array_equal(savings_runs[0], savings_runs[1])
 
     def test_composable_with_rnd(self):
-        """Can combine BufferStock + RnD extensions.
-
-        NOTE: This test must run last because importing RnD registers its
-        events globally (via @event(after=...)), which pollutes the pipeline
-        for any subsequent Simulation.init() in the same process.
-        """
-        from extensions.buffer_stock import attach_buffer_stock
-        from extensions.rnd import RnD
+        """Can combine BufferStock + RnD extensions."""
+        from extensions.buffer_stock import BUFFER_STOCK_EVENTS, BufferStock
+        from extensions.rnd import RND_EVENTS, RnD
 
         sim = bam.Simulation.init(
             n_firms=10,
@@ -117,7 +115,8 @@ class TestBufferStockIntegration:
             logging={"default_level": "ERROR"},
         )
         sim.use_role(RnD)
-        attach_buffer_stock(sim)
+        sim.use_role(BufferStock, n_agents=sim.n_households)
+        sim.use_events(*RND_EVENTS, *BUFFER_STOCK_EVENTS)
 
         results = sim.run(n_periods=50, collect=True)
         assert results.metadata["n_periods"] == 50

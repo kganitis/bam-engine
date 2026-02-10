@@ -28,7 +28,7 @@ This example demonstrates:
 
 - Defining custom roles with the ``@role`` decorator
 - Creating custom events with the ``@event`` decorator
-- Using pipeline hooks via ``@event(after=...)`` for automatic event positioning
+- Using pipeline hooks via ``@event(after=...)`` for declarative event positioning
 - Attaching custom roles to simulations via ``sim.use_role()``
 
 For detailed validation with bounds and statistical annotations, run:
@@ -154,6 +154,9 @@ sim = bam.Simulation.init(
 )
 
 sim.use_role(RnD)
+sim.use_events(
+    FirmsComputeRnDIntensity, FirmsApplyProductivityGrowth, FirmsDeductRnDExpenditure
+)
 print(f"Growth+ simulation: {sim.n_firms} firms, {sim.n_households} households")
 
 # %%
