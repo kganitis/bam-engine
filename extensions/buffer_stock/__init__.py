@@ -64,7 +64,9 @@ drawdown is geometric: after ``h`` periods, ~37% of savings remain (``(1-1/h)^h
 → 1/e``).
 
 **Dividends** — Stay in savings, not counted as income W. The buffer-stock
-MPC is driven by labor income dynamics only.
+MPC is driven by labor income dynamics only. The core ``Shareholder`` role
+tracks per-period dividends so validation metrics can subtract the dividend
+artifact from MPC calculations (``adjusted_c = c - D/W``).
 
 **Composability** — Fully composable with R&D/Growth+. RnD modifies firm
 behavior (productivity); BufferStock modifies consumer behavior (MPC).

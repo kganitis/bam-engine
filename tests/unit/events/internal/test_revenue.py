@@ -20,6 +20,7 @@ from tests.helpers.factories import (
     mock_lender,
     mock_loanbook,
     mock_producer,
+    mock_shareholder,
 )
 
 
@@ -341,3 +342,98 @@ def test_pay_dividends_stock_flow_consistency() -> None:
 
     # Verify firm debit equals household credit (stock-flow consistency)
     assert firm_funds_decrease == pytest.approx(household_savings_increase)
+
+
+def test_pay_dividends_sets_shareholder_dividends() -> None:
+    """
+    When sh is provided, sh.dividends is overwritten with per-household dividend.
+    """
+    net = 10.0
+    delta = 0.25
+    n_households = 5
+
+    bor = mock_borrower(
+        n=1,
+        net_profit=np.array([net]),
+        total_funds=np.array([50.0]),
+    )
+    cons = mock_consumer(n=n_households, savings=np.array([100.0] * n_households))
+    sh = mock_shareholder(n=n_households)
+
+    firms_pay_dividends(bor, cons, delta=delta, sh=sh)
+
+    expected_div = net * delta / n_households  # 0.5
+    np.testing.assert_array_almost_equal(sh.dividends, expected_div)
+
+
+def test_pay_dividends_without_shareholder() -> None:
+    """
+    Backward compatibility: sh=None (default) works without error.
+    """
+    bor = mock_borrower(
+        n=1,
+        net_profit=np.array([10.0]),
+        total_funds=np.array([50.0]),
+    )
+    cons = mock_consumer(n=5, savings=np.array([100.0] * 5))
+
+    firms_pay_dividends(bor, cons, delta=0.25)
+    # No error, and savings still updated
+    assert cons.savings[0] == pytest.approx(100.5)
+
+
+def test_pay_dividends_stock_flow_with_shareholder() -> None:
+    """
+    Firm funds decrease == savings increase == sh.dividends sum.
+    """
+    net_profits = np.array([10.0, -5.0, 20.0])
+    delta = 0.10
+    n_households = 10
+
+    bor = mock_borrower(
+        n=3,
+        net_profit=net_profits,
+        total_funds=np.array([100.0, 50.0, 200.0]),
+    )
+    initial_savings = np.full(n_households, 50.0)
+    cons = mock_consumer(n=n_households, savings=initial_savings.copy())
+    sh = mock_shareholder(n=n_households)
+
+    initial_firm_funds = bor.total_funds.sum()
+
+    firms_pay_dividends(bor, cons, delta=delta, sh=sh)
+
+    firm_funds_decrease = initial_firm_funds - bor.total_funds.sum()
+    household_savings_increase = cons.savings.sum() - initial_savings.sum()
+
+    assert firm_funds_decrease == pytest.approx(sh.dividends.sum())
+    assert household_savings_increase == pytest.approx(sh.dividends.sum())
+
+
+def test_pay_dividends_shareholder_overwrites_each_call() -> None:
+    """
+    Two calls: second overwrites sh.dividends, not accumulates.
+    """
+    n_households = 5
+    bor = mock_borrower(
+        n=1,
+        net_profit=np.array([10.0]),
+        total_funds=np.array([500.0]),
+    )
+    cons = mock_consumer(n=n_households, savings=np.array([100.0] * n_households))
+    sh = mock_shareholder(n=n_households)
+
+    # First call
+    firms_pay_dividends(bor, cons, delta=0.5, sh=sh)
+    first_div = sh.dividends[0]
+    assert first_div > 0
+
+    # Second call with different profit
+    bor.net_profit[:] = 20.0
+    firms_pay_dividends(bor, cons, delta=0.5, sh=sh)
+    second_div = sh.dividends[0]
+
+    # Second dividend should be from the 20.0 profit, not accumulated
+    expected_second = (20.0 * 0.5) / n_households
+    assert second_div == pytest.approx(expected_second)
+    assert second_div != pytest.approx(first_div + expected_second)

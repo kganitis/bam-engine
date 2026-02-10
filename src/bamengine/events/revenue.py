@@ -294,6 +294,8 @@ class FirmsPayDividends:
     ratios, the specific distribution pattern does not meaningfully affect
     aggregate consumption dynamics. What matters for model validity is stock-flow
     consistency: dividends debited from firms are credited to households.
+    The Shareholder role tracks per-period dividends for metric adjustment
+    (e.g., buffer-stock MPC correction).
 
     See Also
     --------
@@ -304,4 +306,4 @@ class FirmsPayDividends:
     def execute(self, sim: Simulation) -> None:
         from bamengine.events._internal import firms_pay_dividends
 
-        firms_pay_dividends(sim.bor, sim.con, delta=sim.config.delta)
+        firms_pay_dividends(sim.bor, sim.con, delta=sim.config.delta, sh=sim.sh)

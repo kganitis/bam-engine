@@ -19,7 +19,15 @@ import numpy as np
 
 from bamengine.economy import Economy
 from bamengine.relationships import LoanBook
-from bamengine.roles import Borrower, Consumer, Employer, Lender, Producer, Worker
+from bamengine.roles import (
+    Borrower,
+    Consumer,
+    Employer,
+    Lender,
+    Producer,
+    Shareholder,
+    Worker,
+)
 
 # ───────────────────────── default dictionaries ────────────────────────── #
 
@@ -130,6 +138,12 @@ def _consumer_defaults(n: int, *, queue_z: int) -> dict[str, Any]:
         largest_prod_prev=np.full(n, -1, dtype=np.intp),
         shop_visits_head=np.full(n, -1, dtype=np.intp),
         shop_visits_targets=np.full((n, queue_z), -1, dtype=np.intp),
+    )
+
+
+def _shareholder_defaults(n: int) -> dict[str, Any]:
+    return dict(
+        dividends=np.zeros(n, dtype=np.float64),
     )
 
 
@@ -314,3 +328,21 @@ def mock_consumer(
     """
     cfg = _consumer_defaults(n, queue_z=queue_z) | overrides
     return Consumer(**cfg)
+
+
+def mock_shareholder(
+    n: int = 1,
+    **overrides: Any,
+) -> Shareholder:
+    """
+    Return a fully-typed `Shareholder`.
+
+    Parameters
+    ----------
+    n
+        Number of shareholders (households).
+    **overrides
+        Field-value pairs that overwrite defaults.
+    """
+    cfg = _shareholder_defaults(n) | overrides
+    return Shareholder(**cfg)

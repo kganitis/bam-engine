@@ -15,7 +15,7 @@ import numpy as np
 
 from bamengine import logging
 from bamengine.relationships import LoanBook
-from bamengine.roles import Borrower, Consumer, Lender, Producer
+from bamengine.roles import Borrower, Consumer, Lender, Producer, Shareholder
 from bamengine.utils import EPS
 
 log = logging.getLogger(__name__)
@@ -362,7 +362,13 @@ def firms_validate_debt_commitments(
         log.info("--- Firms Validating Debt Commitments complete ---")
 
 
-def firms_pay_dividends(bor: Borrower, cons: Consumer, *, delta: float) -> None:
+def firms_pay_dividends(
+    bor: Borrower,
+    cons: Consumer,
+    *,
+    delta: float,
+    sh: Shareholder | None = None,
+) -> None:
     """
     Distribute dividends from positive profits and credit households.
 
@@ -416,9 +422,9 @@ def firms_pay_dividends(bor: Borrower, cons: Consumer, *, delta: float) -> None:
     # distribute dividends to households (equal distribution)
     # This is a modeling simplification: rather than introducing a separate
     # "capitalist" role, dividends flow to all households equally. This preserves
-    # stock-flow consistency while maintaining model parsimony.
-    # TODO: Implement a Capitalist role with firm ownership relationships to allow
-    #  dividends to flow to specific households (shareholders) rather than equally.
+    # stock-flow consistency while maintaining model parsimony. The Shareholder
+    # role tracks per-period dividends for metric adjustment (e.g., buffer-stock
+    # MPC correction).
     n_households = cons.savings.size
     dividend_per_household = total_dividends / n_households
 
@@ -433,6 +439,10 @@ def firms_pay_dividends(bor: Borrower, cons: Consumer, *, delta: float) -> None:
 
     # credit household savings with dividends
     np.add(cons.savings, dividend_per_household, out=cons.savings)
+
+    # record per-period dividend in Shareholder role (overwrite, not accumulate)
+    if sh is not None:
+        sh.dividends[:] = dividend_per_household
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Household savings after dividends: {cons.savings}")

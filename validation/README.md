@@ -92,7 +92,7 @@ Buffer-stock consumption extension replacing the baseline mean-field MPC with an
 | DISTRIBUTION | 12    | Wealth CCDF fitting (Singh-Maddala, Dagum, GB2), Gini, MPC stats |
 | FINANCIAL    | 5     | Interest rates, fragility, price ratio                           |
 
-Notable additions over baseline: heavy-tailed wealth distribution fitting with R² on log-log CCDF (Figure 3.8 from the book), wealth Gini coefficient, MPC distribution statistics, and dissaving rate.
+Notable additions over baseline: heavy-tailed wealth distribution fitting with R² on log-log CCDF (Figure 3.8 from the book), wealth Gini coefficient, MPC distribution statistics, and dissaving rate. MPC metrics are adjusted using the core `Shareholder` role's per-period dividend data to remove the dividend artifact from the buffer-stock formula.
 
 ## API Reference
 

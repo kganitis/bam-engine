@@ -392,9 +392,20 @@ def compute_buffer_stock_metrics(
     # MPC statistics from final period (employed only — unemployed have
     # a fixed c=1/h that doesn't reflect the buffer-stock formula)
     final_propensity = buf_propensity[-1][final_employed]
-    mean_mpc = float(np.mean(final_propensity))
-    std_mpc = float(np.std(final_propensity))
-    pct_dissaving = float(np.sum(final_propensity > 1.0) / len(final_propensity))
+
+    # Adjust MPC for the dividend artifact: dividends inflate savings above
+    # the labor-income buffer target S* = h*W, causing the formula to produce
+    # c > 1 to drain the surplus. Subtracting D/W isolates the labor-income
+    # component of the MPC. See plan context for detailed derivation.
+    shareholder_dividends = results.role_data["Shareholder"]["dividends"]
+    final_dividends = shareholder_dividends[-1][final_employed]
+    final_wages = wages[-1][final_employed]
+    adjustment = np.where(final_wages > 0, final_dividends / final_wages, 0.0)
+    adjusted_propensity = final_propensity - adjustment
+
+    mean_mpc = float(np.mean(adjusted_propensity))
+    std_mpc = float(np.std(adjusted_propensity))
+    pct_dissaving = float(np.sum(adjusted_propensity > 1.0) / len(adjusted_propensity))
 
     # Financial dynamics (subset)
     n_periods = len(inflation)
@@ -487,6 +498,7 @@ COLLECT_CONFIG = {
     "Borrower": ["net_worth"],
     "Consumer": ["savings"],
     "BufferStock": ["propensity"],
+    "Shareholder": ["dividends"],
     "LoanBook": ["principal", "rate"],
     "Economy": True,
     "aggregate": None,
@@ -498,6 +510,7 @@ COLLECT_CONFIG = {
         "Borrower.net_worth": "firms_run_production",
         "Consumer.savings": None,  # end of period
         "BufferStock.propensity": "consumers_calc_buffer_stock_propensity",
+        "Shareholder.dividends": "consumers_calc_buffer_stock_propensity",
         "LoanBook.principal": "banks_provide_loans",
         "LoanBook.rate": "banks_provide_loans",
         "Economy.n_firm_bankruptcies": "mark_bankrupt_firms",
