@@ -25,8 +25,8 @@ Usage:
     # python -m validation.scenarios.buffer_stock
 
     # For extensions, import from extensions package:
-    from extensions.rnd import RnD, RND_EVENTS
-    from extensions.buffer_stock import BufferStock, BUFFER_STOCK_EVENTS
+    from extensions.rnd import RnD, RND_EVENTS, RND_CONFIG
+    from extensions.buffer_stock import BufferStock, BUFFER_STOCK_EVENTS, BUFFER_STOCK_CONFIG
 """
 
 from __future__ import annotations

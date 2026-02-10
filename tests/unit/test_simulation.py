@@ -479,6 +479,55 @@ class TestExtraParams:
         assert sim.dict_param == {"a": 1, "b": 2}
 
 
+class TestUseConfig:
+    """Test use_config() method for applying extension defaults."""
+
+    def test_use_config_sets_params(self) -> None:
+        """use_config() sets parameters on extra_params."""
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+        sim.use_config({"sigma_min": 0.0, "sigma_max": 0.1})
+        assert sim.extra_params["sigma_min"] == 0.0
+        assert sim.extra_params["sigma_max"] == 0.1
+
+    def test_use_config_does_not_overwrite_init_kwargs(self) -> None:
+        """use_config() does not overwrite params set via init kwargs."""
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42, sigma_min=0.05)
+        sim.use_config({"sigma_min": 0.0, "sigma_max": 0.1})
+        # User override wins
+        assert sim.sigma_min == 0.05
+        # New key is set
+        assert sim.sigma_max == 0.1
+
+    def test_use_config_does_not_overwrite_earlier_use_config(self) -> None:
+        """First use_config() call wins for a given key."""
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+        sim.use_config({"buffer_stock_h": 2.0})
+        sim.use_config({"buffer_stock_h": 5.0})
+        assert sim.buffer_stock_h == 2.0
+
+    def test_use_config_empty_dict_is_noop(self) -> None:
+        """use_config({}) is a no-op."""
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+        sim.use_config({})
+        assert sim.extra_params == {}
+
+    def test_use_config_multiple_extensions(self) -> None:
+        """Multiple use_config() calls compose correctly."""
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+        sim.use_config({"sigma_min": 0.0, "sigma_max": 0.1, "sigma_decay": -1.0})
+        sim.use_config({"buffer_stock_h": 2.0})
+        assert sim.sigma_min == 0.0
+        assert sim.sigma_max == 0.1
+        assert sim.sigma_decay == -1.0
+        assert sim.buffer_stock_h == 2.0
+
+    def test_use_config_accessible_via_attribute(self) -> None:
+        """Params set via use_config() are accessible as attributes."""
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+        sim.use_config({"custom_ext_param": 42})
+        assert sim.custom_ext_param == 42
+
+
 class TestConfigPropertyAccessors:
     """Test property accessors for configuration parameters."""
 

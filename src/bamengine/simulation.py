@@ -1459,6 +1459,29 @@ class Simulation:
         """
         self.pipeline.apply_hooks(*event_classes)
 
+    def use_config(self, config: dict[str, Any]) -> None:
+        """Apply extension default configuration.
+
+        Merges into ``extra_params`` with "don't overwrite" semantics:
+        parameters already set via ``Simulation.init(**kwargs)`` or
+        earlier ``use_config()`` calls take precedence.
+
+        Parameters
+        ----------
+        config : dict[str, Any]
+            Extension default parameters to apply.
+
+        Examples
+        --------
+        >>> from extensions.rnd import RND_CONFIG
+        >>> sim.use_config(RND_CONFIG)
+
+        >>> from extensions.buffer_stock import BUFFER_STOCK_CONFIG
+        >>> sim.use_config(BUFFER_STOCK_CONFIG)
+        """
+        for key, value in config.items():
+            self.extra_params.setdefault(key, value)
+
     def _create_role_instance(self, role_cls: type, n_agents: int) -> Any:
         """
         Create a role instance with zeroed arrays.

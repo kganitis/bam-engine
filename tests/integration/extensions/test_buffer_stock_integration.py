@@ -120,3 +120,65 @@ class TestBufferStockIntegration:
 
         results = sim.run(n_periods=50, collect=True)
         assert results.metadata["n_periods"] == 50
+
+    def test_composable_with_use_config(self):
+        """Both extensions attach via use_config() and run correctly."""
+        from extensions.buffer_stock import (
+            BUFFER_STOCK_CONFIG,
+            BUFFER_STOCK_EVENTS,
+            BufferStock,
+        )
+        from extensions.rnd import RND_CONFIG, RND_EVENTS, RnD
+
+        sim = bam.Simulation.init(
+            n_firms=10,
+            n_households=50,
+            n_banks=3,
+            seed=42,
+            logging={"default_level": "ERROR"},
+        )
+        sim.use_role(RnD)
+        sim.use_role(BufferStock, n_agents=sim.n_households)
+        sim.use_events(*RND_EVENTS, *BUFFER_STOCK_EVENTS)
+        sim.use_config(RND_CONFIG)
+        sim.use_config(BUFFER_STOCK_CONFIG)
+
+        # Extension defaults applied
+        assert sim.sigma_min == 0.0
+        assert sim.sigma_max == 0.1
+        assert sim.sigma_decay == -1.0
+        assert sim.buffer_stock_h == 2.0
+
+        results = sim.run(n_periods=50, collect=True)
+        assert results.metadata["n_periods"] == 50
+
+    def test_use_config_user_overrides_win(self):
+        """User kwargs at init time override use_config() defaults."""
+        from extensions.buffer_stock import (
+            BUFFER_STOCK_CONFIG,
+            BUFFER_STOCK_EVENTS,
+            BufferStock,
+        )
+        from extensions.rnd import RND_CONFIG, RND_EVENTS, RnD
+
+        sim = bam.Simulation.init(
+            n_firms=10,
+            n_households=50,
+            n_banks=3,
+            seed=42,
+            buffer_stock_h=3.0,  # Override default of 2.0
+            sigma_max=0.05,  # Override default of 0.1
+            logging={"default_level": "ERROR"},
+        )
+        sim.use_role(RnD)
+        sim.use_role(BufferStock, n_agents=sim.n_households)
+        sim.use_events(*RND_EVENTS, *BUFFER_STOCK_EVENTS)
+        sim.use_config(RND_CONFIG)
+        sim.use_config(BUFFER_STOCK_CONFIG)
+
+        # User overrides win
+        assert sim.buffer_stock_h == 3.0
+        assert sim.sigma_max == 0.05
+        # Defaults still applied for non-overridden keys
+        assert sim.sigma_min == 0.0
+        assert sim.sigma_decay == -1.0
