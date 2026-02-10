@@ -158,38 +158,3 @@ def print_stability_report(
         f"(pass_rate={result.pass_rate:.0%}, std={result.std_score:.3f})"
     )
     print("=" * 78 + "\n")
-
-
-# =============================================================================
-# Legacy-compatible report functions
-# =============================================================================
-
-
-def print_validation_report(result: ValidationScore) -> None:
-    """Print baseline validation report (legacy API)."""
-    print_report(result, "BASELINE SCENARIO VALIDATION")
-
-
-def print_baseline_stability_report(result: StabilityResult) -> None:
-    """Print baseline stability report (legacy API)."""
-    print_stability_report(result, "SEED STABILITY TEST")
-
-
-def print_growth_plus_report(result: ValidationScore) -> None:
-    """Print Growth+ validation report (legacy API)."""
-    print_report(result, "GROWTH+ SCENARIO VALIDATION")
-
-
-def print_growth_plus_stability_report(result: StabilityResult) -> None:
-    """Print Growth+ stability report (legacy API)."""
-    print_stability_report(result, "GROWTH+ SEED STABILITY TEST")
-
-
-def print_buffer_stock_report(result: ValidationScore) -> None:
-    """Print buffer-stock validation report."""
-    print_report(result, "BUFFER-STOCK SCENARIO VALIDATION")
-
-
-def print_buffer_stock_stability_report(result: StabilityResult) -> None:
-    """Print buffer-stock stability report."""
-    print_stability_report(result, "BUFFER-STOCK SEED STABILITY TEST")

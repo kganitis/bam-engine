@@ -5,7 +5,7 @@ section 3.9.2 of Delli Gatti et al. (2011). The visualization includes
 target bounds, statistical annotations, and validation status indicators.
 
 This module contains only visualization functions. For running the scenario,
-use the main growth_plus.py module:
+use the growth_plus package:
 
     python -m validation.scenarios.growth_plus
 
@@ -32,7 +32,7 @@ from validation.scoring import (
     worst_status,
 )
 
-_OUTPUT_DIR = Path(__file__).parent / "output" / "growth-plus"
+_OUTPUT_DIR = Path(__file__).parent / "output"
 
 _PANEL_NAMES = [
     "1_gdp",

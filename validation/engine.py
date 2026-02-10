@@ -7,7 +7,6 @@ MetricSpec definitions.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -36,11 +35,6 @@ from validation.types import (
 )
 
 
-def _get_targets_dir() -> Path:
-    """Get the path to the validation/targets directory."""
-    return Path(__file__).parent / "targets"
-
-
 def load_targets(scenario: Scenario) -> dict[str, Any]:
     """Load validation targets from YAML for a scenario.
 
@@ -54,8 +48,7 @@ def load_targets(scenario: Scenario) -> dict[str, Any]:
     dict
         Nested dictionary of targets from YAML file.
     """
-    targets_path = _get_targets_dir() / scenario.targets_file
-    with open(targets_path) as f:
+    with open(scenario.targets_path) as f:
         return yaml.safe_load(f)
 
 

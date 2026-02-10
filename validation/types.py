@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
@@ -197,9 +198,11 @@ class Scenario:
     name: str
     metric_specs: list[MetricSpec]
     collect_config: dict[str, Any]
-    targets_file: str  # filename in validation/targets/
+    targets_path: Path  # absolute path to scenario's targets.yaml
     default_config: dict[str, Any]  # default simulation config
     compute_metrics: Callable[[bam.Simulation, SimulationResults, int], Any]
     setup_hook: Callable[[bam.Simulation | None], None] | None = None
     """Optional hook called twice: first with ``None`` (to trigger imports/registration),
     then with the ``Simulation`` instance (to attach roles/extensions)."""
+    title: str = ""  # report title, e.g. "BASELINE SCENARIO VALIDATION"
+    stability_title: str = ""  # stability report title, e.g. "SEED STABILITY TEST"

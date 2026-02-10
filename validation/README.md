@@ -198,9 +198,9 @@ sim.use_events(*BUFFER_STOCK_EVENTS)
 
 Target values are defined in YAML files with standardized keys:
 
-- `validation/targets/baseline.yaml` - Baseline scenario targets (25 metrics)
-- `validation/targets/growth_plus.yaml` - Growth+ scenario targets (65 metrics)
-- `validation/targets/buffer_stock.yaml` - Buffer-stock scenario targets (~30 metrics)
+- `validation/scenarios/baseline/targets.yaml` - Baseline scenario targets (25 metrics)
+- `validation/scenarios/growth_plus/targets.yaml` - Growth+ scenario targets (65 metrics)
+- `validation/scenarios/buffer_stock/targets.yaml` - Buffer-stock scenario targets (~30 metrics)
 
 YAML structure uses standardized keys per check type:
 
@@ -216,28 +216,33 @@ YAML structure uses standardized keys per check type:
 
 ```
 validation/
-├── __init__.py              # Package exports and thin wrappers
+├── __init__.py              # Registry-driven package exports
 ├── types.py                 # Core types: MetricSpec, Scenario, CheckType, etc.
 ├── scoring.py               # Scoring and status check functions
 ├── engine.py                # Generic validate() and stability_test()
 ├── reporting.py             # Report printing functions
 ├── scenarios/
-│   ├── __init__.py          # Re-exports scenarios
+│   ├── __init__.py          # Scenario registry + get_scenario()
 │   ├── _utils.py            # Shared utilities: IQR filtering, burn-in adjustment
-│   ├── baseline.py          # Baseline: metrics + computation + run_scenario()
-│   ├── baseline_viz.py      # Baseline visualization (8-panel)
-│   ├── growth_plus.py       # Growth+: metrics + computation + run_scenario()
-│   ├── growth_plus_viz.py   # Growth+ visualization (16-panel + recession bands)
-│   ├── buffer_stock.py      # Buffer-stock: metrics + computation + run_scenario()
-│   ├── buffer_stock_viz.py  # Buffer-stock visualization (8-panel + CCDF)
-│   └── output/              # Saved visualization panels
-│       ├── baseline/        # Individual baseline scenario panels
-│       ├── growth-plus/     # Individual growth+ scenario panels
-│       └── buffer-stock/    # Individual buffer-stock scenario panels
-└── targets/
-    ├── baseline.yaml        # Baseline target values (25 metrics)
-    ├── growth_plus.yaml     # Growth+ target values (65 metrics)
-    └── buffer_stock.yaml    # Buffer-stock target values (~30 metrics)
+│   ├── _configs.py          # Shared config: SMALL_ECONOMY_CONFIG
+│   ├── baseline/
+│   │   ├── __init__.py      # Metrics + computation + run_scenario()
+│   │   ├── viz.py           # Visualization (8-panel)
+│   │   ├── targets.yaml     # Target values (25 metrics)
+│   │   ├── output/          # Saved visualization panels
+│   │   └── __main__.py      # python -m entry point
+│   ├── growth_plus/
+│   │   ├── __init__.py      # Metrics + computation + run_scenario()
+│   │   ├── viz.py           # Visualization (16-panel + recession bands)
+│   │   ├── targets.yaml     # Target values (65 metrics)
+│   │   ├── output/          # Saved visualization panels
+│   │   └── __main__.py      # python -m entry point
+│   └── buffer_stock/
+│       ├── __init__.py      # Metrics + computation + run_scenario()
+│       ├── viz.py           # Visualization (8-panel + CCDF)
+│       ├── targets.yaml     # Target values (~30 metrics)
+│       ├── output/          # Saved visualization panels
+│       └── __main__.py      # python -m entry point
 
 extensions/                  # Separate package for model extensions
 ├── rnd/

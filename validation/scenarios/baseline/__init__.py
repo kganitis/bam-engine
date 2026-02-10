@@ -3,7 +3,7 @@
 This module defines the baseline validation scenario from Delli Gatti et al. (2011).
 It contains the metrics dataclass, computation function, and scenario configuration.
 
-For visualization, see baseline_viz.py.
+For visualization, see viz.py (in this package).
 """
 
 from __future__ import annotations
@@ -505,8 +505,7 @@ def _compute_metrics_wrapper(
     sim: bam.Simulation, results: SimulationResults, burn_in: int
 ) -> BaselineMetrics:
     """Wrapper for compute_baseline_metrics that loads params from YAML."""
-    targets_path = Path(__file__).parent.parent / "targets" / "baseline.yaml"
-    with open(targets_path) as f:
+    with open(Path(__file__).parent / "targets.yaml") as f:
         targets = yaml.safe_load(f)
 
     params = targets["metadata"]["params"]
@@ -530,10 +529,12 @@ SCENARIO = Scenario(
     name="baseline",
     metric_specs=METRIC_SPECS,
     collect_config=COLLECT_CONFIG,
-    targets_file="baseline.yaml",
+    targets_path=Path(__file__).parent / "targets.yaml",
     default_config=DEFAULT_CONFIG,
     compute_metrics=_compute_metrics_wrapper,
     setup_hook=None,
+    title="BASELINE SCENARIO VALIDATION",
+    stability_title="SEED STABILITY TEST",
 )
 
 
@@ -545,8 +546,7 @@ SCENARIO = Scenario(
 # For backwards compatibility with visualization module
 def load_baseline_targets() -> dict[str, Any]:
     """Load baseline validation targets from YAML for visualization."""
-    targets_path = Path(__file__).parent.parent / "targets" / "baseline.yaml"
-    with open(targets_path) as f:
+    with open(Path(__file__).parent / "targets.yaml") as f:
         data = yaml.safe_load(f)
 
     viz = data["metadata"]["visualization"]
@@ -647,13 +647,9 @@ def run_scenario(
 
     # Visualize if requested (lazy import to avoid circular dependency)
     if show_plot:
-        from validation.scenarios.baseline_viz import visualize_baseline_results
+        from validation.scenarios.baseline.viz import visualize_baseline_results
 
         bounds = load_baseline_targets()
         visualize_baseline_results(metrics, bounds, burn_in=burn_in)
 
     return metrics
-
-
-if __name__ == "__main__":
-    run_scenario(seed=0, n_periods=1000, burn_in=500, show_plot=True)
