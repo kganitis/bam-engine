@@ -15,7 +15,7 @@ from bamengine import ops
 @pytest.fixture
 def small_sim():
     """Create a small simulation with BufferStock extension attached."""
-    from extensions.buffer_stock import attach_buffer_stock
+    from extensions.buffer_stock import BUFFER_STOCK_EVENTS, BufferStock
 
     sim = bam.Simulation.init(
         n_firms=5,
@@ -25,7 +25,8 @@ def small_sim():
         buffer_stock_h=1.0,
         logging={"default_level": "ERROR"},
     )
-    attach_buffer_stock(sim)
+    sim.use_role(BufferStock, n_agents=sim.n_households)
+    sim.use_events(*BUFFER_STOCK_EVENTS)
     return sim
 
 

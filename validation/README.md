@@ -127,11 +127,12 @@ Notable additions over baseline: heavy-tailed wealth distribution fitting with R
 The R&D extension for Growth+ is in the `extensions/` package:
 
 ```python
-from extensions.rnd import RnD, FirmsComputeRnDIntensity
+from extensions.rnd import RnD, RND_EVENTS
 
 # Use in custom simulations
 sim = bam.Simulation.init(sigma_min=0.0, sigma_max=0.1, sigma_decay=-1.0)
 sim.use_role(RnD)
+sim.use_events(*RND_EVENTS)
 ```
 
 ### Buffer-Stock Extension
@@ -139,11 +140,12 @@ sim.use_role(RnD)
 The buffer-stock consumption extension is in `extensions/buffer_stock/`:
 
 ```python
-from extensions.buffer_stock import BufferStock, attach_buffer_stock
+from extensions.buffer_stock import BufferStock, BUFFER_STOCK_EVENTS
 
 # Use in custom simulations
 sim = bam.Simulation.init(buffer_stock_h=1.0)
-attach_buffer_stock(sim)
+sim.use_role(BufferStock, n_agents=sim.n_households)
+sim.use_events(*BUFFER_STOCK_EVENTS)
 ```
 
 ### Core Types

@@ -46,7 +46,7 @@ For detailed validation with bounds and statistical annotations, run:
 
 import bamengine as bam
 from bamengine import Float, event, ops, role
-from extensions.rnd import RnD
+from extensions.rnd import RND_EVENTS, RnD
 
 # %%
 # Define Custom Role: BufferStock
@@ -141,25 +141,22 @@ class ConsumersDecideBufferStockSpending:
 
 
 # %%
-# Attach BufferStock Role
-# -----------------------
+# Attach Extensions
+# -----------------
 #
-# BufferStock tracks per-household state, so it needs ``n_households``-sized
-# arrays.  The built-in ``use_role()`` creates ``n_firms``-sized arrays, so we
-# attach manually.
+# ``use_role()`` accepts ``n_agents`` for non-firm roles (e.g., household-level).
+# ``use_events()`` applies pipeline hooks (after/before/replace) from event classes.
 
 
-def attach_buffer_stock(sim):
-    """Attach BufferStock role with household-sized arrays."""
-    role_name = "BufferStock"
-    if role_name in sim._role_instances:
-        return sim._role_instances[role_name]
-    instance = BufferStock(
-        prev_income=ops.zeros(sim.n_households),
-        propensity=ops.zeros(sim.n_households),
+def attach_extensions(sim):
+    """Attach BufferStock + RnD roles and apply extension events to pipeline."""
+    sim.use_role(BufferStock, n_agents=sim.n_households)
+    sim.use_role(RnD)
+    sim.use_events(
+        ConsumersCalcBufferStockPropensity,
+        ConsumersDecideBufferStockSpending,
+        *RND_EVENTS,
     )
-    sim._role_instances[role_name] = instance
-    return instance
 
 
 # %%
@@ -188,8 +185,7 @@ sim = bam.Simulation.init(
     sigma_decay=-1.0,
 )
 
-attach_buffer_stock(sim)
-sim.use_role(RnD)
+attach_extensions(sim)
 print(f"Buffer-stock simulation: {sim.n_firms} firms, {sim.n_households} households")
 print(f"  buffer_stock_h = {sim.buffer_stock_h}")
 

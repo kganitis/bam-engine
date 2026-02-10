@@ -290,21 +290,3 @@ def test_list_relationships(clean_registry):
     assert "rel_a" in relationships
     assert "rel_b" in relationships
     assert relationships == sorted(relationships)  # Should be sorted
-
-
-def test_register_event_hook_no_hooks():
-    """Test that register_event_hook returns early when no hooks are specified."""
-    from bamengine.core.registry import _EVENT_HOOKS, register_event_hook
-
-    # Save current state
-    original_hooks = dict(_EVENT_HOOKS)
-
-    # Call with no hooks - should return early and not modify registry
-    register_event_hook("nonexistent_event_for_test")
-
-    # Verify nothing was added
-    assert "nonexistent_event_for_test" not in _EVENT_HOOKS
-
-    # Restore original state (in case test fails)
-    _EVENT_HOOKS.clear()
-    _EVENT_HOOKS.update(original_hooks)

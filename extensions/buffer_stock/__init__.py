@@ -6,11 +6,11 @@ based on buffer-stock saving theory.
 
 Usage::
 
-    from extensions.buffer_stock import BufferStock, attach_buffer_stock
+    from extensions.buffer_stock import BufferStock, BUFFER_STOCK_EVENTS
 
-    # Import BEFORE creating simulation (registers replacement events)
     sim = bam.Simulation.init(buffer_stock_h=1.0, **config)
-    attach_buffer_stock(sim)
+    sim.use_role(BufferStock, n_agents=sim.n_households)
+    sim.use_events(*BUFFER_STOCK_EVENTS)
     results = sim.run()
 
 Components
@@ -85,8 +85,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import numpy as np
-
 from extensions.buffer_stock.events import (
     ConsumersCalcBufferStockPropensity,
     ConsumersDecideBufferStockSpending,
@@ -96,13 +94,18 @@ from extensions.buffer_stock.role import BufferStock
 if TYPE_CHECKING:
     import bamengine as bam
 
+BUFFER_STOCK_EVENTS = [
+    ConsumersCalcBufferStockPropensity,
+    ConsumersDecideBufferStockSpending,
+]
+
 
 def attach_buffer_stock(sim: bam.Simulation) -> BufferStock:
     """Attach the BufferStock role to a simulation with household-sized arrays.
 
-    Unlike ``sim.use_role()`` which defaults to ``n_firms``, this function
-    creates the BufferStock role with ``n_households`` arrays, since the
-    buffer-stock extension tracks per-household state.
+    .. deprecated::
+        Use ``sim.use_role(BufferStock, n_agents=sim.n_households)`` and
+        ``sim.use_events(*BUFFER_STOCK_EVENTS)`` instead.
 
     Parameters
     ----------
@@ -114,20 +117,12 @@ def attach_buffer_stock(sim: bam.Simulation) -> BufferStock:
     BufferStock
         The attached role instance.
     """
-    role_name = "BufferStock"
-    if role_name in sim._role_instances:
-        return sim._role_instances[role_name]
-
-    instance = BufferStock(
-        prev_income=np.zeros(sim.n_households, dtype=np.float64),
-        propensity=np.zeros(sim.n_households, dtype=np.float64),
-    )
-    sim._role_instances[role_name] = instance
-    return instance
+    return sim.use_role(BufferStock, n_agents=sim.n_households)
 
 
 __all__ = [
     "BufferStock",
+    "BUFFER_STOCK_EVENTS",
     "ConsumersCalcBufferStockPropensity",
     "ConsumersDecideBufferStockSpending",
     "attach_buffer_stock",

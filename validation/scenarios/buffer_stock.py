@@ -804,16 +804,17 @@ METRIC_SPECS = [
 def _setup_buffer_stock(sim: bam.Simulation | None) -> None:
     """Setup hook to import and attach buffer-stock + RnD extensions."""
     if sim is None:
-        # Pre-import call - just import to register events
-        from extensions.buffer_stock import BufferStock  # noqa: F401
+        # Pre-import call - just import to register event classes
+        from extensions.buffer_stock import BufferStock
         from extensions.rnd import RnD
     else:
         # Attach both extensions to simulation
-        from extensions.buffer_stock import attach_buffer_stock
-        from extensions.rnd import RnD
+        from extensions.buffer_stock import BUFFER_STOCK_EVENTS, BufferStock
+        from extensions.rnd import RND_EVENTS, RnD
 
-        attach_buffer_stock(sim)
+        sim.use_role(BufferStock, n_agents=sim.n_households)
         sim.use_role(RnD)
+        sim.use_events(*RND_EVENTS, *BUFFER_STOCK_EVENTS)
 
 
 # =============================================================================
@@ -921,8 +922,8 @@ def run_scenario(
     BufferStockMetrics
         Computed metrics from the simulation.
     """
-    from extensions.buffer_stock import attach_buffer_stock
-    from extensions.rnd import RnD
+    from extensions.buffer_stock import BUFFER_STOCK_EVENTS, BufferStock
+    from extensions.rnd import RND_EVENTS, RnD
 
     config = {
         **DEFAULT_CONFIG,
@@ -931,8 +932,9 @@ def run_scenario(
         "logging": {"default_level": "ERROR"},
     }
     sim = bam.Simulation.init(**config)
-    attach_buffer_stock(sim)
+    sim.use_role(BufferStock, n_agents=sim.n_households)
     sim.use_role(RnD)
+    sim.use_events(*RND_EVENTS, *BUFFER_STOCK_EVENTS)
 
     print("Buffer-stock simulation initialized:")
     print(f"  - {sim.n_firms} firms")

@@ -1449,13 +1449,14 @@ METRIC_SPECS = [
 def _setup_rnd(sim: bam.Simulation | None) -> None:
     """Setup hook to import and attach RnD extension."""
     if sim is None:
-        # Pre-import call - just import to register events
+        # Pre-import call - just import to register event classes
         from extensions.rnd import RnD
     else:
-        # Attach RnD role to simulation
-        from extensions.rnd import RnD
+        # Attach RnD role and events to simulation
+        from extensions.rnd import RND_EVENTS, RnD
 
         sim.use_role(RnD)
+        sim.use_events(*RND_EVENTS)
 
 
 # =============================================================================
@@ -1588,7 +1589,7 @@ def run_scenario(
     GrowthPlusMetrics
         Computed metrics from the simulation.
     """
-    from extensions.rnd import RnD
+    from extensions.rnd import RND_EVENTS, RnD
 
     # Initialize simulation with Growth+ default parameters
     config = {
@@ -1599,8 +1600,9 @@ def run_scenario(
     }
     sim = bam.Simulation.init(**config)
 
-    # Attach custom RnD role
+    # Attach custom RnD role and events
     rnd = sim.use_role(RnD)
+    sim.use_events(*RND_EVENTS)
 
     print("Growth+ simulation initialized:")
     print(f"  - {sim.n_firms} firms")

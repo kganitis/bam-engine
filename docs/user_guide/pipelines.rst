@@ -17,20 +17,21 @@ Declare where your custom event should be inserted directly in the decorator:
 .. code-block:: python
 
    from bamengine import event, Simulation
+   import bamengine as bam
 
 
    @event(after="firms_pay_dividends")
    class MyCustomEvent:
-       """Automatically inserted after firms_pay_dividends."""
+       """Positioned after firms_pay_dividends via hook metadata."""
 
        def execute(self, sim: Simulation) -> None:
            # Your custom logic here
            pass
 
 
-   # Events with hooks are automatically inserted when the pipeline is created
+   # Hooks are NOT auto-applied; use sim.use_events() to activate them
    sim = bam.Simulation.init(seed=42)
-   # MyCustomEvent is already in the pipeline!
+   sim.use_events(MyCustomEvent)  # Applies the hook to the pipeline
 
 **Hook Types:**
 
@@ -40,9 +41,10 @@ Declare where your custom event should be inserted directly in the decorator:
 
 **Key Points:**
 
-- Hooks are applied automatically during ``Simulation.init()``
-- Events must be imported before ``Simulation.init()`` for hooks to work
-- Multiple events targeting the same point are inserted in registration order
+- Hooks are stored as class attributes, NOT applied automatically
+- Call ``sim.use_events(*event_classes)`` to apply hooks to the pipeline
+- Multiple events targeting the same point are inserted in the order passed to ``use_events()``
+- No import ordering constraints — import extensions anywhere before calling ``use_events()``
 
 Manual Pipeline Modification
 ----------------------------
