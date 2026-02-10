@@ -6,7 +6,7 @@ It contains the metrics dataclass, computation function, and scenario configurat
 The Growth+ scenario extends the baseline with endogenous productivity growth
 through R&D investment.
 
-For visualization, see growth_plus_viz.py.
+For visualization, see viz.py (in this package).
 """
 
 from __future__ import annotations
@@ -1457,8 +1457,7 @@ def _compute_metrics_wrapper(
     sim: bam.Simulation, results: SimulationResults, burn_in: int
 ) -> GrowthPlusMetrics:
     """Wrapper for compute_growth_plus_metrics that loads params from YAML."""
-    targets_path = Path(__file__).parent.parent / "targets" / "growth_plus.yaml"
-    with open(targets_path) as f:
+    with open(Path(__file__).parent / "targets.yaml") as f:
         targets = yaml.safe_load(f)
 
     params = targets["metadata"]["params"]
@@ -1480,10 +1479,12 @@ SCENARIO = Scenario(
     name="growth_plus",
     metric_specs=METRIC_SPECS,
     collect_config=COLLECT_CONFIG,
-    targets_file="growth_plus.yaml",
+    targets_path=Path(__file__).parent / "targets.yaml",
     default_config=DEFAULT_CONFIG,
     compute_metrics=_compute_metrics_wrapper,
     setup_hook=_setup_rnd,
+    title="GROWTH+ SCENARIO VALIDATION",
+    stability_title="GROWTH+ SEED STABILITY TEST",
 )
 
 
@@ -1494,8 +1495,7 @@ SCENARIO = Scenario(
 
 def load_growth_plus_targets() -> dict[str, Any]:
     """Load Growth+ validation targets from YAML for visualization."""
-    targets_path = Path(__file__).parent.parent / "targets" / "growth_plus.yaml"
-    with open(targets_path) as f:
+    with open(Path(__file__).parent / "targets.yaml") as f:
         data = yaml.safe_load(f)
 
     viz = data["metadata"]["visualization"]
@@ -1626,7 +1626,7 @@ def run_scenario(
 
     # Visualize if requested (lazy import to avoid circular dependency)
     if show_plot:
-        from validation.scenarios.growth_plus_viz import (
+        from validation.scenarios.growth_plus.viz import (
             visualize_financial_dynamics,
             visualize_growth_plus_results,
         )
@@ -1636,7 +1636,3 @@ def run_scenario(
         visualize_financial_dynamics(metrics, bounds, burn_in=burn_in)
 
     return metrics
-
-
-if __name__ == "__main__":
-    run_scenario(seed=0, n_periods=1000, burn_in=500, show_plot=True)

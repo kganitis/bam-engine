@@ -9,7 +9,7 @@ individual adaptive rule based on buffer-stock saving theory. Validation
 focuses on reproducing the wealth distribution (Figure 3.8) fitted with
 Singh-Maddala, Dagum, and GB2 distributions.
 
-For visualization, see buffer_stock_viz.py.
+For visualization, see viz.py (in this package).
 """
 
 from __future__ import annotations
@@ -832,8 +832,7 @@ def _compute_metrics_wrapper(
     sim: bam.Simulation, results: SimulationResults, burn_in: int
 ) -> BufferStockMetrics:
     """Wrapper for compute_buffer_stock_metrics that loads params from YAML."""
-    targets_path = Path(__file__).parent.parent / "targets" / "buffer_stock.yaml"
-    with open(targets_path) as f:
+    with open(Path(__file__).parent / "targets.yaml") as f:
         targets = yaml.safe_load(f)
 
     params = targets["metadata"]["params"]
@@ -855,10 +854,12 @@ SCENARIO = Scenario(
     name="buffer_stock",
     metric_specs=METRIC_SPECS,
     collect_config=COLLECT_CONFIG,
-    targets_file="buffer_stock.yaml",
+    targets_path=Path(__file__).parent / "targets.yaml",
     default_config=DEFAULT_CONFIG,
     compute_metrics=_compute_metrics_wrapper,
     setup_hook=_setup_buffer_stock,
+    title="BUFFER-STOCK SCENARIO VALIDATION",
+    stability_title="BUFFER-STOCK SEED STABILITY TEST",
 )
 
 
@@ -869,8 +870,7 @@ SCENARIO = Scenario(
 
 def load_buffer_stock_targets() -> dict[str, Any]:
     """Load buffer-stock validation targets from YAML for visualization."""
-    targets_path = Path(__file__).parent.parent / "targets" / "buffer_stock.yaml"
-    with open(targets_path) as f:
+    with open(Path(__file__).parent / "targets.yaml") as f:
         data = yaml.safe_load(f)
 
     viz = data["metadata"]["visualization"]
@@ -974,13 +974,9 @@ def run_scenario(
     print(f"  % dissaving: {metrics.pct_dissaving * 100:.1f}%")
 
     if show_plot:
-        from validation.scenarios.buffer_stock_viz import visualize_buffer_stock_results
+        from validation.scenarios.buffer_stock.viz import visualize_buffer_stock_results
 
         bounds = load_buffer_stock_targets()
         visualize_buffer_stock_results(metrics, bounds, burn_in=burn_in)
 
     return metrics
-
-
-if __name__ == "__main__":
-    run_scenario(seed=0, n_periods=1000, burn_in=500, show_plot=True)

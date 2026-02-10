@@ -6,7 +6,7 @@ a complementary CDF (CCDF) of household wealth on log-log axes,
 replicating Figure 3.8 from the book.
 
 This module contains only visualization functions. For running the scenario,
-use the main buffer_stock.py module:
+use the buffer_stock package:
 
     python -m validation.scenarios.buffer_stock
 
@@ -26,7 +26,7 @@ from bamengine import ops
 from validation.scenarios.buffer_stock import BufferStockMetrics
 from validation.scoring import STATUS_COLORS, check_range
 
-_OUTPUT_DIR = Path(__file__).parent / "output" / "buffer-stock"
+_OUTPUT_DIR = Path(__file__).parent / "output"
 
 _PANEL_NAMES = [
     "1_gdp",

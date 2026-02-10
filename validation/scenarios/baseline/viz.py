@@ -5,7 +5,7 @@ section 3.9.1 of Delli Gatti et al. (2011). The visualization includes
 target bounds, statistical annotations, and validation status indicators.
 
 This module contains only visualization functions. For running the scenario,
-use the main baseline.py module:
+use the baseline package:
 
     python -m validation.scenarios.baseline
 
@@ -25,7 +25,7 @@ from bamengine import ops
 from validation.scenarios.baseline import BaselineMetrics
 from validation.scoring import STATUS_COLORS, check_range
 
-_OUTPUT_DIR = Path(__file__).parent / "output" / "baseline"
+_OUTPUT_DIR = Path(__file__).parent / "output"
 
 _PANEL_NAMES = [
     "1_gdp",

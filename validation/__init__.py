@@ -5,10 +5,9 @@ targets derived from Delli Gatti et al. (2011).
 
 Subpackages:
     scenarios/: Scenario definitions and visualizations
-        - baseline.py: Baseline scenario (Section 3.9.1)
-        - growth_plus.py: Growth+ scenario (Section 3.9.2)
-        - *_viz.py: Visualization modules
-    targets/: YAML files defining target values
+        - baseline/: Baseline scenario (Section 3.9.1)
+        - growth_plus/: Growth+ scenario (Section 3.9.2)
+        - buffer_stock/: Buffer-stock scenario (Section 3.9.3)
 
 Modules:
     types: Core types, dataclasses, and enums
@@ -51,61 +50,17 @@ Usage:
 
 from __future__ import annotations
 
+from functools import partial
 from typing import Any
 
 # Engine functions
 from validation.engine import evaluate_metric, load_targets, stability_test, validate
 
-# Reporting functions
-from validation.reporting import (
-    print_baseline_stability_report,
-    print_buffer_stock_report,
-    print_buffer_stock_stability_report,
-    print_growth_plus_report,
-    print_growth_plus_stability_report,
-    print_report,
-    print_stability_report,
-    print_validation_report,
-)
+# Reporting functions (generic)
+from validation.reporting import print_report, print_stability_report
 
-# Scenario-specific exports (lazy loaded to avoid circular imports)
-from validation.scenarios.baseline import COLLECT_CONFIG as BASELINE_COLLECT_CONFIG
-from validation.scenarios.baseline import DEFAULT_CONFIG as BASELINE_DEFAULT_CONFIG
-from validation.scenarios.baseline import METRIC_SPECS as BASELINE_METRIC_SPECS
-from validation.scenarios.baseline import SCENARIO as BASELINE_SCENARIO
-from validation.scenarios.baseline import (
-    BaselineMetrics,
-    compute_baseline_metrics,
-    load_baseline_targets,
-)
-
-# Buffer-stock scenario
-from validation.scenarios.buffer_stock import (
-    COLLECT_CONFIG as BUFFER_STOCK_COLLECT_CONFIG,
-)
-from validation.scenarios.buffer_stock import (
-    DEFAULT_CONFIG as BUFFER_STOCK_DEFAULT_CONFIG,
-)
-from validation.scenarios.buffer_stock import METRIC_SPECS as BUFFER_STOCK_METRIC_SPECS
-from validation.scenarios.buffer_stock import SCENARIO as BUFFER_STOCK_SCENARIO
-from validation.scenarios.buffer_stock import (
-    BufferStockMetrics,
-    compute_buffer_stock_metrics,
-    load_buffer_stock_targets,
-)
-from validation.scenarios.growth_plus import (
-    COLLECT_CONFIG as GROWTH_PLUS_COLLECT_CONFIG,
-)
-from validation.scenarios.growth_plus import (
-    DEFAULT_CONFIG as GROWTH_PLUS_DEFAULT_CONFIG,
-)
-from validation.scenarios.growth_plus import METRIC_SPECS as GROWTH_PLUS_METRIC_SPECS
-from validation.scenarios.growth_plus import SCENARIO as GROWTH_PLUS_SCENARIO
-from validation.scenarios.growth_plus import (
-    GrowthPlusMetrics,
-    compute_growth_plus_metrics,
-    load_growth_plus_targets,
-)
+# Scenario registry
+from validation.scenarios import get_scenario
 
 # Scoring functions
 from validation.scoring import (
@@ -145,140 +100,82 @@ def _derive_weights(specs: list[MetricSpec]) -> dict[str, float]:
     return {spec.name: spec.weight for spec in specs}
 
 
-BASELINE_WEIGHTS = _derive_weights(BASELINE_METRIC_SPECS)
-GROWTH_PLUS_WEIGHTS = _derive_weights(GROWTH_PLUS_METRIC_SPECS)
-BUFFER_STOCK_WEIGHTS = _derive_weights(BUFFER_STOCK_METRIC_SPECS)
+BASELINE_WEIGHTS = _derive_weights(get_scenario("baseline").metric_specs)
+GROWTH_PLUS_WEIGHTS = _derive_weights(get_scenario("growth_plus").metric_specs)
+BUFFER_STOCK_WEIGHTS = _derive_weights(get_scenario("buffer_stock").metric_specs)
 
 
 # =============================================================================
-# Thin Wrapper Functions (for backwards compatibility)
+# Factory-generated wrapper functions (backwards-compatible)
 # =============================================================================
 
 
-def run_validation(
-    *,
-    seed: int = 0,
-    n_periods: int = 1000,
-    **config_overrides: Any,
-) -> ValidationScore:
-    """Run baseline validation and return scored result.
+def _make_validate(scenario_name: str):  # type: ignore[no-untyped-def]
+    def _validate(
+        *, seed: int = 0, n_periods: int = 1000, **config_overrides: Any
+    ) -> ValidationScore:
+        return validate(
+            get_scenario(scenario_name),
+            seed=seed,
+            n_periods=n_periods,
+            **config_overrides,
+        )
 
-    Parameters
-    ----------
-    seed : int
-        Random seed for reproducibility.
-    n_periods : int
-        Number of simulation periods.
-    **config_overrides
-        Any simulation config parameters to override.
-
-    Returns
-    -------
-    ValidationScore
-        Validation result with total score and per-metric results.
-    """
-    return validate(
-        BASELINE_SCENARIO,
-        seed=seed,
-        n_periods=n_periods,
-        **config_overrides,
-    )
+    _validate.__doc__ = f"Run {scenario_name} validation and return scored result."
+    return _validate
 
 
-def run_stability_test(
-    seeds: list[int] | int = 5,
-    n_periods: int = 1000,
-    **config_overrides: Any,
-) -> StabilityResult:
-    """Run baseline validation across multiple seeds.
+def _make_stability(scenario_name: str):  # type: ignore[no-untyped-def]
+    def _stability(
+        seeds: list[int] | int = 5, n_periods: int = 1000, **config_overrides: Any
+    ) -> StabilityResult:
+        return stability_test(
+            get_scenario(scenario_name),
+            seeds=seeds,
+            n_periods=n_periods,
+            **config_overrides,
+        )
 
-    Parameters
-    ----------
-    seeds : list[int] or int
-        List of seeds or number of seeds to test.
-    n_periods : int
-        Number of simulation periods per seed.
-    **config_overrides
-        Any simulation config parameters to override.
-
-    Returns
-    -------
-    StabilityResult
-        Aggregated results across all seeds.
-    """
-    return stability_test(
-        BASELINE_SCENARIO,
-        seeds=seeds,
-        n_periods=n_periods,
-        **config_overrides,
-    )
+    _stability.__doc__ = f"Run {scenario_name} validation across multiple seeds."
+    return _stability
 
 
-def run_growth_plus_validation(
-    *,
-    seed: int = 0,
-    n_periods: int = 1000,
-    **config_overrides: Any,
-) -> ValidationScore:
-    """Run Growth+ validation and return scored result.
+# Backwards-compatible names
+run_validation = _make_validate("baseline")
+run_stability_test = _make_stability("baseline")
+run_growth_plus_validation = _make_validate("growth_plus")
+run_growth_plus_stability_test = _make_stability("growth_plus")
+run_buffer_stock_validation = _make_validate("buffer_stock")
+run_buffer_stock_stability_test = _make_stability("buffer_stock")
 
-    Parameters
-    ----------
-    seed : int
-        Random seed for reproducibility.
-    n_periods : int
-        Number of simulation periods.
-    **config_overrides
-        Any simulation config parameters to override.
+# =============================================================================
+# Report printers (generated via partial from Scenario.title)
+# =============================================================================
 
-    Returns
-    -------
-    ValidationScore
-        Validation result with total score and per-metric results.
-    """
-    return validate(
-        GROWTH_PLUS_SCENARIO,
-        seed=seed,
-        n_periods=n_periods,
-        **config_overrides,
-    )
-
-
-def run_growth_plus_stability_test(
-    seeds: list[int] | int = 5,
-    n_periods: int = 1000,
-    **config_overrides: Any,
-) -> StabilityResult:
-    """Run Growth+ validation across multiple seeds.
-
-    Parameters
-    ----------
-    seeds : list[int] or int
-        List of seeds or number of seeds to test.
-    n_periods : int
-        Number of simulation periods per seed.
-    **config_overrides
-        Any simulation config parameters to override.
-
-    Returns
-    -------
-    StabilityResult
-        Aggregated results across all seeds.
-    """
-    return stability_test(
-        GROWTH_PLUS_SCENARIO,
-        seeds=seeds,
-        n_periods=n_periods,
-        **config_overrides,
-    )
+print_validation_report = partial(print_report, title=get_scenario("baseline").title)
+print_baseline_stability_report = partial(
+    print_stability_report, title=get_scenario("baseline").stability_title
+)
+print_growth_plus_report = partial(
+    print_report, title=get_scenario("growth_plus").title
+)
+print_growth_plus_stability_report = partial(
+    print_stability_report, title=get_scenario("growth_plus").stability_title
+)
+print_buffer_stock_report = partial(
+    print_report, title=get_scenario("buffer_stock").title
+)
+print_buffer_stock_stability_report = partial(
+    print_stability_report, title=get_scenario("buffer_stock").stability_title
+)
 
 
 # =============================================================================
-# Scenario Runner Functions (with visualization)
+# Scenario Runner Functions (with visualization — lazy imports)
 # =============================================================================
 
 
-def run_baseline_scenario(**kwargs: Any) -> BaselineMetrics:
+def run_baseline_scenario(**kwargs: Any) -> Any:
     """Run baseline scenario with visualization.
 
     See validation.scenarios.baseline.run_scenario for parameters.
@@ -288,66 +185,7 @@ def run_baseline_scenario(**kwargs: Any) -> BaselineMetrics:
     return run_scenario(**kwargs)
 
 
-def run_buffer_stock_validation(
-    *,
-    seed: int = 0,
-    n_periods: int = 1000,
-    **config_overrides: Any,
-) -> ValidationScore:
-    """Run buffer-stock validation and return scored result.
-
-    Parameters
-    ----------
-    seed : int
-        Random seed for reproducibility.
-    n_periods : int
-        Number of simulation periods.
-    **config_overrides
-        Any simulation config parameters to override.
-
-    Returns
-    -------
-    ValidationScore
-        Validation result with total score and per-metric results.
-    """
-    return validate(
-        BUFFER_STOCK_SCENARIO,
-        seed=seed,
-        n_periods=n_periods,
-        **config_overrides,
-    )
-
-
-def run_buffer_stock_stability_test(
-    seeds: list[int] | int = 5,
-    n_periods: int = 1000,
-    **config_overrides: Any,
-) -> StabilityResult:
-    """Run buffer-stock validation across multiple seeds.
-
-    Parameters
-    ----------
-    seeds : list[int] or int
-        List of seeds or number of seeds to test.
-    n_periods : int
-        Number of simulation periods per seed.
-    **config_overrides
-        Any simulation config parameters to override.
-
-    Returns
-    -------
-    StabilityResult
-        Aggregated results across all seeds.
-    """
-    return stability_test(
-        BUFFER_STOCK_SCENARIO,
-        seeds=seeds,
-        n_periods=n_periods,
-        **config_overrides,
-    )
-
-
-def run_growth_plus_scenario(**kwargs: Any) -> GrowthPlusMetrics:
+def run_growth_plus_scenario(**kwargs: Any) -> Any:
     """Run Growth+ scenario with visualization.
 
     See validation.scenarios.growth_plus.run_scenario for parameters.
@@ -357,7 +195,7 @@ def run_growth_plus_scenario(**kwargs: Any) -> GrowthPlusMetrics:
     return run_scenario(**kwargs)
 
 
-def run_buffer_stock_scenario(**kwargs: Any) -> BufferStockMetrics:
+def run_buffer_stock_scenario(**kwargs: Any) -> Any:
     """Run buffer-stock scenario with visualization.
 
     See validation.scenarios.buffer_stock.run_scenario for parameters.
@@ -380,36 +218,20 @@ def get_validation_funcs(
     Parameters
     ----------
     scenario : str
-        Either "baseline" or "growth_plus".
+        Scenario name (e.g. "baseline", "growth_plus", "buffer_stock").
 
     Returns
     -------
     tuple
         (run_validation_func, run_stability_func, print_report_func, print_stability_func)
     """
-    if scenario == "baseline":
-        return (
-            run_validation,
-            run_stability_test,
-            print_validation_report,
-            print_baseline_stability_report,
-        )
-    elif scenario == "growth_plus":
-        return (
-            run_growth_plus_validation,
-            run_growth_plus_stability_test,
-            print_growth_plus_report,
-            print_growth_plus_stability_report,
-        )
-    elif scenario == "buffer_stock":
-        return (
-            run_buffer_stock_validation,
-            run_buffer_stock_stability_test,
-            print_buffer_stock_report,
-            print_buffer_stock_stability_report,
-        )
-    else:
-        raise ValueError(f"Unknown scenario: {scenario}")
+    s = get_scenario(scenario)
+    return (
+        _make_validate(scenario),
+        _make_stability(scenario),
+        partial(print_report, title=s.title),
+        partial(print_stability_report, title=s.stability_title),
+    )
 
 
 def get_validation_func(scenario: str = "baseline") -> Any:
@@ -418,7 +240,7 @@ def get_validation_func(scenario: str = "baseline") -> Any:
     Parameters
     ----------
     scenario : str
-        Either "baseline" or "growth_plus".
+        Scenario name (e.g. "baseline", "growth_plus", "buffer_stock").
 
     Returns
     -------
@@ -444,6 +266,7 @@ __all__ = [
     "DEFAULT_STABILITY_SEEDS",
     "BASELINE_WEIGHTS",
     "GROWTH_PLUS_WEIGHTS",
+    "BUFFER_STOCK_WEIGHTS",
     # Scoring functions
     "score_mean_tolerance",
     "score_range",
@@ -468,31 +291,6 @@ __all__ = [
     "print_growth_plus_stability_report",
     "print_buffer_stock_report",
     "print_buffer_stock_stability_report",
-    # Baseline scenario
-    "BASELINE_SCENARIO",
-    "BASELINE_COLLECT_CONFIG",
-    "BASELINE_DEFAULT_CONFIG",
-    "BASELINE_METRIC_SPECS",
-    "BaselineMetrics",
-    "compute_baseline_metrics",
-    "load_baseline_targets",
-    # Growth+ scenario
-    "GROWTH_PLUS_SCENARIO",
-    "GROWTH_PLUS_COLLECT_CONFIG",
-    "GROWTH_PLUS_DEFAULT_CONFIG",
-    "GROWTH_PLUS_METRIC_SPECS",
-    "GrowthPlusMetrics",
-    "compute_growth_plus_metrics",
-    "load_growth_plus_targets",
-    # Buffer-stock scenario
-    "BUFFER_STOCK_SCENARIO",
-    "BUFFER_STOCK_COLLECT_CONFIG",
-    "BUFFER_STOCK_DEFAULT_CONFIG",
-    "BUFFER_STOCK_METRIC_SPECS",
-    "BUFFER_STOCK_WEIGHTS",
-    "BufferStockMetrics",
-    "compute_buffer_stock_metrics",
-    "load_buffer_stock_targets",
     # Wrapper functions
     "run_validation",
     "run_stability_test",
@@ -507,4 +305,6 @@ __all__ = [
     # Calibration support
     "get_validation_funcs",
     "get_validation_func",
+    # Registry
+    "get_scenario",
 ]
