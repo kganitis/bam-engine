@@ -20,6 +20,11 @@ print(f"Pass rate: {stability.pass_rate:.0%}")
 from validation import run_growth_plus_validation
 
 result = run_growth_plus_validation(seed=42)
+
+# Buffer-stock scenario
+from validation import run_buffer_stock_validation
+
+result = run_buffer_stock_validation(seed=42)
 ```
 
 ## Scenario Visualization
@@ -32,16 +37,24 @@ python -m validation.scenarios.baseline
 
 # Growth+ scenario (Section 3.9.2)
 python -m validation.scenarios.growth_plus
+
+# Buffer-stock scenario (Section 3.9.3)
+python -m validation.scenarios.buffer_stock
 ```
 
 Or use programmatically:
 
 ```python
-from validation import run_baseline_scenario, run_growth_plus_scenario
+from validation import (
+    run_baseline_scenario,
+    run_growth_plus_scenario,
+    run_buffer_stock_scenario,
+)
 
 # Run with visualization
 run_baseline_scenario(seed=0, show_plot=True)
-run_growth_plus_scenario(seed=2, show_plot=True)
+run_growth_plus_scenario(seed=0, show_plot=True)
+run_buffer_stock_scenario(seed=0, show_plot=True)
 
 # Run without visualization (returns metrics)
 metrics = run_baseline_scenario(seed=0, show_plot=False)
@@ -68,6 +81,19 @@ Endogenous productivity growth via R&D investment — 65 metrics across 6 catego
 
 Notable additions over baseline: GDP cyclicality correlations (Minsky hypothesis validation), coefficient of variation for financial variables, and Laplace distribution fit (tent-shape R²) for growth rate distributions.
 
+### Buffer-Stock (Section 3.9.3)
+
+Buffer-stock consumption extension replacing the baseline mean-field MPC with an individual adaptive rule — ~30 metrics across 4 categories:
+
+| Category     | Count | Key Metrics                                                      |
+| ------------ | ----- | ---------------------------------------------------------------- |
+| TIME_SERIES  | 10    | Unemployment, inflation, GDP trend/growth, vacancy rates         |
+| CURVES       | 3     | Phillips, Okun, Beveridge correlations                           |
+| DISTRIBUTION | 12    | Wealth CCDF fitting (Singh-Maddala, Dagum, GB2), Gini, MPC stats |
+| FINANCIAL    | 5     | Interest rates, fragility, price ratio                           |
+
+Notable additions over baseline: heavy-tailed wealth distribution fitting with R² on log-log CCDF (Figure 3.8 from the book), wealth Gini coefficient, MPC distribution statistics, and dissaving rate.
+
 ## API Reference
 
 ### Validation Functions
@@ -76,11 +102,14 @@ Notable additions over baseline: GDP cyclicality correlations (Minsky hypothesis
 - `run_stability_test(seeds, **kwargs) -> StabilityResult` - Multi-seed baseline testing
 - `run_growth_plus_validation(**kwargs) -> ValidationScore` - Single run Growth+ validation
 - `run_growth_plus_stability_test(seeds, **kwargs) -> StabilityResult` - Multi-seed Growth+ testing
+- `run_buffer_stock_validation(**kwargs) -> ValidationScore` - Single run buffer-stock validation
+- `run_buffer_stock_stability_test(seeds, **kwargs) -> StabilityResult` - Multi-seed buffer-stock testing
 
 ### Scenario Functions
 
 - `run_baseline_scenario(seed, n_periods, burn_in, show_plot) -> BaselineMetrics` - Run baseline with visualization
 - `run_growth_plus_scenario(seed, n_periods, burn_in, show_plot) -> GrowthPlusMetrics` - Run Growth+ with visualization
+- `run_buffer_stock_scenario(seed, n_periods, burn_in, show_plot) -> BufferStockMetrics` - Run buffer-stock with visualization
 
 ### Report Functions
 
@@ -88,6 +117,8 @@ Notable additions over baseline: GDP cyclicality correlations (Minsky hypothesis
 - `print_baseline_stability_report(result)` - Formatted baseline stability report
 - `print_growth_plus_report(result)` - Formatted Growth+ report
 - `print_growth_plus_stability_report(result)` - Formatted Growth+ stability report
+- `print_buffer_stock_report(result)` - Formatted buffer-stock report
+- `print_buffer_stock_stability_report(result)` - Formatted buffer-stock stability report
 - `print_report(result)` - Generic report (auto-detects scenario)
 - `print_stability_report(result)` - Generic stability report
 
@@ -103,6 +134,18 @@ sim = bam.Simulation.init(sigma_min=0.0, sigma_max=0.1, sigma_decay=-1.0)
 sim.use_role(RnD)
 ```
 
+### Buffer-Stock Extension
+
+The buffer-stock consumption extension is in `extensions/buffer_stock/`:
+
+```python
+from extensions.buffer_stock import BufferStock, attach_buffer_stock
+
+# Use in custom simulations
+sim = bam.Simulation.init(buffer_stock_h=1.0)
+attach_buffer_stock(sim)
+```
+
 ### Core Types
 
 - `ValidationScore` - Single validation result with metrics and total score
@@ -113,6 +156,7 @@ sim.use_role(RnD)
 - `Scenario` - Bundles metric_specs, collect_config, compute_metrics, setup_hook
 - `BaselineMetrics` - Computed metrics for baseline scenario (25 fields)
 - `GrowthPlusMetrics` - Computed metrics for Growth+ scenario (70+ fields)
+- `BufferStockMetrics` - Computed metrics for buffer-stock scenario (40+ fields)
 - `CheckType` - Enum: MEAN_TOLERANCE, RANGE, PCT_WITHIN, OUTLIER, BOOLEAN
 - `MetricGroup` - Enum: TIME_SERIES, CURVES, DISTRIBUTION, GROWTH, FINANCIAL, GROWTH_RATE_DIST
 - `Status` - Enum: PASS, WARN, FAIL
@@ -146,6 +190,7 @@ sim.use_role(RnD)
 - `DEFAULT_STABILITY_SEEDS = list(range(20))` - 20 seeds for stability testing
 - `BASELINE_WEIGHTS` - Metric weights for baseline scenario
 - `GROWTH_PLUS_WEIGHTS` - Metric weights for Growth+ scenario
+- `BUFFER_STOCK_WEIGHTS` - Metric weights for buffer-stock scenario
 
 ## Target Files
 
@@ -153,6 +198,7 @@ Target values are defined in YAML files with standardized keys:
 
 - `validation/targets/baseline.yaml` - Baseline scenario targets (25 metrics)
 - `validation/targets/growth_plus.yaml` - Growth+ scenario targets (65 metrics)
+- `validation/targets/buffer_stock.yaml` - Buffer-stock scenario targets (~30 metrics)
 
 YAML structure uses standardized keys per check type:
 
@@ -180,18 +226,26 @@ validation/
 │   ├── baseline_viz.py      # Baseline visualization (8-panel)
 │   ├── growth_plus.py       # Growth+: metrics + computation + run_scenario()
 │   ├── growth_plus_viz.py   # Growth+ visualization (16-panel + recession bands)
+│   ├── buffer_stock.py      # Buffer-stock: metrics + computation + run_scenario()
+│   ├── buffer_stock_viz.py  # Buffer-stock visualization (8-panel + CCDF)
 │   └── output/              # Saved visualization panels
 │       ├── baseline/        # Individual baseline scenario panels
-│       └── growth-plus/     # Individual growth+ scenario panels
+│       ├── growth-plus/     # Individual growth+ scenario panels
+│       └── buffer-stock/    # Individual buffer-stock scenario panels
 └── targets/
     ├── baseline.yaml        # Baseline target values (25 metrics)
-    └── growth_plus.yaml     # Growth+ target values (65 metrics)
+    ├── growth_plus.yaml     # Growth+ target values (65 metrics)
+    └── buffer_stock.yaml    # Buffer-stock target values (~30 metrics)
 
 extensions/                  # Separate package for model extensions
-└── rnd/
-    ├── __init__.py          # Exports RnD role and events
-    ├── role.py              # RnD role definition
-    └── events.py            # R&D pipeline events
+├── rnd/
+│   ├── __init__.py          # Exports RnD role and events
+│   ├── role.py              # RnD role definition
+│   └── events.py            # R&D pipeline events
+└── buffer_stock/
+    ├── __init__.py          # Exports BufferStock role and events
+    ├── role.py              # BufferStock role definition
+    └── events.py            # Buffer-stock consumption events
 ```
 
 ## Architecture

@@ -1,0 +1,262 @@
+# ==============================================================================
+# BAM Buffer-Stock Scenario Validation Targets
+# ==============================================================================
+#
+# Target metrics derived from Delli Gatti et al. (2011), Section 3.9.3
+# "Macroeconomics from the Bottom-up" Buffer-stock consumption extension.
+#
+# The buffer-stock extension replaces the baseline mean-field MPC with an
+# individual adaptive rule. Validation focuses on reproducing Figure 3.8:
+# a complementary CDF of household wealth fitted with Singh-Maddala, Dagum,
+# and GB2 distributions.
+#
+# Structure:
+#   metadata: Scenario configuration and buffer-stock parameters
+#   metrics: Validation targets with standardized keys
+#     - MEAN_TOLERANCE checks: 'target', 'tolerance'
+#     - RANGE checks: 'min', 'max'
+#     - PCT_WITHIN checks: 'target', 'min'
+#     - BOOLEAN checks: 'threshold'
+#
+# ==============================================================================
+
+metadata:
+  source: "Delli Gatti et al. (2011), Section 3.9.3"
+  description: "Buffer-stock consumption scenario - Individual Adaptive MPC"
+
+  validation:
+    burn_in_periods: 500
+
+  # Buffer-stock extension parameters
+  extension_params:
+    buffer_stock_h: 2.0
+
+  # Parameters needed by compute_metrics
+  params:
+    firm_size_threshold: 150.0
+    firm_size_threshold_medium: 100.0
+
+  # Visualization-specific target structure
+  visualization:
+    time_series:
+      unemployment_rate:
+        targets:
+          normal_min: 0.02
+          normal_max: 0.15
+          extreme_min: 0.00
+          extreme_max: 0.30
+          mean_target: 0.055
+          std_min: 0.02
+          std_max: 0.05
+
+      inflation_rate:
+        targets:
+          normal_min: -0.02
+          normal_max: 0.10
+          extreme_min: -0.06
+          extreme_max: 0.15
+          mean_target: 0.04
+
+      log_gdp:
+        targets:
+          normal_min: 8.4
+          normal_max: 9.2
+          extreme_min: 8.2
+          extreme_max: 9.4
+          mean_target: 8.8
+
+      real_wage:
+        targets:
+          normal_min: 4
+          normal_max: 8
+          extreme_min: 3
+          extreme_max: 10
+
+    curves:
+      phillips:
+        targets:
+          correlation_target: -0.19
+          correlation_min: -0.50
+          correlation_max: -0.05
+
+      okun:
+        targets:
+          correlation_target: -0.85
+          correlation_min: -0.98
+          correlation_max: -0.70
+
+      beveridge:
+        targets:
+          correlation_target: -0.27
+          correlation_min: -0.50
+          correlation_max: -0.10
+
+    distributions:
+      firm_size:
+        targets:
+          threshold_small: 150.0
+          threshold_medium: 100.0
+          pct_below_small_target: 0.90
+          pct_below_small_min: 0.85
+          pct_below_small_max: 0.95
+          skewness_target: 3.0
+          skewness_tolerance: 2.0
+          tail_ratio_min: 2.0
+          tail_ratio_max: 10.0
+
+      wealth:
+        targets:
+          gini_min: 0.2
+          gini_max: 0.8
+          skewness_min: 0.5
+          skewness_max: 10.0
+
+
+# ==============================================================================
+# Metric Targets (standardized keys)
+# ==============================================================================
+
+metrics:
+
+  # --------------------------------------------------------------------------
+  # Time Series Metrics
+  # --------------------------------------------------------------------------
+
+  unemployment_rate_mean:
+    target: 0.055
+    tolerance: 0.025
+
+  unemployment_hard_ceiling:
+    threshold: 0.30
+
+  unemployment_std:
+    min: 0.01
+    max: 0.06
+
+  unemployment_pct_in_bounds:
+    target: 0.90
+    min: 0.80
+
+  inflation_rate_mean:
+    target: 0.04
+    tolerance: 0.03
+
+  inflation_hard_ceiling_upper:
+    threshold: 0.25
+
+  inflation_hard_floor:
+    threshold: -0.15
+
+  inflation_non_degenerate:
+    min: -0.01
+    max: 0.10
+
+  inflation_pct_in_bounds:
+    target: 0.85
+    min: 0.70
+
+  log_gdp_mean:
+    target: 8.8
+    tolerance: 0.25
+
+  vacancy_rate_mean:
+    target: 0.12
+    tolerance: 0.04
+
+  vacancy_rate_pct_in_bounds:
+    target: 0.85
+    min: 0.70
+
+  # --------------------------------------------------------------------------
+  # Curve Correlations
+  # --------------------------------------------------------------------------
+
+  phillips_correlation:
+    min: -0.50
+    max: -0.05
+
+  phillips_negative_sign:
+    min: -1.0
+    max: 0.0
+
+  okun_correlation:
+    min: -0.98
+    max: -0.60
+
+  beveridge_correlation:
+    min: -0.50
+    max: -0.10
+
+  beveridge_negative_sign:
+    min: -1.0
+    max: 0.0
+
+  # --------------------------------------------------------------------------
+  # Distribution Metrics (firm size)
+  # --------------------------------------------------------------------------
+
+  firm_size_skewness:
+    target: 3.0
+    tolerance: 2.5
+    min: 0.5
+    max: 12.0
+
+  firm_size_pct_below:
+    min: 0.80
+    max: 0.98
+
+  firm_size_tail_ratio:
+    min: 1.5
+    max: 15.0
+
+  # --------------------------------------------------------------------------
+  # Wealth Distribution Fitting (Figure 3.8)
+  # --------------------------------------------------------------------------
+
+  sm_ccdf_r2:
+    min: 0.80
+    max: 1.0
+
+  dagum_ccdf_r2:
+    min: 0.80
+    max: 1.0
+
+  gb2_ccdf_r2:
+    min: 0.80
+    max: 1.0
+
+  best_r2:
+    min: 0.85
+    max: 1.0
+
+  wealth_gini:
+    min: 0.2
+    max: 0.8
+
+  wealth_skewness:
+    min: 0.5
+    max: 10.0
+
+  # --------------------------------------------------------------------------
+  # Buffer-Stock Specific Metrics
+  # --------------------------------------------------------------------------
+
+  mean_mpc:
+    min: 0.5
+    max: 1.5
+
+  pct_dissaving:
+    min: 0.0
+    max: 0.95
+
+  # --------------------------------------------------------------------------
+  # Financial Dynamics
+  # --------------------------------------------------------------------------
+
+  bankruptcies_mean:
+    target: 2.0
+    tolerance: 2.0
+
+  real_interest_rate_mean:
+    target: 0.05
+    tolerance: 0.03
