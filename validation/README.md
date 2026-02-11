@@ -165,14 +165,15 @@ sim.use_events(*BUFFER_STOCK_EVENTS)
 
 ### Scoring Functions
 
+- `fail_escalation_multiplier(weight)` - Compute weight-based fail escalation multiplier (see below)
 - `score_mean_tolerance(actual, target, tolerance)` - Score based on distance from target (0-1)
 - `score_range(actual, min_val, max_val)` - Score based on range position (0-1)
 - `score_pct_within_target(actual, target, min_pct)` - Score for percentage checks (0-1)
 - `score_outlier_penalty(outlier_pct, max_pct)` - Penalize excess outliers (0-1)
-- `check_mean_tolerance(actual, target, tolerance)` - Status check (PASS/WARN/FAIL) for mean tolerance
-- `check_range(actual, min_val, max_val)` - Status check for range
-- `check_pct_within_target(actual, target, min_pct)` - Status check for percentage within target
-- `check_outlier_penalty(outlier_pct, max_pct)` - Status check for outlier penalty
+- `check_mean_tolerance(actual, target, tolerance, escalation=1.0)` - Status check (PASS/WARN/FAIL) for mean tolerance
+- `check_range(actual, min_val, max_val, escalation=1.0)` - Status check for range
+- `check_pct_within_target(actual, target, min_pct, escalation=1.0)` - Status check for percentage within target
+- `check_outlier_penalty(outlier_pct, max_pct, escalation=1.0)` - Status check for outlier penalty
 - `compute_combined_score(stability)` - Combined score: `mean_score * pass_rate * (1 - std_score)`
 
 ### Engine Functions
@@ -279,3 +280,19 @@ The generic `validate()` engine:
 1. Returns weighted ValidationScore
 
 This design enables easy addition of new metrics (just add MetricSpec + field) and new scenarios (just create new scenario file).
+
+### Weight-Based Fail Escalation
+
+The status check functions use a weight-based escalation multiplier to adjust the WARN→FAIL boundary per metric. High-weight metrics fail more easily; low-weight metrics are more lenient:
+
+| Weight | Multiplier | Effect (MEAN_TOLERANCE, normal FAIL at 2× tol) |
+| ------ | ---------- | ---------------------------------------------- |
+| 3.0    | 0.5        | FAIL at 1× tolerance (stricter)                |
+| 2.0    | 1.0        | FAIL at 2× tolerance (normal)                  |
+| 1.5    | 2.0        | FAIL at 4× tolerance                           |
+| 1.0    | 3.0        | FAIL at 6× tolerance                           |
+| 0.5    | 4.0        | FAIL at 8× tolerance (lenient)                 |
+
+Formula: `clamp(5 - 2 × weight, 0.5, 5.0)`. BOOLEAN checks are exempt (always natural PASS/FAIL).
+
+`evaluate_metric()` computes the multiplier from `MetricSpec.weight` and passes it to each check function via the `escalation` parameter. Scores are unaffected — only the status threshold changes.

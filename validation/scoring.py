@@ -11,6 +11,47 @@ import math
 from validation.types import StabilityResult, Status
 
 # =============================================================================
+# Fail Escalation Constants
+# =============================================================================
+
+# Weight-based escalation: clamp(INTERCEPT - SLOPE * weight, FLOOR, CEILING)
+# Higher weight → lower multiplier (stricter, fails more easily)
+# Lower weight  → higher multiplier (more lenient, harder to fail)
+_FAIL_INTERCEPT = 5.0
+_FAIL_SLOPE = 2.0
+_FAIL_FLOOR = 0.5  # Strictest: high-weight metrics fail faster than normal
+_FAIL_CEILING = 5.0  # Most lenient: low-weight metrics need extreme deviation
+
+
+def fail_escalation_multiplier(weight: float) -> float:
+    """Compute the fail-escalation multiplier from a metric's weight.
+
+    The multiplier scales the WARN→FAIL boundary in status check functions.
+    A multiplier < 1 shrinks the WARN zone (stricter), > 1 widens it (more
+    lenient).
+
+    Mapping (with default constants):
+        weight 3.0 → 0.5  (FAIL at 0.5× normal threshold)
+        weight 2.0 → 1.0  (normal behaviour)
+        weight 1.5 → 2.0  (FAIL at 2× normal threshold)
+        weight 1.0 → 3.0  (FAIL at 3× normal threshold)
+        weight 0.5 → 4.0  (FAIL at 4× normal threshold)
+
+    Parameters
+    ----------
+    weight : float
+        Metric weight (typically 0.5–3.0).
+
+    Returns
+    -------
+    float
+        Escalation multiplier, clamped to [_FAIL_FLOOR, _FAIL_CEILING].
+    """
+    raw = _FAIL_INTERCEPT - _FAIL_SLOPE * weight
+    return max(_FAIL_FLOOR, min(_FAIL_CEILING, raw))
+
+
+# =============================================================================
 # Scoring Functions
 # =============================================================================
 
@@ -94,18 +135,19 @@ def check_mean_tolerance(
     target: float,
     tolerance: float,
     warn_multiplier: float = 2.0,
+    escalation: float = 1.0,
 ) -> Status:
     """Check if actual value is within tolerance of target.
 
     Returns:
         PASS if within tolerance
-        WARN if within warn_multiplier * tolerance
+        WARN if within warn_multiplier * escalation * tolerance
         FAIL otherwise
     """
     diff = abs(actual - target)
     if diff <= tolerance:
         return "PASS"
-    elif diff <= tolerance * warn_multiplier:
+    elif diff <= tolerance * warn_multiplier * escalation:
         return "WARN"
     return "FAIL"
 
@@ -115,56 +157,68 @@ def check_range(
     min_val: float,
     max_val: float,
     warn_buffer: float = 0.5,
+    escalation: float = 1.0,
 ) -> Status:
     """Check if actual value is within range.
 
     Returns:
         PASS if within [min_val, max_val]
-        WARN if within extended range (buffer applied)
+        WARN if within extended range (buffer * escalation applied)
         FAIL otherwise
     """
     range_size = max_val - min_val
+    effective_buffer = warn_buffer * escalation
     if min_val <= actual <= max_val:
         return "PASS"
     elif (
-        (min_val - warn_buffer * range_size)
+        (min_val - effective_buffer * range_size)
         <= actual
-        <= (max_val + warn_buffer * range_size)
+        <= (max_val + effective_buffer * range_size)
     ):
         return "WARN"
     return "FAIL"
 
 
 def check_pct_within_target(
-    actual_pct: float, target_pct: float, min_pct: float
+    actual_pct: float,
+    target_pct: float,
+    min_pct: float,
+    escalation: float = 1.0,
 ) -> Status:
     """Check if percentage within target meets threshold.
 
+    With escalation, the WARN zone extends below ``min_pct`` proportionally
+    to the original WARN-zone width ``(target_pct - min_pct)``.
+
     Returns:
-        PASS if actual >= target
-        WARN if actual >= min
+        PASS if actual >= target_pct
+        WARN if actual >= effective_min
         FAIL otherwise
     """
+    effective_min = max(0.0, min_pct - (target_pct - min_pct) * (escalation - 1.0))
     if actual_pct >= target_pct:
         return "PASS"
-    elif actual_pct >= min_pct:
+    elif actual_pct >= effective_min:
         return "WARN"
     return "FAIL"
 
 
 def check_outlier_penalty(
-    outlier_pct: float, max_outlier_pct: float, severe_multiplier: float = 2.0
+    outlier_pct: float,
+    max_outlier_pct: float,
+    severe_multiplier: float = 2.0,
+    escalation: float = 1.0,
 ) -> Status:
     """Check if outlier percentage is within acceptable limits.
 
     Returns:
         PASS if outlier_pct <= max_outlier_pct
-        WARN if outlier_pct <= max_outlier_pct * severe_multiplier
+        WARN if outlier_pct <= max_outlier_pct * severe_multiplier * escalation
         FAIL otherwise
     """
     if outlier_pct <= max_outlier_pct:
         return "PASS"
-    elif outlier_pct <= max_outlier_pct * severe_multiplier:
+    elif outlier_pct <= max_outlier_pct * severe_multiplier * escalation:
         return "WARN"
     return "FAIL"
 
