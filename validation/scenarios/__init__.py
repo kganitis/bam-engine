@@ -6,7 +6,7 @@ results from Delli Gatti et al. (2011).
 Scenarios:
     baseline/: Section 3.9.1 - Standard BAM model behavior
     growth_plus/: Section 3.9.2 - Endogenous productivity growth via R&D
-    buffer_stock/: Section 3.9.3 - Buffer-stock consumption extension
+    buffer_stock/: Section 3.9.4 - Buffer-stock consumption extension
 
 Usage:
     # Run scenario with visualization

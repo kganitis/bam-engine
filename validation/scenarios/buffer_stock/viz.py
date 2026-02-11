@@ -1,7 +1,7 @@
 """Buffer-stock consumption scenario visualization.
 
 This module provides visualization for the buffer-stock scenario from
-Section 3.9.3 of Delli Gatti et al. (2011). The key visualization is
+Section 3.9.4 of Delli Gatti et al. (2011). The key visualization is
 a complementary CDF (CCDF) of household wealth on log-log axes,
 replicating Figure 3.8 from the book.
 
@@ -101,7 +101,7 @@ def visualize_buffer_stock_results(
 
     fig, axes = plt.subplots(4, 2, figsize=(14, 20))
     fig.suptitle(
-        "Buffer-Stock Consumption Results (Section 3.9.3)",
+        "Buffer-Stock Consumption Results (Section 3.9.4)",
         fontsize=16,
         y=0.995,
     )

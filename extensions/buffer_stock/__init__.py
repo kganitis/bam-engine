@@ -1,6 +1,6 @@
-"""Buffer-stock consumption extension (Section 3.9.3).
+"""Buffer-stock consumption extension (Section 3.9.4).
 
-This extension implements Section 3.9.3 of Delli Gatti et al. (2011),
+This extension implements Section 3.9.4 of Delli Gatti et al. (2011),
 replacing the baseline mean-field MPC with an individual adaptive rule
 based on buffer-stock saving theory.
 

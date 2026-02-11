@@ -38,7 +38,7 @@ python -m validation.scenarios.baseline
 # Growth+ scenario (Section 3.9.2)
 python -m validation.scenarios.growth_plus
 
-# Buffer-stock scenario (Section 3.9.3)
+# Buffer-stock scenario (Section 3.9.4)
 python -m validation.scenarios.buffer_stock
 ```
 
@@ -81,7 +81,7 @@ Endogenous productivity growth via R&D investment — 65 metrics across 6 catego
 
 Notable additions over baseline: GDP cyclicality correlations (Minsky hypothesis validation), coefficient of variation for financial variables, and Laplace distribution fit (tent-shape R²) for growth rate distributions.
 
-### Buffer-Stock (Section 3.9.3)
+### Buffer-Stock (Section 3.9.4)
 
 Buffer-stock consumption extension replacing the baseline mean-field MPC with an individual adaptive rule — ~30 metrics across 4 categories:
 

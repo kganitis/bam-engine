@@ -1,6 +1,6 @@
 """Shared scenario configuration constants.
 
-Both the Growth+ (Section 3.9.2) and Buffer-stock (Section 3.9.3) scenarios
+Both the Growth+ (Section 3.9.2) and Buffer-stock (Section 3.9.4) scenarios
 use a smaller economy with adjusted new-firm-entry parameters. This module
 extracts those shared calibration overrides into a single constant to
 prevent silent drift between scenarios.
