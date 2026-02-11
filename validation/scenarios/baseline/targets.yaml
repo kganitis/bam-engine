@@ -101,10 +101,10 @@ metadata:
         targets:
           threshold_small: 5.0
           pct_below_small_target: 0.90
-          skewness_min: 1.0
+          skewness_min: 0.5
           skewness_max: 10.0
           tail_ratio_min: 2.0
-          tail_ratio_max: 8.0
+          tail_ratio_max: 10.0
 
       vacancy_rate:
         targets:

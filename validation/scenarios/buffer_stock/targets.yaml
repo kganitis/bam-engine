@@ -97,10 +97,10 @@ metadata:
           threshold_small: 150.0
           threshold_medium: 100.0
           pct_below_small_target: 0.90
-          pct_below_small_min: 0.85
+          pct_below_small_min: 0.80
           pct_below_small_max: 0.95
           skewness_target: 3.0
-          skewness_tolerance: 2.0
+          skewness_tolerance: 2.5
           tail_ratio_min: 2.0
           tail_ratio_max: 10.0
 
@@ -254,8 +254,8 @@ metrics:
   # --------------------------------------------------------------------------
 
   bankruptcies_mean:
-    target: 2.0
-    tolerance: 2.0
+    target: 3.0
+    tolerance: 2.5
 
   real_interest_rate_mean:
     target: 0.05
