@@ -2,7 +2,7 @@
 # BAM Buffer-Stock Scenario Validation Targets
 # ==============================================================================
 #
-# Target metrics derived from Delli Gatti et al. (2011), Section 3.9.3
+# Target metrics derived from Delli Gatti et al. (2011), Section 3.9.4
 # "Macroeconomics from the Bottom-up" Buffer-stock consumption extension.
 #
 # The buffer-stock extension replaces the baseline mean-field MPC with an
@@ -21,7 +21,7 @@
 # ==============================================================================
 
 metadata:
-  source: "Delli Gatti et al. (2011), Section 3.9.3"
+  source: "Delli Gatti et al. (2011), Section 3.9.4"
   description: "Buffer-stock consumption scenario - Individual Adaptive MPC"
 
   validation:

@@ -3,7 +3,7 @@
 This module defines the BufferStock role that tracks previous-period income
 and buffer-stock propensity for each household.
 
-See Section 3.9.3 of Delli Gatti et al. (2011).
+See Section 3.9.4 of Delli Gatti et al. (2011).
 """
 
 from __future__ import annotations

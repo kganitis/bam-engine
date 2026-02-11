@@ -7,7 +7,7 @@ Subpackages:
     scenarios/: Scenario definitions and visualizations
         - baseline/: Baseline scenario (Section 3.9.1)
         - growth_plus/: Growth+ scenario (Section 3.9.2)
-        - buffer_stock/: Buffer-stock scenario (Section 3.9.3)
+        - buffer_stock/: Buffer-stock scenario (Section 3.9.4)
 
 Modules:
     types: Core types, dataclasses, and enums

@@ -2,7 +2,7 @@
 
 This module validates that the BAM Engine simulation with the buffer-stock
 extension reproduces the qualitative behavior documented in
-Delli Gatti et al. (2011), Section 3.9.3.
+Delli Gatti et al. (2011), Section 3.9.4.
 
 The buffer-stock scenario replaces the baseline mean-field MPC with an
 individual adaptive rule. Key validation targets:
@@ -44,7 +44,7 @@ def test_buffer_stock_scenario_validation() -> None:
 
     This test runs a full 1000-period simulation with the buffer-stock
     extension and compares the results against targets derived from
-    Delli Gatti et al. (2011), Section 3.9.3.
+    Delli Gatti et al. (2011), Section 3.9.4.
 
     The test FAILS if any metric has FAIL status.
     WARN status is acceptable (indicates calibration work needed).

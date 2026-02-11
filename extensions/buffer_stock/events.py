@@ -1,7 +1,7 @@
 """Buffer-stock consumption events.
 
 This module provides two replacement events for the buffer-stock consumption
-extension (Section 3.9.3 of Delli Gatti et al., 2011).
+extension (Section 3.9.4 of Delli Gatti et al., 2011).
 
 The extension replaces the baseline mean-field MPC with an individual adaptive
 rule based on buffer-stock saving theory. Each household maintains a personal

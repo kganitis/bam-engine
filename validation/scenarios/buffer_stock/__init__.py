@@ -1,4 +1,4 @@
-"""Buffer-stock consumption scenario definition (Section 3.9.3).
+"""Buffer-stock consumption scenario definition (Section 3.9.4).
 
 This module defines the buffer-stock validation scenario from Delli Gatti et al.
 (2011). It contains the metrics dataclass, computation function, and scenario

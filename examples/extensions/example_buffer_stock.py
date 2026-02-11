@@ -3,7 +3,7 @@
 Buffer-Stock Consumption Extension
 =========================================
 
-This example implements the buffer-stock consumption extension from Section 3.9.3
+This example implements the buffer-stock consumption extension from Section 3.9.4
 of Macroeconomics from the Bottom-up, replacing the baseline mean-field MPC with
 an individual adaptive rule based on buffer-stock saving theory.
 
