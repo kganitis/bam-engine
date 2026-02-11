@@ -2,7 +2,7 @@ name: Growth+ Stability
 
 on:
   push:
-    branches: [calibration]
+    branches: [main]
   pull_request:
     branches: [main]
 
