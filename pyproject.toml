@@ -83,6 +83,7 @@ docs = [
     "pydata-sphinx-theme>=0.15.0",
     "matplotlib>=3.8",
     "numpydoc>=1.6",
+    "scipy>=1.11",
 ]
 
 # Dependency Groups (PEP 735) - for modern tools like uv
@@ -112,6 +113,7 @@ docs = [
     "matplotlib>=3.8",
     "numpydoc>=1.6",
     "pandas>=2.0",
+    "scipy>=1.11",
 ]
 
 [project.urls]
