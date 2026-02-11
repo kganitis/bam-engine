@@ -177,6 +177,13 @@ from Delli Gatti et al. (2011).
 * ``run_stability_test()`` / ``run_growth_plus_stability_test()`` - Multi-seed testing
 * ``print_validation_report()`` / ``print_growth_plus_report()`` - Formatted output
 
+**Weight-based fail escalation:**
+
+Status checks use a weight-derived escalation multiplier to adjust the WARN→FAIL
+boundary. High-weight metrics (e.g., 3.0) fail more strictly, while low-weight
+metrics (e.g., 0.5) require extreme deviations to FAIL. BOOLEAN checks are exempt.
+See ``validation/README.md`` for the full mapping table.
+
 See ``validation/README.md`` for the full API reference.
 
 Calibration Package

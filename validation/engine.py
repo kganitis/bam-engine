@@ -19,6 +19,7 @@ from validation.scoring import (
     check_outlier_penalty,
     check_pct_within_target,
     check_range,
+    fail_escalation_multiplier,
     score_mean_tolerance,
     score_outlier_penalty,
     score_pct_within_target,
@@ -110,10 +111,13 @@ def evaluate_metric(
     # Get target values from YAML
     target_section = _get_nested_value(targets, spec.target_path)
 
+    # Weight-based fail escalation (BOOLEAN checks are exempt)
+    escalation = fail_escalation_multiplier(spec.weight)
+
     if spec.check_type == CheckType.MEAN_TOLERANCE:
         target = target_section["target"]
         tolerance = target_section["tolerance"]
-        status = check_mean_tolerance(actual, target, tolerance)
+        status = check_mean_tolerance(actual, target, tolerance, escalation=escalation)
         score = score_mean_tolerance(actual, target, tolerance)
         min_val = target_section.get("min")
         max_val = target_section.get("max")
@@ -132,7 +136,7 @@ def evaluate_metric(
     elif spec.check_type == CheckType.RANGE:
         min_val = target_section["min"]
         max_val = target_section["max"]
-        status = check_range(actual, min_val, max_val)
+        status = check_range(actual, min_val, max_val, escalation=escalation)
         score = score_range(actual, min_val, max_val)
         if spec.target_desc is not None:
             target_desc = spec.target_desc
@@ -142,7 +146,9 @@ def evaluate_metric(
     elif spec.check_type == CheckType.PCT_WITHIN:
         target_pct = target_section["target"]
         min_pct = target_section["min"]
-        status = check_pct_within_target(actual, target_pct, min_pct)
+        status = check_pct_within_target(
+            actual, target_pct, min_pct, escalation=escalation
+        )
         score = score_pct_within_target(actual, target_pct, min_pct)
         if spec.target_desc is not None:
             target_desc = spec.target_desc
@@ -152,7 +158,7 @@ def evaluate_metric(
     elif spec.check_type == CheckType.OUTLIER:
         max_outlier = target_section["max_outlier"]
         penalty_weight = target_section.get("penalty_weight", 2.0)
-        status = check_outlier_penalty(actual, max_outlier)
+        status = check_outlier_penalty(actual, max_outlier, escalation=escalation)
         score = score_outlier_penalty(actual, max_outlier, penalty_weight)
         if spec.target_desc is not None:
             target_desc = spec.target_desc
