@@ -67,7 +67,7 @@ class TestRunWithCollect:
         sim = Simulation.init(n_firms=10, n_households=50, seed=42)
         results = sim.run(n_periods=n_periods, collect=True)
 
-        # With aggregate='mean' (default), role data should be 1D arrays
+        # With collect=True (aggregate='mean'), role data should be 1D arrays
         for role_name, role_vars in results.role_data.items():
             for var_name, data in role_vars.items():
                 assert data.shape == (n_periods,), (
@@ -102,6 +102,7 @@ class TestRunWithCollect:
             n_periods=5,
             collect={
                 "Producer": ["price", "inventory"],
+                "aggregate": "mean",
             },
         )
 
@@ -120,7 +121,6 @@ class TestRunWithCollect:
             n_periods=n_periods,
             collect={
                 "Producer": ["price"],
-                "aggregate": None,
             },
         )
 
@@ -147,7 +147,7 @@ class TestRunWithCollect:
         sim = Simulation.init(n_firms=10, n_households=50, seed=42)
         results = sim.run(
             n_periods=5,
-            collect={"Producer": True},  # No Economy key = no economy data
+            collect={"Producer": True, "aggregate": "mean"},
         )
 
         assert results.economy_data == {}
@@ -161,6 +161,7 @@ class TestRunWithCollect:
                 "Producer": ["price", "inventory"],  # Specific variables
                 "Worker": True,  # All Worker variables
                 "Economy": True,  # All economy metrics
+                "aggregate": "mean",
             },
         )
 
@@ -184,6 +185,7 @@ class TestRunWithCollect:
             n_periods=5,
             collect={
                 "Economy": ["avg_price"],  # Only this metric
+                "aggregate": "mean",
             },
         )
 
@@ -297,7 +299,6 @@ class TestCaptureTiming:
             n_periods=n_periods,
             collect={
                 "Producer": ["production"],
-                "aggregate": None,
                 "capture_after": "firms_run_production",
             },
         )
@@ -315,7 +316,6 @@ class TestCaptureTiming:
             collect={
                 "Producer": ["production"],
                 "Worker": ["employed"],
-                "aggregate": None,
                 "capture_after": "firms_update_net_worth",
                 "capture_timing": {
                     "Producer.production": "firms_run_production",
@@ -338,6 +338,7 @@ class TestCaptureTiming:
             n_periods=n_periods,
             collect={
                 "Economy": True,
+                "aggregate": "mean",
                 "capture_after": "firms_run_production",
             },
         )
@@ -371,6 +372,7 @@ class TestCaptureTiming:
             n_periods=3,
             collect={
                 "Producer": ["production"],
+                "aggregate": "mean",
                 "capture_after": "firms_run_production",
             },
         )
@@ -383,6 +385,7 @@ class TestCaptureTiming:
             n_periods=3,
             collect={
                 "Producer": ["production"],
+                "aggregate": "mean",
             },
         )
         assert "Producer" in results.role_data
@@ -455,7 +458,6 @@ class TestRunWithRelationshipCollect:
             n_periods=3,
             collect={
                 "LoanBook": ["principal"],
-                "aggregate": None,
             },
         )
 

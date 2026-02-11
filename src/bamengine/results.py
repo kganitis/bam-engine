@@ -67,7 +67,7 @@ class _DataCollector:
         Values are either:
         - list[str]: specific variables to capture
         - True: capture all variables for that role/component
-    aggregate : str or None, default='mean'
+    aggregate : str or None, default=None
         Aggregation method ('mean', 'median', 'sum', 'std') or None for full data.
     capture_after : str or None, default=None
         Default event name after which to capture data. If None, captures
@@ -109,7 +109,7 @@ class _DataCollector:
     def __init__(
         self,
         variables: dict[str, list[str] | Literal[True]],
-        aggregate: str | None = "mean",
+        aggregate: str | None = None,
         capture_after: str | None = None,
         capture_timing: dict[str, str] | None = None,
     ) -> None:

@@ -1013,13 +1013,16 @@ class Simulation:
             Whether to collect and return simulation results.
 
             - False: No collection, returns None (default)
-            - True: Collect all roles and economy with all variables (aggregated)
+            - True: Collect all roles and economy with all variables (aggregated
+              with mean)
             - list[str]: Collect specified roles/economy with all their variables
+              (aggregated with mean).
               Example: ``["Producer", "Worker", "Economy"]``
             - dict: Specify variables per role/economy:
                 - Keys: role names ('Producer', 'Worker', etc.) or 'Economy'
                 - Values: ``True`` for all variables, or list of variable names
-                - Optional 'aggregate' key: 'mean', 'median', 'sum', 'std', or None
+                - Optional 'aggregate' key: 'mean', 'median', 'sum', 'std', or
+                  None (default: None — full per-agent data)
         progress : bool, default=False
             If True, log period progress egardless of log level.
 
@@ -1058,7 +1061,7 @@ class Simulation:
         ...     collect=["Producer", "Worker", "Economy"],
         ... )
 
-        Custom data collection with specific variables:
+        Custom data collection with specific variables (full per-agent data):
 
         >>> results = sim.run(
         ...     n_periods=100,
@@ -1066,7 +1069,6 @@ class Simulation:
         ...         "Producer": ["price", "inventory"],  # Specific variables
         ...         "Worker": True,  # All Worker variables
         ...         "Economy": True,  # All economy metrics
-        ...         "aggregate": None,  # Full per-agent data
         ...     },
         ... )
 
@@ -1231,7 +1233,7 @@ class Simulation:
 
         # Dict form: parse variables and extract options
         assert isinstance(collect, dict)
-        aggregate = collect.get("aggregate", "mean")
+        aggregate = collect.get("aggregate")
         capture_after = collect.get("capture_after", default_capture_after)
         capture_timing = collect.get("capture_timing")
 

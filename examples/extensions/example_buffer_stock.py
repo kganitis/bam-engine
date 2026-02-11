@@ -189,7 +189,7 @@ attach_extensions(sim)
 print(f"Buffer-stock simulation: {sim.n_firms} firms, {sim.n_households} households")
 print(f"  buffer_stock_h = {sim.buffer_stock_h}")
 
-results = sim.run(collect={"Consumer": ["savings"], "aggregate": None})
+results = sim.run(collect={"Consumer": ["savings"]})
 print(f"Completed: {results.metadata['runtime_seconds']:.2f}s")
 
 # %%

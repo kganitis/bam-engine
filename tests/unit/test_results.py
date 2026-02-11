@@ -132,7 +132,7 @@ class TestSimulationResults:
         results = SimulationResults(
             role_data={"Producer": {"price": data}},
         )
-        df = results.to_dataframe(aggregate=None, include_economy=False)
+        df = results.to_dataframe(include_economy=False)
         # Should have columns for each agent
         assert "Producer.price.0" in df.columns
         assert "Producer.price.1" in df.columns
@@ -270,7 +270,6 @@ class TestDataCollector:
         """Test collector initialization with specific variables."""
         collector = _DataCollector(
             variables={"Producer": ["price", "inventory"], "Economy": ["avg_price"]},
-            aggregate=None,
         )
         assert collector.variables == {
             "Producer": ["price", "inventory"],
@@ -308,7 +307,6 @@ class TestDataCollector:
         """Test finalize with full (non-aggregated) data."""
         collector = _DataCollector(
             variables={"Producer": True},
-            aggregate=None,
         )
         # Manually add array data (simulating captures without aggregation)
         collector.role_data["Producer"]["price"] = [
@@ -1002,7 +1000,6 @@ class TestRelationshipDataCollector:
 
         collector = _DataCollector(
             variables={"LoanBook": ["principal"]},
-            aggregate=None,
         )
         collector._capture_relationship_single(sim, "LoanBook", "principal")
 
@@ -1260,7 +1257,6 @@ class TestRelationshipFinalize:
         """Test finalize keeps non-aggregated relationship data as list."""
         collector = _DataCollector(
             variables={"LoanBook": ["principal"]},
-            aggregate=None,
         )
         # Simulate variable-length captured data
         collector.relationship_data["LoanBook"]["principal"] = [
