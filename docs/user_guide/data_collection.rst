@@ -12,7 +12,7 @@ Quick Example
 
    import bamengine as bam
 
-   # Run simulation and collect all data (default: aggregated means)
+   # Run simulation and collect all data (collect=True aggregates with mean)
    sim = bam.Simulation.init(seed=42)
    results = sim.run(n_periods=100, collect=True)
 
@@ -32,7 +32,7 @@ The ``collect`` parameter accepts three forms:
 
 .. code-block:: python
 
-   # Collect all roles and economy with aggregated means
+   # Collect all roles and economy (aggregated with mean)
    results = sim.run(n_periods=100, collect=True)
 
 **List** (select roles):
@@ -49,14 +49,14 @@ The ``collect`` parameter accepts three forms:
 
 .. code-block:: python
 
-   # Specify exactly what to collect
+   # Specify exactly what to collect (full per-agent data by default)
    results = sim.run(
        n_periods=100,
        collect={
            "Producer": ["price", "inventory"],  # Specific variables
            "Worker": True,  # All Worker variables
            "Economy": True,  # All economy metrics
-           "aggregate": "mean",  # Aggregation method
+           "aggregate": "mean",  # Explicit aggregation (default: None)
        },
    )
 
@@ -70,13 +70,14 @@ In dict form, the following keys are recognized:
 * **"Economy"**: Treated as a pseudo-role for economy metrics.
   Available metrics: ``avg_price``, ``unemployment_rate``, ``inflation``.
 * **"aggregate"**: How to aggregate across agents. Options:
-  ``"mean"`` (default), ``"median"``, ``"sum"``, ``"std"``, or ``None``
-  for full per-agent data.
+  ``None`` (default — full per-agent data), ``"mean"``, ``"median"``,
+  ``"sum"``, or ``"std"``. Note: ``collect=True`` and list-form
+  ``collect`` always aggregate with ``"mean"``.
 
 Full Per-Agent Data
 -------------------
 
-Set ``aggregate=None`` to collect full arrays instead of aggregated values:
+Dict-form ``collect`` returns full per-agent arrays by default:
 
 .. code-block:: python
 
@@ -84,7 +85,6 @@ Set ``aggregate=None`` to collect full arrays instead of aggregated values:
        n_periods=100,
        collect={
            "Producer": ["price"],
-           "aggregate": None,  # Full per-agent data
        },
    )
 
@@ -134,7 +134,6 @@ arrays:
        n_periods=50,
        collect={
            "LoanBook": ["principal"],
-           "aggregate": None,
        },
    )
 

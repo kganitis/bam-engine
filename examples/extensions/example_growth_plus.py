@@ -173,7 +173,6 @@ COLLECT_CONFIG = {
     "Consumer": ["income_to_spend"],
     "LoanBook": ["principal", "rate", "source_ids"],
     "Economy": True,
-    "aggregate": None,
     "capture_timing": {
         "Worker.wage": "firms_run_production",
         "Worker.employed": "firms_run_production",

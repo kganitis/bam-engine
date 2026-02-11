@@ -49,7 +49,6 @@ COLLECT_CONFIG = {
     "Worker": ["wage", "employed"],
     "Employer": ["n_vacancies"],
     "Economy": True,
-    "aggregate": None,  # Collect per-agent data (2D arrays)
     "capture_timing": {
         "Worker.wage": "workers_receive_wage",
         "Worker.employed": "firms_run_production",

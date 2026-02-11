@@ -502,7 +502,6 @@ COLLECT_CONFIG = {
     "Shareholder": ["dividends"],
     "LoanBook": ["principal", "rate"],
     "Economy": True,
-    "aggregate": None,
     "capture_timing": {
         "Worker.wage": "firms_run_production",
         "Worker.employed": "firms_run_production",

@@ -41,7 +41,6 @@ results = sim.run(
         "Lender": True,
         "Consumer": True,
         "Economy": True,
-        "aggregate": None,  # Full per-agent data for Worker
         # Capture timing: when to snapshot each variable during the period
         # Worker.employed should be captured after production runs (steady state)
         "capture_timing": {
@@ -106,7 +105,7 @@ if len(avg_price) > 0:
 # -------------------
 #
 # Role data contains per-period snapshots of agent states.
-# When ``aggregate=None``, data is full per-agent arrays (periods x agents).
+# With dict-form collect, data is full per-agent arrays (periods x agents) by default.
 
 print("Available roles:", list(results.role_data.keys()))
 
@@ -115,7 +114,7 @@ if "Producer" in results.role_data:
     producer_data = results.role_data["Producer"]
     print(f"\nProducer variables: {list(producer_data.keys())}")
 
-    # Get price data - shape is (periods, firms) with aggregate=None
+    # Get price data - shape is (periods, firms) with full per-agent data
     if "price" in producer_data:
         price_data = producer_data["price"]
         print(f"  Price data shape: {price_data.shape}")
@@ -151,7 +150,6 @@ full_data_results = full_data_sim.run(
     n_periods=20,
     collect={
         "Producer": ["price"],  # Specific variables for Producer
-        "aggregate": None,  # Full per-agent data
     },
 )
 
@@ -261,14 +259,13 @@ print(f"  Roles collected: {list(custom_results.role_data.keys())}")
 # Full Agent-Level Data
 # ---------------------
 #
-# Set ``aggregate=None`` to get per-agent data (larger arrays).
+# Dict-form ``collect`` returns full per-agent data by default (larger arrays).
 
 # Warning: This collects full arrays - can be memory intensive!
 full_results = bam.Simulation.init(n_firms=50, n_households=250, seed=42).run(
     n_periods=20,
     collect={
         "Producer": ["price", "production"],  # Specific variables only
-        "aggregate": None,  # Full per-agent data
     },
 )
 
@@ -355,7 +352,6 @@ for i in range(n_runs):
         n_periods=50,
         collect={
             "Worker": ["employed"],
-            "aggregate": None,
             "capture_timing": {"Worker.employed": "firms_run_production"},
         },
     )
@@ -437,8 +433,9 @@ if "LoanBook" in rel_results.relationship_data:
 # Analyzing Loan Distribution
 # ---------------------------
 #
-# With ``aggregate=None``, you get full edge data per period as variable-length arrays.
-# This is useful for analyzing loan distributions but cannot be exported to DataFrame.
+# Without aggregation (the default for dict-form collect), you get full edge data per
+# period as variable-length arrays. Useful for analyzing distributions but cannot be
+# exported to DataFrame.
 
 loan_dist_sim = bam.Simulation.init(n_firms=50, n_households=250, seed=42)
 loans = loan_dist_sim.get_relationship("LoanBook")
@@ -453,14 +450,13 @@ loans.append_loans_for_lender(
 dist_results = loan_dist_sim.run(
     n_periods=5,
     collect={
-        "LoanBook": ["principal"],
-        "aggregate": None,  # Full edge data (variable-length per period)
+        "LoanBook": ["principal"],  # Full edge data (variable-length per period)
     },
 )
 
 if "LoanBook" in dist_results.relationship_data:
     principal_per_period = dist_results.relationship_data["LoanBook"]["principal"]
-    print("\nLoan distribution (aggregate=None):")
+    print("\nLoan distribution (full per-edge data):")
     print(f"  Type: {type(principal_per_period).__name__}")
     print(f"  Number of periods: {len(principal_per_period)}")
     if principal_per_period:
@@ -480,7 +476,7 @@ if "LoanBook" in dist_results.relationship_data:
 #
 # **Per-agent data and capture timing:**
 #
-# - Use ``aggregate=None`` to get full per-agent data (shape: periods × agents)
+# - Dict-form ``collect`` returns full per-agent data by default (shape: periods × agents)
 # - Use ``capture_timing`` to control when variables are captured during each period
 # - Example: ``"capture_timing": {"Worker.employed": "firms_run_production"}``
 #
@@ -495,7 +491,7 @@ if "LoanBook" in dist_results.relationship_data:
 # - Relationships (like ``LoanBook``) are opt-in: use ``"LoanBook": ["principal"]``
 # - NOT included with ``collect=True`` (must specify explicitly)
 # - Aggregations: ``sum`` (total), ``mean`` (average), ``std`` (variation)
-# - With ``aggregate=None``: list of variable-length arrays (can't export to DataFrame)
+# - Without aggregation (default): list of variable-length arrays (can't export to DataFrame)
 # - Access via ``results.relationship_data["LoanBook"]["principal"]``
 # - Or via ``results.get_array("LoanBook", "principal")``
 #

@@ -103,7 +103,6 @@ baseline_results = sim_baseline.run(
     n_periods=100,
     collect={
         "Worker": ["employed"],
-        "aggregate": None,
         "capture_timing": {"Worker.employed": "firms_run_production"},
     },
 )
@@ -120,7 +119,6 @@ lowfric_results = sim_low_friction_run.run(
     n_periods=100,
     collect={
         "Worker": ["employed"],
-        "aggregate": None,
         "capture_timing": {"Worker.employed": "firms_run_production"},
     },
 )
