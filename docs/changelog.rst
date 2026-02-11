@@ -10,6 +10,67 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 
    Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.
 
+[0.3.0] - 2026-02-11
+--------------------
+
+This release adds the buffer-stock consumption extension (Section 3.9.4 of
+Delli Gatti et al., 2011), completing all three BAM scenarios from the book,
+and introduces a composable extension API (``use_events``, ``use_config``,
+``use_role`` with ``n_agents``) that replaces the global hook registry.
+
+Added
+~~~~~
+
+**Consumption & Buffer-stock Extension**
+
+* Consumption & buffer-stock extension (Chapter 3.9.4 of Delli Gatti et al., 2011):
+
+  * ``extensions/buffer_stock/`` package with ``BufferStock`` role and replacement events
+  * Individual adaptive MPC based on buffer-stock saving theory (Eq. 3.20)
+  * Validation scenario with ~30 metrics: wealth CCDF fitting (Singh-Maddala, Dagum, GB2),
+    Gini coefficient, MPC distribution, baseline macro dynamics
+  * 8-panel visualization with CCDF plot (Figure 3.8 replica)
+  * Example: ``examples/extensions/example_buffer_stock.py``
+
+* ``Shareholder`` role — built-in household role tracking per-period dividends, used to
+  adjust buffer-stock MPC metrics for the dividend artifact
+
+**Composable Extension API**
+
+* ``Simulation.use_config(config)`` — apply extension default configuration with "don't overwrite"
+  semantics (user kwargs and earlier ``use_config()`` calls take precedence)
+* ``Simulation.use_events(*event_classes)`` — explicitly apply pipeline hooks from event classes
+* ``Simulation.use_role(cls, n_agents=N)`` — ``n_agents`` parameter for non-firm roles
+* ``Pipeline.apply_hooks(*event_classes)`` — read hook metadata from classes and apply to pipeline
+
+Changed
+~~~~~~~
+
+**Breaking**
+
+* ``@event(after=..., before=..., replace=...)`` now stores hook metadata as class attributes
+  instead of writing to a global dict. Hooks are applied explicitly via ``sim.use_events()``.
+  Removed ``_EVENT_HOOKS`` global dict, ``register_event_hook()``, ``get_event_hooks()``,
+  and the ``apply_hooks`` parameter from ``Pipeline.from_yaml()`` /
+  ``Pipeline.from_event_list()``.
+* Default ``aggregate`` for dict-form ``collect`` changed from ``"mean"`` to ``None``.
+  Callers using ``collect={...}`` without an ``"aggregate"`` key now get full per-agent
+  data. Add ``"aggregate": "mean"`` explicitly for the previous behavior.
+  ``collect=True`` and list-form ``collect`` are unchanged (still aggregate with mean).
+
+**Scenario Validation**
+
+* Weight-based fail escalation for validation status checks — high-weight metrics
+  fail more easily, low-weight metrics are more lenient. New ``escalation``
+  parameter on status check functions. This also resolves the growth+ seed stability
+  test failures in v0.2.2 by widening the WARN zone for lower-weight metrics.
+* Validation scenarios restructured into self-contained directory packages
+  (``validation/scenarios/{baseline,growth_plus,buffer_stock}/``), each
+  co-locating code, visualization, targets, and output.
+  ``Scenario.targets_file`` renamed to ``Scenario.targets_path: Path``;
+  new ``SCENARIO_REGISTRY`` dict and ``get_scenario()`` lookup function.
+* Widened some validation targets to reduce false negatives from seed sensitivity
+
 [0.2.2] - 2026-02-09
 --------------------
 
