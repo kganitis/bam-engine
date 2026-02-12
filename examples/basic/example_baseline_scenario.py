@@ -180,13 +180,14 @@ ax.set_xlabel("t")
 ax.set_ylim(bottom=0)
 ax.grid(True, linestyle="--", alpha=0.3)
 
-# Panel (1,0): Annual Inflation Rate
+# Panel (1,0): Annual Inflation Rate (all periods, x-axis in cumulated years)
 ax = axes[1, 0]
-ax.plot(periods, inflation[burn_in:] * 100, linewidth=1, color="#F18F01")
+years = ops.arange(0, n_periods) / 4
+ax.plot(years, inflation * 100, linewidth=1, color="#F18F01")
 ax.axhline(0, color="black", linestyle="-", alpha=0.3, linewidth=0.5)
 ax.set_title("Annualized Rate of Inflation", fontsize=12, fontweight="bold")
 ax.set_ylabel("Yearly inflation rate (%)")
-ax.set_xlabel("t")
+ax.set_xlabel("Years (cumulated quarters)")
 ax.grid(True, linestyle="--", alpha=0.3)
 
 # Panel (1,1): Productivity and Real Wage (with legend)
