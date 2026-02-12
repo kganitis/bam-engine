@@ -24,7 +24,6 @@ from scipy.signal import find_peaks
 import bamengine as bam
 from bamengine import SimulationResults, ops
 from bamengine.utils import EPS
-from validation.scenarios._configs import SMALL_ECONOMY_CONFIG
 from validation.scenarios._utils import adjust_burn_in, filter_outliers_iqr
 from validation.types import CheckType, MetricFormat, MetricGroup, MetricSpec, Scenario
 
@@ -849,9 +848,7 @@ COLLECT_CONFIG = {
 # Default Configuration
 # =============================================================================
 
-DEFAULT_CONFIG: dict[str, Any] = {
-    **SMALL_ECONOMY_CONFIG,
-}
+DEFAULT_CONFIG: dict[str, Any] = {}
 
 # =============================================================================
 # Metric Specifications
@@ -1580,13 +1577,9 @@ def run_scenario(
     from extensions.rnd import RND_CONFIG, RND_EVENTS, RnD
 
     # Initialize simulation with Growth+ default parameters
-    config = {
-        **DEFAULT_CONFIG,
-        "n_periods": n_periods,
-        "seed": seed,
-        "logging": {"default_level": "ERROR"},
-    }
-    sim = bam.Simulation.init(**config)
+    sim = bam.Simulation.init(
+        n_periods=n_periods, seed=seed, logging={"default_level": "ERROR"}
+    )
 
     # Attach custom RnD role, events, and config
     rnd = sim.use_role(RnD)

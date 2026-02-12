@@ -27,8 +27,8 @@
 # Number of agents in each population.
 # Recommendation: n_households >= 5 * n_firms for realistic labor markets.
 
-n_firms:              300        # Producer/Employer agents (firms)
-n_households:        3000        # Worker/Consumer agents (households)
+n_firms:              100        # Producer/Employer agents (firms)
+n_households:         500        # Worker/Consumer agents (households)
 n_banks:               10        # Lender agents (commercial banks)
 
 # ── RUN LENGTH ────────────────────────────────────────────────────────────────
@@ -85,12 +85,11 @@ savings_init:         3.0        # Household savings at t=0 (money units)
 # New firms inherit attributes from the trimmed mean (90%) of surviving firms,
 # scaled by these factors. This follows Delli Gatti et al. (2011) where new
 # entrants start "below the average size of incumbent firms".
-# Calibrated for 100% pass rate with 20 seeds (Combined Score = 0.7229).
 
-new_firm_size_factor: 0.8           # Core "size at entry" measure (as fraction of avg)
-new_firm_production_factor: 0.9     # Initial output capacity as fraction of avg output
-new_firm_wage_factor: 0.9           # Initial wage offer as a fraction of avg wage
-new_firm_price_markup: 1.0          # Initial price markup over average market price
+new_firm_size_factor: 0.5           # Core "size at entry" measure (as fraction of avg)
+new_firm_production_factor: 0.5     # Initial output capacity as fraction of avg output
+new_firm_wage_factor: 0.5           # Initial wage offer as a fraction of avg wage
+new_firm_price_markup: 1.5          # Initial price markup over average market price
 
 # ── RANDOM NUMBER GENERATION ──────────────────────────────────────────────────
 # Seed for deterministic simulations.
@@ -126,7 +125,7 @@ contract_poisson_mean: 0             # Poisson mean added to theta for contract 
                                      # Set to 0 for exact theta-only contracts
                                      # Actual duration: θ + Poisson(contract_poisson_mean)
 
-max_loan_to_net_worth: 2             # Max loan as multiple of borrower's net worth
+max_loan_to_net_worth: 5             # Max loan as multiple of borrower's net worth
                                      # Caps individual loans: loan <= X * net_worth
 
 max_leverage: 10                     # Maximum leverage ratio (fragility cap)
@@ -145,7 +144,7 @@ matching_method: simultaneous        # How workers and firms are matched in labo
                                      # "sequential" = workers shuffled, apply one at a time
                                      # "simultaneous" = all workers apply at once (crowding)
 
-job_search_method: vacancies_only    # How workers sample firms for job applications
+job_search_method: all_firms         # How workers sample firms for job applications
                                      # "vacancies_only" = sample only firms with vacancies
                                      # "all_firms" = sample from ALL firms (wasted apps)
 

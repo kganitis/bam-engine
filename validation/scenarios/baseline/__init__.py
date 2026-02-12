@@ -265,16 +265,6 @@ COLLECT_CONFIG = {
 }
 
 # =============================================================================
-# Default Configuration
-# =============================================================================
-
-DEFAULT_CONFIG = {
-    "n_firms": 300,
-    "n_households": 3000,
-    "n_banks": 10,
-}
-
-# =============================================================================
 # Metric Specifications
 # =============================================================================
 
@@ -495,6 +485,7 @@ METRIC_SPECS = [
     ),
 ]
 
+
 # =============================================================================
 # Compute Metrics Wrapper (for Scenario)
 # =============================================================================
@@ -529,7 +520,7 @@ SCENARIO = Scenario(
     metric_specs=METRIC_SPECS,
     collect_config=COLLECT_CONFIG,
     targets_path=Path(__file__).parent / "targets.yaml",
-    default_config=DEFAULT_CONFIG,
+    default_config={},  # no scenario-specific parameters to override defaults
     compute_metrics=_compute_metrics_wrapper,
     setup_hook=None,
     title="BASELINE SCENARIO VALIDATION",
@@ -616,9 +607,6 @@ def run_scenario(
     """
     # Initialize simulation
     sim = bam.Simulation.init(
-        n_firms=300,
-        n_households=3000,
-        n_banks=10,
         n_periods=n_periods,
         seed=seed,
         logging={"default_level": "ERROR"},

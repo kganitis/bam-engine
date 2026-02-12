@@ -115,7 +115,7 @@ you to override specific parameters:
 
 .. code-block:: python
 
-   >>> sim = bam.Simulation.init(config="config.yml", n_firms=300, seed=42)
+   >>> sim = bam.Simulation.init(config="config.yml", n_firms=200, seed=42)
 
 See the :doc:`Configuration Guide </user_guide/configuration>` for a full
 list of parameters.
