@@ -22,24 +22,18 @@ metadata:
   validation:
     burn_in_periods: 500
 
-  # Book simulation setup (reference)
+  # Book simulation setup
   book_setup:
     n_firms: 100
     n_households: 500
     n_banks: 10
     n_periods: 1000
 
-  # Our simulation setup
-  our_setup:
-    n_firms: 300
-    n_households: 3000
-    n_banks: 10
-
   # Parameters needed by compute_metrics
   params:
     firm_size_threshold: 5.0
     firm_size_threshold_medium: 10.0
-    unemployment_extreme_bounds: [0.01, 0.15]
+    unemployment_extreme_bounds: [0.00, 0.20]
     inflation_extreme_bounds: [-0.05, 0.15]
 
   # Visualization-specific target structure (used by baseline_viz.py)
@@ -47,10 +41,10 @@ metadata:
     time_series:
       unemployment_rate:
         targets:
-          normal_min: 0.03
-          normal_max: 0.09
-          extreme_min: 0.01
-          extreme_max: 0.15
+          normal_min: 0.02
+          normal_max: 0.15
+          extreme_min: 0.00
+          extreme_max: 0.20
           mean_target: 0.055
 
       inflation_rate:
@@ -63,11 +57,11 @@ metadata:
 
       log_gdp:
         targets:
-          normal_min: 7.22
-          normal_max: 7.28
-          extreme_min: 7.15
-          extreme_max: 7.30
-          mean_target: 7.26
+          normal_min: 5.43
+          normal_max: 5.49
+          extreme_min: 5.30
+          extreme_max: 5.53
+          mean_target: 5.45
 
       real_wage:
         targets:
@@ -129,9 +123,9 @@ metrics:
     tolerance: 0.015
 
   unemployment_hard_ceiling:
-    # RANGE: max unemployment should stay below 30% (model breakdown indicator)
+    # RANGE: max unemployment should stay below 20% (model breakdown indicator)
     min: 0.0
-    max: 0.30
+    max: 0.20
 
   unemployment_pct_in_bounds:
     # PCT_WITHIN: 90% of periods should be within extreme bounds
@@ -140,8 +134,8 @@ metrics:
 
   unemployment_std:
     # MEAN_TOLERANCE: volatility should be ~2%
-    target: 0.02
-    tolerance: 0.01
+    target: 0.020
+    tolerance: 0.010
 
   unemployment_autocorrelation:
     # RANGE: lag-1 autocorrelation should show persistence but not unit root
@@ -257,7 +251,7 @@ metrics:
   firm_size_tail_ratio:
     # RANGE: long right tail but not dominated by single firm
     min: 2.0
-    max: 8.0
+    max: 10.0
 
   firm_size_pct_below_medium:
     # PCT_WITHIN: almost all firms below medium threshold

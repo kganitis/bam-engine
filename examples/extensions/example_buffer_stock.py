@@ -166,23 +166,15 @@ def attach_extensions(sim):
 # Buffer-stock parameter ``h`` controls the desired savings-income ratio.
 
 sim = bam.Simulation.init(
-    n_firms=100,
-    n_households=500,
-    n_banks=10,
-    n_periods=1000,
-    seed=0,
-    logging={"default_level": "ERROR"},
+    # Buffer-stock specific parameters
     buffer_stock_h=2.0,
     # Growth+ specific parameters
-    new_firm_size_factor=0.5,
-    new_firm_production_factor=0.5,
-    new_firm_wage_factor=0.5,
-    new_firm_price_markup=1.5,
-    max_loan_to_net_worth=5,
-    job_search_method="all_firms",
     sigma_min=0.0,
     sigma_max=0.1,
     sigma_decay=-1.0,
+    # Seed and logging
+    seed=0,
+    logging={"default_level": "INFO"},
 )
 
 attach_extensions(sim)

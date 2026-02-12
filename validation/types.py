@@ -192,15 +192,15 @@ class Scenario:
     """Configuration for a validation scenario.
 
     This dataclass bundles everything needed to run validation for a specific
-    scenario (baseline or growth_plus).
+    scenario (baseline, growth_plus, or buffer_stock).
     """
 
     name: str
     metric_specs: list[MetricSpec]
     collect_config: dict[str, Any]
     targets_path: Path  # absolute path to scenario's targets.yaml
-    default_config: dict[str, Any]  # default simulation config
     compute_metrics: Callable[[bam.Simulation, SimulationResults, int], Any]
+    default_config: dict[str, Any] = field(default_factory=dict)
     setup_hook: Callable[[bam.Simulation | None], None] | None = None
     """Optional hook called twice: first with ``None`` (to trigger imports/registration),
     then with the ``Simulation`` instance (to attach roles/extensions)."""

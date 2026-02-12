@@ -225,7 +225,6 @@ validation/
 ├── scenarios/
 │   ├── __init__.py          # Scenario registry + get_scenario()
 │   ├── _utils.py            # Shared utilities: IQR filtering, burn-in adjustment
-│   ├── _configs.py          # Shared config: SMALL_ECONOMY_CONFIG
 │   ├── baseline/
 │   │   ├── __init__.py      # Metrics + computation + run_scenario()
 │   │   ├── viz.py           # Visualization (8-panel)

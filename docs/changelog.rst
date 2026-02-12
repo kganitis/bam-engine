@@ -10,6 +10,30 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 
    Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.
 
+[Unreleased]
+------------
+
+Changed
+~~~~~~~
+
+* Default agent counts unified to match book setup: ``n_firms``: 300 → 100,
+  ``n_households``: 3000 → 500
+* Default new-firm entry parameters: ``new_firm_size_factor`` 0.8 → 0.5,
+  ``new_firm_production_factor`` 0.9 → 0.5, ``new_firm_wage_factor`` 0.9 → 0.5,
+  ``new_firm_price_markup`` 1.0 → 1.5
+* Default ``max_loan_to_net_worth``: 2 → 5, ``job_search_method``:
+  ``"vacancies_only"`` → ``"all_firms"``
+* ``Scenario.default_config`` now optional (defaults to ``{}``)
+* Growth+ and buffer-stock scenarios no longer override agent counts
+* Baseline targets: updated log GDP and unemployment bounds for 100-firm/500-household economy
+
+Removed
+~~~~~~~
+
+* ``SMALL_ECONOMY_CONFIG`` and ``validation/scenarios/_configs.py``
+  (redundant with unified defaults)
+
+
 [0.3.0] - 2026-02-11
 --------------------
 

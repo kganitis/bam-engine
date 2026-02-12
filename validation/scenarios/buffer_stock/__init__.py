@@ -25,7 +25,6 @@ from scipy import stats
 
 import bamengine as bam
 from bamengine import SimulationResults, ops
-from validation.scenarios._configs import SMALL_ECONOMY_CONFIG
 from validation.scenarios._utils import adjust_burn_in, filter_outliers_iqr
 from validation.types import CheckType, MetricFormat, MetricGroup, MetricSpec, Scenario
 
@@ -521,9 +520,7 @@ COLLECT_CONFIG = {
 # Default Configuration
 # =============================================================================
 
-DEFAULT_CONFIG: dict[str, Any] = {
-    **SMALL_ECONOMY_CONFIG,
-}
+DEFAULT_CONFIG: dict[str, Any] = {}
 
 # =============================================================================
 # Metric Specifications
@@ -934,13 +931,9 @@ def run_scenario(
     )
     from extensions.rnd import RND_CONFIG, RND_EVENTS, RnD
 
-    config = {
-        **DEFAULT_CONFIG,
-        "n_periods": n_periods,
-        "seed": seed,
-        "logging": {"default_level": "ERROR"},
-    }
-    sim = bam.Simulation.init(**config)
+    sim = bam.Simulation.init(
+        n_periods=n_periods, seed=seed, logging={"default_level": "ERROR"}
+    )
     sim.use_role(BufferStock, n_agents=sim.n_households)
     sim.use_role(RnD)
     sim.use_events(*RND_EVENTS, *BUFFER_STOCK_EVENTS)

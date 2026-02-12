@@ -25,12 +25,7 @@ import bamengine as bam
 from bamengine import ops
 
 sim = bam.Simulation.init(
-    n_firms=300,
-    n_households=3000,
-    n_banks=10,
-    n_periods=1000,
-    seed=0,
-    logging={"default_level": "ERROR"},
+    logging={"default_level": "INFO"},
 )
 
 print("Initialized baseline scenario with:")
