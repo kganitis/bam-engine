@@ -120,8 +120,8 @@ class TestSimulationInvariants:
         for period in range(10):
             sim.step()
 
-            # Economy should not be destroyed
-            assert not sim.ec.destroyed, f"Economy destroyed at period {period}"
+            # Economy should not be collapsed
+            assert not sim.ec.collapsed, f"Economy collapsed at period {period}"
 
             # Prices should remain positive and finite
             assert (sim.prod.price > 0).all(), f"Non-positive price at period {period}"
@@ -296,8 +296,8 @@ class TestFinancialInvariants:
         for _ in range(5):
             sim.step()
 
-            # If economy is destroyed (all banks failed), stop checking
-            if sim.ec.destroyed:
+            # If economy is collapsed (all banks failed), stop checking
+            if sim.ec.collapsed:
                 break
 
             # Banks that survive must have positive equity

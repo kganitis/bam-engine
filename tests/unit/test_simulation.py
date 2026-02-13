@@ -104,12 +104,12 @@ class TestInputValidation:
 class TestSimulationControl:
     """Test simulation control flow (step, run, termination)."""
 
-    def test_step_with_destroyed_simulation(self):
-        """step() should return early if simulation is destroyed."""
+    def test_step_with_collapsed_simulation(self):
+        """step() should return early if simulation is collapsed."""
         sim = Simulation.init(n_firms=10, n_households=50, seed=42)
 
-        # Manually mark simulation as destroyed
-        sim.ec.destroyed = True
+        # Manually mark simulation as collapsed
+        sim.ec.collapsed = True
         initial_t = sim.t
 
         # step() should return early without executing pipeline

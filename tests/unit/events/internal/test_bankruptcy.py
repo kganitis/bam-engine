@@ -181,4 +181,4 @@ def test_spawn_replacement_banks_clone_and_fallback() -> None:
     lend.equity_base[:] = -1.0
     spawn_replacement_banks(ec, lend, rng=rng)
 
-    assert ec.destroyed
+    assert ec.collapsed

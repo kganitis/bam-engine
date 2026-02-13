@@ -60,7 +60,7 @@ class Economy:
         Transient list of firms exiting this period (flushed each period).
     exiting_banks : Idx1D
         Transient list of banks exiting this period (flushed each period).
-    destroyed : bool
+    collapsed : bool
         Termination flag indicating simulation should stop.
 
     Examples
@@ -110,4 +110,4 @@ class Economy:
     exiting_banks: Idx1D = field(default_factory=lambda: np.empty(0, np.intp))
 
     # Termination flag
-    destroyed: bool = False
+    collapsed: bool = False

@@ -25,8 +25,8 @@ class TestLongRunningStability:
         # Run 100 periods
         sim.run(n_periods=100)
 
-        # Economy should not be destroyed
-        assert not sim.ec.destroyed, "Economy was destroyed before 100 periods"
+        # Economy should not be collapsed
+        assert not sim.ec.collapsed, "Economy was collapsed before 100 periods"
 
         # Prices should remain positive and finite
         assert (sim.prod.price > 0).all(), "Some prices became non-positive"
@@ -140,7 +140,7 @@ class TestLongRunningStability:
         sim.run(n_periods=500)
 
         # Basic stability checks
-        assert not sim.ec.destroyed, "Economy destroyed"
+        assert not sim.ec.collapsed, "Economy collapsed"
         assert (sim.prod.price > 0).all(), "Non-positive prices"
         total_production = sim.prod.production.sum()
         assert np.isfinite(total_production), "Total production not finite"
@@ -214,7 +214,7 @@ class TestStressConditions:
         sim.run(n_periods=50)
 
         # Should still be stable
-        assert not sim.ec.destroyed, "Economy destroyed under high shocks"
+        assert not sim.ec.collapsed, "Economy collapsed under high shocks"
         assert (sim.prod.price > 0).all(), "Non-positive prices under high shocks"
 
     def test_minimal_frictions(self):
@@ -231,9 +231,9 @@ class TestStressConditions:
         # Run for 50 periods
         sim.run(n_periods=50)
 
-        # Should still function (economy not destroyed)
+        # Should still function (economy not collapsed)
         # Note: With very low frictions, employment may be low but economy survives
-        assert not sim.ec.destroyed, "Economy destroyed with minimal frictions"
+        assert not sim.ec.collapsed, "Economy collapsed with minimal frictions"
 
     def test_high_frictions(self):
         """Simulation should handle high search frictions."""
@@ -250,7 +250,7 @@ class TestStressConditions:
         sim.run(n_periods=50)
 
         # Should still function
-        assert not sim.ec.destroyed, "Economy destroyed with high frictions"
+        assert not sim.ec.collapsed, "Economy collapsed with high frictions"
 
 
 class TestMemoryUsage:
@@ -346,7 +346,7 @@ class TestExcessLaborFiring:
         )
 
         # The economy should still be functioning
-        assert not sim.ec.destroyed, "Economy destroyed during test"
+        assert not sim.ec.collapsed, "Economy collapsed during test"
         assert sim.wrk.employed.sum() > 0, "All workers unemployed"
 
     def test_fired_workers_can_be_rehired(self):

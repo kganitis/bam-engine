@@ -1076,7 +1076,7 @@ class Simulation:
         -----
         - Each period corresponds to one execution of the full event pipeline
         - State is mutated in-place regardless of collect parameter
-        - Simulation halts early if economy is destroyed (all firms/banks bankrupt)
+        - Simulation halts early if economy is collapsed (all firms/banks bankrupt)
         - For step-by-step execution with custom logic, use `step()` instead
         - Available economy metrics: 'avg_price', 'unemployment_rate', 'inflation'
 
@@ -1263,7 +1263,7 @@ class Simulation:
         -------
         None
             State is mutated in-place. The period counter (`sim.t`) is incremented
-            by 1. If the economy is destroyed (all firms/banks bankrupt), execution
+            by 1. If the economy is collapsed (all firms/banks bankrupt), execution
             halts immediately.
 
         Examples
@@ -1292,7 +1292,7 @@ class Simulation:
         Conditional execution based on economy state:
 
         >>> sim = be.Simulation.init(seed=42)
-        >>> while sim.t < 100 and not sim.ec.destroyed:
+        >>> while sim.t < 100 and not sim.ec.collapsed:
         ...     sim.step()
         ...     avg_price = sim.ec.avg_mkt_price
         ...     if avg_price > 2.0:
@@ -1303,7 +1303,7 @@ class Simulation:
         -----
         - Executes all events in `sim.pipeline` in order
         - Increments period counter (`sim.t`) before pipeline execution
-        - Halts immediately if `sim.ec.destroyed` is True (economy collapse)
+        - Halts immediately if `sim.ec.collapsed` is True (economy collapse)
         - For bulk execution over many periods, use `run()` instead
         - Pipeline can be modified between calls to `step()`
 
@@ -1312,7 +1312,7 @@ class Simulation:
         run : Execute multiple periods
         pipeline : Event pipeline (can be modified before stepping)
         """
-        if self.ec.destroyed:
+        if self.ec.collapsed:
             return
 
         self.t += 1
@@ -1320,7 +1320,7 @@ class Simulation:
         # Execute pipeline
         self.pipeline.execute(self)
 
-        if self.ec.destroyed:  # May be set during pipeline.execute()
+        if self.ec.collapsed:  # May be set during pipeline.execute()
             log.info("SIMULATION TERMINATED")  # type: ignore[unreachable]
 
     def get_role(self, name: str) -> Any:
