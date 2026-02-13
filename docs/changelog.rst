@@ -26,6 +26,7 @@ Changed
 * ``Scenario.default_config`` now optional (defaults to ``{}``)
 * Growth+ and buffer-stock scenarios no longer override agent counts
 * Baseline targets: updated log GDP and unemployment bounds for 100-firm/500-household economy
+* Renamed 'destroyed' flag to 'collapsed' in ``Simulation``
 
 Removed
 ~~~~~~~

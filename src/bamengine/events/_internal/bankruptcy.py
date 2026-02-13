@@ -224,7 +224,7 @@ def spawn_replacement_firms(
     # handle full market collapse
     if num_exiting == bor.net_worth.size:  # pragma: no cover - catastrophic edge case
         log.warning("!!! ALL FIRMS ARE BANKRUPT !!! SIMULATION ENDING.")
-        ec.destroyed = True
+        ec.collapsed = True
         return
 
     # calculate survivor metrics
@@ -313,7 +313,7 @@ def spawn_replacement_banks(
     )
     if not alive.size:
         log.warning("!!! ALL BANKS ARE BANKRUPT !!! SIMULATION ENDING.")
-        ec.destroyed = True
+        ec.collapsed = True
         return
 
     # initialize new banks
