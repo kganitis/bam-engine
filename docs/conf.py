@@ -3,10 +3,14 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import logging
 import os
 import sys
 
 from sphinx_gallery.sorting import ExplicitOrder
+
+# Suppress verbose bamengine simulation logs during doc builds
+logging.getLogger("bamengine").setLevel(logging.ERROR)
 
 # Add project root to path so we can import bamengine
 sys.path.insert(0, os.path.abspath("../src"))

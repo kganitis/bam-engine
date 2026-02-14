@@ -13,6 +13,26 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 [Unreleased]
 ------------
 
+Added
+~~~~~
+
+* Robustness analysis package (Section 3.10 of Delli Gatti et al., 2011):
+
+  * ``validation/robustness/`` package with internal validity and sensitivity analysis
+  * Internal validity: multi-seed simulation (20 seeds) verifying cross-simulation
+    stability of co-movements, AR structure, firm size distributions, and empirical curves
+  * Sensitivity analysis: univariate parameter sweeps across 5 experiment groups —
+    credit markets (H), goods markets (Z), labor markets (M), contract length (theta),
+    and economy size/composition
+  * Statistical tools: Hodrick-Prescott filter, lead-lag cross-correlations,
+    AR model fitting (OLS), impulse-response function computation
+  * Visualization: co-movement plots (Figure 3.9 replica), IRF comparison,
+    sensitivity co-movement comparison
+  * Text reporting: formatted cross-simulation variance tables, co-movement
+    summaries, AR fit results, empirical curve persistence
+  * CLI entry point: ``python -m validation.robustness``
+  * Example: ``examples/advanced/example_robustness.py``
+
 Changed
 ~~~~~~~
 

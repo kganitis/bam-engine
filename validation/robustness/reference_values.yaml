@@ -1,0 +1,226 @@
+# Quantitative reference values for Section 3.10.1 robustness analysis.
+#
+# Values are approximate readings from Figure 3.9 of Delli Gatti et al. (2011).
+# The book uses the same default economy as ours (F=100, W=500, B=10),
+# so results should be directly comparable.
+#
+# Convention: corr(GDP_t, X_{t+k}) where k is the lag index.
+# Negative k = GDP leads X (X lags GDP).
+# Positive k = X leads GDP (GDP lags X).
+#
+# See REFERENCE.md for full context and book quotes.
+
+# ─── Internal Validity ──────────────────────────────────────────────────────
+
+internal_validity:
+  n_seeds: 20
+  n_periods: 1000  # same as the book
+
+  # ── Figure 3.9: Co-movements (approximate values from book figures) ─────
+  #
+  # Each variable has 9 values for lags [-4, -3, -2, -1, 0, +1, +2, +3, +4].
+  # "basic" = baseline single-seed run ('+' marker in figure)
+  # "average" = cross-simulation mean ('•' marker in figure)
+
+  comovements:
+    unemployment:
+      classification: countercyclical
+      sign: negative  # all values negative at all lags
+      basic:   [-0.13, -0.22, -0.35, -0.49, -0.65, -0.55, -0.40, -0.29, -0.18]
+      average: [-0.15, -0.25, -0.35, -0.48, -0.59, -0.47, -0.34, -0.22, -0.12]
+      notes: >
+        V-shaped trough centered near lag 0. Average is attenuated relative
+        to baseline. Book text says "procyclicality" but figure clearly shows
+        countercyclical pattern (all negative).
+
+    productivity:
+      classification: procyclical
+      sign: positive  # all values positive at all lags
+      basic:   [0.23, 0.39, 0.58, 0.78, 0.88, 0.69, 0.49, 0.32, 0.18]
+      average: [0.15, 0.28, 0.39, 0.50, 0.62, 0.53, 0.44, 0.33, 0.22]
+      notes: >
+        Inverted-V peak at lag 0. Strong procyclical. Average substantially
+        attenuated but maintains same shape. Baseline contemporaneous
+        correlation very high (~0.88).
+
+    price_index:
+      classification: acyclical
+      sign: mixed  # negative at negative lags, crosses zero, positive at positive lags
+      basic:   [-0.23, -0.25, -0.26, -0.25, -0.19, -0.10, -0.04, 0.01, 0.03]
+      average: [-0.13, -0.13, -0.13, -0.13, -0.08, -0.03, 0.01, 0.04, 0.065]
+      notes: >
+        Monotonically rising left-to-right. Average is within the ±0.2
+        acyclicality band at most lags. Baseline is slightly outside the band
+        at negative lags, suggesting weak anti-cyclical leading behavior.
+        The book describes prices as "slightly negatively correlated and
+        anticipate output" (from Section 3.9.3).
+
+    interest_rate:
+      classification: acyclical
+      sign: mixed  # all values very close to zero (±0.03)
+      basic:   [0.020, 0.020, 0.003, 0.001, -0.013, -0.005, 0.026, 0.001, 0.000]
+      average: [0.003, 0.003, 0.002, -0.004, -0.020, 0.005, 0.016, 0.015, 0.010]
+      notes: >
+        All values within ±0.03 band. Essentially flat noise around zero.
+        Clearly acyclical. Baseline shows some individual-seed variation
+        but no systematic pattern.
+
+    real_wage:
+      classification: procyclical
+      sign: positive  # all values positive at all lags
+      basic:   [0.20, 0.35, 0.55, 0.73, 0.85, 0.73, 0.55, 0.38, 0.23]
+      average: [0.19, 0.31, 0.43, 0.55, 0.65, 0.56, 0.46, 0.35, 0.23]
+      notes: >
+        Inverted-V peak at lag 0. Very similar shape to productivity but
+        slightly lower magnitudes. Average follows baseline closely.
+        Strongly procyclical.
+
+  # ── AR structure of GDP cyclical component ──────────────────────────────
+
+  ar_structure:
+    individual_seed:
+      order: 2
+      irf_shape: hump-shaped  # peak at period 1-2, decay to 0 by period 8-10
+      notes: >
+        Figure 3.7f shows the baseline AR(2) IRF with a clear hump:
+        starts at 1.0, peaks ~1.15 at period 1-2, then decays smoothly
+        to 0 by period 8-10.
+
+    cross_sim_average:
+      order: 1
+      phi_1: 0.8  # "autoregressive parameter around 0.8"
+      irf_shape: monotone_decay  # exponential decay, no hump
+      notes: >
+        The book explicitly states: "the movement in the log of detrended
+        GDP can be best approximated by an AR(1) structure (with an
+        autoregressive parameter around 0.8)."
+
+  # ── Firm size distribution ──────────────────────────────────────────────
+
+  firm_size_distribution:
+    normality: rejected  # Shapiro-Wilk should reject at p < 0.05
+    skewness: positive   # right-skewed
+    applies_to: [sales, net_worth]
+    notes: >
+      "Definitely invariant in its significant departure from normality and
+      its strong positive skewness." Should hold across all seeds.
+
+  # ── Empirical curves ───────────────────────────────────────────────────
+
+  empirical_curves:
+    phillips:
+      variables: [unemployment, wage_inflation]
+      expected_sign: negative
+    okun:
+      variables: [unemployment_growth, gdp_growth]
+      expected_sign: negative
+    beveridge:
+      variables: [unemployment, vacancies]
+      expected_sign: negative
+    notes: >
+      All three curves should "continue to emerge from each simulation
+      and on average."
+
+# ─── Sensitivity Analysis ───────────────────────────────────────────────────
+
+sensitivity:
+  n_seeds: 20
+  n_periods: 1000
+
+  credit_market:
+    param: max_H
+    values: [1, 2, 3, 4, 6]
+    baseline: 2
+    expected:
+      macro_stability: high  # "general properties do not manifest any significant variation"
+      price_index_shift: "becomes coincident with output as H increases"
+      net_worth_distribution: "more Pareto-like as H increases; more exponential at H=1"
+      collapse_risk: low
+
+  goods_market:
+    param: max_Z
+    values: [2, 3, 4, 5, 6]
+    baseline: 2
+    expected:
+      real_wage_shift: "becomes lagging with higher Z"
+      firm_size_kurtosis: "decreases dramatically with higher Z"
+      output_volatility: "smoother patterns, without sudden booms or crashes"
+      collapse_risk: low
+
+  labor_applications:
+    param: max_M
+    values: [2, 3, 4, 5, 6]
+    baseline: 4
+    expected:
+      low_M:
+        price_shift: "switches from anti-cyclical/leading to pro-cyclical/lagging"
+        output_instability: "higher degree of instability"
+        firm_size: "more Pareto-like (path-dependency)"
+      high_M:
+        firm_size: "more exponential or uniform (firms become alike)"
+        real_wage: "pushed up, sometimes above average productivity"
+      collapse_risk: low_to_moderate  # extreme low M could be unstable
+
+  contract_length:
+    param: theta
+    values: [1, 4, 6, 8, 10, 12, 14]
+    baseline: 8
+    expected:
+      intermediate:  # theta 6-10
+        stability: "main statistical properties do not change significantly"
+      short:  # theta 1-4
+        comovements: "less and less pronounced except unemployment and wages"
+        ar_structure: "loses AR(2) structure; output smoother"
+        firm_size: "distributes more uniformly"
+        unemployment: "increases despite flexible market (coordination failures)"
+        theta_1_collapse: "most simulations collapse (fatal market failures)"
+      long:  # theta 12-14
+        comovements: "contrast sharply with real data"
+        dynamics: "often degenerate"
+        mechanism: "firms can't fire when fragile → more bankruptcies → breakdown"
+      collapse_risk: high_at_extremes
+
+  economy_size:
+    param: multi  # n_firms, n_households, n_banks
+    expected:
+      proportional_scaling:
+        comovements: "very similar to baseline"
+        growth_rate: "similar to baseline"
+        volatility: "decreases with economy size (averaging effect)"
+      double_banks:
+        effect: "no significant variation"
+      double_households:
+        comovements: "similar to baseline"
+        growth: "much faster, higher volatility"
+        mechanism: "enlarged availability of workforce"
+      double_firms:
+        growth: "slower"
+        mechanism: "increased competition → more rationing → less profit → less R&D"
+      collapse_risk: low
+
+# ─── Tolerance Guidelines ───────────────────────────────────────────────────
+#
+# These are NOT from the book but provide practical thresholds for checking
+# our simulation output against the reference values above.
+
+tolerances:
+  # Co-movement classification check
+  comovement_acyclicality_band: 0.2  # |corr| < 0.2 = acyclical (book convention)
+
+  # How close should our values be to the book's?
+  # Same economy size, so results should be directly comparable.
+  comovement_sign_match: true        # same sign at lag 0 is the minimum requirement
+  comovement_shape_match: true       # same general shape (V, inverted-V, flat) expected
+
+  # AR structure
+  ar_average_phi1_range: [0.5, 0.95]  # book says ~0.8, allow wide range
+
+  # Cross-simulation stability
+  max_acceptable_collapse_rate: 0.15  # no more than 15% of seeds should collapse
+  max_cv_for_stability: 0.3          # CV of key statistics across seeds
+
+  notes: >
+    Our economy uses the same defaults as the book (100F/500H/10B).
+    Results should be directly comparable with Figure 3.9. Some
+    stochastic variation is expected between individual runs, but
+    sign, classification, and shape should match closely.
