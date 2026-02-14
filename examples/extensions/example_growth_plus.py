@@ -178,7 +178,6 @@ COLLECT_CONFIG = {
         "LoanBook.principal": "banks_provide_loans",
         "LoanBook.rate": "banks_provide_loans",
         "LoanBook.source_ids": "banks_provide_loans",
-        "Economy.n_firm_bankruptcies": "mark_bankrupt_firms",
     },
 }
 results = sim.run(collect=COLLECT_CONFIG)

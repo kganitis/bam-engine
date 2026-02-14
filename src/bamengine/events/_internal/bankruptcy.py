@@ -253,8 +253,8 @@ def spawn_replacement_firms(
         bor.projected_fragility[i] = 0.0
 
         # Reset Producer component
-        prod.production[i] = 0.0
         prod.production_prev[i] = mean_prod * new_firm_production_factor
+        prod.production[i] = prod.production_prev[i]
         prod.inventory[i] = 0.0
         prod.expected_demand[i] = 0.0
         prod.desired_production[i] = 0.0
@@ -274,8 +274,6 @@ def spawn_replacement_firms(
                 f"with net worth {bor.net_worth[i]:.2f}."
             )
 
-    # clear exit list
-    ec.exiting_firms = np.empty(0, np.intp)
     if info_enabled:
         log.info("--- Firm Spawning complete ---")
 
@@ -330,7 +328,5 @@ def spawn_replacement_banks(
         lend.recv_loan_apps_head[k] = -1
         lend.recv_loan_apps[k, :] = -1
 
-    # clear exit list
-    ec.exiting_banks = np.empty(0, np.intp)
     if info_enabled:
         log.info("--- Bank Spawning complete ---")
