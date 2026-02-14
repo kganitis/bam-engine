@@ -94,6 +94,36 @@ Buffer-stock consumption extension replacing the baseline mean-field MPC with an
 
 Notable additions over baseline: heavy-tailed wealth distribution fitting with R² on log-log CCDF (Figure 3.8 from the book), wealth Gini coefficient, MPC distribution statistics, and dissaving rate. MPC metrics are adjusted using the core `Shareholder` role's per-period dividend data to remove the dividend artifact from the buffer-stock formula.
 
+### Robustness Analysis (Section 3.10)
+
+Internal validity and sensitivity analysis to verify model robustness across random seeds and parameter variations. See [`validation/robustness/README.md`](robustness/README.md) for full documentation.
+
+```bash
+# CLI
+python -m validation.robustness                    # Full analysis
+python -m validation.robustness --internal-only    # Internal validity only
+python -m validation.robustness --sensitivity-only --experiments credit_market
+```
+
+```python
+from validation.robustness import (
+    run_internal_validity,
+    run_sensitivity_analysis,
+    print_internal_validity_report,
+    print_sensitivity_report,
+    plot_comovements,
+)
+
+# Internal validity (20 seeds, default params)
+result = run_internal_validity(n_seeds=20, n_periods=1000)
+print_internal_validity_report(result)
+plot_comovements(result)
+
+# Sensitivity analysis (5 experiments)
+sa = run_sensitivity_analysis()
+print_sensitivity_report(sa)
+```
+
 ## API Reference
 
 ### Validation Functions
@@ -243,6 +273,16 @@ validation/
 │       ├── targets.yaml     # Target values (~30 metrics)
 │       ├── output/          # Saved visualization panels
 │       └── __main__.py      # python -m entry point
+├── robustness/
+│   ├── __init__.py          # Public API exports
+│   ├── __main__.py          # CLI: python -m validation.robustness
+│   ├── stats.py             # HP filter, cross-correlation, AR fitting, IRF
+│   ├── experiments.py       # 5 experiment definitions (Section 3.10.1)
+│   ├── internal_validity.py # Multi-seed analysis pipeline
+│   ├── sensitivity.py       # Univariate parameter sweep pipeline
+│   ├── viz.py               # Co-movement plots (Figure 3.9), IRF, sensitivity
+│   ├── reporting.py         # Text report formatting
+│   └── output/              # Saved figures
 
 extensions/                  # Separate package for model extensions
 ├── rnd/

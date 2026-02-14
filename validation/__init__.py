@@ -8,6 +8,9 @@ Subpackages:
         - baseline/: Baseline scenario (Section 3.9.1)
         - growth_plus/: Growth+ scenario (Section 3.9.2)
         - buffer_stock/: Buffer-stock scenario (Section 3.9.4)
+    robustness/: Robustness analysis (Section 3.10)
+        - Internal validity (multi-seed stability)
+        - Sensitivity analysis (univariate parameter sweeps)
 
 Modules:
     types: Core types, dataclasses, and enums
