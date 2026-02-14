@@ -48,11 +48,22 @@ Changed
 * Baseline targets: updated log GDP and unemployment bounds for 100-firm/500-household economy
 * Renamed 'destroyed' flag to 'collapsed' in ``Simulation``
 
+Fixed
+~~~~~
+
+* Bankruptcy counter now captures correct counts with basic ``collect=True``.
+  ``exiting_firms`` / ``exiting_banks`` arrays are no longer cleared in
+  ``spawn_replacement_*``, so they persist through end-of-period data capture.
+* Spawned replacement firms set ``production = production_prev`` to avoid
+  immediate ghost-firm re-bankruptcy on the next period.
+
 Removed
 ~~~~~~~
 
 * ``SMALL_ECONOMY_CONFIG`` and ``validation/scenarios/_configs.py``
   (redundant with unified defaults)
+* ``capture_timing`` workarounds for ``Economy.n_firm_bankruptcies`` /
+  ``Economy.n_bank_bankruptcies`` in scenarios and examples (no longer needed)
 
 
 [0.3.0] - 2026-02-11

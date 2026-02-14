@@ -512,7 +512,6 @@ COLLECT_CONFIG = {
         "Shareholder.dividends": "consumers_calc_buffer_stock_propensity",
         "LoanBook.principal": "banks_provide_loans",
         "LoanBook.rate": "banks_provide_loans",
-        "Economy.n_firm_bankruptcies": "mark_bankrupt_firms",
     },
 }
 

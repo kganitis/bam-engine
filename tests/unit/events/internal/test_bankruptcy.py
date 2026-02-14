@@ -142,8 +142,8 @@ def test_spawn_replacement_firms_restores_positive_equity() -> None:
 
     spawn_replacement_firms(ec, prod, emp, bor, wrk, rng=rng)
 
-    # exiting list cleared
-    assert ec.exiting_firms.size == 0
+    # exiting list preserved (cleared by mark_bankrupt_firms next period)
+    assert np.array_equal(ec.exiting_firms, [0, 2])
 
     # bankrupt slots resurrected with positive equity & cash=equity
     assert (bor.net_worth >= 0).all()
@@ -153,15 +153,15 @@ def test_spawn_replacement_firms_restores_positive_equity() -> None:
     assert emp.current_labor[[0, 2]].sum() == 0
     assert np.array_equal(prod.inventory[[0, 2]], [0, 0])
 
-    # production is 0 for spawned firms (no workers yet)
-    assert prod.production[0] == 0.0
-    assert prod.production[2] == 0.0
-
     # production_prev is set to planning signal (based on survivor mean × factor)
     # Survivor is firm 1 with production 10.0, default factor is 0.9
     expected_signal = 10.0 * 0.9
     assert prod.production_prev[0] == expected_signal
     assert prod.production_prev[2] == expected_signal
+
+    # production mirrors production_prev (avoids zombie ghost-firm rule)
+    assert prod.production[0] == expected_signal
+    assert prod.production[2] == expected_signal
 
 
 def test_spawn_replacement_banks_clone_and_fallback() -> None:
@@ -173,7 +173,8 @@ def test_spawn_replacement_banks_clone_and_fallback() -> None:
     lend = mock_lender(3, equity_base=np.array([20_000.0, -1.0, 30_000.0]))
     spawn_replacement_banks(ec, lend, rng=rng)
 
-    assert ec.exiting_banks.size == 0
+    # exiting list preserved (cleared by mark_bankrupt_banks next period)
+    assert np.array_equal(ec.exiting_banks, [1])
     assert lend.equity_base[1] > 0.0 and lend.credit_supply[1] == 0.0
 
     # case-B: all banks bankrupt → fallback path
