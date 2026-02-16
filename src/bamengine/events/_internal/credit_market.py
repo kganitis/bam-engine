@@ -503,7 +503,6 @@ def banks_provide_loans(
     lend: Lender,
     *,
     r_bar: float,
-    h_phi: float,
     loan_priority_method: str = "by_net_worth",
     max_loan_to_net_worth: float = 0.0,
     max_leverage: float = 0.0,
@@ -515,6 +514,10 @@ def banks_provide_loans(
     --------
     bamengine.events.credit_market.BanksProvideLoans : Full documentation
     """
+    assert lend.opex_shock is not None, (
+        "lend.opex_shock must be set before banks_provide_loans() — "
+        "run banks_decide_interest_rate() first"
+    )
     info_enabled = log.isEnabledFor(logging.INFO)
     if info_enabled:
         log.info("--- Banks Providing Loans ---")
@@ -620,7 +623,7 @@ def banks_provide_loans(
                         f"    Bank {k}: Capped fragility for {capped_count} borrower(s) "
                         f"at max_leverage={max_leverage}"
                     )
-        final_rates = r_bar * (1.0 + h_phi * frag_for_rate)
+        final_rates = r_bar * (1.0 + lend.opex_shock[k] * frag_for_rate)
 
         # extra validation, should never trigger
         if final_borrowers.size == 0:  # pragma: no cover

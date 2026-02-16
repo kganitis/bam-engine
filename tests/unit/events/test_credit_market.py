@@ -60,6 +60,8 @@ def test_firms_send_one_loan_app_executes():
 def test_banks_provide_loans_executes():
     """BanksProvideLoans executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+    # opex_shock must be set before banks_provide_loans (pipeline guarantees this)
+    get_event("banks_decide_interest_rate")().execute(sim)
     event = get_event("banks_provide_loans")()
     event.execute(sim)  # Should not crash
 
