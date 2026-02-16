@@ -51,6 +51,10 @@ Changed
 Fixed
 ~~~~~
 
+* Loan rate formula in ``banks_provide_loans()`` now uses per-bank ``opex_shock``
+  (φ_k) instead of the constant upper bound ``h_phi``, matching book equation 3.7.
+  Previously all banks applied the maximum rate markup, eliminating bank heterogeneity
+  and systematically overcharging borrowers.
 * Bankruptcy counter now captures correct counts with basic ``collect=True``.
   ``exiting_firms`` / ``exiting_banks`` arrays are no longer cleared in
   ``spawn_replacement_*``, so they persist through end-of-period data capture.

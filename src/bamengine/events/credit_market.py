@@ -601,7 +601,9 @@ class BanksProvideLoans:
 
         C_k \\leftarrow C_k - L
 
-    Loan recorded as: (borrower=i, lender=k, principal=L, rate=r_k, interest=L×r_k, debt=L×(1+r_k))
+    Loan recorded as: (borrower=i, lender=k, principal=L,
+    rate=r̄·(1 + φ_k·μ(l_i)), interest=L×rate, debt=L×(1+rate))
+    where φ_k is the per-bank opex shock from BanksDecideInterestRate.
 
     Examples
     --------
@@ -666,7 +668,6 @@ class BanksProvideLoans:
             sim.lb,
             sim.lend,
             r_bar=sim.r_bar,
-            h_phi=sim.config.h_phi,
             loan_priority_method=sim.config.loan_priority_method,
             max_loan_to_net_worth=sim.config.max_loan_to_net_worth,
             max_leverage=sim.config.max_leverage,

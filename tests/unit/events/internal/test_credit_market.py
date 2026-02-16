@@ -65,6 +65,8 @@ def _mini_state(
         interest_rate=np.linspace(0.08, 0.11, n_lenders, dtype=np.float64),
         recv_loan_apps=np.full((n_lenders, n_borrowers), -1, dtype=np.int64),
     )
+    # Provide per-bank opex shock (normally set by banks_decide_interest_rate)
+    lend.opex_shock = np.full(n_lenders, 0.10)
     ledger = mock_loanbook()
 
     return bor, lend, ledger, rng, H
@@ -242,7 +244,7 @@ def _run_basic_loan_cycle(
     firms_prepare_loan_applications(bor, lend, max_H=H, rng=rng)
     for _ in range(H):
         firms_send_one_loan_app(bor, lend)
-        banks_provide_loans(bor, ledger, lend, r_bar=0.07, h_phi=0.10)
+        banks_provide_loans(bor, ledger, lend, r_bar=0.07)
     return orig_demand
 
 
@@ -299,7 +301,7 @@ def test_banks_provide_loans_skip_invalid_slots() -> None:
     k = 0
     lend.recv_loan_apps_head[k] = 2
     lend.recv_loan_apps[k, :3] = -1  # all invalid sentinels
-    banks_provide_loans(bor, ledger, lend, r_bar=0.07, h_phi=0.10)
+    banks_provide_loans(bor, ledger, lend, r_bar=0.07)
     assert ledger.size == 0
     assert lend.recv_loan_apps_head[k] == -1  # flushed by implementation
 
@@ -406,6 +408,7 @@ def test_banks_provide_loans_properties(
     bor.wage_bill[:] = rng.uniform(5.0, 20.0, size=n_borrowers)
     bor.net_worth[:] = rng.uniform(0.0, 15.0, size=n_borrowers)
     lend.credit_supply[:] = rng.uniform(1_000.0, 5_000.0, size=n_lenders)
+    lend.opex_shock = rng.uniform(0.0, 0.10, size=n_lenders)
 
     firms_decide_credit_demand(bor)
     assume((bor.credit_demand > 0).any())
@@ -722,7 +725,7 @@ def test_prepare_applications_Heff_lt_H_and_sorted_by_rate() -> None:
 
 def test_banks_provide_loans_sets_contract_rate_formula() -> None:
     """
-    Ledger rates must be computed as r_bar * (1 + h_phi * fragility_i).
+    Ledger rates must be computed as r_bar * (1 + opex_shock[k] * fragility_i).
     Construct a tiny deterministic case with one lender and one borrower.
     """
     # One borrower with demand; set fragility manually to a known value.
@@ -736,14 +739,15 @@ def test_banks_provide_loans_sets_contract_rate_formula() -> None:
     lend.credit_supply[0] = 100.0
     lend.recv_loan_apps_head[0] = 0
     lend.recv_loan_apps[0, 0] = 0  # borrower 0 queued at lender 0
+    # Per-bank opex shock (normally drawn in banks_decide_interest_rate)
+    lend.opex_shock = np.array([0.05])
 
     ledger = mock_loanbook()
 
     r_bar = 0.07
-    h_phi = 0.10
-    expected_rate = r_bar * (1.0 + h_phi * bor.projected_fragility[0])
+    expected_rate = r_bar * (1.0 + lend.opex_shock[0] * bor.projected_fragility[0])
 
-    banks_provide_loans(bor, ledger, lend, r_bar=r_bar, h_phi=h_phi)
+    banks_provide_loans(bor, ledger, lend, r_bar=r_bar)
 
     # Exactly one loan row must exist and rate must match the formula.
     assert ledger.size == 1
