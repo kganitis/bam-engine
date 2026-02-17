@@ -34,17 +34,16 @@ def assert_basic_invariants(sch: Simulation) -> None:
     assert set(np.unique(sch.wrk.employed)).issubset({0, 1})
     assert sch.wrk.employed.sum() == sch.emp.current_labor.sum()
 
-    # Wage-bill consistency
+    # Wage-bill consistency: wage_bill reflects wages *paid* this period,
+    # which is >= current workforce cost (some workers may have been paid
+    # then had their contracts expire).
     employed_mask = sch.wrk.employed == 1
-    np.testing.assert_allclose(
-        sch.emp.wage_bill,
-        np.bincount(
-            sch.wrk.employer[employed_mask],
-            weights=sch.wrk.wage[employed_mask],
-            minlength=sch.n_firms,
-        ),
-        rtol=1e-8,
+    current_workforce_cost = np.bincount(
+        sch.wrk.employer[employed_mask],
+        weights=sch.wrk.wage[employed_mask],
+        minlength=sch.n_firms,
     )
+    assert (sch.emp.wage_bill >= current_workforce_cost - 1e-8).all()
 
     # Credit-market & finance
     # -----------------------

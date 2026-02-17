@@ -338,15 +338,5 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"      Firm labor counts updated: {emp.current_labor}")
 
-    # Recalculate wage bills
-    emp.wage_bill[:] = np.bincount(
-        wrk.employer[wrk.employed == 1],
-        weights=wrk.wage[wrk.employed == 1],
-        minlength=emp.wage_bill.size,
-    )
-
-    if log.isEnabledFor(logging.DEBUG):
-        log.debug(f"      Firm wage bills recalculated: {emp.wage_bill}")
-
     if info_enabled:
         log.info("--- Worker Contract Update complete ---")
