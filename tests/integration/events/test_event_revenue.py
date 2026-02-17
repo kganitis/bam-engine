@@ -125,9 +125,9 @@ def test_event_revenue_basic(tiny_sched: Simulation) -> None:
 
     np.testing.assert_allclose(sch.lend.equity_base, equity_expected, rtol=EPS)
 
-    # ledger size & rows - all loans should be removed:
-    # firm-0 and firm-1 repaid, firm-2 defaulted (loan written off and removed)
-    assert sch.lb.size == 0
+    # Loan records retained after financial settlement (purged at credit market).
+    # firm-0 and firm-1 repaid, firm-2 defaulted — all 3 records still present.
+    assert sch.lb.size == 3
 
 
 def test_revenue_post_state_consistency(tiny_sched: Simulation) -> None:

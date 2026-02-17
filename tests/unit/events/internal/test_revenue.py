@@ -105,8 +105,9 @@ def test_validate_debt_full_repayment() -> None:
 
     firms_validate_debt_commitments(bor, lend, lb)
 
-    # ledger emptied
-    assert lb.size == 0
+    # Loan records are retained after financial settlement (purged at credit
+    # market opening).  The original loan row should still be present.
+    assert lb.size == 1
     # symmetric money-flow
     assert lend.equity_base[0] == pytest.approx(1_000.0 + interest)
     assert bor.total_funds[0] == pytest.approx(100.0 - debt)
@@ -142,8 +143,8 @@ def test_validate_debt_partial_writeoff() -> None:
 
     # equity drop: each bank eats ½ of net_worth (=5.0)
     assert lend.equity_base.tolist() == pytest.approx([5.0, 0.0])
-    # ledger emptied after bad debt write-off (debt has been settled)
-    assert lb.size == 0
+    # Loan records retained after financial settlement (purged at credit market)
+    assert lb.size == 2
     # net_profit = gross_profit − total_interest
     assert bor.net_profit[0] == pytest.approx(-4.0)
 
@@ -180,7 +181,8 @@ def test_validate_debt_bad_amt_capped_at_loan_principal() -> None:
     # Bank should lose at most the principal (1.0), not debt (2.0) or frac × NW (50.0)
     # equity = 100.0 - 1.0 = 99.0
     assert lend.equity_base[0] == pytest.approx(99.0)
-    assert lb.size == 0
+    # Loan records retained after financial settlement
+    assert lb.size == 1
 
 
 def test_validate_debt_bad_amt_floored_at_zero() -> None:
@@ -216,7 +218,8 @@ def test_validate_debt_bad_amt_floored_at_zero() -> None:
     # Bank loses 0 (floored), not -5 (which would increase equity)
     # Note: The bank still loses the loan asset, but bad_amt accounting is 0
     assert lend.equity_base[0] == pytest.approx(100.0)
-    assert lb.size == 0
+    # Loan records retained after financial settlement
+    assert lb.size == 1
 
 
 def test_validate_debt_no_loans_noop() -> None:
