@@ -270,3 +270,17 @@ def test_contracts_no_employed_is_noop() -> None:
     np.testing.assert_array_equal(emp.current_labor, before_emp)
     for name, arr in before_wrk.items():
         np.testing.assert_array_equal(getattr(wrk, name), arr)
+
+
+def test_contracts_do_not_modify_wage_bill() -> None:
+    """
+    workers_update_contracts should NOT recalculate wage_bill.
+    wage_bill is recalculated by firms_calc_wage_bill in Phase 2.
+    """
+    emp, wrk = _mini_state()
+    wage_bill_before = emp.wage_bill.copy()
+
+    workers_update_contracts(wrk, emp)
+
+    # wage_bill should be unchanged (no recalculation)
+    np.testing.assert_array_equal(emp.wage_bill, wage_bill_before)
