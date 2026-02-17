@@ -408,6 +408,9 @@ class FirmsPrepareLoanApplications:
     """
     Firms select banks to apply to, sorted by interest rate (ascending).
 
+    Also clears any stale loans from the loan book before credit matching
+    begins (safety guard for multi-lender support).
+
     Firms with positive credit demand build a loan application queue by sampling
     banks and sorting them by interest rate. Firms prefer lower-rate banks to
     minimize borrowing costs.
@@ -500,6 +503,7 @@ class FirmsPrepareLoanApplications:
         firms_prepare_loan_applications(
             sim.bor,
             sim.lend,
+            sim.lb,
             max_H=sim.config.max_H,
             rng=sim.rng,
         )
@@ -569,8 +573,10 @@ class BanksProvideLoans:
 
     Each bank evaluates its application queue, ranking applicants by net worth
     (descending) to assess default risk. Banks provide loans up to available
-    credit supply and record them in the LoanBook. This event is repeated max_H
-    times, interleaved with FirmsSendOneLoanApp.
+    credit supply and record them in the LoanBook. Loans accumulate across
+    rounds, enabling multi-lender support: a firm can receive loans from
+    multiple banks across the max_H credit matching rounds. This event is
+    repeated max_H times, interleaved with FirmsSendOneLoanApp.
 
     Algorithm
     ---------

@@ -277,6 +277,47 @@ def test_interest_per_borrower_multiple_loans() -> None:
     np.testing.assert_allclose(result, expected)
 
 
+def test_principal_per_borrower_empty() -> None:
+    """Test principal_per_borrower with no loans."""
+    lb = LoanBook()
+    result = lb.principal_per_borrower(n_borrowers=5)
+
+    assert result.size == 5
+    np.testing.assert_array_equal(result, np.zeros(5))
+
+
+def test_principal_per_borrower_single_loan() -> None:
+    """Test principal_per_borrower with single loan."""
+    lb = LoanBook()
+    lb.append_loans_for_lender(
+        0, np.array([2], dtype=np.int64), np.array([100.0]), np.array([0.05])
+    )
+
+    result = lb.principal_per_borrower(n_borrowers=5)
+
+    expected = np.array([0.0, 0.0, 100.0, 0.0, 0.0])
+    np.testing.assert_allclose(result, expected)
+
+
+def test_principal_per_borrower_multiple_loans_same_borrower() -> None:
+    """Test principal_per_borrower when borrower has multiple loans."""
+    lb = LoanBook()
+
+    # Borrower 1 has two loans from different lenders
+    lb.append_loans_for_lender(
+        0, np.array([1], dtype=np.int64), np.array([100.0]), np.array([0.05])
+    )
+    lb.append_loans_for_lender(
+        1, np.array([1], dtype=np.int64), np.array([200.0]), np.array([0.06])
+    )
+
+    result = lb.principal_per_borrower(n_borrowers=3)
+
+    # Borrower 1 principal = 100 + 200 = 300
+    expected = np.array([0.0, 300.0, 0.0])
+    np.testing.assert_allclose(result, expected)
+
+
 # ============================================================================
 # Purge Operations
 # ============================================================================

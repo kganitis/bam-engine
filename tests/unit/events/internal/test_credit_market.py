@@ -175,9 +175,9 @@ def test_topk_lowest_rate_partial_sort() -> None:
 
 
 def test_prepare_applications_basic() -> None:
-    bor, lend, _, rng, H = _mini_state()
+    bor, lend, ledger, rng, H = _mini_state()
     firms_decide_credit_demand(bor)  # ensure positive demand
-    firms_prepare_loan_applications(bor, lend, max_H=H, rng=rng)
+    firms_prepare_loan_applications(bor, lend, ledger, max_H=H, rng=rng)
 
     active = np.where(bor.credit_demand > 0.0)[0]
     # every demanding firm receives H targets and a valid head pointer
@@ -188,24 +188,25 @@ def test_prepare_applications_basic() -> None:
 
 
 def test_prepare_applications_single_trial() -> None:
-    bor, lend, _, rng, _ = _mini_state(H=1)
+    bor, lend, ledger, rng, _ = _mini_state(H=1)
     firms_decide_credit_demand(bor)
-    firms_prepare_loan_applications(bor, lend, max_H=1, rng=rng)
+    firms_prepare_loan_applications(bor, lend, ledger, max_H=1, rng=rng)
     assert np.all(bor.loan_apps_head[bor.credit_demand > 0] % 1 == 0)
 
 
 def test_prepare_applications_no_demand() -> None:
     bor = mock_borrower(n=2, queue_h=2, credit_demand=np.zeros(2))
     lend = mock_lender(n=2, queue_h=2)
-    firms_prepare_loan_applications(bor, lend, max_H=2, rng=make_rng(0))
+    ledger = mock_loanbook()
+    firms_prepare_loan_applications(bor, lend, ledger, max_H=2, rng=make_rng(0))
     assert np.all(bor.loan_apps_head == -1)
     assert np.all(bor.loan_apps_targets == -1)
 
 
 def test_send_one_loan_app_queue_insert() -> None:
-    bor, lend, _, rng, H = _mini_state()
+    bor, lend, ledger, rng, H = _mini_state()
     firms_decide_credit_demand(bor)
-    firms_prepare_loan_applications(bor, lend, max_H=H, rng=rng)
+    firms_prepare_loan_applications(bor, lend, ledger, max_H=H, rng=rng)
     firms_send_one_loan_app(bor, lend)
 
     # At least one bank must have a non-empty queue
@@ -241,7 +242,7 @@ def _run_basic_loan_cycle(
     firms_decide_credit_demand(bor)
     orig_demand = np.asarray(bor.credit_demand.copy())  # snapshot for later assertions
     firms_calc_financial_fragility(bor)
-    firms_prepare_loan_applications(bor, lend, max_H=H, rng=rng)
+    firms_prepare_loan_applications(bor, lend, ledger, max_H=H, rng=rng)
     for _ in range(H):
         firms_send_one_loan_app(bor, lend)
         banks_provide_loans(bor, ledger, lend, r_bar=0.07)
@@ -684,8 +685,9 @@ def test_prepare_applications_no_lenders_early_exit() -> None:
     bor.credit_demand[:] = np.array([5.0, 0.0, 2.0])  # some borrowers demand
     lend = mock_lender(n=2, queue_h=2)
     lend.credit_supply[:] = 0.0  # no lenders available
+    ledger = mock_loanbook()
 
-    firms_prepare_loan_applications(bor, lend, max_H=2, rng=make_rng(0))
+    firms_prepare_loan_applications(bor, lend, ledger, max_H=2, rng=make_rng(0))
 
     # All heads must be -1; targets remain all -1 (initialized by factory)
     assert np.all(bor.loan_apps_head == -1)
@@ -709,8 +711,9 @@ def test_prepare_applications_Heff_lt_H_and_sorted_by_rate() -> None:
         interest_rate=np.array([0.12, 0.05]),
     )
     lend.credit_supply[:] = 100.0
+    ledger = mock_loanbook()
 
-    firms_prepare_loan_applications(bor, lend, max_H=H, rng=make_rng(0))
+    firms_prepare_loan_applications(bor, lend, ledger, max_H=H, rng=make_rng(0))
 
     demanding = np.where(bor.credit_demand > 0)[0]
     for f_id in demanding:
@@ -752,6 +755,57 @@ def test_banks_provide_loans_sets_contract_rate_formula() -> None:
     # Exactly one loan row must exist and rate must match the formula.
     assert ledger.size == 1
     np.testing.assert_allclose(ledger.rate[0], expected_rate, atol=1e-12)
+
+
+def test_multi_lender_loans_persist_across_rounds() -> None:
+    """
+    Firm with credit_demand=20 applies to 2 banks (supply=10 each).
+    After 2 rounds, loan book has 2 separate loans with distinct lender IDs.
+    This verifies that the per-bank purge removal enables multi-lender loans.
+    """
+    H = 2
+    bor = mock_borrower(
+        n=1,
+        queue_h=H,
+        wage_bill=np.array([30.0]),
+        net_worth=np.array([10.0]),
+        total_funds=np.array([10.0]),
+        credit_demand=np.array([20.0]),
+    )
+    bor.projected_fragility = np.array([2.0])  # 20 / 10
+
+    lend = mock_lender(
+        n=2,
+        queue_h=H,
+        credit_supply=np.array([10.0, 10.0]),
+        interest_rate=np.array([0.05, 0.06]),
+        recv_loan_apps=np.full((2, 1), -1, dtype=np.int64),
+    )
+    lend.opex_shock = np.array([0.05, 0.05])
+
+    ledger = mock_loanbook()
+
+    # Manually prepare applications: firm 0 targets bank 0 (slot 0), bank 1 (slot 1)
+    bor.loan_apps_targets[0, 0] = 0
+    bor.loan_apps_targets[0, 1] = 1
+    bor.loan_apps_head[0] = 0
+
+    # Round 1: send app to bank 0, bank 0 provides loan
+    firms_send_one_loan_app(bor, lend)
+    banks_provide_loans(bor, ledger, lend, r_bar=0.07)
+    assert ledger.size == 1  # one loan from bank 0
+
+    # Round 2: send app to bank 1, bank 1 provides loan
+    firms_send_one_loan_app(bor, lend)
+    banks_provide_loans(bor, ledger, lend, r_bar=0.07)
+    assert ledger.size == 2  # two loans: one from each bank
+
+    # Verify distinct lenders
+    lenders_in_book = set(ledger.lender[: ledger.size].tolist())
+    assert lenders_in_book == {0, 1}
+
+    # Both loans should be for borrower 0
+    np.testing.assert_array_equal(ledger.borrower[: ledger.size], [0, 0])
 
 
 # ============================================================================

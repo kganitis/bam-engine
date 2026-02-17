@@ -16,6 +16,10 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Added
 ~~~~~
 
+* ``LoanBook.principal_per_borrower()`` method for aggregating total
+  principal per borrower (complements ``debt_per_borrower()`` and
+  ``interest_per_borrower()``).
+
 * Robustness analysis package (Section 3.10 of Delli Gatti et al., 2011):
 
   * ``validation/robustness/`` package with internal validity and sensitivity analysis
@@ -50,6 +54,15 @@ Changed
 
 Fixed
 ~~~~~
+
+* Bad debt formula in ``firms_validate_debt_commitments()`` now uses loan
+  principal instead of total debt (principal + interest) for write-off
+  calculation. Bank loss exposure is based on outstanding principal, not
+  accrued interest. Fixes Finding #3 from book vs implementation review.
+* Loan purge in ``banks_provide_loans()`` moved from per-bank loop to
+  one-time safety clear in ``firms_prepare_loan_applications()``. This
+  enables multi-lender support: firms can now accumulate loans from
+  multiple banks across credit matching rounds (max_H).
 
 * Loan rate formula in ``banks_provide_loans()`` now uses per-bank ``opex_shock``
   (φ_k) instead of the constant upper bound ``h_phi``, matching book equation 3.7.
