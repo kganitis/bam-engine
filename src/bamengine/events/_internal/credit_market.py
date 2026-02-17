@@ -206,17 +206,15 @@ def firms_prepare_loan_applications(
     if info_enabled:
         log.info("--- Borrowers Preparing Loan Applications ---")
 
-    # Safety: clear any stale loans before fresh credit matching.
-    # The loan book should be empty (all loans resolved in revenue phase),
-    # but this guards against edge cases.
+    # Clear all settled loans before fresh credit matching begins.
+    # Loan records are intentionally retained through the planning and labor
+    # phases (after financial settlement in the revenue phase) so that
+    # planning-phase breakeven calculations can access previous-period
+    # interest obligations via lb.interest_per_borrower().
     if lb.size > 0:
-        log.warning(
-            f"  Loan book not empty at start of credit matching "
-            f"({lb.size} stale loans). Purging."
-        )
-        borrowers_seeking_credit = np.where(bor.credit_demand > 0.0)[0]
-        if borrowers_seeking_credit.size > 0:
-            lb.purge_borrowers(borrowers_seeking_credit)
+        if info_enabled:
+            log.info(f"  Clearing {lb.size} settled loans from previous period.")
+        lb.size = 0
 
     lenders = np.where(lend.credit_supply > 0)[0]
     borrowers = np.where(bor.credit_demand > 0.0)[0]

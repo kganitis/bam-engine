@@ -203,12 +203,11 @@ def firms_validate_debt_commitments(
                     f"to {lend.equity_base[lender_idx]:.2f}"
                 )
 
-        # remove repaid loans from loan book
-        removed = lb.drop_rows(row_sel)
-        log.debug(
-            f"  Compacting loan book: removed {removed} repaid loans. "
-            f"New size={lb.size}"
-        )
+        # Loan records are intentionally retained after financial settlement.
+        # They persist through planning/labor phases so that planning-phase
+        # breakeven calculations can access previous-period interest via
+        # lb.interest_per_borrower().  Records are purged when the credit
+        # market opens (firms_prepare_loan_applications).
 
     # process bad-debt write-offs
     bad_firms = np.where(unable_mask & (total_debt > EPS))[0]
@@ -334,12 +333,9 @@ def firms_validate_debt_commitments(
                         f"to {lend.equity_base[lender_idx]:.2f}"
                     )
 
-            # Remove defaulted loans from loan book (debt has been written off)
-            removed = lb.drop_rows(bad_rows_in_lb_mask)
-            log.debug(
-                f"  Compacting loan book: removed {removed} defaulted loans. "
-                f"New size={lb.size}"
-            )
+            # Defaulted loan records are retained (same rationale as repaid
+            # loans above).  Bankrupt-firm loans are separately purged in
+            # mark_bankrupt_firms when the agent is removed from the economy.
         else:
             if info_enabled:
                 log.info(
