@@ -134,7 +134,8 @@ class FirmsValidateDebtCommitments:
     Firms repay debts or write off if insufficient funds.
 
     Firms attempt to repay all outstanding debt (principal + interest). If
-    funds are insufficient, debts are proportionally written off up to net worth.
+    funds are insufficient, the bank's loss is proportional to its share of
+    the firm's total *principal* (not total debt), capped at the loan principal.
     Banks absorb losses from write-offs.
 
     Algorithm

@@ -185,12 +185,18 @@ def firms_calc_financial_fragility(bor: Borrower) -> None:
 def firms_prepare_loan_applications(
     bor: Borrower,
     lend: Lender,
+    lb: LoanBook,
     *,
     max_H: int,
     rng: Rng = make_rng(),
 ) -> None:
     """
     Firms build loan application queue sorted by interest rate.
+
+    Clears any stale loans before fresh credit matching begins (safety
+    guard). The loan book should normally be empty at this point because
+    all loans are resolved in the revenue phase, but this protects
+    against edge cases.
 
     See Also
     --------
@@ -199,6 +205,19 @@ def firms_prepare_loan_applications(
     info_enabled = log.isEnabledFor(logging.INFO)
     if info_enabled:
         log.info("--- Borrowers Preparing Loan Applications ---")
+
+    # Safety: clear any stale loans before fresh credit matching.
+    # The loan book should be empty (all loans resolved in revenue phase),
+    # but this guards against edge cases.
+    if lb.size > 0:
+        log.warning(
+            f"  Loan book not empty at start of credit matching "
+            f"({lb.size} stale loans). Purging."
+        )
+        borrowers_seeking_credit = np.where(bor.credit_demand > 0.0)[0]
+        if borrowers_seeking_credit.size > 0:
+            lb.purge_borrowers(borrowers_seeking_credit)
+
     lenders = np.where(lend.credit_supply > 0)[0]
     borrowers = np.where(bor.credit_demand > 0.0)[0]
 
@@ -510,6 +529,9 @@ def banks_provide_loans(
     """
     Banks process applications and provide loans ranked by net worth.
 
+    Loans accumulate across rounds — no per-bank purge of existing loans.
+    Multi-lender support: firms can hold loans from multiple banks.
+
     See Also
     --------
     bamengine.events.credit_market.BanksProvideLoans : Full documentation
@@ -640,7 +662,6 @@ def banks_provide_loans(
 
         # ledger updates
         log.debug(f"      Updating ledger for {final_borrowers.size} new loans.")
-        lb.purge_borrowers(final_borrowers)
         lb.append_loans_for_lender(k, final_borrowers, final_amounts, final_rates)
 
         # borrower‑side updates

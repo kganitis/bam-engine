@@ -449,6 +449,53 @@ class LoanBook:
             self.interest, func="sum", n_sources=n_borrowers
         )
 
+    def principal_per_borrower(self, n_borrowers: int) -> Float1D:
+        """
+        Aggregate total principal per borrower using vectorized summation.
+
+        Uses the inherited aggregate_by_source method from Relationship base
+        class, which employs np.add.at for efficient aggregation.
+
+        Parameters
+        ----------
+        n_borrowers : int
+            Number of borrowers in the simulation (typically n_firms).
+
+        Returns
+        -------
+        Float1D
+            Array of shape (n_borrowers,) containing total principal per borrower.
+            Borrowers with no loans have principal = 0.0.
+
+        Examples
+        --------
+        >>> from bamengine.relationships import LoanBook
+        >>> import numpy as np
+        >>> loans = LoanBook()
+        >>> loans.append_loans_for_lender(
+        ...     lender_idx=0,
+        ...     borrower_indices=np.array([1, 1, 3]),
+        ...     amount=np.array([100.0, 50.0, 200.0]),
+        ...     rate=np.array([0.02, 0.03, 0.02]),
+        ... )
+        >>> principal = loans.principal_per_borrower(n_borrowers=5)
+        >>> principal.shape
+        (5,)
+        >>> principal[1]  # doctest: +SKIP
+        150.0
+        >>> principal[3]  # doctest: +SKIP
+        200.0
+
+        See Also
+        --------
+        debt_per_borrower : Aggregate debt per borrower
+        interest_per_borrower : Aggregate interest per borrower
+        bamengine.core.relationship.Relationship.aggregate_by_source : Base method
+        """
+        return self.aggregate_by_source(  # type: ignore[no-any-return, attr-defined]
+            self.principal, func="sum", n_sources=n_borrowers
+        )
+
     def append_loans_for_lender(
         self,
         lender_idx: np.intp,

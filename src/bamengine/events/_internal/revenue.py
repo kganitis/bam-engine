@@ -102,6 +102,7 @@ def firms_validate_debt_commitments(
     n_firms = bor.total_funds.size
     total_debt = lb.debt_per_borrower(n_firms)
     total_interest = lb.interest_per_borrower(n_firms)
+    total_principal = lb.principal_per_borrower(n_firms)
 
     total_outstanding_debt = total_debt.sum()
     total_interest_component = total_interest.sum()
@@ -243,29 +244,29 @@ def firms_validate_debt_commitments(
             )
 
             # calculate proportional write-offs
-            # per-row bad-debt = (debt_row / debt_tot_borrower) · net_worth_borrower
+            # per-row bad-debt = (principal_row / principal_tot_borrower) · net_worth
             #
-            # When a firm defaults on its debt, the bank must write down its assets.
-            # The value of this write-down (the bad debt) is calculated as a share
-            # of the defaulting firm's remaining equity (net worth).
+            # The bank's loss exposure is based on outstanding principal, not
+            # accumulated interest.  Defaulting firms don't pay interest (they
+            # can't even cover principal), so the bank's write-down reflects
+            # its share of the principal it originally lent.
 
-            # Calculate the lender's share (`frac`) of the defaulting firm's total debt.
-            # For a given loan, this is: (this loan's value) / (firm's total debt).
-            # This determines the proportion of the equity-based loss
-            # this bank absorbs for this loan.
-            d_tot_map = total_debt[borrowers_from_lb[bad_rows_in_lb_mask]]
-            frac = lb.debt[: lb.size][bad_rows_in_lb_mask] / np.maximum(d_tot_map, EPS)
+            # Bank's share of firm's total PRINCIPAL (not total debt).
+            # frac = this loan's principal / firm's total principal
+            p_tot_map = total_principal[borrowers_from_lb[bad_rows_in_lb_mask]]
+            frac = lb.principal[: lb.size][bad_rows_in_lb_mask] / np.maximum(
+                p_tot_map, EPS
+            )
 
-            # Calculate the bad debt amount for this loan.
-            # This is the bank's `frac` multiplied by the firm's net worth.
-            # Bad debt is bounded: 0 <= bad_amt <= loan_value
-            # - Floor at 0: negative net_worth means bank loses the full loan
-            # - Cap at loan: bank can't lose more than it lent
-            loan_values = lb.debt[: lb.size][bad_rows_in_lb_mask]
+            # Cap at principal: bank can't lose more than it originally lent.
+            # Bad debt is bounded: 0 <= bad_amt <= loan_principal
+            # - Floor at 0: negative net_worth means bank loses nothing extra
+            # - Cap at principal: bank can't lose more than it lent
+            loan_principals = lb.principal[: lb.size][bad_rows_in_lb_mask]
             bad_amt_per_loan = np.clip(
                 frac * bor.net_worth[borrowers_from_lb[bad_rows_in_lb_mask]],
                 0.0,
-                loan_values,
+                loan_principals,
             )
 
             if log.isEnabledFor(logging.DEBUG):
@@ -286,8 +287,8 @@ def firms_validate_debt_commitments(
                         idx = matching_indices[0]
                         log.debug(
                             f"      Loan {i_loan} (Borrower {b_id}): "
-                            f"loan_val={lb.debt[i_loan]:.2f}, "
-                            f"borrower_total_debt_for_map={d_tot_map[idx]:.2f}, "
+                            f"principal={lb.principal[i_loan]:.2f}, "
+                            f"borrower_total_principal={p_tot_map[idx]:.2f}, "
                             f"frac={frac[idx]:.3f}, "
                             f"borrower_net_worth={bor.net_worth[b_id]:.2f} -> "
                             f"bad_amt_for_this_loan={bad_amt_per_loan[idx]:.2f}"

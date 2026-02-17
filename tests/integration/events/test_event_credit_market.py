@@ -50,7 +50,9 @@ def _run_credit_event(sch: Simulation) -> NDArray[np.float64]:
     firms_calc_financial_fragility(sch.bor)
 
     # application cycle
-    firms_prepare_loan_applications(sch.bor, sch.lend, max_H=sch.max_H, rng=sch.rng)
+    firms_prepare_loan_applications(
+        sch.bor, sch.lend, sch.lb, max_H=sch.max_H, rng=sch.rng
+    )
     for _ in range(sch.max_H):
         firms_send_one_loan_app(sch.bor, sch.lend)
         banks_provide_loans(sch.bor, sch.lb, sch.lend, r_bar=sch.r_bar)

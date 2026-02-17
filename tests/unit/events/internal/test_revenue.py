@@ -148,16 +148,15 @@ def test_validate_debt_partial_writeoff() -> None:
     assert bor.net_profit[0] == pytest.approx(-4.0)
 
 
-def test_validate_debt_bad_amt_capped_at_loan_value() -> None:
+def test_validate_debt_bad_amt_capped_at_loan_principal() -> None:
     """
-    When net_worth > loan_value, bad_amt should be capped at the loan value.
+    When net_worth > loan_principal, bad_amt should be capped at the principal.
 
-    This tests the fix for the bug where banks could lose more than they lent
-    when a defaulting firm had net_worth exceeding its debt.
+    The bank's loss exposure is the outstanding principal, not accrued interest.
     """
-    # Scenario: Firm has high net_worth (50.0) but small loan (2.0)
+    # Scenario: Firm has high net_worth (50.0) but small loan (principal=1.0)
     # Without the fix: bank would lose frac × net_worth = 1.0 × 50.0 = 50.0
-    # With the fix: bank loses at most loan_value = 2.0
+    # With the fix: bank loses at most principal = 1.0
     bor = mock_borrower(
         n=1,
         gross_profit=np.array([-5.0]),
@@ -178,9 +177,9 @@ def test_validate_debt_bad_amt_capped_at_loan_value() -> None:
 
     firms_validate_debt_commitments(bor, lend, lb)
 
-    # Bank should lose at most the loan value (2.0), not frac × net_worth (50.0)
-    # equity = 100.0 - 2.0 = 98.0
-    assert lend.equity_base[0] == pytest.approx(98.0)
+    # Bank should lose at most the principal (1.0), not debt (2.0) or frac × NW (50.0)
+    # equity = 100.0 - 1.0 = 99.0
+    assert lend.equity_base[0] == pytest.approx(99.0)
     assert lb.size == 0
 
 
