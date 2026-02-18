@@ -17,7 +17,7 @@ Components:
     - RnD: Role tracking R&D investment and productivity increments
     - FirmsComputeRnDIntensity: Event computing R&D share and intensity
     - FirmsApplyProductivityGrowth: Event applying productivity gains
-    - FirmsDeductRnDExpenditure: Event adjusting retained profits
+    - FirmsDeductRnDExpenditure: Event adjusting net profit for R&D expenditure
     - RND_EVENTS: List of all R&D event classes for use with ``sim.use_events()``
     - RND_CONFIG: Default R&D parameters for use with ``sim.use_config()``
 """

@@ -48,7 +48,7 @@ from bamengine import event, ops
 
 @event(
     name="firms_compute_rnd_intensity",
-    after="firms_pay_dividends",
+    after="firms_validate_debt_commitments",
 )
 class FirmsComputeRnDIntensity:
     """Compute R&D share and intensity for firms.
@@ -61,8 +61,10 @@ class FirmsComputeRnDIntensity:
     Requires extension parameters: sigma_min, sigma_max, sigma_decay
     Firms with non-positive profits have sigma = 0 (no R&D).
 
-    Note: This event is positioned after 'firms_pay_dividends' via the
-    ``@event(after=...)`` hook. Apply with ``sim.use_events(*RND_EVENTS)``.
+    Note: This event is positioned after 'firms_validate_debt_commitments'
+    (before 'firms_pay_dividends') via the ``@event(after=...)`` hook so that
+    R&D deducts from net profit *before* dividend distribution. Apply with
+    ``sim.use_events(*RND_EVENTS)``.
     """
 
     def execute(self, sim: bam.Simulation) -> None:
@@ -150,13 +152,14 @@ class FirmsApplyProductivityGrowth:
 
 @event(after="firms_apply_productivity_growth")
 class FirmsDeductRnDExpenditure:
-    """Adjust retained profits for R&D expenditure.
+    """Adjust net profit for R&D expenditure.
 
-    Modifies retained profit calculation:
-    - new_retained = old_retained * (1 - sigma)
+    Modifies net profit before dividend distribution:
+    - new_net_profit = old_net_profit * (1 - sigma)
 
-    This implements the (1-sigma) factor in equation 3.16,
-    ensuring retained profits account for R&D spending.
+    This implements the (1-sigma) factor in equation 3.16. By reducing
+    net_profit before ``firms_pay_dividends``, dividends correctly equal
+    delta * (1-sigma) * pi, matching book Section 3.8.
 
     Note: This event is positioned after 'firms_apply_productivity_growth' via the
     ``@event(after=...)`` hook. Apply with ``sim.use_events(*RND_EVENTS)``.
@@ -167,8 +170,8 @@ class FirmsDeductRnDExpenditure:
         bor = sim.get_role("Borrower")
         rnd = sim.get_role("RnD")
 
-        # Adjust retained profit: multiply by (1 - sigma)
-        # This captures the R&D expenditure before profit retention
+        # Adjust net profit: multiply by (1 - sigma)
+        # This captures the R&D expenditure before dividend distribution
         one_minus_sigma = ops.subtract(1.0, rnd.sigma)
-        new_retained = ops.multiply(bor.retained_profit, one_minus_sigma)
-        ops.assign(bor.retained_profit, new_retained)
+        new_net_profit = ops.multiply(bor.net_profit, one_minus_sigma)
+        ops.assign(bor.net_profit, new_net_profit)

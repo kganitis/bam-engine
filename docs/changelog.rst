@@ -68,6 +68,11 @@ Changed
 Fixed
 ~~~~~
 
+* Fixed Growth+ R&D event ordering: R&D deduction (``FirmsDeductRnDExpenditure``)
+  now runs *before* dividend distribution, matching book Section 3.8.
+  Previously R&D hooked after ``firms_pay_dividends``, overstating dividends
+  by δσπ. R&D now deducts from ``net_profit`` (not ``retained_profit``) so
+  dividends correctly equal δ(1−σ)π.
 * Fixed gross_profit overstatement: removed redundant ``wage_bill``
   recalculation in ``workers_update_contracts`` that was using post-expiration
   values instead of the actual wages paid.
