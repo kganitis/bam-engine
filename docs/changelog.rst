@@ -73,6 +73,10 @@ Fixed
   Previously R&D hooked after ``firms_pay_dividends``, overstating dividends
   by δσπ. R&D now deducts from ``net_profit`` (not ``retained_profit``) so
   dividends correctly equal δ(1−σ)π.
+* Fixed uninitialized ``projected_fragility`` buffer for firms with non-positive
+  net worth. ``firms_calc_financial_fragility()`` now pre-fills with
+  ``max_leverage`` before the conditional divide, ensuring deterministic
+  behavior and correct credit priority (insolvent firms get lowest priority).
 * Fixed gross_profit overstatement: removed redundant ``wage_bill``
   recalculation in ``workers_update_contracts`` that was using post-expiration
   values instead of the actual wages paid.

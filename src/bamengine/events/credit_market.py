@@ -385,7 +385,8 @@ class FirmsCalcFinancialFragility:
     extensions could incorporate fragility into credit decisions.
 
     Firms with zero or negative net worth have undefined leverage. The
-    implementation sets leverage = 0 for these cases to avoid division errors.
+    implementation assigns ``max_leverage`` for these firms, giving them
+    the worst credit priority and highest interest rate premium.
 
     See Also
     --------
@@ -400,7 +401,7 @@ class FirmsCalcFinancialFragility:
             firms_calc_financial_fragility,
         )
 
-        firms_calc_financial_fragility(sim.bor)
+        firms_calc_financial_fragility(sim.bor, max_leverage=sim.config.max_leverage)
 
 
 @event

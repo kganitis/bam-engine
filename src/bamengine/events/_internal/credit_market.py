@@ -144,7 +144,9 @@ def firms_decide_credit_demand(bor: Borrower) -> None:
         log.info("--- Credit Demand Decision complete ---")
 
 
-def firms_calc_financial_fragility(bor: Borrower) -> None:
+def firms_calc_financial_fragility(
+    bor: Borrower, *, max_leverage: float = 10.0
+) -> None:
     """
     Calculate firm projected financial fragility metric for loan applications.
 
@@ -162,6 +164,10 @@ def firms_calc_financial_fragility(bor: Borrower) -> None:
     if frag is None or frag.shape != shape:  # type: ignore[redundant-expr]
         frag = np.empty(shape, dtype=np.float64)
         bor.projected_fragility = frag
+
+    # Pre-fill with max_leverage so firms with NW <= 0 get a deterministic,
+    # economically meaningful default (worst credit priority).
+    frag[:] = max_leverage
 
     # Core Rule
     np.divide(bor.credit_demand, bor.net_worth, out=frag, where=bor.net_worth > 0.0)

@@ -166,6 +166,44 @@ def test_calc_credit_metrics_allocates_buffer() -> None:
     assert bor.projected_fragility.flags.writeable
 
 
+def test_calc_credit_metrics_negative_net_worth() -> None:
+    """Firms with NW <= 0 get max_leverage as fragility."""
+    bor = mock_borrower(
+        n=4,
+        queue_h=1,
+        credit_demand=np.array([5.0, 8.0, 3.0, 10.0]),
+        net_worth=np.array([10.0, 0.0, -5.0, 1.0]),
+    )
+    max_lev = 15.0
+    firms_calc_financial_fragility(bor, max_leverage=max_lev)
+    expected = np.array([0.5, max_lev, max_lev, 10.0])
+    np.testing.assert_allclose(bor.projected_fragility, expected, rtol=1e-12)
+
+
+def test_calc_credit_metrics_stale_buffer_cleared() -> None:
+    """Second call with NW changing from positive to zero doesn't leak stale values."""
+    bor = mock_borrower(
+        n=2,
+        queue_h=1,
+        credit_demand=np.array([4.0, 6.0]),
+        net_worth=np.array([8.0, 2.0]),
+    )
+    max_lev = 10.0
+    # First call: both firms have positive NW
+    firms_calc_financial_fragility(bor, max_leverage=max_lev)
+    np.testing.assert_allclose(
+        bor.projected_fragility, np.array([0.5, 3.0]), rtol=1e-12
+    )
+
+    # Second call: firm 1's NW drops to zero
+    bor.net_worth[:] = np.array([8.0, 0.0])
+    firms_calc_financial_fragility(bor, max_leverage=max_lev)
+    # Firm 1 should get max_leverage, not the stale 3.0
+    np.testing.assert_allclose(
+        bor.projected_fragility, np.array([0.5, max_lev]), rtol=1e-12
+    )
+
+
 def test_topk_lowest_rate_partial_sort() -> None:
     vals = np.array([0.09, 0.07, 0.12, 0.08])
     k = 2
