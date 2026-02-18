@@ -55,7 +55,7 @@ Run the test suite with pytest:
 
 .. code-block:: bash
 
-   # Run all tests with coverage (requires 95% coverage)
+   # Run all tests with coverage (requires 99% coverage)
    pytest
 
    # Run specific test file
@@ -80,32 +80,36 @@ Test categories:
 Performance & Benchmarking
 --------------------------
 
-BAM Engine uses `ASV (Airspeed Velocity) <https://asv.readthedocs.io/>`_ for
-performance benchmarking with historical tracking.
+BAM Engine uses two complementary approaches for performance monitoring:
 
-Monitoring Performance
-~~~~~~~~~~~~~~~~~~~~~~
+* **Pytest regression tests** (``tests/performance/test_regression.py``): Automated
+  pass/fail checks with hardcoded baselines that run as part of ``pytest``. Coverage
+  is automatically disabled for these tests (see ``tests/performance/conftest.py``)
+  to avoid measurement distortion from ``sys.settrace`` overhead.
+* **ASV benchmarks** (``asv_benchmarks/``): Cross-commit performance tracking with
+  machine-specific baselines and historical analysis. Requires separate invocation.
 
-When contributing, ensure changes don't introduce performance regressions:
+Pytest Regression Tests
+~~~~~~~~~~~~~~~~~~~~~~~
 
-1. **Run ASV comparison** before submitting a pull request:
+Regression tests run automatically during ``pytest`` and catch performance
+regressions beyond a 15% threshold:
 
-   .. code-block:: bash
+.. code-block:: bash
 
-      cd asv_benchmarks
-      asv continuous HEAD~1 HEAD
+   # Run regression tests (included in full pytest runs)
+   pytest -m regression
 
-2. **For targeted checks**, specify a benchmark suite:
+   # Run quick benchmarks with pytest-benchmark
+   pytest tests/performance/test_quick_benchmarks.py -v
 
-   .. code-block:: bash
+Baselines are machine-specific and must be updated manually after confirmed
+improvements. These tests are skipped in CI due to virtualization variance.
 
-      asv continuous -b SimulationSuite HEAD~1 HEAD
+ASV (Airspeed Velocity)
+~~~~~~~~~~~~~~~~~~~~~~~
 
-3. **Report significant changes** (>5% improvement or regression) in your pull
-   request description.
-
-Running Benchmarks
-~~~~~~~~~~~~~~~~~~
+For detailed cross-commit performance tracking:
 
 .. code-block:: bash
 
@@ -117,8 +121,14 @@ Running Benchmarks
    # Check for regressions between commits
    asv continuous HEAD~1 HEAD
 
+   # Target a specific suite
+   asv continuous -b SimulationSuite HEAD~1 HEAD
+
    # Publish and view results
    asv publish && asv preview
+
+Report significant changes (>5% improvement or regression) in pull request
+descriptions.
 
 Profiling
 ~~~~~~~~~
