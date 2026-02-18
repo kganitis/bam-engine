@@ -134,9 +134,9 @@ class FirmsValidateDebtCommitments:
     Firms repay debts or write off if insufficient funds.
 
     Firms attempt to repay all outstanding debt (principal + interest). If
-    funds are insufficient, the bank's loss is proportional to its share of
-    the firm's total *principal* (not total debt), capped at the loan principal.
-    Banks absorb losses from write-offs.
+    funds are insufficient, banks recover a proportional share of the firm's
+    remaining equity (if positive), capped at the loan principal. The bank's
+    actual loss is the unrecovered portion of the principal.
 
     Algorithm
     ---------
@@ -149,10 +149,12 @@ class FirmsValidateDebtCommitments:
        - Remove loans from LoanBook
        - Net profit: :math:`NP_i = GP_i - \\text{interest\\_paid}`
     3. Else (cannot repay):
-       - Calculate write-off: :math:`W = \\min(D_i - A_i, \\max(0, A_i))`
-       - Proportionally reduce debt by :math:`W`
-       - Pay remainder: :math:`A_i \\leftarrow 0`
-       - Bank absorbs loss
+       - For each loan, compute the bank's proportional claim:
+         :math:`\\text{frac} = \\text{principal}_\\text{loan} / \\text{principal}_\\text{total}`
+       - Recovery (capped at principal, floored at 0):
+         :math:`R = \\text{clip}(\\text{frac} \\times A_i,\\; 0,\\; \\text{principal}_\\text{loan})`
+       - Bank loss: :math:`L = \\text{principal}_\\text{loan} - R`
+       - Bank absorbs loss: :math:`E_k \\leftarrow E_k - L`
        - Net profit: :math:`NP_i = GP_i - \\text{interest\\_paid}` (partial)
 
     Examples

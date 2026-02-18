@@ -171,8 +171,8 @@ class SpawnReplacementFirms:
     trimmed mean of survivors × scale factor (smaller than average).
 
     For production fields:
-    - ``production = 0`` (no workers yet, keeps end-period aggregate stats clean)
     - ``production_prev = mean_prod × new_firm_production_factor`` (planning signal)
+    - ``production = production_prev`` (seeds current-period output)
 
     Examples
     --------

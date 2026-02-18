@@ -33,6 +33,7 @@ def _run_revenue_event(
         "net_w_before": sch.bor.net_worth.copy(),
         "debt_tot_before": sch.lb.debt_per_borrower(n_firms),
         "interest_tot": sch.lb.interest_per_borrower(n_firms),
+        "principal_tot": sch.lb.principal_per_borrower(n_firms),
         "savings_before": sch.con.savings.copy(),
     }
 
@@ -108,7 +109,8 @@ def test_event_revenue_basic(tiny_sched: Simulation) -> None:
     repay_mask = snap["funds_after_revenue"] >= debt_before - EPS
     debt_paid = np.where(repay_mask, debt_before, 0.0)
     interest_paid = np.where(repay_mask, snap["interest_tot"], 0.0)
-    bad_debt = np.where(~repay_mask, snap["net_w_before"], 0.0)
+    recovery = np.clip(snap["net_w_before"], 0.0, snap["principal_tot"])
+    bad_debt = np.where(~repay_mask, snap["principal_tot"] - recovery, 0.0)
 
     # borrower cash
     cash_expected = (

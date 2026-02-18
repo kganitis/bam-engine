@@ -242,13 +242,13 @@ def firms_validate_debt_commitments(
                 f"  {num_bad_loans} loans in loanbook belong to these defaulting firms."
             )
 
-            # calculate proportional write-offs
-            # per-row bad-debt = (principal_row / principal_tot_borrower) · net_worth
+            # calculate proportional write-offs (recovery / loss)
+            # per-loan recovery = clip(frac · net_worth, 0, principal)
+            # per-loan loss     = principal − recovery
             #
-            # The bank's loss exposure is based on outstanding principal, not
-            # accumulated interest.  Defaulting firms don't pay interest (they
-            # can't even cover principal), so the bank's write-down reflects
-            # its share of the principal it originally lent.
+            # The bank recovers a proportional share of the firm's remaining
+            # equity (if positive).  The loss is the unrecovered principal.
+            # Exposure is based on outstanding principal, not accrued interest.
 
             # Bank's share of firm's total PRINCIPAL (not total debt).
             # frac = this loan's principal / firm's total principal
@@ -257,22 +257,21 @@ def firms_validate_debt_commitments(
                 p_tot_map, EPS
             )
 
-            # Cap at principal: bank can't lose more than it originally lent.
-            # Bad debt is bounded: 0 <= bad_amt <= loan_principal
-            # - Floor at 0: negative net_worth means bank loses nothing extra
-            # - Cap at principal: bank can't lose more than it lent
+            # Recovery vs loss: the bank recovers a proportional share of the
+            # firm's remaining equity (if positive), capped at loan principal.
+            # The actual loss is the unrecovered portion of the principal.
+            #   recovery = clip(frac × net_worth, 0, principal)
+            #   loss     = principal − recovery
             loan_principals = lb.principal[: lb.size][bad_rows_in_lb_mask]
-            bad_amt_per_loan = np.clip(
+            recovery_per_loan = np.clip(
                 frac * bor.net_worth[borrowers_from_lb[bad_rows_in_lb_mask]],
                 0.0,
                 loan_principals,
             )
+            bad_amt_per_loan = loan_principals - recovery_per_loan
 
             if log.isEnabledFor(logging.DEBUG):
-                log.debug(
-                    "    Calculating bad_amt per loan for write-off "
-                    "(capped at loan value):"
-                )
+                log.debug("    Calculating recovery/loss per loan for write-off:")
                 sample_bad_loan_indices = np.where(bad_rows_in_lb_mask)[0][
                     : min(5, int(np.sum(bad_rows_in_lb_mask)))
                 ]
@@ -290,7 +289,8 @@ def firms_validate_debt_commitments(
                             f"borrower_total_principal={p_tot_map[idx]:.2f}, "
                             f"frac={frac[idx]:.3f}, "
                             f"borrower_net_worth={bor.net_worth[b_id]:.2f} -> "
-                            f"bad_amt_for_this_loan={bad_amt_per_loan[idx]:.2f}"
+                            f"recovery={recovery_per_loan[idx]:.2f}, "
+                            f"loss={bad_amt_per_loan[idx]:.2f}"
                         )
 
             total_bad_debt_writeoff = bad_amt_per_loan.sum()
