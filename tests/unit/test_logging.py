@@ -211,23 +211,23 @@ class TestEventGetLogger:
         sim = Simulation.init(n_firms=10, n_households=10, n_banks=2, seed=42)
 
         # Get an event from the pipeline
-        event = sim.get_event("firms_adjust_price")
+        event = sim.get_event("firms_run_production")
         logger = event.get_logger()
 
         # Check logger name
-        assert logger.name == "bamengine.events.firms_adjust_price"
+        assert logger.name == "bamengine.events.firms_run_production"
 
     def test_event_logger_respects_per_event_level(self):
         """Event logger should have the configured per-event level."""
         log_config = {
             "default_level": "INFO",
-            "events": {"firms_adjust_price": "DEBUG"},
+            "events": {"firms_run_production": "DEBUG"},
         }
         sim = Simulation.init(
             n_firms=10, n_households=10, n_banks=2, logging=log_config, seed=42
         )
 
-        event = sim.get_event("firms_adjust_price")
+        event = sim.get_event("firms_run_production")
         logger = event.get_logger()
 
         # Should have DEBUG level
@@ -238,7 +238,7 @@ class TestEventGetLogger:
         log_config = {
             "default_level": "INFO",
             "events": {
-                "firms_adjust_price": "DEBUG",
+                "firms_run_production": "DEBUG",
                 "workers_send_one_round": "WARNING",
                 "firms_hire_workers": "ERROR",
             },
@@ -248,7 +248,7 @@ class TestEventGetLogger:
         )
 
         # Check each event has correct level
-        pricing_event = sim.get_event("firms_adjust_price")
+        pricing_event = sim.get_event("firms_run_production")
         assert pricing_event.get_logger().level == logging.DEBUG
 
         worker_event = sim.get_event("workers_send_one_round")

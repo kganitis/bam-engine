@@ -15,5 +15,7 @@ Event Classes
 
    FirmsPayWages
    WorkersReceiveWage
+   FirmsCalcBreakevenPrice
+   FirmsAdjustPrice
    FirmsRunProduction
    WorkersUpdateContracts

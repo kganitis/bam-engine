@@ -78,6 +78,36 @@ You can also specify a completely custom pipeline via YAML:
 
    sim = bam.Simulation.init(pipeline_path="custom_pipeline.yml", seed=42)
 
+Planning-Phase Pricing (Alternative)
+-------------------------------------
+
+BAM Engine provides an alternative pair of pricing events that run during the
+planning phase instead of the production phase:
+
+- ``firms_plan_breakeven_price`` — breakeven from previous period's costs / desired production
+- ``firms_plan_price`` — price adjustment with breakeven floor
+
+These are **mutually exclusive** with the production-phase pair
+(``firms_calc_breakeven_price``, ``firms_adjust_price``). When using
+planning-phase pricing, remove the production-phase events from the pipeline.
+
+.. code-block:: yaml
+
+   events:
+     # Planning — pricing moved here
+     - firms_decide_desired_production
+     - firms_plan_breakeven_price
+     - firms_plan_price
+     - firms_decide_desired_labor
+     # ...
+
+     # Production — no breakeven/price events
+     - firms_pay_wages
+     - workers_receive_wage
+     - firms_run_production
+     - update_avg_mkt_price
+     - workers_update_contracts
+
 Topics to be covered:
 
 * Default pipeline structure

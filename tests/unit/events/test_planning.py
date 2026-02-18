@@ -22,17 +22,19 @@ def test_firms_decide_desired_production_executes():
     event.execute(sim)  # Should not crash
 
 
-def test_firms_calc_breakeven_price_executes():
-    """FirmsCalcBreakevenPrice executes without error."""
+def test_firms_plan_breakeven_price_executes():
+    """FirmsPlanBreakevenPrice executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = get_event("firms_calc_breakeven_price")()
+    # Must run after firms_decide_desired_production (needs desired_production)
+    get_event("firms_decide_desired_production")().execute(sim)
+    event = get_event("firms_plan_breakeven_price")()
     event.execute(sim)  # Should not crash
 
 
-def test_firms_adjust_price_executes():
-    """FirmsAdjustPrice executes without error."""
+def test_firms_plan_price_executes():
+    """FirmsPlanPrice executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = get_event("firms_adjust_price")()
+    event = get_event("firms_plan_price")()
     event.execute(sim)  # Should not crash
 
 
@@ -66,11 +68,27 @@ def test_planning_event_chain_executes():
     """Planning events can execute in sequence."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
 
-    # Execute in sequence
+    # Execute in sequence (default pipeline planning events)
     events = [
         "firms_decide_desired_production",
-        "firms_calc_breakeven_price",
-        "firms_adjust_price",
+        "firms_decide_desired_labor",
+        "firms_decide_vacancies",
+        "firms_fire_excess_workers",
+    ]
+
+    for e in events:
+        get_event(e)().execute(sim)  # Should not crash
+
+
+def test_planning_with_optional_pricing_executes():
+    """Planning events with optional pricing can execute in sequence."""
+    sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+
+    # Execute with optional planning-phase pricing events
+    events = [
+        "firms_decide_desired_production",
+        "firms_plan_breakeven_price",
+        "firms_plan_price",
         "firms_decide_desired_labor",
         "firms_decide_vacancies",
         "firms_fire_excess_workers",

@@ -29,6 +29,20 @@ def test_workers_receive_wage_executes():
     event.execute(sim)  # Should not crash
 
 
+def test_firms_calc_breakeven_price_executes():
+    """FirmsCalcBreakevenPrice executes without error."""
+    sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+    event = get_event("firms_calc_breakeven_price")()
+    event.execute(sim)  # Should not crash
+
+
+def test_firms_adjust_price_executes():
+    """FirmsAdjustPrice executes without error."""
+    sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+    event = get_event("firms_adjust_price")()
+    event.execute(sim)  # Should not crash
+
+
 def test_firms_run_production_executes():
     """FirmsRunProduction executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
@@ -56,6 +70,8 @@ def test_production_event_chain():
     events = [
         "firms_pay_wages",
         "workers_receive_wage",
+        "firms_calc_breakeven_price",
+        "firms_adjust_price",
         "firms_run_production",
         "workers_update_contracts",
     ]

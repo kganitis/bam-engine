@@ -12,8 +12,8 @@ def test_all_planning_events_registered():
     events = list_events()
 
     assert "firms_decide_desired_production" in events
-    assert "firms_calc_breakeven_price" in events
-    assert "firms_adjust_price" in events
+    assert "firms_plan_breakeven_price" in events
+    assert "firms_plan_price" in events
     assert "firms_decide_desired_labor" in events
     assert "firms_decide_vacancies" in events
 
@@ -51,6 +51,8 @@ def test_all_production_events_registered():
 
     assert "firms_pay_wages" in events
     assert "workers_receive_wage" in events
+    assert "firms_calc_breakeven_price" in events
+    assert "firms_adjust_price" in events
     assert "firms_run_production" in events
     assert "workers_update_contracts" in events
 

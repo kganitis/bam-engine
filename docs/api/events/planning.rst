@@ -14,7 +14,7 @@ Event Classes
    :nosignatures:
 
    FirmsDecideDesiredProduction
-   FirmsCalcBreakevenPrice
-   FirmsAdjustPrice
+   FirmsPlanBreakevenPrice
+   FirmsPlanPrice
    FirmsDecideDesiredLabor
    FirmsDecideVacancies

@@ -25,15 +25,15 @@ def test_getter_methods_work():
     assert wrk is sim.wrk
 
     # Test get_event
-    event = sim.get_event("firms_adjust_price")
-    assert event.name == "firms_adjust_price"
+    event = sim.get_event("firms_run_production")
+    assert event.name == "firms_run_production"
 
     # Test unified get() method
     prod2 = sim.get("Producer")
     assert prod2 is sim.prod
 
-    event2 = sim.get("firms_adjust_price")
-    assert event2.name == "firms_adjust_price"
+    event2 = sim.get("firms_run_production")
+    assert event2.name == "firms_run_production"
 
 
 def test_ops_arithmetic_matches_numpy():

@@ -5,9 +5,13 @@ Unit tests for production events internal implementation.
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
+from bamengine import make_rng
 from bamengine.events._internal.production import (
     calc_unemployment_rate,
+    firms_adjust_price,
+    firms_calc_breakeven_price,
     firms_pay_wages,
     firms_run_production,
     update_avg_mkt_price,
@@ -15,6 +19,7 @@ from bamengine.events._internal.production import (
     workers_update_contracts,
 )
 from bamengine.roles import Employer, Worker
+from bamengine.utils import EPS
 from tests.helpers.factories import (
     mock_consumer,
     mock_economy,
@@ -284,3 +289,174 @@ def test_contracts_do_not_modify_wage_bill() -> None:
 
     # wage_bill should be unchanged (no recalculation)
     np.testing.assert_array_equal(emp.wage_bill, wage_bill_before)
+
+
+# ============================================================================
+# Breakeven Price Tests (production-phase)
+# ============================================================================
+
+
+def test_breakeven_no_cap_equals_raw() -> None:
+    """
+    If no cap_factor is provided (or cap_factor <= 1), the breakeven floor
+    equals raw (wage_bill + interest) / max(projected_production, _EPS).
+    projected_production = labor_productivity * current_labor.
+    """
+    n = 3
+    prod = mock_producer(n=n)
+    prod.price[:] = 1.0  # irrelevant when no cap
+    # labor_productivity defaults to 1.0, so projected_production = current_labor
+
+    emp = mock_employer(n=n)
+    emp.wage_bill[:] = np.array([10.0, 5.0, 8.0])
+    emp.current_labor[:] = np.array([10, 5, 2], dtype=np.int64)  # projected_production
+
+    class DummyLoanBook:
+        @staticmethod
+        def interest_per_borrower(nfirms: int) -> np.ndarray:
+            assert nfirms == n
+            return np.array([1.0, 0.0, 1.0])
+
+    lb = DummyLoanBook()
+
+    # noinspection PyTypeChecker
+    firms_calc_breakeven_price(prod, emp, lb, cap_factor=None)
+
+    # projected_production = labor_productivity * current_labor = 1.0 * [10, 5, 2]
+    projected_production = prod.labor_productivity * emp.current_labor
+    expected = (emp.wage_bill + np.array([1.0, 0.0, 1.0])) / np.maximum(
+        projected_production, EPS
+    )
+    np.testing.assert_allclose(prod.breakeven_price, expected, rtol=1e-12, atol=0.0)
+
+
+def test_breakeven_capped_by_price_times_factor() -> None:
+    """
+    With a cap_factor > 1, breakeven is min(raw_breakeven, price * cap_factor).
+    projected_production = labor_productivity * current_labor.
+    """
+    n = 3
+    prod = mock_producer(n=n)
+    prod.price[:] = np.array([2.0, 1.0, 0.5])  # caps: [4.0, 2.0, 1.0]
+    # labor_productivity defaults to 1.0, so projected_production = current_labor
+
+    emp = mock_employer(n=n)
+    emp.wage_bill[:] = np.array([100.0, 1.0, 1.0])  # raw: [100, 1, 1] when proj_prod=1
+    emp.current_labor[:] = np.array(
+        [1, 1, 1], dtype=np.int64
+    )  # projected_production = 1
+
+    class DummyLoanBook:
+        @staticmethod
+        def interest_per_borrower(nfirms: int) -> np.ndarray:
+            return np.zeros(nfirms)
+
+    lb = DummyLoanBook()
+
+    # noinspection PyTypeChecker
+    firms_calc_breakeven_price(prod, emp, lb, cap_factor=2)
+
+    # projected_production = labor_productivity * current_labor = 1.0 * [1, 1, 1]
+    projected_production = prod.labor_productivity * emp.current_labor
+    raw = (emp.wage_bill + 0.0) / np.maximum(projected_production, EPS)
+    cap = prod.price * 2
+    expected = np.minimum(raw, cap)
+
+    np.testing.assert_allclose(prod.breakeven_price, expected, rtol=1e-12, atol=0.0)
+
+
+# ============================================================================
+# Price Adjustment Tests (production-phase)
+# ============================================================================
+
+
+def test_price_adjust_raise_branch() -> None:
+    """
+    Inventory == 0 and price < p_avg → raise by (1 + shock) and respect breakeven floor.
+    """
+    rng = make_rng(0)
+    prod = mock_producer(n=1)
+    prod.inventory[:] = 0.0
+    prod.price[:] = 1.0
+    prod.breakeven_price[:] = 0.1  # low floor so it doesn't bind
+
+    old = prod.price.copy()
+    firms_adjust_price(prod, p_avg=2.0, h_eta=0.1, rng=rng)
+
+    # replicate the single shock deterministically
+    shock = make_rng(0).uniform(0.0, 0.1, 1)[0]
+    expected = max(float(old[0] * (1.0 + shock)), float(prod.breakeven_price[0]))
+
+    assert prod.price[0] == pytest.approx(expected)
+    assert prod.price[0] >= old[0]
+
+
+def test_price_adjust_cut_branch_with_floor_increase() -> None:
+    """
+    Inventory > 0 and price >= p_avg → cut by (1 - shock) but *not below* breakeven.
+    If breakeven > old price, the price should increase to the floor (warning case).
+    """
+    rng = make_rng(1)
+    prod = mock_producer(n=2)
+
+    # both firms in "cut" set (inventory>0 & price >= p_avg)
+    prod.inventory[:] = np.array([5.0, 5.0])
+    prod.price[:] = np.array([2.0, 1.0])
+    prod.breakeven_price[:] = np.array([1.5, 1.2])  # second > old price
+
+    old = prod.price.copy()
+    firms_adjust_price(prod, p_avg=1.0, h_eta=0.1, rng=rng)
+
+    # first: normal cut (floor 1.5 below plausible cut target)
+    assert prod.price[0] <= old[0]
+
+    # second: floor-induced increase (breakeven above old)
+    assert prod.price[1] == pytest.approx(1.2)
+    assert prod.price[1] > old[1]
+
+
+def test_price_adjust_noop_when_masks_empty() -> None:
+    """
+    If a firm is neither in mask_up nor mask_dn, its price must remain unchanged.
+    Cases:
+      - inventory == 0 and price >= p_avg  (not mask_up since price !< p_avg)
+      - inventory > 0 and price < p_avg   (not mask_dn since price !>= p_avg)
+    """
+    rng = make_rng(3)
+    prod = mock_producer(n=2)
+    prod.inventory[:] = np.array([0.0, 10.0])
+    prod.price[:] = np.array([2.0, 0.5])
+    prod.breakeven_price[:] = np.array([0.1, 0.4])
+
+    old = prod.price.copy()
+    firms_adjust_price(prod, p_avg=2.0, h_eta=0.1, rng=rng)
+
+    np.testing.assert_array_equal(prod.price, old)
+
+
+def test_price_adjust_cut_with_no_increase_allowed() -> None:
+    """
+    When price_cut_allow_increase=False, prices should not increase
+    even when the breakeven floor is above the old price.
+    """
+    rng = make_rng(1)
+    prod = mock_producer(n=2)
+
+    # Both firms in "cut" set (inventory>0 & price >= p_avg)
+    prod.inventory[:] = np.array([5.0, 5.0])
+    prod.price[:] = np.array([2.0, 1.0])
+    # Second firm has breakeven_price > old price
+    prod.breakeven_price[:] = np.array([1.5, 1.2])
+
+    old = prod.price.copy()
+    firms_adjust_price(
+        prod, p_avg=1.0, h_eta=0.1, rng=rng, price_cut_allow_increase=False
+    )
+
+    # First firm: normal cut (floor 1.5 below price cut target)
+    assert prod.price[0] <= old[0]
+
+    # Second firm: with price_cut_allow_increase=False, price should NOT increase
+    # even though breakeven_price (1.2) > old price (1.0)
+    # Instead, floor is min(old_price, breakeven_price) = min(1.0, 1.2) = 1.0
+    assert prod.price[1] <= old[1]

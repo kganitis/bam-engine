@@ -6,11 +6,8 @@ import numpy as np
 import pytest
 
 from bamengine.core.pipeline import Pipeline
-from bamengine.events.planning import (
-    FirmsAdjustPrice,
-    FirmsCalcBreakevenPrice,
-    FirmsDecideDesiredProduction,
-)
+from bamengine.events.planning import FirmsDecideDesiredProduction
+from bamengine.events.production import FirmsAdjustPrice, FirmsCalcBreakevenPrice
 
 
 def test_pipeline_from_event_list_basic():

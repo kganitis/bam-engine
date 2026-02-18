@@ -405,7 +405,7 @@ class TestSimulationUseEvents:
         """sim.use_events() applies replace hooks correctly."""
         import bamengine as bam
 
-        @event(replace="firms_adjust_price")
+        @event(replace="update_avg_mkt_price")
         class CustomPricing:
             def execute(self, sim):
                 pass
@@ -415,4 +415,4 @@ class TestSimulationUseEvents:
 
         names = [e.name for e in sim.pipeline.events]
         assert "custom_pricing" in names
-        assert "firms_adjust_price" not in names
+        assert "update_avg_mkt_price" not in names
