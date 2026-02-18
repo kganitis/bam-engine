@@ -114,7 +114,7 @@ def firms_decide_desired_production(
         log.info("--- Desired Production Decision complete ---")
 
 
-def firms_calc_breakeven_price(
+def firms_plan_breakeven_price(
     prod: Producer,
     emp: Employer,
     lb: LoanBook,
@@ -122,31 +122,37 @@ def firms_calc_breakeven_price(
     cap_factor: float | None = None,
 ) -> None:
     """
-    Calculate breakeven price from wage costs and interest payments.
+    Calculate planning-phase breakeven price from previous period's costs.
+
+    Uses desired_production (freshly computed by firms_decide_desired_production)
+    as the denominator instead of projected_production (labor_productivity x
+    current_labor).
+
+    At planning time, wage_bill and LoanBook interest naturally reflect
+    previous period's values (not yet recomputed for the current period).
 
     See Also
     --------
-    bamengine.events.planning.FirmsCalcBreakevenPrice : Full documentation
+    bamengine.events.planning.FirmsPlanBreakevenPrice : Full documentation
     """
     info_enabled = log.isEnabledFor(logging.INFO)
     if info_enabled:
-        log.info("--- Firms Calculating Breakeven Price ---")
+        log.info("--- Firms Planning Breakeven Price ---")
         log.info(
             f"  Inputs: Breakeven Cap Factor={cap_factor if cap_factor else 'None'}"
         )
         log.info(
-            "  Calculation uses projected production (labor_productivity × current_labor) "
-            "as the denominator."
+            "  Calculation uses desired_production (current-period target) "
+            "as the denominator, with previous period's costs."
         )
 
-    # Breakeven calculation
+    # Breakeven calculation using desired_production as denominator
     interest = lb.interest_per_borrower(prod.production.size)
-    projected_production = prod.labor_productivity * emp.current_labor
-    breakeven = (emp.wage_bill + interest) / np.maximum(projected_production, EPS)
+    breakeven = (emp.wage_bill + interest) / np.maximum(prod.desired_production, EPS)
     if info_enabled:
         log.info(
-            f"  Total Wage Bill for calc: {emp.wage_bill.sum():,.2f}. "
-            f"Total Interest for calc: {interest.sum():,.2f}"
+            f"  Total Wage Bill (prev period): {emp.wage_bill.sum():,.2f}. "
+            f"Total Interest (prev period): {interest.sum():,.2f}"
         )
     if log.isEnabledFor(logging.DEBUG):
         valid_breakeven = breakeven[np.isfinite(breakeven)]
@@ -159,10 +165,8 @@ def firms_calc_breakeven_price(
 
     # Cap breakeven
     if cap_factor and cap_factor > 1:
-        # Cannot be more than current price x cap_factor. This prevents extreme jumps.
         breakeven_max_value = prod.price * cap_factor
     else:
-        # If no cap_factor, the max value is effectively infinite
         if info_enabled:
             log.info(
                 "  No cap_factor provided for breakeven price. "
@@ -187,10 +191,10 @@ def firms_calc_breakeven_price(
             f"{np.array2string(prod.breakeven_price, precision=2)}"
         )
     if info_enabled:
-        log.info("--- Breakeven Price Calculation complete ---")
+        log.info("--- Planning Breakeven Price Calculation complete ---")
 
 
-def firms_adjust_price(
+def firms_plan_price(
     prod: Producer,
     *,
     p_avg: float,
@@ -199,15 +203,19 @@ def firms_adjust_price(
     rng: Rng = make_rng(),
 ) -> None:
     """
-    Adjust prices based on inventory and market position.
+    Planning-phase price adjustment based on inventory and market position.
+
+    Identical logic to production-phase firms_adjust_price but intended to
+    run during the planning phase using breakeven computed from previous
+    period's costs.
 
     See Also
     --------
-    bamengine.events.planning.FirmsAdjustPrice : Full documentation
+    bamengine.events.planning.FirmsPlanPrice : Full documentation
     """
     info_enabled = log.isEnabledFor(logging.INFO)
     if info_enabled:
-        log.info("--- Firms Adjusting Prices ---")
+        log.info("--- Firms Planning Prices ---")
         log.info(
             f"  Inputs: Avg Market Price (p_avg)={p_avg:.3f}  |  "
             f"Max Price Shock (h_η)={h_eta:.3f}"
@@ -219,7 +227,7 @@ def firms_adjust_price(
     # scratch buffer for shocks
     shock = prod.price_shock
     if shock is None or shock.shape != shape:
-        shock = np.empty(shape, dtype=np.float64)  # Corrected dtype
+        shock = np.empty(shape, dtype=np.float64)
         prod.price_shock = shock
 
     shock[:] = rng.uniform(0.0, h_eta, size=shape)
@@ -244,7 +252,7 @@ def firms_adjust_price(
 
     # DEBUG pre-update snapshot
     if log.isEnabledFor(logging.DEBUG):
-        log.debug("  --- PRICE ADJUSTMENT (EXECUTION) ---")
+        log.debug("  --- PRICE ADJUSTMENT (PLANNING PHASE) ---")
         log.debug(f"  P̄ (avg market price) : {p_avg:.4f}")
         log.debug(f"  mask_up: {n_up} firms → raise  |  mask_dn: {n_dn} firms → cut")
         log.debug(
@@ -281,11 +289,8 @@ def firms_adjust_price(
         np.multiply(prod.price, 1.0 - shock, out=prod.price, where=mask_dn)
 
         if price_cut_allow_increase:
-            # Allow price to increase due to breakeven floor
             np.maximum(prod.price, prod.breakeven_price, out=prod.price, where=mask_dn)
         else:
-            # Don't allow price increase when trying to cut - cap at old price
-            # Apply breakeven floor but not above old price
             floor_price = np.minimum(old_prices_for_log, prod.breakeven_price)
             np.maximum(prod.price, floor_price, out=prod.price, where=mask_dn)
 
@@ -318,7 +323,7 @@ def firms_adjust_price(
                 )
 
     if info_enabled:
-        log.info("--- Price Adjustment complete ---")
+        log.info("--- Planning Price Adjustment complete ---")
 
 
 def firms_decide_desired_labor(prod: Producer, emp: Employer) -> None:

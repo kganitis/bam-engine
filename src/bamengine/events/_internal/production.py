@@ -13,10 +13,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from bamengine import logging
+from bamengine import Rng, logging, make_rng
 from bamengine.economy import Economy
+from bamengine.relationships import LoanBook
 from bamengine.roles import Consumer, Employer, Producer, Worker
-from bamengine.utils import trimmed_weighted_mean
+from bamengine.utils import EPS, trimmed_weighted_mean
 
 log = logging.getLogger(__name__)
 
@@ -340,3 +341,210 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
 
     if info_enabled:
         log.info("--- Worker Contract Update complete ---")
+
+
+def firms_calc_breakeven_price(
+    prod: Producer,
+    emp: Employer,
+    lb: LoanBook,
+    *,
+    cap_factor: float | None = None,
+) -> None:
+    """
+    Calculate breakeven price from wage costs and interest payments.
+
+    See Also
+    --------
+    bamengine.events.production.FirmsCalcBreakevenPrice : Full documentation
+    """
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Firms Calculating Breakeven Price ---")
+        log.info(
+            f"  Inputs: Breakeven Cap Factor={cap_factor if cap_factor else 'None'}"
+        )
+        log.info(
+            "  Calculation uses projected production (labor_productivity × current_labor) "
+            "as the denominator."
+        )
+
+    # Breakeven calculation
+    interest = lb.interest_per_borrower(prod.production.size)
+    projected_production = prod.labor_productivity * emp.current_labor
+    breakeven = (emp.wage_bill + interest) / np.maximum(projected_production, EPS)
+    if info_enabled:
+        log.info(
+            f"  Total Wage Bill for calc: {emp.wage_bill.sum():,.2f}. "
+            f"Total Interest for calc: {interest.sum():,.2f}"
+        )
+    if log.isEnabledFor(logging.DEBUG):
+        valid_breakeven = breakeven[np.isfinite(breakeven)]
+        log.debug(
+            f"  Raw breakeven prices (before cap): "
+            f"min={valid_breakeven.min() if valid_breakeven.size > 0 else 'N/A':.2f}, "
+            f"max={valid_breakeven.max() if valid_breakeven.size > 0 else 'N/A':.2f}, "
+            f"avg={valid_breakeven.mean() if valid_breakeven.size > 0 else 'N/A':.2f}"
+        )
+
+    # Cap breakeven
+    if cap_factor and cap_factor > 1:
+        # Cannot be more than current price x cap_factor. This prevents extreme jumps.
+        breakeven_max_value = prod.price * cap_factor
+    else:
+        # If no cap_factor, the max value is effectively infinite
+        if info_enabled:
+            log.info(
+                "  No cap_factor provided for breakeven price. "
+                "Prices may jump uncontrollably."
+            )
+        breakeven_max_value = breakeven
+
+    np.minimum(breakeven, breakeven_max_value, out=prod.breakeven_price)
+
+    num_capped = np.sum(breakeven > breakeven_max_value)
+    if num_capped > 0 and info_enabled:
+        log.info(f"  Breakeven prices capped for {num_capped} firms.")
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug(
+                f"    Capped firm indices: "
+                f"{np.where(breakeven > breakeven_max_value)[0].tolist()}"
+            )
+
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug(
+            f"  Final (Capped) Breakeven Prices:\n"
+            f"{np.array2string(prod.breakeven_price, precision=2)}"
+        )
+    if info_enabled:
+        log.info("--- Breakeven Price Calculation complete ---")
+
+
+def firms_adjust_price(
+    prod: Producer,
+    *,
+    p_avg: float,
+    h_eta: float,
+    price_cut_allow_increase: bool = True,
+    rng: Rng = make_rng(),
+) -> None:
+    """
+    Adjust prices based on inventory and market position.
+
+    See Also
+    --------
+    bamengine.events.production.FirmsAdjustPrice : Full documentation
+    """
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Firms Adjusting Prices ---")
+        log.info(
+            f"  Inputs: Avg Market Price (p_avg)={p_avg:.3f}  |  "
+            f"Max Price Shock (h_η)={h_eta:.3f}"
+        )
+
+    shape = prod.price.shape
+    old_prices_for_log = prod.price.copy()
+
+    # scratch buffer for shocks
+    shock = prod.price_shock
+    if shock is None or shock.shape != shape:
+        shock = np.empty(shape, dtype=np.float64)  # Corrected dtype
+        prod.price_shock = shock
+
+    shock[:] = rng.uniform(0.0, h_eta, size=shape)
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug(f"  Generated price shocks:\n{np.array2string(shock, precision=4)}")
+
+    # masks
+    mask_up = (prod.inventory == 0.0) & (prod.price < p_avg)
+    mask_dn = (prod.inventory > 0.0) & (prod.price >= p_avg)
+    n_up, n_dn = np.sum(mask_up), np.sum(mask_dn)
+    n_keep = shape[0] - n_up - n_dn
+    if info_enabled:
+        log.info(
+            f"  Price adjustments: {n_up} firms ↑, {n_dn} firms ↓, {n_keep} firms ↔."
+        )
+
+    if log.isEnabledFor(logging.DEBUG):
+        if n_up > 0:
+            log.debug(f"    Firms increasing price: {np.where(mask_up)[0].tolist()}")
+        if n_dn > 0:
+            log.debug(f"    Firms decreasing price: {np.where(mask_dn)[0].tolist()}")
+
+    # DEBUG pre-update snapshot
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug("  --- PRICE ADJUSTMENT (EXECUTION) ---")
+        log.debug(f"  P̄ (avg market price) : {p_avg:.4f}")
+        log.debug(f"  mask_up: {n_up} firms → raise  |  mask_dn: {n_dn} firms → cut")
+        log.debug(
+            f"  Breakeven prices being used:\n"
+            f"{np.array2string(prod.breakeven_price, precision=2)}"
+        )
+
+    # raise prices
+    if n_up > 0:
+        np.multiply(prod.price, 1.0 + shock, out=prod.price, where=mask_up)
+        np.maximum(prod.price, prod.breakeven_price, out=prod.price, where=mask_up)
+
+        if info_enabled:
+            price_changes = prod.price[mask_up] - old_prices_for_log[mask_up]
+            num_floored = np.sum(
+                np.isclose(prod.price[mask_up], prod.breakeven_price[mask_up])
+            )
+            log.info(
+                f"  Raised prices for {n_up} firms. "
+                f"Avg change: {np.mean(price_changes):+.3f}. "
+                f"{num_floored} prices set by breakeven floor."
+            )
+        if log.isEnabledFor(logging.DEBUG):
+            for firm_idx in np.where(mask_up)[0][:5]:
+                log.debug(
+                    f"    Raise Firm {firm_idx}: "
+                    f"OldP={old_prices_for_log[firm_idx]:.2f} -> "
+                    f"NewP={prod.price[firm_idx]:.2f} "
+                    f"(Breakeven={prod.breakeven_price[firm_idx]:.2f})"
+                )
+
+    # cut prices
+    if n_dn > 0:
+        np.multiply(prod.price, 1.0 - shock, out=prod.price, where=mask_dn)
+
+        if price_cut_allow_increase:
+            # Allow price to increase due to breakeven floor
+            np.maximum(prod.price, prod.breakeven_price, out=prod.price, where=mask_dn)
+        else:
+            # Don't allow price increase when trying to cut - cap at old price
+            # Apply breakeven floor but not above old price
+            floor_price = np.minimum(old_prices_for_log, prod.breakeven_price)
+            np.maximum(prod.price, floor_price, out=prod.price, where=mask_dn)
+
+        if info_enabled:
+            price_changes = prod.price[mask_dn] - old_prices_for_log[mask_dn]
+            num_floored = np.sum(
+                np.isclose(prod.price[mask_dn], prod.breakeven_price[mask_dn])
+            )
+            num_increased_due_to_floor = np.sum(
+                prod.price[mask_dn] > old_prices_for_log[mask_dn]
+            )
+            log.info(
+                f"  Cut prices for {n_dn} firms. "
+                f"Avg change: {np.mean(price_changes):+.3f}. "
+                f"{num_floored} prices set by breakeven floor."
+            )
+            if num_increased_due_to_floor > 0:
+                log.info(
+                    f"  !!! {num_increased_due_to_floor} firms in the 'cut price' "
+                    f"group ended up INCREASING their price because their "
+                    f"breakeven floor was higher than their old price."
+                )
+        if log.isEnabledFor(logging.DEBUG):
+            for firm_idx in np.where(mask_dn)[0][:5]:
+                log.debug(
+                    f"    Cut Firm {firm_idx}: "
+                    f"OldP={old_prices_for_log[firm_idx]:.2f} -> "
+                    f"NewP={prod.price[firm_idx]:.2f} "
+                    f"(Breakeven={prod.breakeven_price[firm_idx]:.2f})"
+                )
+
+    if info_enabled:
+        log.info("--- Price Adjustment complete ---")

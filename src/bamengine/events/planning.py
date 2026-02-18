@@ -1,22 +1,27 @@
 """
-Planning events for firm production and pricing decisions.
+Planning events for firm production and labor decisions.
 
 This module defines the planning phase events that execute at the start of
 each simulation period. Firms make forward-looking decisions about production
-targets, labor requirements, and pricing based on current market conditions.
+targets and labor requirements based on current market conditions.
 
 Event Sequence
 --------------
-The planning events execute in this order:
+The default planning events execute in this order:
 
 1. FirmsDecideDesiredProduction - Set production targets based on inventory/prices
-2. FirmsCalcBreakevenPrice - Calculate cost-covering price floor
-3. FirmsAdjustPrice - Adjust nominal prices based on market position
-4. FirmsDecideDesiredLabor - Calculate labor needs from production targets
-5. FirmsDecideVacancies - Determine job openings
+2. FirmsDecideDesiredLabor - Calculate labor needs from production targets
+3. FirmsDecideVacancies - Determine job openings
+4. FirmsFireExcessWorkers - Lay off workers when labor exceeds desired
 
-This sequence ensures firms plan production → calculate costs → set prices →
-determine labor needs in a logical progression.
+Alternative planning-phase pricing events (not in default pipeline):
+
+- FirmsPlanBreakevenPrice - Breakeven using previous-period costs
+- FirmsPlanPrice - Price adjustment with breakeven floor
+
+These are mutually exclusive with the production-phase pricing events
+(FirmsCalcBreakevenPrice, FirmsAdjustPrice) defined in
+bamengine.events.production. Use one pair or the other, not both.
 
 Design Notes
 ------------
@@ -44,6 +49,7 @@ Execute individual planning event:
 See Also
 --------
 bamengine.events._internal.planning : System function implementations
+bamengine.events.production : Production-phase pricing events
 Producer : Production and pricing state
 Employer : Labor hiring state
 """
@@ -154,85 +160,59 @@ class FirmsDecideDesiredProduction:
 
 
 @event
-class FirmsCalcBreakevenPrice:
+class FirmsPlanBreakevenPrice:
     """
-    Calculate cost-covering price floor based on wage and interest costs.
+    Calculate planning-phase breakeven price from previous period's costs.
 
-    Firms calculate the minimum price needed to cover costs (wage bill + interest)
-    given their current production level. This serves as a price floor in the
-    subsequent price adjustment event.
+    Computes minimum cost-covering price using last period's wage bill and
+    interest obligations as the numerator, and desired production (the
+    firm's current-period output target) as the denominator.
+    This provides an early price signal before the labor and credit
+    markets operate.
 
     Algorithm
     ---------
     For each firm i:
 
-    1. Calculate total costs: :math:`C_i = W_i + I_i`
-    2. Calculate breakeven price: :math:`P_{\\text{breakeven},i} = C_i / Y_i`
-    3. Apply cap (if configured): :math:`P_{\\text{breakeven},i} = \\min(P_{\\text{breakeven},i}, P_i \\times \\text{cap\\_factor})`
+    1. Calculate total costs: :math:`C_i = W_{i,t-1} + I_{i,t-1}`
+    2. Calculate breakeven: :math:`P_{\\text{breakeven}} = C_i / Y^d_{i,t}`
+    3. Apply cap (if configured): :math:`P_{\\text{breakeven}} = \\min(P_{\\text{breakeven}}, P_i \\times \\text{cap\\_factor})`
 
-    where:
-
-    - :math:`W`: wage bill (total wages owed)
-    - :math:`I`: interest owed on outstanding loans
-    - :math:`Y`: current production level
-    - cap_factor: optional multiplier limiting price increases
-
-    Mathematical Notation
-    ---------------------
-    .. math::
-        P_{\\text{breakeven},i} = \\frac{W_i + I_i}{Y_i}
-
-    If cap_factor is set:
-
-    .. math::
-        P_{\\text{breakeven},i} = \\min(P_{\\text{breakeven},i}, P_i \\times \\text{cap\\_factor})
-
-    Examples
-    --------
-    Execute this event:
-
-    >>> import bamengine as be
-    >>> sim = be.Simulation.init(n_firms=100, seed=42)
-    >>> event = sim.get_event("firms_calc_breakeven_price")
-    >>> event.execute(sim)
-
-    Check breakeven prices:
-
-    >>> prod = sim.prod
-    >>> prod.breakeven_price.mean()  # doctest: +SKIP
-    1.05
-    >>> (prod.breakeven_price > prod.price).sum()  # doctest: +SKIP
-    12
-
-    See cost components:
-
-    >>> emp = sim.emp
-    >>> loans = sim.lb
-    >>> total_interest = loans.interest_per_borrower(n_borrowers=100)
-    >>> total_costs = emp.wage_bill + total_interest
-    >>> total_costs.sum()  # doctest: +SKIP
-    5250.0
+    where :math:`W_{t-1}` is previous period's wage bill, :math:`I_{t-1}` is previous
+    period's interest, and :math:`Y^d_{t}` is the desired production for the
+    current period (freshly computed by FirmsDecideDesiredProduction).
 
     Notes
     -----
-    The breakeven price serves as a lower bound in FirmsAdjustPrice, ensuring
-    firms don't price below cost and accumulate losses.
+    At planning time, wage_bill and LoanBook interest naturally contain
+    previous period's values (recomputed only in Phases 2-3). This event
+    exploits that timing to avoid introducing separate "previous expenses"
+    fields.
 
-    The optional cap_factor prevents extreme price jumps when production
-    is very low (which would lead to very high breakeven prices).
+    Must run AFTER firms_decide_desired_production (needs desired_production).
+
+    These planning-phase pricing events are **mutually exclusive** with the
+    production-phase pair (FirmsCalcBreakevenPrice / FirmsAdjustPrice).
+    Use one pair or the other, not both. When using planning-phase pricing,
+    remove the production-phase events from the pipeline.
+
+    Not included in the default pipeline. Users can insert it into the
+    planning phase via a custom pipeline YAML or programmatically:
+
+        sim.pipeline.insert_after("firms_decide_desired_production",
+                                  "firms_plan_breakeven_price")
 
     See Also
     --------
-    FirmsAdjustPrice : Price adjustment using breakeven as floor
-    Employer : Wage bill state
-    LoanBook : Interest obligations
-    bamengine.events._internal.planning.firms_calc_breakeven_price : Implementation
+    FirmsCalcBreakevenPrice : Production-phase alternative (uses projected production)
+    FirmsPlanPrice : Planning-phase price adjustment using this breakeven
+    bamengine.events._internal.planning.firms_plan_breakeven_price : Implementation
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.events._internal.planning import firms_calc_breakeven_price
+        from bamengine.events._internal.planning import firms_plan_breakeven_price
 
-        firms_calc_breakeven_price(
+        firms_plan_breakeven_price(
             prod=sim.prod,
             emp=sim.emp,
             lb=sim.lb,
@@ -241,55 +221,33 @@ class FirmsCalcBreakevenPrice:
 
 
 @event
-class FirmsAdjustPrice:
+class FirmsPlanPrice:
     """
-    Adjust nominal prices based on inventory and relative market position.
+    Planning-phase price adjustment based on inventory and market position.
 
-    Firms raise prices when they have no inventory and low prices (high demand signal),
-    and lower prices when they have excess inventory and high prices (low demand signal).
-    Prices are constrained to stay above the breakeven level.
+    Adjusts prices using the same inventory/market-position rule as
+    FirmsAdjustPrice, but runs during the planning phase using the
+    breakeven computed from previous period's costs.
 
-    Algorithm
-    ---------
-    For each firm i:
+    These planning-phase pricing events are mutually exclusive with the
+    production-phase pair (FirmsCalcBreakevenPrice / FirmsAdjustPrice).
+    Use one pair or the other, not both.
 
-    1. Generate price shock: :math:`\\varepsilon_i \\sim U(0, h_\\eta)`
-    2. Apply pricing rule:
-       - If :math:`S_i = 0` and :math:`P_i < \\bar{P}`: :math:`P_i \\leftarrow P_i \\times (1 + \\varepsilon_i)` [raise]
-       - If :math:`S_i > 0` and :math:`P_i \\geq \\bar{P}`: :math:`P_i \\leftarrow P_i \\times (1 - \\varepsilon_i)` [lower]
-       - Otherwise: :math:`P_i` unchanged
-    3. Floor price at breakeven: :math:`P_i \\leftarrow \\max(P_i, P_{\\text{breakeven},i})`
-
-    Mathematical Notation
-    ---------------------
-    .. math::
-        P'_{i,t} = \\begin{cases}
-            P_{i,t-1}(1 + \\varepsilon_i) & \\text{if } S_{i,t-1}=0 \\land P_{i,t-1} < \\bar{P} \\\\
-            P_{i,t-1}(1 - \\varepsilon_i) & \\text{if } S_{i,t-1}>0 \\land P_{i,t-1} \\geq \\bar{P} \\\\
-            P_{i,t-1} & \\text{otherwise}
-        \\end{cases}
-
-        P_{i,t} = \\max(P'_{i,t}, P_{\\text{breakeven},i})
-
-    Examples
-    --------
-    >>> import bamengine as be
-    >>> sim = be.Simulation.init(n_firms=100, seed=42)
-    >>> event = sim.get_event("firms_adjust_price")
-    >>> event.execute(sim)
-    >>> (sim.prod.price >= sim.prod.breakeven_price).all()  # All above breakeven
-    True
+    Not included in the default pipeline. Insert alongside
+    FirmsPlanBreakevenPrice as a replacement for the production-phase
+    pricing events.
 
     See Also
     --------
-    FirmsCalcBreakevenPrice : Calculate price floor
-    bamengine.events._internal.planning.firms_adjust_price : Implementation
+    FirmsAdjustPrice : Production-phase alternative
+    FirmsPlanBreakevenPrice : Planning-phase breakeven calculation
+    bamengine.events._internal.planning.firms_plan_price : Implementation
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.events._internal.planning import firms_adjust_price
+        from bamengine.events._internal.planning import firms_plan_price
 
-        firms_adjust_price(
+        firms_plan_price(
             sim.prod,
             p_avg=sim.ec.avg_mkt_price,
             h_eta=sim.config.h_eta,

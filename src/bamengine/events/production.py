@@ -11,8 +11,10 @@ The production events execute in this order:
 
 1. FirmsPayWages - Firms deduct wage bill from available funds
 2. WorkersReceiveWage - Workers add wages to income
-3. FirmsRunProduction - Firms produce goods using labor
-4. WorkersUpdateContracts - Decrement contract duration, handle expiration
+3. FirmsCalcBreakevenPrice - Calculate cost-covering price floor
+4. FirmsAdjustPrice - Adjust price based on inventory and market position
+5. FirmsRunProduction - Firms produce goods using labor
+6. WorkersUpdateContracts - Decrement contract duration, handle expiration
 
 Design Notes
 ------------
@@ -264,8 +266,6 @@ class WorkersUpdateContracts:
        - Set :math:`w_j = 0`
     3. Recalculate firm labor counts:
        - For each firm i: :math:`L_i = |\\{j : \\text{employer}_j = i\\}|`
-    4. Recalculate firm wage bills:
-       - For each firm i: :math:`W_i = \\sum_{j : \\text{employer}_j = i} w_j`
 
     Mathematical Notation
     ---------------------
@@ -273,8 +273,6 @@ class WorkersUpdateContracts:
 
     .. math::
         L_i = |\\{j : \\text{employer}_j = i\\}|
-
-        W_i = \\sum_{j : \\text{employer}_j = i} w_j
 
     Examples
     --------
@@ -318,15 +316,17 @@ class WorkersUpdateContracts:
     triggers loyalty behavior in the next labor market phase (workers apply
     to previous employer first if not fired).
 
-    Firm labor and wage bill are recalculated to reflect contract expirations.
-    This ensures consistency between Worker and Employer states.
+    Firm labor counts are recalculated to reflect contract expirations.
+    Wage bills are NOT recalculated here — they retain the values from
+    when wages were actually paid (FirmsCalcWageBill), ensuring that
+    revenue-phase gross_profit correctly reflects actual expenses.
 
     See Also
     --------
     FirmsHireWorkers : Sets initial contract duration
     WorkersDecideFirmsToApply : Uses contract_expired flag for loyalty
     Worker : Employment state with contract fields
-    Employer : Labor force state with current_labor, wage_bill
+    Employer : Labor force state with current_labor
     bamengine.events._internal.production.workers_update_contracts : Implementation
     """
 
@@ -334,3 +334,150 @@ class WorkersUpdateContracts:
         from bamengine.events._internal.production import workers_update_contracts
 
         workers_update_contracts(sim.wrk, sim.emp)
+
+
+@event
+class FirmsCalcBreakevenPrice:
+    """
+    Calculate cost-covering price floor based on wage and interest costs.
+
+    Firms calculate the minimum price needed to cover costs (wage bill + interest)
+    given their current production level. This serves as a price floor in the
+    subsequent price adjustment event.
+
+    Algorithm
+    ---------
+    For each firm i:
+
+    1. Calculate total costs: :math:`C_i = W_i + I_i`
+    2. Calculate breakeven price: :math:`P_{\\text{breakeven},i} = C_i / Y_i`
+    3. Apply cap (if configured): :math:`P_{\\text{breakeven},i} = \\min(P_{\\text{breakeven},i}, P_i \\times \\text{cap\\_factor})`
+
+    where:
+
+    - :math:`W`: wage bill (total wages owed)
+    - :math:`I`: interest owed on outstanding loans
+    - :math:`Y`: current production level
+    - cap_factor: optional multiplier limiting price increases
+
+    Mathematical Notation
+    ---------------------
+    .. math::
+        P_{\\text{breakeven},i} = \\frac{W_i + I_i}{Y_i}
+
+    If cap_factor is set:
+
+    .. math::
+        P_{\\text{breakeven},i} = \\min(P_{\\text{breakeven},i}, P_i \\times \\text{cap\\_factor})
+
+    Examples
+    --------
+    Execute this event:
+
+    >>> import bamengine as be
+    >>> sim = be.Simulation.init(n_firms=100, seed=42)
+    >>> event = sim.get_event("firms_calc_breakeven_price")
+    >>> event.execute(sim)
+
+    Check breakeven prices:
+
+    >>> prod = sim.prod
+    >>> prod.breakeven_price.mean()  # doctest: +SKIP
+    1.05
+    >>> (prod.breakeven_price > prod.price).sum()  # doctest: +SKIP
+    12
+
+    See cost components:
+
+    >>> emp = sim.emp
+    >>> loans = sim.lb
+    >>> total_interest = loans.interest_per_borrower(n_borrowers=100)
+    >>> total_costs = emp.wage_bill + total_interest
+    >>> total_costs.sum()  # doctest: +SKIP
+    5250.0
+
+    Notes
+    -----
+    The breakeven price serves as a lower bound in FirmsAdjustPrice, ensuring
+    firms don't price below cost and accumulate losses.
+
+    The optional cap_factor prevents extreme price jumps when production
+    is very low (which would lead to very high breakeven prices).
+
+    See Also
+    --------
+    FirmsPlanBreakevenPrice : Planning-phase alternative (uses desired production)
+    FirmsAdjustPrice : Price adjustment using breakeven as floor
+    Employer : Wage bill state
+    LoanBook : Interest obligations
+    bamengine.events._internal.production.firms_calc_breakeven_price : Implementation
+    """
+
+    def execute(self, sim: Simulation) -> None:
+        from bamengine.events._internal.production import firms_calc_breakeven_price
+
+        firms_calc_breakeven_price(
+            prod=sim.prod,
+            emp=sim.emp,
+            lb=sim.lb,
+            cap_factor=sim.cap_factor,
+        )
+
+
+@event
+class FirmsAdjustPrice:
+    """
+    Adjust nominal prices based on inventory and relative market position.
+
+    Firms raise prices when they have no inventory and low prices (high demand signal),
+    and lower prices when they have excess inventory and high prices (low demand signal).
+    Prices are constrained to stay above the breakeven level.
+
+    Algorithm
+    ---------
+    For each firm i:
+
+    1. Generate price shock: :math:`\\varepsilon_i \\sim U(0, h_\\eta)`
+    2. Apply pricing rule:
+       - If :math:`S_i = 0` and :math:`P_i < \\bar{P}`: :math:`P_i \\leftarrow P_i \\times (1 + \\varepsilon_i)` [raise]
+       - If :math:`S_i > 0` and :math:`P_i \\geq \\bar{P}`: :math:`P_i \\leftarrow P_i \\times (1 - \\varepsilon_i)` [lower]
+       - Otherwise: :math:`P_i` unchanged
+    3. Floor price at breakeven: :math:`P_i \\leftarrow \\max(P_i, P_{\\text{breakeven},i})`
+
+    Mathematical Notation
+    ---------------------
+    .. math::
+        P'_{i,t} = \\begin{cases}
+            P_{i,t-1}(1 + \\varepsilon_i) & \\text{if } S_{i,t-1}=0 \\land P_{i,t-1} < \\bar{P} \\\\
+            P_{i,t-1}(1 - \\varepsilon_i) & \\text{if } S_{i,t-1}>0 \\land P_{i,t-1} \\geq \\bar{P} \\\\
+            P_{i,t-1} & \\text{otherwise}
+        \\end{cases}
+
+        P_{i,t} = \\max(P'_{i,t}, P_{\\text{breakeven},i})
+
+    Examples
+    --------
+    >>> import bamengine as be
+    >>> sim = be.Simulation.init(n_firms=100, seed=42)
+    >>> event = sim.get_event("firms_adjust_price")
+    >>> event.execute(sim)
+    >>> (sim.prod.price >= sim.prod.breakeven_price).all()  # All above breakeven
+    True
+
+    See Also
+    --------
+    FirmsPlanPrice : Planning-phase alternative
+    FirmsCalcBreakevenPrice : Calculate price floor
+    bamengine.events._internal.production.firms_adjust_price : Implementation
+    """
+
+    def execute(self, sim: Simulation) -> None:
+        from bamengine.events._internal.production import firms_adjust_price
+
+        firms_adjust_price(
+            sim.prod,
+            p_avg=sim.ec.avg_mkt_price,
+            h_eta=sim.config.h_eta,
+            price_cut_allow_increase=sim.config.price_cut_allow_increase,
+            rng=sim.rng,
+        )

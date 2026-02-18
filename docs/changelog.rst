@@ -16,6 +16,12 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Added
 ~~~~~
 
+* Planning-phase breakeven price and price adjustment events
+  (``firms_plan_breakeven_price``, ``firms_plan_price``) that use previous
+  period's costs and desired production. These are mutually exclusive with the
+  production-phase pair — use one or the other. Not in the default pipeline;
+  opt-in via custom pipeline YAML.
+
 * ``LoanBook.principal_per_borrower()`` method for aggregating total
   principal per borrower (complements ``debt_per_borrower()`` and
   ``interest_per_borrower()``).
@@ -40,6 +46,13 @@ Added
 Changed
 ~~~~~~~
 
+* Moved ``FirmsCalcBreakevenPrice`` and ``FirmsAdjustPrice`` from
+  ``events/planning.py`` to ``events/production.py`` to match their actual
+  pipeline phase. Pipeline keys unchanged — no breaking changes for YAML
+  configurations.
+* Loan records are now retained through planning and labor phases (purged
+  when the credit market opens instead of during revenue settlement). This
+  enables planning-phase events to access previous-period interest data.
 * Default agent counts unified to match book setup: ``n_firms``: 300 → 100,
   ``n_households``: 3000 → 500
 * Default new-firm entry parameters: ``new_firm_size_factor`` 0.8 → 0.5,
@@ -55,6 +68,9 @@ Changed
 Fixed
 ~~~~~
 
+* Fixed gross_profit overstatement: removed redundant ``wage_bill``
+  recalculation in ``workers_update_contracts`` that was using post-expiration
+  values instead of the actual wages paid.
 * Bad debt formula in ``firms_validate_debt_commitments()`` now uses loan
   principal instead of total debt (principal + interest) for write-off
   calculation. Bank loss exposure is based on outstanding principal, not

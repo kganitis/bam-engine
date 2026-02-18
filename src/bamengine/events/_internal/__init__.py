@@ -7,10 +7,10 @@ documentation. System functions are organized by economic phase.
 
 Modules
 -------
-:mod:`bamengine.events._internal.planning` : Production targets, costs, prices, labor needs, vacancies (5 functions)
+:mod:`bamengine.events._internal.planning` : Production targets, planning-phase pricing, labor needs, vacancies (5 functions)
 :mod:`bamengine.events._internal.labor_market` : Wage setting, job applications, hiring, wage bills (7 functions)
 :mod:`bamengine.events._internal.credit_market` : Credit supply/demand, loan matching, layoffs (8 functions)
-:mod:`bamengine.events._internal.production` : Wage payments, production execution, contracts (4 functions + 2 stats)
+:mod:`bamengine.events._internal.production` : Wage payments, breakeven/price, production, contracts (6 functions + 2 stats)
 :mod:`bamengine.events._internal.goods_market` : Consumption decisions, shopping rounds (5 functions)
 :mod:`bamengine.events._internal.revenue` : Revenue collection, debt repayment, dividends (3 functions)
 :mod:`bamengine.events._internal.bankruptcy` : Insolvency detection, agent replacement (5 functions)
@@ -61,13 +61,15 @@ from .labor_market import (
     workers_send_one_round,
 )
 from .planning import (
-    firms_adjust_price,
-    firms_calc_breakeven_price,
     firms_decide_desired_labor,
     firms_decide_desired_production,
     firms_decide_vacancies,
+    firms_plan_breakeven_price,
+    firms_plan_price,
 )
 from .production import (
+    firms_adjust_price,
+    firms_calc_breakeven_price,
     firms_pay_wages,
     firms_run_production,
     update_avg_mkt_price,
@@ -83,8 +85,8 @@ from .revenue import (
 __all__: list[str] = [
     # planning
     "firms_decide_desired_production",
-    "firms_calc_breakeven_price",
-    "firms_adjust_price",
+    "firms_plan_breakeven_price",
+    "firms_plan_price",
     "firms_decide_desired_labor",
     "firms_decide_vacancies",
     # labor market
@@ -105,6 +107,8 @@ __all__: list[str] = [
     "firms_prepare_loan_applications",
     "firms_send_one_loan_app",
     # production
+    "firms_calc_breakeven_price",
+    "firms_adjust_price",
     "firms_pay_wages",
     "firms_run_production",
     "update_avg_mkt_price",

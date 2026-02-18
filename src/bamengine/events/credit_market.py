@@ -408,8 +408,9 @@ class FirmsPrepareLoanApplications:
     """
     Firms select banks to apply to, sorted by interest rate (ascending).
 
-    Also clears any stale loans from the loan book before credit matching
-    begins (safety guard for multi-lender support).
+    Also clears settled loans from the previous period before credit matching
+    begins. Loan records are retained through planning and labor phases so
+    that planning-phase events can reference previous-period interest data.
 
     Firms with positive credit demand build a loan application queue by sampling
     banks and sorting them by interest rate. Firms prefer lower-rate banks to

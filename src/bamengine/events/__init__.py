@@ -1,7 +1,7 @@
 """
 Event classes for BAM Engine simulation.
 
-This package contains 39 event classes organized into 8 modules representing
+This package contains 41 event classes organized into 8 modules representing
 different phases of the BAM economic model. Events are auto-registered via
 __init_subclass__ hook and composed into a Pipeline for execution.
 
@@ -9,16 +9,16 @@ Event Organization
 ------------------
 Events are organized by economic phase:
 
-1. **Planning** (5 events): Firms plan production targets, calculate costs, set prices
+1. **Planning** (5 events): Firms plan production targets, alternative early pricing
 2. **Labor Market** (7 events): Wage setting, job applications, hiring
 3. **Credit Market** (8 events): Credit supply/demand, loan applications, provision
-4. **Production** (4 events): Wage payments, production execution, contract updates
+4. **Production** (6 events): Wage payments, breakeven/price, production, contracts
 5. **Goods Market** (5 events): Consumption decisions, shopping
 6. **Revenue** (3 events): Revenue collection, debt repayment, dividends
 7. **Bankruptcy** (5 events): Insolvency detection, agent replacement
 8. **Economy Stats** (2 events): Aggregate metrics (prices, unemployment)
 
-Total: 39 events across 8 modules
+Total: 41 events across 8 modules
 
 Event Execution
 ---------------
@@ -50,7 +50,7 @@ Access event by name:
 
 Execute full pipeline:
 
->>> sim.step()  # Executes all 39 events in default order
+>>> sim.step()  # Executes all events in default order
 
 See Also
 --------
@@ -95,13 +95,15 @@ from bamengine.events.labor_market import (
     WorkersSendOneRound,
 )
 from bamengine.events.planning import (
-    FirmsAdjustPrice,
-    FirmsCalcBreakevenPrice,
     FirmsDecideDesiredLabor,
     FirmsDecideDesiredProduction,
     FirmsDecideVacancies,
+    FirmsPlanBreakevenPrice,
+    FirmsPlanPrice,
 )
 from bamengine.events.production import (
+    FirmsAdjustPrice,
+    FirmsCalcBreakevenPrice,
     FirmsPayWages,
     FirmsRunProduction,
     WorkersReceiveWage,
@@ -116,8 +118,8 @@ from bamengine.events.revenue import (
 __all__ = [
     # Planning events (5)
     "FirmsDecideDesiredProduction",
-    "FirmsCalcBreakevenPrice",
-    "FirmsAdjustPrice",
+    "FirmsPlanBreakevenPrice",
+    "FirmsPlanPrice",
     "FirmsDecideDesiredLabor",
     "FirmsDecideVacancies",
     # Labor market events (7)
@@ -137,9 +139,11 @@ __all__ = [
     "FirmsSendOneLoanApp",
     "BanksProvideLoans",
     "FirmsFireWorkers",
-    # Production events (4)
+    # Production events (6)
     "FirmsPayWages",
     "WorkersReceiveWage",
+    "FirmsCalcBreakevenPrice",
+    "FirmsAdjustPrice",
     "FirmsRunProduction",
     "WorkersUpdateContracts",
     # Goods market events (5)

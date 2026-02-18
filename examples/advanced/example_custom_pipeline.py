@@ -127,6 +127,79 @@ sim_minimal.run(n_periods=10)
 print("Completed 10 periods")
 
 # %%
+# Planning-Phase Pricing (Alternative)
+# -------------------------------------
+#
+# BAM Engine includes optional planning-phase pricing events that compute
+# breakeven price and adjust prices BEFORE the labor and credit markets
+# operate. These use previous period's costs with the current period's
+# desired production target.
+#
+# The planning-phase pair (``firms_plan_breakeven_price``,
+# ``firms_plan_price``) is **mutually exclusive** with the production-phase
+# pair (``firms_calc_breakeven_price``, ``firms_adjust_price``).
+# Use one or the other — never both.
+
+planning_price_pipeline = """
+events:
+  # Planning — pricing moved here (uses prev-period costs / desired production)
+  - firms_decide_desired_production
+  - firms_plan_breakeven_price        # Replaces firms_calc_breakeven_price
+  - firms_plan_price                  # Replaces firms_adjust_price
+  - firms_decide_desired_labor
+  - firms_decide_vacancies
+  - firms_fire_excess_workers
+
+  # Labor market (unchanged)
+  - calc_inflation_rate
+  - adjust_minimum_wage
+  - firms_decide_wage_offer
+  - workers_decide_firms_to_apply
+  - workers_send_one_round <-> firms_hire_workers x {max_M}
+  - firms_calc_wage_bill
+
+  # Credit market (unchanged)
+  - banks_decide_credit_supply
+  - banks_decide_interest_rate
+  - firms_decide_credit_demand
+  - firms_calc_financial_fragility
+  - firms_prepare_loan_applications
+  - firms_send_one_loan_app <-> banks_provide_loans x {max_H}
+  - firms_fire_workers
+
+  # Production — no breakeven/price events (moved to planning)
+  - firms_pay_wages
+  - workers_receive_wage
+  - firms_run_production
+  - update_avg_mkt_price
+  - workers_update_contracts
+
+  # Goods, revenue, bankruptcy, entry (unchanged)
+  - consumers_calc_propensity
+  - consumers_decide_income_to_spend
+  - consumers_decide_firms_to_visit
+  - consumers_shop_sequential
+  - consumers_finalize_purchases
+  - firms_collect_revenue
+  - firms_validate_debt_commitments
+  - firms_pay_dividends
+  - firms_update_net_worth
+  - mark_bankrupt_firms
+  - mark_bankrupt_banks
+  - spawn_replacement_firms
+  - spawn_replacement_banks
+"""
+
+planning_price_path = config_dir / "planning_price_pipeline.yml"
+planning_price_path.write_text(planning_price_pipeline)
+
+sim_planning = bam.Simulation.init(
+    n_firms=100, n_households=500, seed=42, pipeline_path=str(planning_price_path)
+)
+sim_planning.run(n_periods=20)
+print("Ran 20 periods with planning-phase pricing")
+
+# %%
 # Removing Events
 # ---------------
 #
