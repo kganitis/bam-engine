@@ -70,6 +70,14 @@ class TestRnDIntegration:
         assert "firms_apply_productivity_growth" in event_names
         assert "firms_deduct_rn_d_expenditure" in event_names
 
+    def test_rnd_events_before_dividends(self, rnd_sim):
+        """R&D events are inserted between debt validation and dividends."""
+        names = [e.name for e in rnd_sim.pipeline.events]
+        debt_idx = names.index("firms_validate_debt_commitments")
+        dividends_idx = names.index("firms_pay_dividends")
+        rnd_idx = names.index("firms_compute_rnd_intensity")
+        assert debt_idx < rnd_idx < dividends_idx
+
     def test_productivity_grows_over_time(self):
         """Mean productivity after 100 periods > initial."""
         from extensions.rnd import RND_EVENTS, RnD
