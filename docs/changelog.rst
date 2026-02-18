@@ -71,10 +71,12 @@ Fixed
 * Fixed gross_profit overstatement: removed redundant ``wage_bill``
   recalculation in ``workers_update_contracts`` that was using post-expiration
   values instead of the actual wages paid.
-* Bad debt formula in ``firms_validate_debt_commitments()`` now uses loan
-  principal instead of total debt (principal + interest) for write-off
-  calculation. Bank loss exposure is based on outstanding principal, not
-  accrued interest. Fixes Finding #3 from book vs implementation review.
+* Bad debt formula: fixed recovery-vs-loss inversion in
+  ``firms_validate_debt_commitments()``. The formula ``clip(frac × net_worth,
+  0, principal)`` computes the bank's *recovery* (proportional claim on firm
+  equity), but was incorrectly subtracted as the *loss*. Actual loss is now
+  ``principal - recovery``. Banks previously lost what they should have
+  recovered, suppressing the credit feedback loop.
 * Loan purge in ``banks_provide_loans()`` moved from per-bank loop to
   one-time safety clear in ``firms_prepare_loan_applications()``. This
   enables multi-lender support: firms can now accumulate loans from

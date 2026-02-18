@@ -117,8 +117,9 @@ def test_validate_debt_full_repayment() -> None:
 
 def test_validate_debt_partial_writeoff() -> None:
     """
-    gross_profit < debt  → proportional bad-debt write-off
-    up to the borrower's net-worth.
+    gross_profit < debt → proportional recovery from firm equity.
+
+    Firm NW=10 covers total principal=10: full recovery, zero loss.
     """
     # borrower 0 owes two banks
     bor = mock_borrower(
@@ -141,8 +142,9 @@ def test_validate_debt_partial_writeoff() -> None:
 
     firms_validate_debt_commitments(bor, lend, lb)
 
-    # equity drop: each bank eats ½ of net_worth (=5.0)
-    assert lend.equity_base.tolist() == pytest.approx([5.0, 0.0])
+    # frac = 5/10 = 0.5; recovery = clip(0.5 × 10, 0, 5) = 5; loss = 5 - 5 = 0
+    # Full recovery since firm equity covers outstanding principal
+    assert lend.equity_base.tolist() == pytest.approx([10.0, 5.0])
     # Loan records retained after financial settlement (purged at credit market)
     assert lb.size == 2
     # net_profit = gross_profit − total_interest
@@ -151,13 +153,12 @@ def test_validate_debt_partial_writeoff() -> None:
 
 def test_validate_debt_bad_amt_capped_at_loan_principal() -> None:
     """
-    When net_worth > loan_principal, bad_amt should be capped at the principal.
+    When net_worth > loan_principal, recovery is capped at the principal.
 
-    The bank's loss exposure is the outstanding principal, not accrued interest.
+    Recovery capped at principal → zero loss for the bank.
     """
     # Scenario: Firm has high net_worth (50.0) but small loan (principal=1.0)
-    # Without the fix: bank would lose frac × net_worth = 1.0 × 50.0 = 50.0
-    # With the fix: bank loses at most principal = 1.0
+    # recovery = clip(1.0 × 50, 0, 1) = 1.0; loss = 1 - 1 = 0
     bor = mock_borrower(
         n=1,
         gross_profit=np.array([-5.0]),
@@ -178,23 +179,22 @@ def test_validate_debt_bad_amt_capped_at_loan_principal() -> None:
 
     firms_validate_debt_commitments(bor, lend, lb)
 
-    # Bank should lose at most the principal (1.0), not debt (2.0) or frac × NW (50.0)
-    # equity = 100.0 - 1.0 = 99.0
-    assert lend.equity_base[0] == pytest.approx(99.0)
+    # Recovery capped at principal → zero loss
+    # equity = 100.0 - 0.0 = 100.0
+    assert lend.equity_base[0] == pytest.approx(100.0)
     # Loan records retained after financial settlement
     assert lb.size == 1
 
 
-def test_validate_debt_bad_amt_floored_at_zero() -> None:
+def test_validate_debt_full_loss_when_nw_negative() -> None:
     """
-    When net_worth < 0, bad_amt should be floored at 0.
+    When net_worth < 0, recovery is zero → bank loses full principal.
 
-    This ensures that negative net_worth doesn't result in banks gaining equity
-    from defaults (which would be economically absurd).
+    Negative net worth means no equity to recover; the bank absorbs the
+    entire outstanding principal as a loss.
     """
     # Scenario: Firm has negative net_worth (-10.0)
-    # Without the floor: bank would "gain" frac × (-10) = -10 (equity increases!)
-    # With the floor: bank loses 0, not the full loan, because bad_amt >= 0
+    # recovery = clip(1.0 × (-10), 0, 5) = 0; loss = 5 - 0 = 5
     bor = mock_borrower(
         n=1,
         gross_profit=np.array([-20.0]),
@@ -215,9 +215,9 @@ def test_validate_debt_bad_amt_floored_at_zero() -> None:
 
     firms_validate_debt_commitments(bor, lend, lb)
 
-    # Bank loses 0 (floored), not -5 (which would increase equity)
-    # Note: The bank still loses the loan asset, but bad_amt accounting is 0
-    assert lend.equity_base[0] == pytest.approx(100.0)
+    # Recovery floored at 0 → bank loses full principal
+    # equity = 100.0 - 5.0 = 95.0
+    assert lend.equity_base[0] == pytest.approx(95.0)
     # Loan records retained after financial settlement
     assert lb.size == 1
 
