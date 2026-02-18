@@ -10,8 +10,13 @@ hardware. They are SKIPPED in CI because:
 - Different OS runners have different baseline performance
 - pytest-based regression tests need machine-specific baselines
 
-**Future Work**: Consider using ASV (Airspeed Velocity) for proper performance
-tracking with machine-specific baselines and historical commit tracking.
+Coverage is automatically disabled for performance tests (see conftest.py)
+to avoid measurement distortion from ``sys.settrace`` overhead.
+
+**See also**: ASV benchmarks in ``asv_benchmarks/`` provide cross-commit
+performance tracking with machine-specific baselines and historical analysis.
+ASV complements these tests but does not replace them — it requires separate
+invocation (``asv run``/``asv compare``) and does not integrate into pytest.
 
 To run regression tests locally:
     pytest -m regression
@@ -29,13 +34,12 @@ from bamengine import Simulation
 logging.getLogger("bamengine").setLevel(logging.ERROR)
 
 
-# Performance baselines (seconds) - updated January 16, 2026
-# Note: These include pytest framework overhead (~20-25% slower than pure benchmark)
+# Performance baselines (seconds) - updated February 18, 2026
+# Note: Coverage is disabled for performance tests (see conftest.py)
 # Update these after confirming performance improvements
-# Major optimization (Jan 2026): logging guards + vectorized firm selection (~75-80% faster)
-BASELINE_SMALL = 3.0  # 100 firms, 500 households, 1000 periods
-BASELINE_MEDIUM = 6.0  # 200 firms, 1000 households, 1000 periods
-BASELINE_LARGE = 18.0  # 500 firms, 2500 households, 1000 periods
+BASELINE_SMALL = 2.2  # 100 firms, 500 households, 1000 periods
+BASELINE_MEDIUM = 4.5  # 200 firms, 1000 households, 1000 periods
+BASELINE_LARGE = 14.0  # 500 firms, 2500 households, 1000 periods
 
 # Allowed regression threshold (15% slower than baseline)
 # More relaxed than pure benchmarks due to test framework overhead variability

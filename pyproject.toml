@@ -243,7 +243,7 @@ addopts = """
 --cov-report=html
 --cov-report=json
 --cov-report=xml
---cov-fail-under=95
+--cov-fail-under=99
 """
 
 [tool.coverage.run]

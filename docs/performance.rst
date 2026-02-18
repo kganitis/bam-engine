@@ -29,40 +29,36 @@ Before optimizing, follow these principles:
 Benchmark Results
 -----------------
 
-Current benchmarks (Apple M4 Pro, macOS 15.1, Python 3.13):
+Current benchmarks (Apple M4 Pro, macOS 15.2, Python 3.13):
 
 .. list-table::
    :header-rows: 1
-   :widths: 15 10 15 10 15 15 15
+   :widths: 15 10 15 10 15 15
 
    * - Configuration
      - Firms
      - Households
      - Banks
      - 1000 periods
-     - 100 periods
      - Throughput
    * - Small
      - 100
      - 500
      - 10
-     - 2.0s
-     - 0.2s
-     - 500 periods/s
+     - 2.1s
+     - 475 periods/s
    * - Medium
      - 200
      - 1,000
      - 10
-     - 4.2s
-     - 0.4s
-     - 240 periods/s
+     - 4.4s
+     - 225 periods/s
    * - Large
      - 500
      - 2,500
      - 10
-     - 13.0s
-     - 1.3s
-     - 77 periods/s
+     - 13.6s
+     - 73 periods/s
 
 Performance scales approximately linearly with agent count. While NumPy vectorization
 is highly efficient, the per-agent computation cost means doubling the number of
@@ -218,13 +214,26 @@ events (goods/labor market operations) with a small configuration for quick feed
 Regression Testing
 ~~~~~~~~~~~~~~~~~~
 
-Performance regression tests run in the test suite:
+Performance regression tests run automatically as part of the ``pytest`` suite.
+Coverage instrumentation is automatically disabled for performance tests (see
+``tests/performance/conftest.py``) to avoid measurement distortion from
+``sys.settrace`` overhead, which can inflate timings by 40-60%.
 
 .. code-block:: bash
 
-   pytest tests/performance/ -v -m regression
+   # Run regression tests (included in full pytest runs)
+   pytest -m regression
 
-These tests ensure performance doesn't degrade beyond 15% of established baselines.
+   # Run only performance tests
+   pytest tests/performance/ -v
+
+These tests ensure performance doesn't degrade beyond 15% of established
+baselines. Baselines are machine-specific and must be updated manually after
+confirmed improvements.
+
+ASV benchmarks complement these tests with cross-commit tracking and
+machine-specific baselines, but require separate invocation and do not
+integrate into ``pytest``.
 
 Architecture Performance Notes
 ------------------------------

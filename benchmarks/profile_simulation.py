@@ -4,20 +4,21 @@ Identifies performance bottlenecks by profiling function-level execution times.
 """
 
 import cProfile
-import logging
 import pstats
 from pathlib import Path
 
 from bamengine import Simulation
 
-# Disable logging for profiling
-logging.getLogger("bamengine").setLevel(logging.ERROR)
-
 
 def profile_full_simulation():
     """Profile a full simulation run."""
     # Using 1000 periods as recommended in original BAM paper
-    sim = Simulation.init(n_firms=100, n_households=500, seed=42)
+    sim = Simulation.init(
+        n_firms=100,
+        n_households=500,
+        seed=42,
+        logging={"default_level": "ERROR"},
+    )
     sim.run(1000)
 
 
