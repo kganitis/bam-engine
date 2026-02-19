@@ -38,6 +38,9 @@ asv_benchmarks/__pycache__/
 # Calibration outputs
 calibration/output/
 
+# Diagnostics outputs
+diagnostics/output/
+
 # Validation outputs
 validation/scenarios/*/output/
 validation/robustness/output/
