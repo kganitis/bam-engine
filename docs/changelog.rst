@@ -19,8 +19,11 @@ Added
 * Planning-phase breakeven price and price adjustment events
   (``firms_plan_breakeven_price``, ``firms_plan_price``) that use previous
   period's costs and desired production. These are mutually exclusive with the
-  production-phase pair — use one or the other. Not in the default pipeline;
-  opt-in via custom pipeline YAML.
+  production-phase pair — use one or the other.
+
+* Diagnostics package (``diagnostics/``) with comprehensive analysis dashboards:
+  baseline (13 figures), Growth+ (15 figures), credit market investigation,
+  and labor market investigation scripts.
 
 * ``LoanBook.principal_per_borrower()`` method for aggregating total
   principal per borrower (complements ``debt_per_borrower()`` and
