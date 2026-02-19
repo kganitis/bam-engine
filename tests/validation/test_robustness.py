@@ -103,6 +103,44 @@ class TestInternalValidity:
         """Default parameters should not cause economic collapse."""
         assert iv_result.n_collapsed == 0
 
+    def test_new_seed_analysis_fields(self, iv_result: InternalValidityResult) -> None:
+        """New fields (kurtosis, tail_index, peak_lags, etc.) should exist."""
+        for sa in iv_result.seed_analyses:
+            assert isinstance(sa.firm_size_kurtosis_sales, float)
+            assert isinstance(sa.firm_size_kurtosis_net_worth, float)
+            assert isinstance(sa.firm_size_tail_index, float)
+            assert isinstance(sa.peak_lags, dict)
+            assert isinstance(sa.wage_productivity_ratio, float)
+            assert isinstance(sa.hp_gdp_cycle, np.ndarray)
+            assert isinstance(sa.firm_size_shape, str)
+
+    def test_cross_sim_stats_new_fields(
+        self, iv_result: InternalValidityResult
+    ) -> None:
+        """Kurtosis, tail_index, and wage_productivity_ratio in cross_sim_stats."""
+        assert "firm_size_kurtosis_sales" in iv_result.cross_sim_stats
+        assert "firm_size_kurtosis_net_worth" in iv_result.cross_sim_stats
+        assert "firm_size_tail_index" in iv_result.cross_sim_stats
+        assert "wage_productivity_ratio" in iv_result.cross_sim_stats
+
+    def test_mean_ar_fit_from_averaged_cycles(
+        self, iv_result: InternalValidityResult
+    ) -> None:
+        """Mean AR should be order 1 with proper IRF decay."""
+        assert iv_result.mean_ar_order == 1
+        assert len(iv_result.mean_ar_coeffs) == 2  # [const, phi_1]
+        assert len(iv_result.mean_irf) > 0
+        # IRF should start at 1.0 and decay
+        assert iv_result.mean_irf[0] == 1.0
+
+    def test_collapsed_seed_has_empty_cycle(
+        self, iv_result: InternalValidityResult
+    ) -> None:
+        """Collapsed seeds should have empty hp_gdp_cycle."""
+        for sa in iv_result.seed_analyses:
+            if sa.collapsed:
+                assert len(sa.hp_gdp_cycle) == 0
+
 
 # =============================================================================
 # Sensitivity Analysis
@@ -173,6 +211,32 @@ class TestSensitivityAnalysis:
         assert len(table) == 5
         for label, _mean, _std in table:
             assert isinstance(label, str)
+
+    def test_value_results_have_new_stats(self, sa_result: SensitivityResult) -> None:
+        """New stat fields should be present in value results."""
+        exp = sa_result.experiments["credit_market"]
+        for vr in exp.value_results:
+            # At least some of the new stat fields should be present
+            new_fields = [
+                "firm_size_kurtosis_sales",
+                "firm_size_kurtosis_net_worth",
+                "firm_size_tail_index",
+                "wage_productivity_ratio",
+            ]
+            for field in new_fields:
+                assert field in vr.stats, f"Missing {field} in value result stats"
+
+    def test_value_results_have_mean_peak_lags(
+        self, sa_result: SensitivityResult
+    ) -> None:
+        """mean_peak_lags dict should be present with 5 co-movement keys."""
+        from validation.robustness import COMOVEMENT_VARIABLES
+
+        exp = sa_result.experiments["credit_market"]
+        for vr in exp.value_results:
+            assert isinstance(vr.mean_peak_lags, dict)
+            for var in COMOVEMENT_VARIABLES:
+                assert var in vr.mean_peak_lags, f"Missing {var} in mean_peak_lags"
 
 
 @pytest.mark.slow

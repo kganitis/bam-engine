@@ -287,4 +287,4 @@ All quotes are from Chapter 3, Section 3.10.1 of:
 Delli Gatti, D., Desiderio, S., Gaffeo, E., Cirillo, P., & Gallegati, M. (2011).
 *Macroeconomics from the Bottom-up*. Springer.
 
-Full text of Section 3.10.1 is in `notes/BAM/BOOK_SECTION_3_10.md`.
+Full text of Section 3.10.1 is in `notes/BAM/markdown/3.10_Robustness.md`.

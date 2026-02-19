@@ -26,7 +26,7 @@ Added
   principal per borrower (complements ``debt_per_borrower()`` and
   ``interest_per_borrower()``).
 
-* Robustness analysis package (Section 3.10 of Delli Gatti et al., 2011):
+* Robustness analysis package (Section 3.10.1 of Delli Gatti et al., 2011):
 
   * ``validation/robustness/`` package with internal validity and sensitivity analysis
   * Internal validity: multi-seed simulation (20 seeds) verifying cross-simulation
@@ -40,6 +40,11 @@ Added
     sensitivity co-movement comparison
   * Text reporting: formatted cross-simulation variance tables, co-movement
     summaries, AR fit results, empirical curve persistence
+  * Firm size distribution metrics: kurtosis (excess), tail index (log-log rank-size
+    slope), and distribution shape classification (pareto-like/exponential/uniform-like)
+  * Peak-lag detection in co-movement analysis (lag of max |correlation| per variable)
+  * Wage/productivity ratio tracking across experiments
+  * GDP growth volatility in sensitivity summary tables
   * CLI entry point: ``python -m validation.robustness``
   * Example: ``examples/advanced/example_robustness.py``
 
@@ -68,6 +73,13 @@ Changed
 Fixed
 ~~~~~
 
+* Fixed co-movement convention comments in ``reference_values.yaml`` (negative/positive
+  lag semantics were inverted).
+* Fixed missing empty-valid guard in co-movement aggregation loop in
+  ``internal_validity.py`` (would fail if all seeds collapsed).
+* Fixed mean AR fit method: now fits AR(1) on the pointwise-averaged GDP cycle
+  across seeds instead of averaging individual AR coefficients, matching the
+  book's methodology.
 * Fixed Growth+ R&D event ordering: R&D deduction (``FirmsDeductRnDExpenditure``)
   now runs *before* dividend distribution, matching book Section 3.8.
   Previously R&D hooked after ``firms_pay_dividends``, overstating dividends
