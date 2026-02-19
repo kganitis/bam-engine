@@ -61,6 +61,9 @@ class ValueResult:
     # Cross-seed summary statistics
     stats: dict[str, dict[str, float]] = field(default_factory=dict)
 
+    # Peak timing for co-movement classification
+    mean_peak_lags: dict[str, int] = field(default_factory=dict)
+
     # Degenerate dynamics count
     n_degenerate: int = 0
 
@@ -163,6 +166,10 @@ def _aggregate_seed_analyses(
         "beveridge_corr",
         "firm_size_skewness_sales",
         "firm_size_skewness_net_worth",
+        "firm_size_kurtosis_sales",
+        "firm_size_kurtosis_net_worth",
+        "firm_size_tail_index",
+        "wage_productivity_ratio",
     ]
 
     stats_dict: dict[str, dict[str, float]] = {}
@@ -182,6 +189,16 @@ def _aggregate_seed_analyses(
                 else 0.0,
             }
 
+    # Peak-lag aggregation: modal peak lag per variable
+    mean_peak_lags: dict[str, int] = {}
+    if valid:
+        for var in COMOVEMENT_VARIABLES:
+            lags_for_var = [a.peak_lags[var] for a in valid if var in a.peak_lags]
+            if lags_for_var:
+                # Mode: most common peak lag across seeds
+                values, counts = np.unique(lags_for_var, return_counts=True)
+                mean_peak_lags[var] = int(values[np.argmax(counts)])
+
     return ValueResult(
         label="",  # Set by caller
         config_overrides={},  # Set by caller
@@ -193,6 +210,7 @@ def _aggregate_seed_analyses(
         mean_ar_r_squared=mean_ar_r2,
         mean_irf=mean_irf,
         stats=stats_dict,
+        mean_peak_lags=mean_peak_lags,
         n_degenerate=n_degenerate,
     )
 

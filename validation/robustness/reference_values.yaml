@@ -5,8 +5,8 @@
 # so results should be directly comparable.
 #
 # Convention: corr(GDP_t, X_{t+k}) where k is the lag index.
-# Negative k = GDP leads X (X lags GDP).
-# Positive k = X leads GDP (GDP lags X).
+# Negative k = X leads GDP (GDP lags X).
+# Positive k = GDP leads X (X lags GDP).
 #
 # See REFERENCE.md for full context and book quotes.
 

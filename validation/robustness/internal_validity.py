@@ -162,9 +162,24 @@ class SeedAnalysis:
     normality_pvalue_sales: float
     normality_pvalue_net_worth: float
 
+    # Distribution shape metrics
+    firm_size_kurtosis_sales: float
+    firm_size_kurtosis_net_worth: float
+    firm_size_tail_index: float  # log-log rank-size slope (negative = heavier tail)
+
+    # Peak timing for co-movement classification
+    peak_lags: dict[str, int]  # lag of max |correlation| per variable
+
+    # Wage-productivity ratio
+    wage_productivity_ratio: float
+
+    # HP-filtered GDP cycle (for cross-seed averaging)
+    hp_gdp_cycle: NDArray[np.floating]
+
     # Degenerate dynamics detection
     degenerate: bool = False
     degenerate_reasons: list[str] = field(default_factory=list)
+    firm_size_shape: str = ""  # "pareto-like", "exponential", "uniform-like"
 
 
 @dataclass
@@ -343,6 +358,12 @@ def _analyze_seed(
             firm_size_skewness_net_worth=np.nan,
             normality_pvalue_sales=np.nan,
             normality_pvalue_net_worth=np.nan,
+            firm_size_kurtosis_sales=np.nan,
+            firm_size_kurtosis_net_worth=np.nan,
+            firm_size_tail_index=np.nan,
+            peak_lags={v: 0 for v in COMOVEMENT_VARIABLES},
+            wage_productivity_ratio=np.nan,
+            hp_gdp_cycle=np.array([]),
             degenerate=True,
             degenerate_reasons=["collapsed"],
         )
@@ -416,6 +437,58 @@ def _analyze_seed(
         float(stats.shapiro(nw_positive[:500])[1]) if len(nw_positive) > 3 else np.nan
     )
 
+    # Kurtosis (excess kurtosis: 0 = normal)
+    kurt_sales = (
+        float(stats.kurtosis(prod_positive)) if len(prod_positive) > 3 else np.nan
+    )
+    kurt_nw = float(stats.kurtosis(nw_positive)) if len(nw_positive) > 3 else np.nan
+
+    # Tail index: log-log rank-size slope on positive net worth
+    if len(nw_positive) > 10:
+        sorted_nw = np.sort(nw_positive)[::-1]
+        ranks = np.arange(1, len(sorted_nw) + 1, dtype=float)
+        log_ranks = np.log(ranks)
+        log_values = np.log(sorted_nw)
+        valid_mask = np.isfinite(log_ranks) & np.isfinite(log_values)
+        if np.sum(valid_mask) > 2:
+            slope, _, _, _, _ = stats.linregress(
+                log_ranks[valid_mask], log_values[valid_mask]
+            )
+            tail_index = float(slope)
+        else:
+            tail_index = np.nan
+    else:
+        tail_index = np.nan
+
+    # Distribution shape classification (kurtosis-based)
+    if not np.isnan(kurt_nw):
+        if kurt_nw > 6 and (not np.isnan(tail_index) and tail_index < -1.5):
+            firm_size_shape = "pareto-like"
+        elif kurt_nw < 0:
+            firm_size_shape = "uniform-like"
+        else:
+            firm_size_shape = "exponential"
+    else:
+        firm_size_shape = ""
+
+    # Peak lag detection: lag of max |correlation| per variable
+    peak_lags: dict[str, int] = {}
+    for var_name in COMOVEMENT_VARIABLES:
+        corr_arr = comovements[var_name]
+        if np.any(np.isfinite(corr_arr)):
+            abs_corr = np.abs(corr_arr)
+            peak_idx = int(np.nanargmax(abs_corr))
+            peak_lags[var_name] = peak_idx - max_lag
+        else:
+            peak_lags[var_name] = 0
+
+    # Wage-productivity ratio
+    wage_productivity_ratio = (
+        float(np.mean(ts.real_wage[bi:]) / np.mean(ts.avg_productivity[bi:]))
+        if np.mean(ts.avg_productivity[bi:]) > 1e-10
+        else np.nan
+    )
+
     # ── Degenerate dynamics detection ─────────────────────────────
     degenerate_reasons: list[str] = []
 
@@ -454,8 +527,15 @@ def _analyze_seed(
         firm_size_skewness_net_worth=firm_skew_nw,
         normality_pvalue_sales=norm_p_sales,
         normality_pvalue_net_worth=norm_p_nw,
+        firm_size_kurtosis_sales=kurt_sales,
+        firm_size_kurtosis_net_worth=kurt_nw,
+        firm_size_tail_index=tail_index,
+        peak_lags=peak_lags,
+        wage_productivity_ratio=wage_productivity_ratio,
+        hp_gdp_cycle=gdp_cycle,
         degenerate=len(degenerate_reasons) > 0,
         degenerate_reasons=degenerate_reasons,
+        firm_size_shape=firm_size_shape,
     )
 
 
@@ -650,34 +730,36 @@ def run_internal_validity(
     std_comovements: dict[str, NDArray[np.floating]] = {}
 
     for var in COMOVEMENT_VARIABLES:
-        all_corrs = np.array([a.comovements[var] for a in valid])
-        mean_comovements[var] = np.nanmean(all_corrs, axis=0)
-        std_comovements[var] = np.nanstd(all_corrs, axis=0)
+        if valid:
+            all_corrs = np.array([a.comovements[var] for a in valid])
+            mean_comovements[var] = np.nanmean(all_corrs, axis=0)
+            std_comovements[var] = np.nanstd(all_corrs, axis=0)
+        else:
+            mean_comovements[var] = np.full(n_lags, np.nan)
+            std_comovements[var] = np.full(n_lags, np.nan)
 
     # ── AR fit on cross-simulation average GDP cycle ────────────────────
 
-    # We need the raw GDP cycles to average them. Re-derive from individual
-    # AR fits is not correct; we need to average the time series and fit AR.
-    # However, we don't store the raw cycles in SeedAnalysis (by design,
-    # to keep worker output lightweight). Instead, we run one more sim with
-    # the baseline seed to get a representative cycle for the mean AR fit.
-    # For the "true" mean AR, we'd need to average cycles, but the book's
-    # claim is about the AR structure of the *averaged* GDP. We approximate
-    # by noting the mean AR structure from individual fits.
+    # Collect HP-filtered GDP cycles from valid seeds, compute the
+    # pointwise mean cycle, and fit AR(1) on it.  This matches the book's
+    # methodology: the averaged cyclical component is best described by an
+    # AR(1) structure (individual seeds are AR(2), but the second-order
+    # dynamics cancel out when averaging).
 
     if valid:
-        # Fit AR(1) on the average GDP cycle approximation
-        # We use the fact that averaging AR(2) processes with similar coefficients
-        # tends to produce an AR(1)-like structure (book's finding)
-        # For the mean IRF, we use the averaged AR(1) coefficients
         try:
-            # Create an AR(1) coefficient array: [mean_const, mean_phi1]
-            mean_phi1 = np.mean([a.ar_coeffs[1] for a in valid])
-            mean_const = np.mean([a.ar_coeffs[0] for a in valid])
-            mean_ar_coeffs = np.array([mean_const, mean_phi1])
-            mean_ar_r2 = np.mean([a.ar_r_squared for a in valid])
-            mean_irf = impulse_response(mean_ar_coeffs, n_periods=irf_periods)
-        except (IndexError, ValueError):
+            cycles = [a.hp_gdp_cycle for a in valid if len(a.hp_gdp_cycle) > 0]
+            if cycles:
+                min_len = min(len(c) for c in cycles)
+                stacked = np.array([c[:min_len] for c in cycles])
+                mean_cycle = np.mean(stacked, axis=0)
+                mean_ar_coeffs, mean_ar_r2 = fit_ar(mean_cycle, order=ar_order_mean)
+                mean_irf = impulse_response(mean_ar_coeffs, n_periods=irf_periods)
+            else:
+                mean_ar_coeffs = np.zeros(ar_order_mean + 1)
+                mean_ar_r2 = 0.0
+                mean_irf = np.zeros(irf_periods)
+        except (IndexError, ValueError, np.linalg.LinAlgError):
             mean_ar_coeffs = np.zeros(ar_order_mean + 1)
             mean_ar_r2 = 0.0
             mean_irf = np.zeros(irf_periods)
@@ -702,6 +784,10 @@ def run_internal_validity(
         ("beveridge_corr", "beveridge_corr"),
         ("firm_size_skewness_sales", "firm_size_skewness_sales"),
         ("firm_size_skewness_net_worth", "firm_size_skewness_net_worth"),
+        ("firm_size_kurtosis_sales", "firm_size_kurtosis_sales"),
+        ("firm_size_kurtosis_net_worth", "firm_size_kurtosis_net_worth"),
+        ("firm_size_tail_index", "firm_size_tail_index"),
+        ("wage_productivity_ratio", "wage_productivity_ratio"),
     ]
 
     cross_sim_stats: dict[str, dict[str, float]] = {}

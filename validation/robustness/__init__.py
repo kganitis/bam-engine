@@ -1,4 +1,4 @@
-"""Robustness analysis for BAM Engine (Section 3.10).
+"""Robustness analysis for BAM Engine (Section 3.10.1).
 
 This package implements the robustness checking procedures from
 Section 3.10 of Delli Gatti et al. (2011), consisting of:

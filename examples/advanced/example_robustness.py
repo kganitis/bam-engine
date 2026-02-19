@@ -286,6 +286,7 @@ print(f"Running Growth+ model: {N_SEEDS} seeds, {N_PERIODS} periods each...")
 
 all_comovements = {var: [] for var in COMOVEMENT_VARS}
 all_ar_coeffs = []
+all_gdp_cycles = []
 all_stats = {"unemployment": [], "inflation": [], "gdp_growth": []}
 baseline_comovements = {}
 baseline_ar_coeffs = None
@@ -299,9 +300,10 @@ for seed in range(N_SEEDS):
     series = extract_series(results, N_PERIODS)
     comovements, gdp_cycle = compute_comovements(series, BURN_IN, MAX_LAG)
 
-    # Collect per-seed co-movements
+    # Collect per-seed co-movements and GDP cycles
     for var in COMOVEMENT_VARS:
         all_comovements[var].append(comovements[var])
+    all_gdp_cycles.append(gdp_cycle)
     if seed == 0:
         baseline_comovements = comovements
 
@@ -345,13 +347,31 @@ for var in COMOVEMENT_VARS:
     mean_comovements[var] = np.mean(all_comovements[var], axis=0)
 
 print("\nContemporaneous co-movements (lag=0):")
-print(f"{'Variable':<20} {'Baseline':>10} {'Mean':>10} {'Std':>10}")
-print("-" * 52)
+print(f"{'Variable':<20} {'Baseline':>10} {'Mean':>10} {'Std':>10} {'Peak lag':>10}")
+print("-" * 62)
 for var in COMOVEMENT_VARS:
     base_val = baseline_comovements[var][MAX_LAG]
     mean_val = mean_comovements[var][MAX_LAG]
     std_val = np.std([c[MAX_LAG] for c in all_comovements[var]])
-    print(f"{var:<20} {base_val:>10.3f} {mean_val:>10.3f} {std_val:>10.3f}")
+    # Peak lag: lag of max |correlation| in the mean co-movement
+    peak_idx = int(np.argmax(np.abs(mean_comovements[var])))
+    peak_lag = peak_idx - MAX_LAG
+    print(
+        f"{var:<20} {base_val:>10.3f} {mean_val:>10.3f}"
+        f" {std_val:>10.3f} {peak_lag:>+10d}"
+    )
+
+# Firm size kurtosis (from final period of seed 0)
+from scipy import stats as sp_stats
+
+sim0 = bam.Simulation.init(seed=0, logging={"default_level": "ERROR"})
+setup_growth_plus(sim0)
+res0 = sim0.run(collect=COLLECT_CONFIG)
+prod0 = res0.get_array("Producer", "production")[-1]
+prod0_pos = prod0[prod0 > 0]
+if len(prod0_pos) > 3:
+    kurt = sp_stats.kurtosis(prod0_pos)
+    print(f"\nFirm size kurtosis (seed 0, sales): {kurt:.2f} (excess; 0 = normal)")
 
 # %%
 # Plot Co-Movements (Figure 3.9)
@@ -415,9 +435,11 @@ plt.show()
 # When we average AR coefficients across seeds, the result is AR(1)-like
 # with monotone exponential decay -- the second-order dynamics cancel out.
 
-# Mean AR(1) from averaging phi_1 across seeds
-mean_phi1 = np.mean([c[1] for c in all_ar_coeffs])
-mean_ar1_coeffs = np.array([0.0, mean_phi1])
+# Fit AR(1) on the pointwise-averaged GDP cycle across seeds
+min_len = min(len(c) for c in all_gdp_cycles)
+stacked_cycles = np.array([c[:min_len] for c in all_gdp_cycles])
+mean_cycle = np.mean(stacked_cycles, axis=0)
+mean_ar1_coeffs, mean_ar1_r2 = fit_ar(mean_cycle, order=1)
 mean_irf = impulse_response(mean_ar1_coeffs, n_periods=20)
 
 print("AR Structure:")
@@ -425,7 +447,11 @@ print(
     f"  Baseline (seed 0): AR(2), "
     f"phi_1={baseline_ar_coeffs[1]:.3f}, phi_2={baseline_ar_coeffs[2]:.3f}"
 )
-print(f"  Cross-sim mean:    AR(1), phi_1={mean_phi1:.3f}")
+print(
+    f"  Cross-sim mean:    AR(1), "
+    f"phi_1={mean_ar1_coeffs[1]:.3f}, R\u00b2={mean_ar1_r2:.3f}"
+    f" (fitted on averaged cycle)"
+)
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 5))
 periods_irf = np.arange(len(baseline_irf))
@@ -435,7 +461,7 @@ ax.plot(
     mean_irf,
     "b-",
     linewidth=2,
-    label=f"Mean AR(1) (\u03c6={mean_phi1:.2f})",
+    label=f"Mean AR(1) (\u03c6={mean_ar1_coeffs[1]:.2f})",
 )
 ax.axhline(0, color="gray", linewidth=0.5)
 ax.set_title("GDP cyclical component: impulse-response function", fontsize=12)

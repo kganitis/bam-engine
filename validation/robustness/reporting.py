@@ -114,12 +114,23 @@ def format_internal_validity_report(result: InternalValidityResult) -> str:
 
     lines.append(
         f"  {'Variable':<25s} {'Baseline':>10s} {'Mean':>10s} "
-        f"{'Std':>8s}  Classification"
+        f"{'Std':>8s} {'Peak lag':>9s}  Classification"
     )
+    # Compute mean peak lags from valid seeds
+    valid = [a for a in result.seed_analyses if not a.collapsed and not a.degenerate]
+    mean_peak_lags: dict[str, int] = {}
+    if valid:
+        for var in COMOVEMENT_VARIABLES:
+            lag_vals = [a.peak_lags[var] for a in valid if var in a.peak_lags]
+            if lag_vals:
+                values, counts = np.unique(lag_vals, return_counts=True)
+                mean_peak_lags[var] = int(values[np.argmax(counts)])
+
     for var in COMOVEMENT_VARIABLES:
         baseline_val = result.baseline_comovements[var][max_lag]
         mean_val = result.mean_comovements[var][max_lag]
         std_val = result.std_comovements[var][max_lag]
+        peak_lag = mean_peak_lags.get(var, 0)
 
         # Classify: procyclical (>0.2), countercyclical (<-0.2), acyclical
         if abs(mean_val) <= 0.2:
@@ -131,13 +142,13 @@ def format_internal_validity_report(result: InternalValidityResult) -> str:
 
         lines.append(
             f"  {var_labels[var]:<25s} {baseline_val:>10.3f} "
-            f"{mean_val:>10.3f} {std_val:>8.3f}  {classification}"
+            f"{mean_val:>10.3f} {std_val:>8.3f} {peak_lag:>+9d}  {classification}"
         )
 
     # ── AR model fit ─────────────────────────────────────────────────
     lines.append(_subheader("3. GDP Cyclical Component: AR Structure"))
+    lines.append("  (Mean AR fitted on pointwise-averaged GDP cycle across seeds)")
 
-    valid = [a for a in result.seed_analyses if not a.collapsed and not a.degenerate]
     if valid:
         baseline = next((a for a in valid if a.seed == 0), valid[0])
         lines.append(
@@ -191,17 +202,36 @@ def format_internal_validity_report(result: InternalValidityResult) -> str:
     # ── Distribution invariance ──────────────────────────────────────
     lines.append(_subheader("5. Firm Size Distribution Invariance"))
 
-    for dist_type, skew_key, norm_key in [
-        ("Sales (production)", "firm_size_skewness_sales", "normality_pvalue_sales"),
-        ("Net worth", "firm_size_skewness_net_worth", "normality_pvalue_net_worth"),
-    ]:
+    dist_metrics = [
+        (
+            "Sales (production)",
+            "firm_size_skewness_sales",
+            "firm_size_kurtosis_sales",
+            "normality_pvalue_sales",
+        ),
+        (
+            "Net worth",
+            "firm_size_skewness_net_worth",
+            "firm_size_kurtosis_net_worth",
+            "normality_pvalue_net_worth",
+        ),
+    ]
+    for dist_type, skew_key, kurt_key, norm_key in dist_metrics:
+        lines.append(f"  {dist_type}:")
         if skew_key in result.cross_sim_stats:
             s = result.cross_sim_stats[skew_key]
-            lines.append(f"  {dist_type}:")
             lines.append(
                 f"    Skewness: mean={_fmt(s['mean'], '.3f')},"
                 f" std={_fmt(s['std'], '.3f')}"
                 f" (positive = right-skewed)"
+            )
+
+        if kurt_key in result.cross_sim_stats:
+            s = result.cross_sim_stats[kurt_key]
+            lines.append(
+                f"    Kurtosis: mean={_fmt(s['mean'], '.3f')},"
+                f" std={_fmt(s['std'], '.3f')}"
+                f" (excess; 0 = normal)"
             )
 
         # Normality test results from individual seeds
@@ -214,6 +244,27 @@ def format_internal_validity_report(result: InternalValidityResult) -> str:
                 f"    Normality rejected (p<0.05): {reject_count}/{len(norm_values)}"
                 f" seeds ({_pct(reject_count / len(norm_values))})"
             )
+
+    # Tail index and shape classification (net worth)
+    if "firm_size_tail_index" in result.cross_sim_stats:
+        s = result.cross_sim_stats["firm_size_tail_index"]
+        lines.append(
+            f"  Tail index (net worth): mean={_fmt(s['mean'], '.3f')},"
+            f" std={_fmt(s['std'], '.3f')}"
+            f" (log-log slope; more negative = heavier tail)"
+        )
+
+    # Shape classification mode across seeds
+    shapes = [a.firm_size_shape for a in valid if a.firm_size_shape]
+    if shapes:
+        from collections import Counter
+
+        shape_counts = Counter(shapes)
+        mode_shape = shape_counts.most_common(1)[0]
+        lines.append(
+            f"  Shape classification: {mode_shape[0]}"
+            f" ({mode_shape[1]}/{len(shapes)} seeds)"
+        )
 
     lines.append("")
     return "\n".join(lines)
@@ -237,21 +288,28 @@ def _format_experiment_report(exp_result: ExperimentResult) -> str:
     # Summary table
     lines.append(
         f"\n  {'Value':<30s} {'Unemp':>8s} {'Infl':>8s} "
-        f"{'GDP gr':>8s} {'Collapses':>10s} {'Degen':>10s}"
+        f"{'GDP gr':>8s} {'GDP vol':>8s} {'W/P':>6s} "
+        f"{'Collapses':>10s} {'Degen':>10s}"
     )
-    lines.append(f"  {'-' * 78}")
+    lines.append(f"  {'-' * 94}")
 
     for i, vr in enumerate(exp_result.value_results):
         marker = " *" if i == exp_result.baseline_idx else "  "
         u = _pct(vr.stats.get("unemployment_mean", {}).get("mean", float("nan")))
         inf = _fmt(vr.stats.get("inflation_mean", {}).get("mean", float("nan")), ".4f")
         g = _pct(vr.stats.get("gdp_growth_mean", {}).get("mean", float("nan")))
+        vol = _fmt(vr.stats.get("gdp_growth_std", {}).get("mean", float("nan")), ".4f")
+        wp = _fmt(
+            vr.stats.get("wage_productivity_ratio", {}).get("mean", float("nan")),
+            ".3f",
+        )
         collapse = f"{vr.n_collapsed}/{vr.n_seeds}"
         degen = f"{vr.n_degenerate}/{vr.n_seeds}"
 
         lines.append(
             f"{marker}{vr.label:<30s} {u:>8s} {inf:>8s} "
-            f"{g:>8s} {collapse:>10s} {degen:>10s}"
+            f"{g:>8s} {vol:>8s} {wp:>6s} "
+            f"{collapse:>10s} {degen:>10s}"
         )
 
     # Co-movement changes (contemporaneous correlation)
