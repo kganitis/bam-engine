@@ -406,3 +406,41 @@ class TestExcessLaborFiring:
                 f"Period {period}: {len(excess_firms)} firms have excess workers: "
                 f"{excess_firms[:5]}"
             )
+
+
+class TestPricingPhase:
+    """Test pricing_phase configuration parameter."""
+
+    def test_simulation_runs_with_planning_phase(self):
+        """Simulation should run successfully with pricing_phase='planning'."""
+        sim = Simulation.init(
+            n_firms=50,
+            n_households=250,
+            pricing_phase="planning",
+            seed=42,
+        )
+        sim.run(n_periods=5)
+
+        assert not sim.ec.collapsed
+        assert sim.config.pricing_phase == "planning"
+        # Planning events should be in pipeline
+        event_names = [e.name for e in sim.pipeline.events]
+        assert "firms_plan_breakeven_price" in event_names
+        assert "firms_plan_price" in event_names
+
+    def test_simulation_runs_with_production_phase(self):
+        """Simulation should run successfully with pricing_phase='production'."""
+        sim = Simulation.init(
+            n_firms=50,
+            n_households=250,
+            pricing_phase="production",
+            seed=42,
+        )
+        sim.run(n_periods=5)
+
+        assert not sim.ec.collapsed
+        assert sim.config.pricing_phase == "production"
+        # Production events should be in pipeline
+        event_names = [e.name for e in sim.pipeline.events]
+        assert "firms_calc_breakeven_price" in event_names
+        assert "firms_adjust_price" in event_names

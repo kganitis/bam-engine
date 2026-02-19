@@ -182,7 +182,7 @@ Benchmark Suites
 The ASV configuration includes seven benchmark suites:
 
 * **SimulationSuite**: Full simulation runs (100/1000 periods) across small/medium/large
-* **PipelineSuite**: Single step performance (all 39 events)
+* **PipelineSuite**: Single step performance (all events)
 * **MemorySuite**: Peak memory during initialization and simulation
 * **CriticalEventSuite**: Individual event benchmarks for the critical path (goods/labor/credit markets)
 * **InitSuite**: Initialization costs across different scales (100-1000 firms)

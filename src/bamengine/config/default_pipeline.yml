@@ -73,11 +73,13 @@
 
 events:
   # ────────────────────────────────────────────────────────────────────────────
-  # PHASE 1: PLANNING (4 events)
+  # PHASE 1: PLANNING (6 events)
   # ────────────────────────────────────────────────────────────────────────────
   # Firms decide production targets, labor needs, and post vacancies.
 
   - firms_decide_desired_production    # Set production targets based on demand/inventory
+  - firms_plan_breakeven_price
+  - firms_plan_price
   - firms_decide_desired_labor         # Calculate labor needs from production targets
   - firms_decide_vacancies             # Post vacancies to meet labor needs
   - firms_fire_excess_workers          # Fire workers when desired_labor < current_labor
@@ -116,14 +118,14 @@ events:
   - firms_fire_workers                 # Lay off workers if credit insufficient
 
   # ────────────────────────────────────────────────────────────────────────────
-  # PHASE 4: PRODUCTION (7 events)
+  # PHASE 4: PRODUCTION (5 events; 7 with pricing_phase="production")
   # ────────────────────────────────────────────────────────────────────────────
-  # Firms pay wages to workers, adjust prices, run production, update worker contracts.
+  # Firms pay wages to workers, run production, update worker contracts.
 
   - firms_pay_wages                    # Firms transfer wages to workers
   - workers_receive_wage               # Workers receive wages into income
-  - firms_calc_breakeven_price         # Calculate minimum profitable price
-  - firms_adjust_price                 # Adjust price based on inventory levels
+  # NOTE: Production-phase pricing events (firms_calc_breakeven_price,
+  # firms_adjust_price) activated via pricing_phase="production" config.
   - firms_run_production               # Production execution (goods added to inventory)
   - update_avg_mkt_price               # Update economy-wide average price
   - workers_update_contracts           # Decrement contract duration, handle expiration

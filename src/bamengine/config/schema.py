@@ -200,3 +200,6 @@ class Config:
 
     # Inflation calculation method
     inflation_method: str = "yoy"  # "yoy" (year-over-year) or "annualized"
+
+    # Pricing phase
+    pricing_phase: str = "planning"  # "planning" or "production"

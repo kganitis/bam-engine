@@ -324,6 +324,60 @@ def test_config_dict_passed_directly():
     assert sim.config.h_rho == 0.15
 
 
+def test_pricing_phase_conflicts_with_pipeline_path():
+    """Setting pricing_phase != 'planning' with pipeline_path should raise."""
+
+    pipeline_yaml = """
+events:
+  - firms_decide_desired_production
+  - firms_calc_breakeven_price
+  - firms_adjust_price
+"""
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write(pipeline_yaml)
+        pipeline_path = f.name
+
+    try:
+        with pytest.raises(ValueError, match="pricing_phase cannot be used"):
+            Simulation.init(
+                n_firms=10,
+                n_households=50,
+                pipeline_path=pipeline_path,
+                pricing_phase="production",
+                seed=42,
+            )
+    finally:
+        Path(pipeline_path).unlink()
+
+
+def test_pricing_phase_planning_with_pipeline_path_is_ok():
+    """pricing_phase='planning' (default) with pipeline_path should be fine."""
+
+    pipeline_yaml = """
+events:
+  - firms_decide_desired_production
+  - firms_calc_breakeven_price
+  - firms_adjust_price
+"""
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write(pipeline_yaml)
+        pipeline_path = f.name
+
+    try:
+        sim = Simulation.init(
+            n_firms=10,
+            n_households=50,
+            pipeline_path=pipeline_path,
+            pricing_phase="planning",
+            seed=42,
+        )
+        assert len(sim.pipeline) == 3
+    finally:
+        Path(pipeline_path).unlink()
+
+
 def test_config_yaml_non_mapping_root():
     """Reject YAML file with non-mapping root."""
     yaml_content = """

@@ -565,6 +565,27 @@ class TestUncoveredTypeValidation:
             ConfigValidator._validate_types(cfg)
 
 
+class TestPricingPhaseValidation:
+    """Tests for pricing_phase parameter validation."""
+
+    def test_pricing_phase_valid_values(self):
+        """Both 'planning' and 'production' should be accepted."""
+        ConfigValidator._validate_types({"pricing_phase": "planning"})
+        ConfigValidator._validate_ranges({"pricing_phase": "planning"})
+        ConfigValidator._validate_types({"pricing_phase": "production"})
+        ConfigValidator._validate_ranges({"pricing_phase": "production"})
+
+    def test_pricing_phase_invalid_value(self):
+        """Invalid pricing_phase string should raise ValueError."""
+        with pytest.raises(ValueError, match="must be one of"):
+            ConfigValidator._validate_ranges({"pricing_phase": "invalid"})
+
+    def test_pricing_phase_type_error(self):
+        """Non-string pricing_phase should raise ValueError."""
+        with pytest.raises(ValueError, match="must be str"):
+            ConfigValidator._validate_types({"pricing_phase": 123})
+
+
 class TestUncoveredRangeValidation:
     """Tests for previously uncovered range validation error paths."""
 

@@ -582,8 +582,16 @@ class Simulation:
 
         ConfigValidator.validate_config(cfg_dict)
 
-        # Validate pipeline path if specified
+        # Validate pricing_phase vs pipeline_path conflict
+        pricing_phase = cfg_dict.get("pricing_phase", "planning")
         pipeline_path = cfg_dict.get("pipeline_path")
+        if pipeline_path is not None and pricing_phase != "planning":
+            raise ValueError(
+                "pricing_phase cannot be used with a custom pipeline_path. "
+                "Customize the pipeline YAML directly instead."
+            )
+
+        # Validate pipeline path if specified
         if pipeline_path is not None:
             ConfigValidator.validate_pipeline_path(pipeline_path)
             # Validate pipeline YAML with available parameters
@@ -904,6 +912,7 @@ class Simulation:
             job_search_method=p["job_search_method"],
             price_cut_allow_increase=p["price_cut_allow_increase"],
             inflation_method=p["inflation_method"],
+            pricing_phase=p["pricing_phase"],
             # New firm entry parameters
             new_firm_size_factor=p["new_firm_size_factor"],
             new_firm_production_factor=p["new_firm_production_factor"],
@@ -949,7 +958,10 @@ class Simulation:
             )
         else:
             pipeline = create_default_pipeline(
-                max_M=p["max_M"], max_H=p["max_H"], max_Z=p["max_Z"]
+                max_M=p["max_M"],
+                max_H=p["max_H"],
+                max_Z=p["max_Z"],
+                pricing_phase=p["pricing_phase"],
             )
 
         # Configure logging (if specified)

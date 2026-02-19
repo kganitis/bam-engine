@@ -154,3 +154,9 @@ price_cut_allow_increase: true       # Allow price increase when trying to cut
 inflation_method: yoy                # How to calculate inflation rate
                                      # "yoy" = year-over-year (compare t to t-4)
                                      # "annualized" = annualize quarterly rate ((1+q)^4 - 1)
+
+pricing_phase: planning              # When breakeven price and price adjustment occur
+                                     # "planning" = before labor/credit markets (uses
+                                     #   previous period's costs / desired production)
+                                     # "production" = after labor/credit markets (uses
+                                     #   current period's costs / projected production)

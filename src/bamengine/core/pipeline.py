@@ -200,8 +200,23 @@ class Pipeline:
     )
 
     def __post_init__(self) -> None:
-        """Build internal event mapping and initialize callbacks."""
+        """Build internal event mapping, validate mutual exclusions, and initialize callbacks."""
         self._event_map = {event.name: event for event in self.events}
+
+        # Check for mutually exclusive pricing events
+        _PLANNING_PRICING = {"firms_plan_breakeven_price", "firms_plan_price"}
+        _PRODUCTION_PRICING = {"firms_calc_breakeven_price", "firms_adjust_price"}
+        present = set(self._event_map)
+        has_planning = bool(present & _PLANNING_PRICING)
+        has_production = bool(present & _PRODUCTION_PRICING)
+        if has_planning and has_production:
+            raise ValueError(
+                "Pipeline contains both planning-phase and production-phase "
+                "pricing events. These are mutually exclusive. Use "
+                "pricing_phase='planning' or pricing_phase='production' "
+                "in config, not both."
+            )
+
         # Ensure _after_event_callbacks is a defaultdict (in case of copy/pickle)
         if not isinstance(self._after_event_callbacks, defaultdict):  # pragma: no cover
             self._after_event_callbacks = defaultdict(list, self._after_event_callbacks)
@@ -654,12 +669,16 @@ class Pipeline:
         return f"Pipeline(n_events={len(self.events)})"
 
 
-def create_default_pipeline(max_M: int, max_H: int, max_Z: int) -> Pipeline:
+def create_default_pipeline(
+    max_M: int, max_H: int, max_Z: int, pricing_phase: str = "planning"
+) -> Pipeline:
     """
     Create default BAM simulation event pipeline.
 
     Loads the pipeline from config/default_pipeline.yml and substitutes
-    market round parameters (max_M, max_H, max_Z).
+    market round parameters (max_M, max_H, max_Z). If ``pricing_phase``
+    is ``"production"``, swaps planning-phase pricing events for
+    production-phase ones.
 
     Parameters
     ----------
@@ -669,6 +688,11 @@ def create_default_pipeline(max_M: int, max_H: int, max_Z: int) -> Pipeline:
         Number of loan application rounds.
     max_Z : int
         Number of shopping rounds.
+    pricing_phase : str, optional
+        When breakeven price and price adjustment occur.
+        ``"planning"`` (default) uses previous period's costs / desired
+        production. ``"production"`` uses current period's costs / projected
+        production (after labor/credit markets).
 
     Returns
     -------
@@ -690,7 +714,7 @@ def create_default_pipeline(max_M: int, max_H: int, max_Z: int) -> Pipeline:
         # Use as_file() to obtain a real filesystem Path (mypy-compatible).
         traversable = resources.files("bamengine") / "config" / "default_pipeline.yml"
         with resources.as_file(traversable) as yaml_fs_path:
-            return Pipeline.from_yaml(
+            pipeline = Pipeline.from_yaml(
                 Path(yaml_fs_path),
                 max_M=max_M,
                 max_H=max_H,
@@ -703,4 +727,15 @@ def create_default_pipeline(max_M: int, max_H: int, max_Z: int) -> Pipeline:
         import bamengine
 
         yaml_path = Path(bamengine.__file__).parent / "config" / "default_pipeline.yml"
-        return Pipeline.from_yaml(yaml_path, max_M=max_M, max_H=max_H, max_Z=max_Z)
+        pipeline = Pipeline.from_yaml(yaml_path, max_M=max_M, max_H=max_H, max_Z=max_Z)
+
+    # Swap pricing events if production-phase pricing is requested
+    if pricing_phase == "production":
+        pipeline.remove("firms_plan_breakeven_price")
+        pipeline.remove("firms_plan_price")
+        pipeline.insert_after(
+            "workers_receive_wage",
+            ["firms_calc_breakeven_price", "firms_adjust_price"],
+        )
+
+    return pipeline

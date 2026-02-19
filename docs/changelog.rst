@@ -21,6 +21,13 @@ Added
   period's costs and desired production. These are mutually exclusive with the
   production-phase pair — use one or the other.
 
+* ``pricing_phase`` configuration parameter (``"planning"`` or ``"production"``,
+  default ``"planning"``). Automates switching between planning-phase and
+  production-phase pricing events without manual pipeline YAML editing.
+  Raises ``ValueError`` if used with ``pipeline_path`` (custom pipelines
+  should be edited directly). Hard-coded mutual exclusion guard in
+  ``Pipeline.__post_init__`` prevents both pricing pairs from coexisting.
+
 * Diagnostics package (``diagnostics/``) with comprehensive analysis dashboards:
   baseline (13 figures), Growth+ (15 figures), credit market investigation,
   and labor market investigation scripts.
@@ -500,7 +507,7 @@ Added
 
 * **3 agent populations**: Firms, Households, Banks
 * **6 agent roles**: Producer, Employer, Borrower, Worker, Consumer, Lender
-* **8 event modules**: Planning, labor/credit/goods markets, production, revenue, bankruptcy (39 total events)
+* **8 event modules**: Planning, labor/credit/goods markets, production, revenue, bankruptcy, economy stats (43 total events)
 
 **Configuration & Validation**
 
