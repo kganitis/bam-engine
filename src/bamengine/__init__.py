@@ -137,7 +137,7 @@ Module Organization
   - `bamengine.simulation` : Simulation implementation
   - `bamengine.core` : ECS infrastructure (registry, pipeline)
   - `bamengine.roles` : Built-in role implementations (Producer, Worker, etc.)
-  - `bamengine.events` : Built-in event implementations (37 events)
+  - `bamengine.events` : Built-in event implementations (43 events)
   - `bamengine.relationships` : Built-in relationships (LoanBook)
   - `bamengine.economy` : Economy-wide state, scalars and time-series
   - `bamengine.config` : Configuration and validation

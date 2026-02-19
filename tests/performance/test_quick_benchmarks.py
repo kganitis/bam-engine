@@ -49,7 +49,7 @@ def sim_steady_state():
 # Core simulation benchmarks
 @pytest.mark.benchmark(group="core")
 def test_single_step(benchmark, sim):
-    """Benchmark single simulation step (all 39 events)."""
+    """Benchmark single simulation step."""
     benchmark(sim.step)
 
 

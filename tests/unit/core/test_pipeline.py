@@ -574,3 +574,86 @@ def test_pipeline_callbacks_fire_during_execute():
 
     # Clean up
     sim.pipeline.clear_callbacks()
+
+
+# ============================================================================
+# Mutual Exclusion Guard Tests
+# ============================================================================
+
+
+def test_mutual_exclusion_guard_rejects_both_pricing_pairs():
+    """Pipeline with both planning and production pricing events should raise."""
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        Pipeline.from_event_list(
+            [
+                "firms_plan_breakeven_price",
+                "firms_plan_price",
+                "firms_calc_breakeven_price",
+                "firms_adjust_price",
+            ]
+        )
+
+
+def test_mutual_exclusion_guard_allows_planning_only():
+    """Pipeline with only planning pricing events should be OK."""
+    pipeline = Pipeline.from_event_list(
+        [
+            "firms_decide_desired_production",
+            "firms_plan_breakeven_price",
+            "firms_plan_price",
+        ]
+    )
+    assert len(pipeline) == 3
+
+
+def test_mutual_exclusion_guard_allows_production_only():
+    """Pipeline with only production pricing events should be OK."""
+    pipeline = Pipeline.from_event_list(
+        [
+            "firms_decide_desired_production",
+            "firms_calc_breakeven_price",
+            "firms_adjust_price",
+        ]
+    )
+    assert len(pipeline) == 3
+
+
+# ============================================================================
+# create_default_pipeline pricing_phase Tests
+# ============================================================================
+
+
+def test_create_default_pipeline_planning_phase():
+    """Default pipeline should have planning events, no production events."""
+    from bamengine.core.pipeline import create_default_pipeline
+
+    pipeline = create_default_pipeline(max_M=4, max_H=2, max_Z=2)
+    event_names = [e.name for e in pipeline.events]
+
+    assert "firms_plan_breakeven_price" in event_names
+    assert "firms_plan_price" in event_names
+    assert "firms_calc_breakeven_price" not in event_names
+    assert "firms_adjust_price" not in event_names
+
+
+def test_create_default_pipeline_production_phase():
+    """Production pipeline should have production events at correct position."""
+    from bamengine.core.pipeline import create_default_pipeline
+
+    pipeline = create_default_pipeline(
+        max_M=4, max_H=2, max_Z=2, pricing_phase="production"
+    )
+    event_names = [e.name for e in pipeline.events]
+
+    # Should have production events, not planning events
+    assert "firms_calc_breakeven_price" in event_names
+    assert "firms_adjust_price" in event_names
+    assert "firms_plan_breakeven_price" not in event_names
+    assert "firms_plan_price" not in event_names
+
+    # Production events should be after workers_receive_wage
+    wrw_idx = event_names.index("workers_receive_wage")
+    bep_idx = event_names.index("firms_calc_breakeven_price")
+    adj_idx = event_names.index("firms_adjust_price")
+    assert bep_idx == wrw_idx + 1
+    assert adj_idx == wrw_idx + 2
