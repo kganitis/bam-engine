@@ -95,6 +95,46 @@ Added
   * CLI entry point: ``python -m validation.robustness``
   * Example: ``examples/advanced/example_robustness.py``
 
+* Calibration package overhaul — multi-phase framework with tiered stability
+  testing, pairwise interaction analysis, and production-quality tooling:
+
+  * **Tiered stability testing**: incremental tournament system
+    (default: 100×10, 50×20, 10×100 seeds) that efficiently narrows candidates
+    while accumulating seed scores. Replaces flat ``top_k × N seeds`` approach.
+    Total evaluations: 2,300 vs naive 10,000 for same coverage.
+  * **Pairwise interaction analysis**: tests all 2-param combinations among
+    sensitive parameters to detect synergies and conflicts. New
+    ``PairInteraction`` / ``PairwiseResult`` types with ``synergies`` and
+    ``conflicts`` properties.
+  * **Multi-seed sensitivity**: ``n_seeds`` parameter for OAT evaluation
+    (default: 3). Averages across seeds for more robust sensitivity measurement.
+  * **Per-metric-group score decomposition**: ``ParameterSensitivity.group_scores``
+    tracks which metric groups (TIME_SERIES, CURVES, etc.) each parameter
+    affects, printed in sensitivity report.
+  * **Value pruning**: drops grid values whose OAT score is more than
+    ``pruning_threshold`` below the best value for that parameter.
+    ``SensitivityResult.prune_grid()`` method. Default: ``auto`` (2× sensitivity
+    threshold). Disable with ``--pruning-threshold none``.
+  * **Phase-based CLI**: ``--phase sensitivity|grid|stability|pairwise`` for
+    individual phase execution, or omit for all phases sequentially. Replaces
+    ``--sensitivity-only``.
+  * **Checkpointing and resume**: grid screening and stability testing save
+    periodic checkpoints; ``--resume`` flag skips already-evaluated configs.
+  * **Progress tracking with ETA**: ``format_eta()`` / ``format_progress()``
+    helpers using sensitivity-measured ``avg_time_per_run``.
+  * **Config export**: ``export_best_config()`` writes best result as
+    ready-to-use YAML (``output/{scenario}_best_config.yml``).
+  * **Before/after comparison**: ``compare_configs()`` runs default vs calibrated
+    side-by-side and reports per-metric changes. ``ComparisonResult`` type.
+  * **Parameter pattern analysis**: ``analyze_parameter_patterns()`` identifies
+    which values consistently appear in top configs.
+  * **Buffer-stock scenario support**: all calibration phases support
+    ``--scenario buffer_stock`` (26 common + 3 extension params).
+  * **Expanded parameter grid**: 26 common parameters covering initial
+    conditions, new-firm entry, economy-wide, search frictions, and
+    implementation variants. Extension-specific: ``sigma_decay`` / ``sigma_max``
+    (Growth+), ``buffer_stock_h`` (buffer-stock).
+
 Changed
 ~~~~~~~
 
@@ -145,6 +185,23 @@ Changed
 * Event count: 43 → 45 events (2 new labor market, 1 new credit market).
 * Sphinx API docs: added ``FirmsApplyForLoans`` to
   ``docs/api/events/credit_market.rst``.
+* Calibration: simplified sensitivity classification from HIGH/MEDIUM/LOW
+  to binary INCLUDE/FIX with single ``sensitivity_threshold`` (default 0.02).
+  ``build_focused_grid()`` parameters renamed: ``high_threshold`` /
+  ``medium_threshold`` → ``sensitivity_threshold`` / ``pruning_threshold``.
+* Calibration: ``run_focused_calibration()`` now uses tiered stability
+  internally. Removed ``top_k`` and ``stability_seeds`` parameters;
+  replaced with ``stability_tiers`` list.
+* Calibration: CLI arguments restructured — removed ``--sensitivity-only``,
+  ``--top-k``, ``--high-threshold``, ``--medium-threshold``; added
+  ``--phase``, ``--sensitivity-threshold``, ``--pruning-threshold``,
+  ``--sensitivity-seeds``, ``--stability-tiers``, ``--resume``.
+* Calibration: ``screen_single_seed()`` now returns ``CalibrationResult``
+  (was ``float``). ``CalibrationResult`` gains ``seed_scores`` field for
+  incremental stability.
+* Calibration: parameter grid restructured around shared ``_COMMON_GRID``
+  (26 params) with scenario-specific extensions via dict unpacking.
+* Docs: updated ``development.rst`` calibration examples to match new CLI.
 
 Fixed
 ~~~~~

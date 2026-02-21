@@ -3,6 +3,7 @@
 Supports multiple scenarios:
     - baseline: Standard BAM model (Section 3.9.1)
     - growth_plus: Endogenous productivity growth via R&D (Section 3.9.2)
+    - buffer_stock: Buffer-stock consumption with R&D (Section 3.9.4)
 
 Usage:
     # Run grid search for baseline scenario
@@ -10,6 +11,9 @@ Usage:
 
     # Run grid search for growth_plus scenario
     python calibration/run_grid_search.py --scenario growth_plus
+
+    # Run grid search for buffer_stock scenario
+    python calibration/run_grid_search.py --scenario buffer_stock
 
     # Customize workers and periods
     python calibration/run_grid_search.py --workers 8 --periods 500
@@ -20,6 +24,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from multiprocessing import Pool
 from pathlib import Path
 
@@ -27,6 +32,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from calibration.optimizer import format_eta  # noqa: E402
 from calibration.parameter_space import get_parameter_grid  # noqa: E402
 from validation import compute_combined_score, get_validation_funcs  # noqa: E402
 
@@ -43,7 +49,7 @@ def generate_combinations(scenario: str = "baseline"):
     Parameters
     ----------
     scenario : str
-        Scenario name ("baseline" or "growth_plus").
+        Scenario name.
 
     Returns
     -------
@@ -80,12 +86,21 @@ def screen_single(args: tuple) -> tuple:
     Returns
     -------
     tuple
-        (params, score, n_pass, n_warn, n_fail)
+        (params, score, n_pass, n_warn, n_fail, elapsed)
     """
     params, scenario, n_periods = args
     validate, _, _, _ = get_validation_funcs(scenario)
+    t0 = time.monotonic()
     result = validate(seed=0, n_periods=n_periods, **params)
-    return params, result.total_score, result.n_pass, result.n_warn, result.n_fail
+    elapsed = time.monotonic() - t0
+    return (
+        params,
+        result.total_score,
+        result.n_pass,
+        result.n_warn,
+        result.n_fail,
+        elapsed,
+    )
 
 
 def main():
@@ -107,7 +122,7 @@ Examples:
     )
     parser.add_argument(
         "--scenario",
-        choices=["baseline", "growth_plus"],
+        choices=["baseline", "growth_plus", "buffer_stock"],
         default="baseline",
         help="Scenario to calibrate (default: baseline)",
     )
@@ -150,10 +165,6 @@ Examples:
     combinations = generate_combinations(args.scenario)
     print(f"Scenario: {args.scenario}")
     print(f"Total combinations: {len(combinations)}")
-    print(
-        f"Estimated time: ~{len(combinations) * 35 / 60 / args.workers:.1f} minutes "
-        f"with {args.workers} workers"
-    )
     print()
 
     # Phase 1: Screen all combinations
@@ -162,17 +173,28 @@ Examples:
     print("=" * 70)
 
     results = []
+    run_times: list[float] = []
     # Prepare arguments for imap_unordered
     task_args = [(p, args.scenario, args.periods) for p in combinations]
 
     with Pool(processes=args.workers) as pool:
-        # imap_unordered yields results as they complete (not in order)
         for i, result in enumerate(
             pool.imap_unordered(screen_single, task_args, chunksize=1)
         ):
-            results.append(result)
-            if (i + 1) % 50 == 0 or (i + 1) == len(combinations):
-                print(f"  Screened {i + 1}/{len(combinations)}", flush=True)
+            params, score, n_pass, n_warn, n_fail, elapsed = result
+            results.append((params, score, n_pass, n_warn, n_fail))
+            run_times.append(elapsed)
+
+            completed = i + 1
+            remaining = len(combinations) - completed
+            avg_time = sum(run_times) / len(run_times) if run_times else 0
+            eta = format_eta(remaining, avg_time, args.workers)
+            pct = 100.0 * completed / len(combinations)
+            print(
+                f"  Screened {completed}/{len(combinations)} ({pct:.1f}%) "
+                f"| {remaining} remaining | ETA: {eta}",
+                flush=True,
+            )
 
     # Sort by score
     results.sort(key=lambda x: x[1], reverse=True)
@@ -198,7 +220,10 @@ Examples:
     stability_seeds = list(range(args.stability_seeds))
     stability_results = []
     for i, (params, score, _, _, _) in enumerate(results[: args.top_k]):
-        print(f"  Testing {i + 1}/{args.top_k}: score={score:.3f}")
+        remaining = args.top_k - i - 1
+        avg_time = sum(run_times) / len(run_times) if run_times else 0
+        eta = format_eta(remaining * args.stability_seeds, avg_time, args.workers)
+        print(f"  Testing {i + 1}/{args.top_k}: score={score:.3f} | ETA: {eta}")
         stability = run_stability(
             seeds=stability_seeds, n_periods=args.periods, **params
         )

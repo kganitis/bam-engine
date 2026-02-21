@@ -207,7 +207,7 @@ analysis and focused grid search.
 .. code-block:: bash
 
    # Run sensitivity analysis only
-   python -m calibration --sensitivity-only --workers 10
+   python -m calibration --phase sensitivity --workers 10
 
    # Full calibration (baseline scenario)
    python -m calibration --workers 10 --periods 1000
@@ -233,8 +233,8 @@ analysis and focused grid search.
    # Phase 2: Build focused grid
    grid, fixed = build_focused_grid(sensitivity)
 
-   # Phases 3-4: Grid search + stability testing
-   results = run_focused_calibration(grid, fixed, top_k=20)
+   # Phases 3-4: Grid search + tiered stability (default tiers: 100:10, 50:20, 10:100)
+   results = run_focused_calibration(grid, fixed)
    print(f"Best: {results[0].combined_score:.4f}")
 
 **Calibration process:**
