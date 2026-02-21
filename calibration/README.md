@@ -1,23 +1,28 @@
 # Calibration Package
 
-Tools for finding optimal parameter values through sensitivity analysis and focused grid search.
+Tools for finding optimal parameter values through sensitivity analysis, focused grid search, and tiered stability testing.
 
 ## Quick Start
 
 ### Command Line
 
 ```bash
-# Run sensitivity analysis only
-python -m calibration --sensitivity-only --workers 10
+# Run all phases (baseline)
+python -m calibration --scenario baseline --workers 10
 
-# Full calibration (baseline scenario)
-python -m calibration --workers 10 --periods 1000
+# Run individual phases
+python -m calibration --phase sensitivity --scenario baseline
+python -m calibration --phase grid --scenario baseline
+python -m calibration --phase stability --scenario baseline
 
-# Calibrate Growth+ scenario
-python -m calibration --scenario growth_plus --workers 10
+# Pairwise interaction analysis
+python -m calibration --phase pairwise --scenario baseline
 
-# Custom sensitivity thresholds
-python -m calibration --high-threshold 0.08 --medium-threshold 0.04
+# Resume interrupted grid search
+python -m calibration --phase grid --scenario baseline --resume
+
+# Custom stability tiers
+python -m calibration --phase stability --stability-tiers "50:10,20:30,5:100"
 ```
 
 ### Programmatic
@@ -28,91 +33,164 @@ from calibration import (
     build_focused_grid,
     run_focused_calibration,
     print_sensitivity_report,
+    export_best_config,
+    compare_configs,
 )
 
-# Phase 1: Sensitivity analysis
-sensitivity = run_sensitivity_analysis(scenario="baseline", n_workers=10)
+# Phase 1: Sensitivity analysis (multi-seed)
+sensitivity = run_sensitivity_analysis(scenario="baseline", n_workers=10, n_seeds=3)
 print_sensitivity_report(sensitivity)
 
 # Phase 2: Build focused grid
 grid, fixed = build_focused_grid(sensitivity)
 
-# Phases 3-4: Grid search + stability testing
-results = run_focused_calibration(grid, fixed, top_k=20)
-print(f"Best: {results[0].combined_score:.4f}")
+# Phases 3-4: Grid search + tiered stability (default tiers: 100:10, 50:20, 10:100)
+results = run_focused_calibration(grid, fixed)
+
+# Export best config
+export_best_config(results[0], "baseline")
+
+# Before/after comparison
+comparison = compare_configs({}, results[0].params, "baseline")
 ```
 
 ## Calibration Process
 
 ### Phase 1: Sensitivity Analysis
 
-One-at-a-time (OAT) testing of each parameter while holding others at defaults. Identifies which parameters have the most impact on validation scores.
+One-at-a-time (OAT) testing of each parameter while holding others at defaults. Supports multi-seed evaluation for robustness. Tracks per-metric-group score decomposition to understand *why* a parameter is sensitive.
 
-### Phase 2: Build Focused Grid
+Output: `output/{scenario}_sensitivity.json`
 
-Categorizes parameters by sensitivity:
+### Phase 2: Grid Screening
 
-- **HIGH (Δ > 0.05)**: Include in grid search with full value range
-- **MEDIUM (0.02-0.05)**: Fix at best value from sensitivity analysis
-- **LOW (Δ ≤ 0.02)**: Fix at default value
+Categorizes parameters by sensitivity and builds a focused grid:
 
-### Phase 3: Grid Search Screening
+- **INCLUDE (Δ > threshold)**: Include in grid search with all values
+- **FIX (Δ ≤ threshold)**: Fix at best value from sensitivity analysis
 
-Tests all combinations in the focused grid using a single seed. Parallel processing with `ProcessPoolExecutor`.
+**Value pruning** (optional): Drops grid values whose OAT score is more than `pruning_threshold` below the best value for that parameter. Default: `auto` (2× sensitivity threshold). Use `--pruning-threshold none` to disable.
 
-### Phase 4: Stability Testing
+Screens all combinations with single seed. Includes parameter pattern analysis (which values appear most often in top configs) and checkpointing for resumability.
 
-Multi-seed validation of top candidates from Phase 3. Ranks by combined score:
+Output: `output/{scenario}_screening.json`
+
+### Phase 3: Tiered Stability Testing
+
+Incremental tiered tournament to efficiently find the most stable config:
 
 ```
-combined_score = mean_score * pass_rate * (1 - std_score)
+Default tiers: [(100, 10), (50, 20), (10, 100)]
+  Tier 1: top 100 configs × 10 seeds → rank → keep top 50
+  Tier 2: top 50 × +10 new seeds (20 total) → rank → keep top 10
+  Tier 3: top 10 × +80 new seeds (100 total) → final ranking
 ```
+
+Each tier only runs NEW seeds (incremental), accumulating all prior results. Total: 100×10 + 50×10 + 10×80 = 2,300 vs naive 100×100 = 10,000.
+
+Output: `output/{scenario}_calibration_results.json` + `output/{scenario}_best_config.yml`
+
+### Pairwise Interaction Analysis (Optional)
+
+After OAT identifies HIGH-sensitivity params, tests all 2-param combinations to find synergies and conflicts:
+
+```bash
+python -m calibration --phase pairwise --scenario baseline
+```
+
+Output: `output/{scenario}_pairwise.json`
+
+## Scenarios
+
+| Scenario       | Parameters            | Description                              |
+| -------------- | --------------------- | ---------------------------------------- |
+| `baseline`     | 26 common             | Standard BAM model (Section 3.9.1)       |
+| `growth_plus`  | 26 + 2 R&D            | Endogenous R&D growth (Section 3.9.2)    |
+| `buffer_stock` | 26 + 3 (R&D + buffer) | Buffer-stock consumption (Section 3.9.4) |
+
+## Parameter Grid
+
+The 26 common parameters cover:
+
+- **Initial conditions**: `price_init`, `min_wage_ratio`, `net_worth_ratio`, `equity_base_init`, `savings_init`
+- **New firm entry**: `new_firm_size_factor`, `new_firm_production_factor`, `new_firm_wage_factor`, `new_firm_price_markup`
+- **Economy-wide**: `beta`
+- **Search frictions**: `max_M`
+- **Implementation variants**: `contract_poisson_mean`, `max_loan_to_net_worth`, `max_leverage`, `loan_priority_method`, `firing_method`, `job_search_method`, `price_cut_allow_increase`, `inflation_method`, `pricing_phase`, `labor_matching`, `matching_method`, `credit_matching`, `min_wage_ratchet`
+
+Extension-specific:
+
+- **Growth+**: `sigma_decay`, `sigma_max`
+- **Buffer-stock**: `buffer_stock_h` (+ R&D params)
 
 ## API Reference
 
 ### Sensitivity Analysis
 
-- `run_sensitivity_analysis(scenario, grid, baseline, seed, n_periods, n_workers) -> SensitivityResult`
-- `print_sensitivity_report(result)` - Formatted sensitivity report
-- `SensitivityResult` - Full sensitivity analysis result with rankings
-- `ParameterSensitivity` - Single parameter sensitivity data
+- `run_sensitivity_analysis(scenario, grid, baseline, seed, n_seeds, n_periods, n_workers) -> SensitivityResult`
+- `print_sensitivity_report(result)` — Formatted report with score decomposition
+- `SensitivityResult` — Full result with rankings, `avg_time_per_run`, `n_seeds`
+- `ParameterSensitivity` — Per-parameter data with `group_scores`
+
+### Pairwise Interaction
+
+- `run_pairwise_analysis(params, grid, best_values, scenario, ...) -> PairwiseResult`
+- `print_pairwise_report(result)` — Formatted synergy/conflict report
+- `PairwiseResult` — Interactions ranked by strength
+- `PairInteraction` — Single pair interaction data
 
 ### Optimization
 
-- `build_focused_grid(sensitivity, scenario, high_threshold, medium_threshold) -> tuple[grid, fixed]`
-- `run_focused_calibration(grid, fixed_params, scenario, top_k, n_workers, n_periods) -> list[CalibrationResult]`
-- `screen_single_seed(params, scenario, seed, n_periods) -> float`
-- `evaluate_stability(params, scenario, seeds, n_periods) -> StabilityResult`
-- `CalibrationResult` - Calibration result with params and scores
+- `build_focused_grid(sensitivity, ..., sensitivity_threshold, pruning_threshold) -> tuple[grid, fixed]`
+- `run_screening(combinations, scenario, ...) -> list[CalibrationResult]` — With progress/ETA/checkpointing
+- `run_tiered_stability(candidates, scenario, tiers, ...) -> list[CalibrationResult]`
+- `run_focused_calibration(grid, fixed, ...) -> list[CalibrationResult]` — Orchestrates screening + stability
+- `screen_single_seed(params, scenario, seed, n_periods) -> CalibrationResult`
+- `evaluate_stability(params, scenario, seeds, n_periods) -> CalibrationResult`
+- `analyze_parameter_patterns(results, top_n) -> dict` — Value frequency analysis
+- `export_best_config(result, scenario) -> Path` — Export as YAML
+- `compare_configs(default, calibrated, scenario) -> ComparisonResult` — Side-by-side comparison
+- `parse_stability_tiers(tiers_str) -> list[tuple]` — Parse "100:10,50:20" format
+
+### Progress Helpers
+
+- `format_eta(remaining, avg_time, n_workers) -> str`
+- `format_progress(completed, total, remaining, eta) -> str`
 
 ### Parameter Space
 
-- `PARAMETER_GRID` - Full parameter grid for all scenarios
-- `DEFAULT_VALUES` - Default parameter values for all scenarios
-- `get_parameter_grid(scenario)` - Get grid for specific scenario
-- `get_default_values(scenario)` - Get defaults for specific scenario
-- `generate_combinations(grid)` - Generate all parameter combinations
-- `count_combinations(grid)` - Count total combinations
+- `PARAMETER_GRID` — Alias for baseline grid (backwards compat)
+- `DEFAULT_VALUES` — Alias for baseline overrides (backwards compat)
+- `get_parameter_grid(scenario)` — Get grid for specific scenario
+- `get_default_values(scenario)` — Get overrides for specific scenario
+- `generate_combinations(grid, scenario)` — Generate all parameter combinations
+- `count_combinations(grid, scenario)` — Count total combinations
 
 ## CLI Options
 
-| Option               | Default                  | Description                                   |
-| -------------------- | ------------------------ | --------------------------------------------- |
-| `--scenario`         | baseline                 | Scenario to calibrate (baseline, growth_plus) |
-| `--sensitivity-only` | false                    | Run only sensitivity analysis                 |
-| `--top-k`            | 20                       | Number of top configs for stability testing   |
-| `--workers`          | 10                       | Number of parallel workers                    |
-| `--periods`          | 1000                     | Simulation periods                            |
-| `--output`           | calibration_results.json | Output file for results                       |
-| `--high-threshold`   | 0.05                     | Sensitivity threshold for HIGH importance     |
-| `--medium-threshold` | 0.02                     | Sensitivity threshold for MEDIUM importance   |
+| Option                    | Default               | Description                                                 |
+| ------------------------- | --------------------- | ----------------------------------------------------------- |
+| `--scenario`              | baseline              | Scenario to calibrate (baseline, growth_plus, buffer_stock) |
+| `--phase`                 | all                   | Run a single phase (sensitivity, grid, stability, pairwise) |
+| `--workers`               | 10                    | Number of parallel workers                                  |
+| `--periods`               | 1000                  | Simulation periods                                          |
+| `--output`                | auto                  | Output file for results                                     |
+| `--sensitivity-threshold` | 0.02                  | Minimum Δ for INCLUDE in grid search                        |
+| `--pruning-threshold`     | "auto"                | Max score gap for keeping values: "auto", "none", or float  |
+| `--sensitivity-seeds`     | 3                     | Seeds per sensitivity evaluation                            |
+| `--stability-tiers`       | "100:10,50:20,10:100" | Tiers as "configs:seeds,..."                                |
+| `--resume`                | false                 | Resume from checkpoint                                      |
 
 ## Output Files
 
 Results are saved to `calibration/output/`:
 
-- `{scenario}_sensitivity.json` - Sensitivity analysis results (with `--sensitivity-only`)
-- `{scenario}_calibration_results.json` - Full calibration results
+- `{scenario}_sensitivity.json` — Sensitivity analysis with score decomposition
+- `{scenario}_screening.json` — Grid screening results with patterns
+- `{scenario}_calibration_results.json` — Final stability-tested results
+- `{scenario}_best_config.yml` — Best config as ready-to-use YAML
+- `{scenario}_pairwise.json` — Pairwise interaction analysis
+- `{scenario}_*_checkpoint.json` — Intermediate checkpoints (auto-deleted)
 
 ## Module Structure
 
@@ -120,9 +198,10 @@ Results are saved to `calibration/output/`:
 calibration/
 ├── __init__.py         # Package exports
 ├── __main__.py         # CLI entry point
-├── cli.py              # Command-line interface
-├── sensitivity.py      # OAT sensitivity analysis
-├── optimizer.py        # Grid search and stability testing
-├── parameter_space.py  # Parameter grids and defaults
-└── output/             # Results JSON files
+├── cli.py              # Command-line interface (phase orchestration)
+├── sensitivity.py      # OAT sensitivity + pairwise interaction
+├── optimizer.py        # Grid search, tiered stability, patterns, export, comparison
+├── parameter_space.py  # Parameter grids (26 common + extensions)
+├── run_grid_search.py  # Alternative standalone grid search script
+└── output/             # Results JSON/YAML files
 ```
