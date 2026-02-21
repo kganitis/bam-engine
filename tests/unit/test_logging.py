@@ -239,8 +239,8 @@ class TestEventGetLogger:
             "default_level": "INFO",
             "events": {
                 "firms_run_production": "DEBUG",
-                "workers_send_one_round": "WARNING",
-                "firms_hire_workers": "ERROR",
+                "workers_apply_to_firms": "WARNING",
+                "firms_apply_for_loans": "ERROR",
             },
         }
         sim = Simulation.init(
@@ -251,10 +251,10 @@ class TestEventGetLogger:
         pricing_event = sim.get_event("firms_run_production")
         assert pricing_event.get_logger().level == logging.DEBUG
 
-        worker_event = sim.get_event("workers_send_one_round")
+        worker_event = sim.get_event("workers_apply_to_firms")
         assert worker_event.get_logger().level == logging.WARNING
 
-        hiring_event = sim.get_event("firms_hire_workers")
+        hiring_event = sim.get_event("firms_apply_for_loans")
         assert hiring_event.get_logger().level == logging.ERROR
 
 

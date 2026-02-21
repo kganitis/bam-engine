@@ -699,6 +699,183 @@ def banks_provide_loans(
         log.info("--- Banks Providing Loans complete ---")
 
 
+def _provide_loan(
+    bor: Borrower,
+    lend: Lender,
+    lb: LoanBook,
+    firm_idx: int,
+    bank_idx: int,
+    amount: float,
+    rate: float,
+) -> None:
+    """Record a single loan and update borrower/lender state.
+
+    Shared helper used by both ``banks_provide_loans`` and
+    ``firms_apply_for_loans``.
+    """
+    lb.append_loans_for_lender(
+        np.intp(bank_idx),
+        np.array([firm_idx], dtype=np.intp),
+        np.array([amount]),
+        np.array([rate]),
+    )
+    bor.total_funds[firm_idx] += amount
+    bor.credit_demand[firm_idx] -= amount
+    lend.credit_supply[bank_idx] -= amount
+
+
+def firms_apply_for_loans(
+    bor: Borrower,
+    lend: Lender,
+    lb: LoanBook,
+    *,
+    r_bar: float,
+    loan_priority_method: str = "by_leverage",
+    max_loan_to_net_worth: float = 0.0,
+    max_leverage: float = 0.0,
+    rng: Rng = make_rng(),
+) -> None:
+    """Cascade credit matching: each firm walks their ranked bank queue.
+
+    Firms are sorted according to ``loan_priority_method`` before processing:
+
+    * ``"by_leverage"`` (default) — ascending ``projected_fragility``, so
+      the least fragile firms apply first (book Section 3.5).
+    * ``"by_net_worth"`` — descending net worth, so the wealthiest firms
+      apply first.
+    * ``"by_appearance"`` — random shuffle (backward-compatible fallback).
+
+    For each firm, the algorithm pops banks from the application queue one
+    at a time:
+
+    * If the bank has credit supply the firm receives a loan (possibly
+      partial if supply < demand) and the remaining demand is carried
+      to the next bank.
+    * If the bank's supply is exhausted the firm cascades to the next bank.
+    * If all queued banks are exhausted or demand is fully met, the firm
+      moves on.
+
+    Because loan granting is immediate, credit supply depletes in real-time
+    as earlier firms are served. Late firms encounter reduced supply,
+    producing credit rationing — matching the book's cascade semantics.
+
+    See Also
+    --------
+    bamengine.events.credit_market.FirmsApplyForLoans : Full documentation
+    """
+    assert lend.opex_shock is not None, (
+        "lend.opex_shock must be set before firms_apply_for_loans() — "
+        "run banks_decide_interest_rate() first"
+    )
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Firms Apply for Loans (Cascade) ---")
+
+    stride = bor.loan_apps_targets.shape[1]
+    borrowers = np.where(bor.credit_demand > 0.0)[0]
+    active_mask = bor.loan_apps_head[borrowers] >= 0
+    applicants = borrowers[active_mask]
+
+    if applicants.size == 0:
+        if info_enabled:
+            log.info("  No borrowers with pending applications. Skipping.")
+            log.info("--- Firms Apply for Loans (Cascade) complete ---")
+        return
+
+    if loan_priority_method == "by_leverage":
+        sort_idx = np.argsort(bor.projected_fragility[applicants])
+        applicants = applicants[sort_idx]
+    elif loan_priority_method == "by_net_worth":
+        sort_idx = np.argsort(-bor.net_worth[applicants])
+        applicants = applicants[sort_idx]
+    else:
+        # by_appearance: random shuffle (backward-compatible fallback)
+        rng.shuffle(applicants)
+
+    if info_enabled:
+        total_supply = float(lend.credit_supply.sum())
+        total_demand = float(bor.credit_demand[applicants].sum())
+        log.info(
+            f"  {applicants.size} firms seeking loans. "
+            f"Total demand: {total_demand:,.2f}, Total supply: {total_supply:,.2f}"
+        )
+
+    total_loaned = 0.0
+    total_cascades = 0
+    total_exhausted = 0
+    firms_fully_funded = 0
+    debug_enabled = log.isEnabledFor(logging.DEBUG)
+
+    for i in applicants:
+        head = bor.loan_apps_head[i]
+        if head < 0:  # pragma: no cover
+            continue
+
+        while head < (i + 1) * stride and bor.credit_demand[i] > EPS:
+            row, col = divmod(head, stride)
+            bank_id = bor.loan_apps_targets[row, col]
+
+            if bank_id < 0:
+                break
+
+            # Clear visited slot
+            bor.loan_apps_targets[row, col] = -1
+            head += 1
+
+            if lend.credit_supply[bank_id] <= 0:
+                total_cascades += 1
+                if debug_enabled:
+                    log.debug(f"    Firm {i}: bank {bank_id} tapped out, cascading.")
+                continue
+
+            # Calculate loan amount
+            grant = min(bor.credit_demand[i], lend.credit_supply[bank_id])
+
+            # Apply loan-to-net-worth cap
+            if max_loan_to_net_worth > 0.0:
+                nw_cap = bor.net_worth[i] * max_loan_to_net_worth
+                grant = min(grant, nw_cap)
+
+            if grant <= 0.0:
+                continue
+
+            # Calculate interest rate with fragility premium
+            frag = bor.projected_fragility[i]
+            if max_leverage > 0.0:
+                frag = min(frag, max_leverage)
+            rate = r_bar * (1.0 + lend.opex_shock[bank_id] * frag)
+
+            # Record loan and update state
+            _provide_loan(bor, lend, lb, i, bank_id, grant, rate)
+            total_loaned += grant
+
+            if debug_enabled:
+                log.debug(
+                    f"    Firm {i}: loan {grant:.2f} from bank {bank_id} "
+                    f"at rate {rate:.4f} "
+                    f"(remaining demand: {bor.credit_demand[i]:.2f})"
+                )
+
+        # Done with this firm
+        bor.loan_apps_head[i] = -1
+
+        if bor.credit_demand[i] <= EPS:
+            firms_fully_funded += 1
+        else:
+            total_exhausted += 1
+
+    assert (bor.credit_demand >= -EPS).all(), "negative credit_demand"
+
+    if info_enabled:
+        log.info(
+            f"  Cascade results: {total_loaned:,.2f} total loaned, "
+            f"{firms_fully_funded} fully funded, "
+            f"{total_exhausted} partially/unfunded, "
+            f"{total_cascades} cascade skips."
+        )
+        log.info("--- Firms Apply for Loans (Cascade) complete ---")
+
+
 def firms_fire_workers(
     emp: Employer,
     wrk: Worker,

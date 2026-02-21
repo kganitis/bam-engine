@@ -197,11 +197,19 @@ class AdjustMinimumWage:
     2. Check if sufficient price history exists: :math:`t > \\text{min\\_wage\\_rev\\_period}`
     3. If both conditions met:
        - Retrieve most recent inflation rate: :math:`\\pi_t = \\text{inflation\\_history}[-1]`
-       - Update minimum wage: :math:`\\hat{w}_t = \\hat{w}_{t-1} \\times (1 + \\pi_t)`
+       - If ``min_wage_ratchet=True``: :math:`\\hat{w}_t = \\hat{w}_{t-1} \\times \\max(1, 1 + \\pi_t)`
+       - If ``min_wage_ratchet=False``: :math:`\\hat{w}_t = \\hat{w}_{t-1} \\times (1 + \\pi_t)`
     4. Otherwise, skip revision (:math:`\\hat{w}_t = \\hat{w}_{t-1}`)
 
     Mathematical Notation
     ---------------------
+    With ratchet (``min_wage_ratchet=True``, book Section 3.4):
+
+    .. math::
+        \\hat{w}_t = \\hat{w}_{t-1} \\times \\max(1, 1 + \\pi_t)
+
+    Without ratchet (``min_wage_ratchet=False``, default):
+
     .. math::
         \\hat{w}_t = \\hat{w}_{t-1} \\times (1 + \\pi_t)
 
@@ -245,7 +253,10 @@ class AdjustMinimumWage:
     The revision only occurs on specific periods determined by min_wage_rev_period
     (e.g., if min_wage_rev_period=4, revisions occur at t=4, 8, 12, ...).
 
-    If inflation is negative (deflation), the minimum wage will decrease accordingly.
+    Behavior during deflation depends on the ``min_wage_ratchet`` config parameter.
+    With ratchet enabled, the minimum wage stays unchanged (upward-only revision,
+    following the book's specification in Section 3.4). Without ratchet (default),
+    the minimum wage can decrease during deflation.
 
     See Also
     --------
@@ -258,7 +269,7 @@ class AdjustMinimumWage:
     def execute(self, sim: Simulation) -> None:
         from bamengine.events._internal.labor_market import adjust_minimum_wage
 
-        adjust_minimum_wage(sim.ec, sim.wrk)
+        adjust_minimum_wage(sim.ec, sim.wrk, ratchet=sim.config.min_wage_ratchet)
 
 
 @event
@@ -664,6 +675,110 @@ class FirmsHireWorkers:
             theta=sim.config.theta,
             contract_poisson_mean=sim.config.contract_poisson_mean,
             matching_method=sim.config.matching_method,
+            rng=sim.rng,
+        )
+
+
+@event
+class WorkersApplyToFirms:
+    """
+    Workers apply to firms via cascade matching.
+
+    Each unemployed worker walks their ranked application queue from best to
+    worst wage offer.  At each firm the worker checks for vacancies:
+
+    * **Vacancy available** — the worker is hired immediately and stops.
+    * **No vacancy** — the worker cascades to the next firm in their queue.
+    * **Queue exhausted** — the worker stays unemployed for this period.
+
+    Because hiring happens immediately during the cascade, vacancies deplete
+    in real-time as earlier workers (in random processing order) are placed.
+    Workers processed later encounter fewer openings, which produces an
+    irreducible floor of frictional unemployment — matching the book's
+    description of sequential matching (Section 3.4).
+
+    This is a **single event** that replaces the interleaved
+    ``WorkersSendOneRound <-> FirmsHireWorkers x {max_M}`` pattern.
+
+    Algorithm
+    ---------
+    1. Identify unemployed workers with pending application queues
+    2. Shuffle worker order randomly (``rng.shuffle``)
+    3. For each worker j (outer loop):
+       - For each firm in their ranked queue (inner loop, up to max_M):
+         - Pop next firm from queue
+         - If firm has vacancies: hire immediately, break
+         - If no vacancies: continue to next firm (cascade)
+       - If all firms exhausted: worker stays unemployed
+
+    Examples
+    --------
+    >>> import bamengine as be
+    >>> sim = be.Simulation.init(n_firms=100, n_households=500, seed=42)
+    >>> sim.get_event("workers_decide_firms_to_apply")().execute(sim)
+    >>> sim.get_event("workers_apply_to_firms")().execute(sim)
+
+    See Also
+    --------
+    WorkersDecideFirmsToApply : Builds the ranked application queues
+    WorkersApplyToBestFirm : Alternative single-best matching
+    WorkersSendOneRound : Legacy round-robin matching (kept for backward compat)
+    """
+
+    def execute(self, sim: Simulation) -> None:
+        from bamengine.events._internal.labor_market import workers_apply_to_firms
+
+        workers_apply_to_firms(
+            wrk=sim.wrk,
+            emp=sim.emp,
+            theta=sim.config.theta,
+            contract_poisson_mean=sim.config.contract_poisson_mean,
+            rng=sim.rng,
+        )
+
+
+@event
+class WorkersApplyToBestFirm:
+    """
+    Workers apply only to their best-wage firm (no cascade, no retry).
+
+    This is the literal interpretation of book Section 3.4: the worker
+    "chooses to enter a settlement stage **only** with the firm offering the
+    highest wage."  If that firm has no vacancies the worker stays unemployed.
+
+    More restrictive than cascade matching — produces higher frictional
+    unemployment.
+
+    Algorithm
+    ---------
+    1. Identify unemployed workers with pending application queues
+    2. Shuffle worker order randomly
+    3. For each worker j:
+       - Pop the first (best-wage) firm from their queue
+       - If firm has vacancies: hire immediately
+       - If no vacancies: worker stays unemployed
+
+    Examples
+    --------
+    >>> import bamengine as be
+    >>> sim = be.Simulation.init(n_firms=100, n_households=500, seed=42)
+    >>> sim.get_event("workers_decide_firms_to_apply")().execute(sim)
+    >>> sim.get_event("workers_apply_to_best_firm")().execute(sim)
+
+    See Also
+    --------
+    WorkersApplyToFirms : Cascade matching (default)
+    WorkersSendOneRound : Legacy round-robin matching
+    """
+
+    def execute(self, sim: Simulation) -> None:
+        from bamengine.events._internal.labor_market import workers_apply_to_best_firm
+
+        workers_apply_to_best_firm(
+            wrk=sim.wrk,
+            emp=sim.emp,
+            theta=sim.config.theta,
+            contract_poisson_mean=sim.config.contract_poisson_mean,
             rng=sim.rng,
         )
 

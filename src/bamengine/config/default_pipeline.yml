@@ -85,36 +85,32 @@ events:
   - firms_fire_excess_workers          # Fire workers when desired_labor < current_labor
 
   # ────────────────────────────────────────────────────────────────────────────
-  # PHASE 2: LABOR MARKET (4 + 2×max_M + 1 = 13 events with default max_M=4)
+  # PHASE 2: LABOR MARKET (4 + 1 + 1 = 6 events)
   # ────────────────────────────────────────────────────────────────────────────
   # Minimum wage adjustment, firms set wages, unemployed workers search for jobs,
-  # sequential matching rounds (max_M), then wage bill calculation.
+  # cascade matching (single event), then wage bill calculation.
 
   - calc_inflation_rate                 # Calculate inflation rate
   - adjust_minimum_wage                # Adjust min wage based on inflation
   - firms_decide_wage_offer            # Firms set wage offers for vacancies
   - workers_decide_firms_to_apply      # Unemployed workers select firms to apply to
-  - workers_send_one_round <-> firms_hire_workers x {max_M}
-                                       # Interleaved job application/hiring rounds
-                                       # Each worker sends ≤1 application per round
-                                       # Firms hire workers from application queue
+  - workers_apply_to_firms             # Cascade matching: each worker walks their
+                                       # ranked queue until hired or exhausted
   - firms_calc_wage_bill               # Calculate total wage obligations
 
   # ────────────────────────────────────────────────────────────────────────────
-  # PHASE 3: CREDIT MARKET (5 + 2×max_H + 1 = 10 events with default max_H=2)
+  # PHASE 3: CREDIT MARKET (5 + 1 + 1 = 7 events)
   # ────────────────────────────────────────────────────────────────────────────
-  # Banks decide credit supply, firms calculate credit needs, sequential matching
-  # rounds (max_H), then firms fire workers if credit insufficient.
+  # Banks decide credit supply, firms calculate credit needs, cascade matching
+  # (single event), then firms fire workers if credit insufficient.
 
   - banks_decide_credit_supply         # Banks determine lending capacity
   - banks_decide_interest_rate         # Banks set interest rates
   - firms_decide_credit_demand         # Firms calculate financing needs
   - firms_calc_financial_fragility     # Calculate firm financial fragility metrics
   - firms_prepare_loan_applications    # Firms prepare ranked bank applications
-  - firms_send_one_loan_app <-> banks_provide_loans x {max_H}
-                                       # Interleaved loan application/provision rounds
-                                       # Firms send ≤1 application per round
-                                       # Banks process and approve/reject applications
+  - firms_apply_for_loans              # Cascade matching: each firm walks their
+                                       # ranked bank queue until funded or exhausted
   - firms_fire_workers                 # Lay off workers if credit insufficient
 
   # ────────────────────────────────────────────────────────────────────────────

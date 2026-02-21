@@ -62,7 +62,8 @@ class BufferStockMetrics:
     unemployment_mean: float
     unemployment_std: float
     unemployment_max: float
-    unemployment_pct_in_bounds: float
+    unemployment_pct_above_floor: float
+    unemployment_pct_below_ceiling: float
     inflation_mean: float
     inflation_std: float
     inflation_max: float
@@ -286,6 +287,10 @@ def compute_buffer_stock_metrics(
     burn_in: int = 500,
     firm_size_threshold: float = 150.0,
     firm_size_threshold_medium: float = 100.0,
+    unemployment_floor: float = 0.02,
+    unemployment_ceiling: float = 0.15,
+    inflation_bounds: tuple[float, float] = (-0.02, 0.10),
+    vacancy_rate_bounds: tuple[float, float] = (0.08, 0.20),
 ) -> BufferStockMetrics:
     """Compute all validation metrics from buffer-stock simulation results."""
     # Extract raw data
@@ -438,16 +443,21 @@ def compute_buffer_stock_metrics(
         unemployment_mean=float(np.mean(unemployment_ss)),
         unemployment_std=float(np.std(unemployment_ss)),
         unemployment_max=float(np.max(unemployment_ss)),
-        unemployment_pct_in_bounds=float(
-            np.sum((unemployment_ss >= 0.02) & (unemployment_ss <= 0.15))
-            / len(unemployment_ss)
+        unemployment_pct_above_floor=float(
+            np.mean(unemployment_ss >= unemployment_floor)
+        ),
+        unemployment_pct_below_ceiling=float(
+            np.mean(unemployment_ss <= unemployment_ceiling)
         ),
         inflation_mean=float(np.mean(inflation_ss)),
         inflation_std=float(np.std(inflation_ss)),
         inflation_max=float(np.max(inflation_ss)),
         inflation_min=float(np.min(inflation_ss)),
         inflation_pct_in_bounds=float(
-            np.mean((inflation_ss >= -0.02) & (inflation_ss <= 0.10))
+            np.mean(
+                (inflation_ss >= inflation_bounds[0])
+                & (inflation_ss <= inflation_bounds[1])
+            )
         ),
         log_gdp_mean=float(np.mean(log_gdp_ss)),
         log_gdp_std=float(np.std(log_gdp_ss)),
@@ -455,7 +465,10 @@ def compute_buffer_stock_metrics(
         real_wage_std=float(np.std(real_wage_ss)),
         vacancy_rate_mean=float(np.mean(vacancy_rate_ss)),
         vacancy_rate_pct_in_bounds=float(
-            np.mean((vacancy_rate_ss >= 0.08) & (vacancy_rate_ss <= 0.20))
+            np.mean(
+                (vacancy_rate_ss >= vacancy_rate_bounds[0])
+                & (vacancy_rate_ss <= vacancy_rate_bounds[1])
+            )
         ),
         phillips_corr=phillips_corr,
         okun_corr=okun_corr,
@@ -536,30 +549,39 @@ METRIC_SPECS = [
         group=MetricGroup.TIME_SERIES,
     ),
     MetricSpec(
-        name="unemployment_hard_ceiling",
+        name="unemployment_absolute_ceiling",
         field="unemployment_max",
         check_type=CheckType.BOOLEAN,
-        target_path="metrics.unemployment_hard_ceiling",
+        target_path="metrics.unemployment_absolute_ceiling",
         weight=3.0,
         group=MetricGroup.TIME_SERIES,
-        threshold=0.30,
+        threshold=0.20,
         invert=True,
-        target_desc="< 30% (model stability)",
+        target_desc="< 20% (model collapse gate)",
     ),
     MetricSpec(
         name="unemployment_std",
         field="unemployment_std",
         check_type=CheckType.RANGE,
         target_path="metrics.unemployment_std",
-        weight=1.5,
+        weight=1.0,
         group=MetricGroup.TIME_SERIES,
     ),
     MetricSpec(
-        name="unemployment_pct_in_bounds",
-        field="unemployment_pct_in_bounds",
+        name="unemployment_pct_above_floor",
+        field="unemployment_pct_above_floor",
         check_type=CheckType.PCT_WITHIN,
-        target_path="metrics.unemployment_pct_in_bounds",
+        target_path="metrics.unemployment_pct_above_floor",
         weight=1.5,
+        group=MetricGroup.TIME_SERIES,
+        format=MetricFormat.PERCENT,
+    ),
+    MetricSpec(
+        name="unemployment_pct_below_ceiling",
+        field="unemployment_pct_below_ceiling",
+        check_type=CheckType.PCT_WITHIN,
+        target_path="metrics.unemployment_pct_below_ceiling",
+        weight=0.5,
         group=MetricGroup.TIME_SERIES,
         format=MetricFormat.PERCENT,
     ),
@@ -830,14 +852,20 @@ def _compute_metrics_wrapper(
     with open(Path(__file__).parent / "targets.yaml") as f:
         targets = yaml.safe_load(f)
 
-    params = targets["metadata"]["params"]
+    metrics = targets["metrics"]
+
+    infl_bounds = metrics["inflation_pct_in_bounds"]
+    vac_bounds = metrics["vacancy_rate_pct_in_bounds"]
 
     return compute_buffer_stock_metrics(
         sim,
         results,
         burn_in=burn_in,
-        firm_size_threshold=params["firm_size_threshold"],
-        firm_size_threshold_medium=params["firm_size_threshold_medium"],
+        firm_size_threshold=metrics["firm_size_pct_below"]["threshold"],
+        unemployment_floor=metrics["unemployment_pct_above_floor"]["floor"],
+        unemployment_ceiling=metrics["unemployment_pct_below_ceiling"]["ceiling"],
+        inflation_bounds=(infl_bounds["bounds_min"], infl_bounds["bounds_max"]),
+        vacancy_rate_bounds=(vac_bounds["bounds_min"], vac_bounds["bounds_max"]),
     )
 
 

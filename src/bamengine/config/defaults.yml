@@ -131,7 +131,7 @@ max_loan_to_net_worth: 5             # Max loan as multiple of borrower's net wo
 max_leverage: 10                     # Maximum leverage ratio (fragility cap)
                                      # for interest rate calculation
 
-loan_priority_method: by_leverage    # How banks rank loan applicants
+loan_priority_method: by_leverage    # How firms are ordered for credit matching
                                      # "by_net_worth" = sort by net worth (desc)
                                      # "by_leverage" = sort by leverage (asc), book value
                                      # "by_appearance" = first-come-first-served
@@ -140,11 +140,7 @@ firing_method: random                # How firms select workers to fire
                                      # "random" = random selection
                                      # "expensive" = highest wage first
 
-matching_method: simultaneous        # How workers and firms are matched in labor market
-                                     # "sequential" = workers shuffled, apply one at a time
-                                     # "simultaneous" = all workers apply at once (crowding)
-
-job_search_method: all_firms         # How workers sample firms for job applications
+job_search_method: vacancies_only    # How workers sample firms for job applications
                                      # "vacancies_only" = sample only firms with vacancies
                                      # "all_firms" = sample from ALL firms (wasted apps)
 
@@ -156,7 +152,24 @@ inflation_method: yoy                # How to calculate inflation rate
                                      # "annualized" = annualize quarterly rate ((1+q)^4 - 1)
 
 pricing_phase: planning              # When breakeven price and price adjustment occur
-                                     # "planning" = before labor/credit markets (uses
-                                     #   previous period's costs / desired production)
-                                     # "production" = after labor/credit markets (uses
-                                     #   current period's costs / projected production)
+                                     # "planning" = before labor/credit markets
+                                     #   (uses previous period's costs / desired production)
+                                     # "production" = after labor/credit markets
+                                     #   (uses current period's costs / projected production)
+
+labor_matching: interleaved          # Labor market matching algorithm
+                                     # "cascade" = single workers_apply_to_firms event
+                                     # "interleaved" = workers_send_one_round <-> firms_hire_workers × max_M
+
+matching_method: sequential          # How workers and firms are matched in labor market
+                                     #   (only used with "interleaved" labor_matching)
+                                     # "sequential" = workers shuffled, apply one at a time
+                                     # "simultaneous" = all workers apply at once (crowding)
+
+credit_matching: interleaved         # Credit market matching algorithm
+                                     # "cascade" = single firms_apply_for_loans event
+                                     # "interleaved" = firms_send_one_loan_app <-> banks_provide_loans × max_H
+
+min_wage_ratchet: false              # Minimum wage ratchet (upward-only revision)
+                                     # true = max(1, 1 + inflation) — wage never decreases
+                                     # false = (1 + inflation) — wage can decrease during deflation

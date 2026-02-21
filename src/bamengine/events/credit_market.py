@@ -683,6 +683,75 @@ class BanksProvideLoans:
 
 
 @event
+class FirmsApplyForLoans:
+    """
+    Firms apply to banks via cascade matching (book-faithful default).
+
+    Each firm with positive credit demand walks their ranked bank queue from
+    lowest to highest interest rate.  At each bank the firm requests a loan:
+
+    * **Credit available** — the bank grants a loan (possibly partial if
+      supply < demand).  The firm's remaining demand is reduced and the
+      cascade continues to the next bank if demand is not fully met.
+    * **No credit supply** — the firm cascades to the next bank.
+    * **Queue exhausted** — the firm stops with whatever funding it obtained.
+
+    Firms are sorted by ``loan_priority_method`` before processing:
+
+    * ``"by_leverage"`` (default) — ascending ``projected_fragility``, so
+      the least fragile firms apply first (book Section 3.5).
+    * ``"by_net_worth"`` — descending net worth (wealthiest first).
+    * ``"by_appearance"`` — random shuffle (backward-compatible fallback).
+
+    Because loan granting is immediate, credit supply depletes in real-time
+    as earlier firms are served.  Later firms encounter reduced supply,
+    producing credit rationing.
+
+    This is a **single event** that replaces the interleaved
+    ``FirmsSendOneLoanApp <-> BanksProvideLoans x {max_H}`` pattern.
+
+    Algorithm
+    ---------
+    1. Identify firms with ``credit_demand > 0`` and pending queues
+    2. Sort firms by ``loan_priority_method`` (default: least fragile first)
+    3. For each firm i (outer loop):
+       - For each bank in their ranked queue (inner loop, up to max_H):
+         - Pop next bank from queue
+         - If bank has credit supply: grant loan, update state
+         - If credit_demand now 0: break (fully funded)
+         - If no credit supply: continue to next bank (cascade)
+       - If all banks exhausted: firm stops with partial/no funding
+
+    Examples
+    --------
+    >>> import bamengine as be
+    >>> sim = be.Simulation.init(n_firms=100, n_banks=10, seed=42)
+    >>> sim.get_event("firms_prepare_loan_applications")().execute(sim)
+    >>> sim.get_event("firms_apply_for_loans")().execute(sim)
+
+    See Also
+    --------
+    FirmsPrepareLoanApplications : Builds the ranked bank application queues
+    FirmsSendOneLoanApp : Legacy round-robin matching (kept for backward compat)
+    BanksProvideLoans : Legacy per-bank batch processing
+    """
+
+    def execute(self, sim: Simulation) -> None:
+        from bamengine.events._internal.credit_market import firms_apply_for_loans
+
+        firms_apply_for_loans(
+            bor=sim.bor,
+            lend=sim.lend,
+            lb=sim.lb,
+            r_bar=sim.r_bar,
+            loan_priority_method=sim.config.loan_priority_method,
+            max_loan_to_net_worth=sim.config.max_loan_to_net_worth,
+            max_leverage=sim.config.max_leverage,
+            rng=sim.rng,
+        )
+
+
+@event
 class FirmsFireWorkers:
     """
     Firms with insufficient funds after credit provision fire workers.

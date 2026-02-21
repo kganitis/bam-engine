@@ -20,4 +20,5 @@ Event Classes
    FirmsPrepareLoanApplications
    FirmsSendOneLoanApp
    BanksProvideLoans
+   FirmsApplyForLoans
    FirmsFireWorkers

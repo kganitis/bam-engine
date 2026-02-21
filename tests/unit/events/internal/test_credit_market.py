@@ -16,6 +16,7 @@ from bamengine.events._internal.credit_market import (
     banks_decide_credit_supply,
     banks_decide_interest_rate,
     banks_provide_loans,
+    firms_apply_for_loans,
     firms_calc_financial_fragility,
     firms_decide_credit_demand,
     firms_fire_workers,
@@ -976,3 +977,388 @@ def test_clean_queue_empty_after_filtering() -> None:
 
     # Should be empty
     assert result.size == 0
+
+
+# ============================================================================
+# firms_apply_for_loans (cascade credit matching)
+# ============================================================================
+
+
+def test_cascade_credit_basic_loan() -> None:
+    """Firm's 1st-choice bank has supply → gets loan."""
+    bor, lend, lb, rng, H = _mini_state()
+    # Ensure borrower 0 has credit demand
+    bor.credit_demand[0] = 5.0
+    bor.total_funds[0] = 10.0
+    bor.projected_fragility[0] = 0.5
+
+    # Prepare applications
+    firms_prepare_loan_applications(bor, lend, lb, max_H=H, rng=rng)
+
+    firms_apply_for_loans(
+        bor, lend, lb, r_bar=0.02, max_leverage=10.0, rng=make_rng(42)
+    )
+
+    # Loan should have been recorded
+    assert lb.size > 0
+    # Borrower's credit demand should decrease
+    assert bor.credit_demand[0] < 5.0
+
+
+def test_cascade_credit_bank_tapped_out() -> None:
+    """1st bank has no credit → cascades to 2nd."""
+    H = 2
+    bor = mock_borrower(
+        n=1,
+        queue_h=H,
+        wage_bill=np.array([20.0]),
+        net_worth=np.array([10.0]),
+        credit_demand=np.array([10.0]),
+        total_funds=np.array([10.0]),
+    )
+    bor.projected_fragility = np.array([1.0])
+
+    lend = mock_lender(
+        n=2,
+        queue_h=H,
+        credit_supply=np.array([0.0, 100.0]),  # bank 0 empty
+        interest_rate=np.array([0.02, 0.03]),
+    )
+    lend.opex_shock = np.array([0.1, 0.1])
+    lb = mock_loanbook()
+
+    # Set up applications: firm 0 targets bank 0 then bank 1
+    bor.loan_apps_targets[0, :] = [0, 1]
+    bor.loan_apps_head[0] = 0
+
+    firms_apply_for_loans(bor, lend, lb, r_bar=0.02, max_leverage=10.0, rng=make_rng(0))
+
+    # Should have gotten loan from bank 1 (cascaded past bank 0)
+    assert lb.size > 0
+    assert lb.target_ids[0] == 1  # bank 1
+
+
+def test_cascade_credit_partial_fulfillment() -> None:
+    """Bank has less supply than demand → partial loan, continues cascade."""
+    H = 2
+    bor = mock_borrower(
+        n=1,
+        queue_h=H,
+        wage_bill=np.array([50.0]),
+        net_worth=np.array([10.0]),
+        credit_demand=np.array([40.0]),
+        total_funds=np.array([10.0]),
+    )
+    bor.projected_fragility = np.array([1.0])
+
+    lend = mock_lender(
+        n=2,
+        queue_h=H,
+        credit_supply=np.array([15.0, 100.0]),
+        interest_rate=np.array([0.02, 0.03]),
+    )
+    lend.opex_shock = np.array([0.1, 0.1])
+    lb = mock_loanbook()
+
+    bor.loan_apps_targets[0, :] = [0, 1]
+    bor.loan_apps_head[0] = 0
+
+    firms_apply_for_loans(bor, lend, lb, r_bar=0.02, max_leverage=10.0, rng=make_rng(0))
+
+    # Should have 2 loans: partial from bank 0, remainder from bank 1
+    assert lb.size == 2
+    total_loaned = lb.principal[: lb.size].sum()
+    assert total_loaned == pytest.approx(40.0)
+
+
+def test_cascade_credit_exhaustion() -> None:
+    """All H banks empty → firm stays unfunded."""
+    H = 2
+    bor = mock_borrower(
+        n=1,
+        queue_h=H,
+        wage_bill=np.array([20.0]),
+        net_worth=np.array([10.0]),
+        credit_demand=np.array([10.0]),
+        total_funds=np.array([10.0]),
+    )
+    bor.projected_fragility = np.array([1.0])
+
+    lend = mock_lender(
+        n=2,
+        queue_h=H,
+        credit_supply=np.array([0.0, 0.0]),  # both empty
+        interest_rate=np.array([0.02, 0.03]),
+    )
+    lend.opex_shock = np.array([0.1, 0.1])
+    lb = mock_loanbook()
+
+    bor.loan_apps_targets[0, :] = [0, 1]
+    bor.loan_apps_head[0] = 0
+
+    firms_apply_for_loans(bor, lend, lb, r_bar=0.02, max_leverage=10.0, rng=make_rng(0))
+
+    # No loans recorded
+    assert lb.size == 0
+    # Credit demand unchanged
+    assert bor.credit_demand[0] == pytest.approx(10.0)
+
+
+def test_cascade_credit_sequential_depletion() -> None:
+    """First firm depletes bank supply, second firm must cascade."""
+    H = 2
+    bor = mock_borrower(
+        n=2,
+        queue_h=H,
+        wage_bill=np.array([30.0, 30.0]),
+        net_worth=np.array([10.0, 10.0]),
+        credit_demand=np.array([20.0, 20.0]),
+        total_funds=np.array([10.0, 10.0]),
+    )
+    bor.projected_fragility = np.array([1.0, 1.0])
+
+    lend = mock_lender(
+        n=2,
+        queue_h=H,
+        credit_supply=np.array([20.0, 100.0]),  # bank 0 has just 20
+        interest_rate=np.array([0.01, 0.03]),
+    )
+    lend.opex_shock = np.array([0.1, 0.1])
+    lb = mock_loanbook()
+
+    # Both firms target bank 0 first, then bank 1
+    bor.loan_apps_targets[0, :] = [0, 1]
+    bor.loan_apps_targets[1, :] = [0, 1]
+    bor.loan_apps_head[0] = 0
+    bor.loan_apps_head[1] = 2  # stride = 2, so firm 1's head starts at 1*2
+
+    firms_apply_for_loans(
+        bor, lend, lb, r_bar=0.02, max_leverage=10.0, rng=make_rng(42)
+    )
+
+    # Both firms should be funded (one from bank 0, one from bank 1 after cascade)
+    assert bor.credit_demand[0] <= 0.01
+    assert bor.credit_demand[1] <= 0.01
+    assert lb.size >= 2
+
+
+def test_cascade_credit_interest_rate_with_fragility() -> None:
+    """Interest rate correctly uses fragility premium."""
+    H = 1
+    bor = mock_borrower(
+        n=1,
+        queue_h=H,
+        wage_bill=np.array([20.0]),
+        net_worth=np.array([10.0]),
+        credit_demand=np.array([10.0]),
+        total_funds=np.array([10.0]),
+    )
+    bor.projected_fragility = np.array([2.0])
+
+    lend = mock_lender(
+        n=1,
+        queue_h=H,
+        credit_supply=np.array([100.0]),
+        interest_rate=np.array([0.05]),
+    )
+    lend.opex_shock = np.array([0.5])
+    lb = mock_loanbook()
+
+    bor.loan_apps_targets[0, :H] = [0]
+    bor.loan_apps_head[0] = 0
+
+    firms_apply_for_loans(bor, lend, lb, r_bar=0.02, max_leverage=10.0, rng=make_rng(0))
+
+    # rate = r_bar * (1 + opex_shock * fragility) = 0.02 * (1 + 0.5 * 2.0) = 0.04
+    assert lb.size == 1
+    assert lb.rate[0] == pytest.approx(0.04)
+
+
+def test_cascade_credit_only_positive_demand() -> None:
+    """Only firms with credit_demand > 0 participate."""
+    bor, lend, lb, rng, H = _mini_state()
+    bor.credit_demand.fill(0.0)  # no demand
+
+    firms_prepare_loan_applications(bor, lend, lb, max_H=H, rng=rng)
+    firms_apply_for_loans(bor, lend, lb, r_bar=0.02, rng=make_rng(0))
+
+    assert lb.size == 0
+
+
+# ── Cascade credit: loan_priority_method sorting ──────────────────────
+
+
+def test_cascade_credit_leverage_sorting_priority() -> None:
+    """With by_leverage, the least-fragile firm is served first."""
+    H = 1
+    bor = mock_borrower(
+        n=2,
+        queue_h=H,
+        wage_bill=np.array([20.0, 20.0]),
+        net_worth=np.array([10.0, 10.0]),
+        credit_demand=np.array([10.0, 10.0]),
+        total_funds=np.array([10.0, 10.0]),
+    )
+    # Firm 0 is MORE fragile; firm 1 is LESS fragile
+    bor.projected_fragility = np.array([2.0, 0.1])
+
+    lend = mock_lender(
+        n=1,
+        queue_h=H,
+        credit_supply=np.array([10.0]),  # only enough for ONE firm
+        interest_rate=np.array([0.05]),
+    )
+    lend.opex_shock = np.array([0.5])
+    lb = mock_loanbook()
+
+    # Both firms target bank 0
+    bor.loan_apps_targets[0, :H] = [0]
+    bor.loan_apps_targets[1, :H] = [0]
+    bor.loan_apps_head[0] = 0
+    bor.loan_apps_head[1] = H  # stride = H, so firm 1's head = 1 * H
+
+    firms_apply_for_loans(
+        bor,
+        lend,
+        lb,
+        r_bar=0.02,
+        loan_priority_method="by_leverage",
+        max_leverage=10.0,
+        rng=make_rng(0),
+    )
+
+    # Firm 1 (fragility=0.1) should be served first, consuming all supply
+    assert lb.size == 1
+    assert lb.borrower[0] == 1
+    assert bor.credit_demand[1] == pytest.approx(0.0)
+    assert bor.credit_demand[0] == pytest.approx(10.0)  # unfunded
+
+
+def test_cascade_credit_net_worth_sorting_priority() -> None:
+    """With by_net_worth, the wealthier firm is served first."""
+    H = 1
+    bor = mock_borrower(
+        n=2,
+        queue_h=H,
+        wage_bill=np.array([50.0, 50.0]),
+        net_worth=np.array([10.0, 40.0]),
+        credit_demand=np.array([40.0, 10.0]),
+        total_funds=np.array([10.0, 40.0]),
+    )
+    bor.projected_fragility = np.array([1.0, 1.0])
+
+    lend = mock_lender(
+        n=1,
+        queue_h=H,
+        credit_supply=np.array([10.0]),  # only enough for ONE firm
+        interest_rate=np.array([0.05]),
+    )
+    lend.opex_shock = np.array([0.5])
+    lb = mock_loanbook()
+
+    bor.loan_apps_targets[0, :H] = [0]
+    bor.loan_apps_targets[1, :H] = [0]
+    bor.loan_apps_head[0] = 0
+    bor.loan_apps_head[1] = H
+
+    firms_apply_for_loans(
+        bor,
+        lend,
+        lb,
+        r_bar=0.02,
+        loan_priority_method="by_net_worth",
+        max_leverage=10.0,
+        rng=make_rng(0),
+    )
+
+    # Firm 1 (NW=40) should be served first, consuming all supply
+    assert lb.size == 1
+    assert lb.borrower[0] == 1
+    assert bor.credit_demand[1] == pytest.approx(0.0)
+    assert bor.credit_demand[0] == pytest.approx(40.0)  # unfunded
+
+
+def test_cascade_credit_by_appearance_shuffles() -> None:
+    """With by_appearance, both firms get funded when supply is ample."""
+    H = 1
+    bor = mock_borrower(
+        n=2,
+        queue_h=H,
+        wage_bill=np.array([20.0, 20.0]),
+        net_worth=np.array([10.0, 10.0]),
+        credit_demand=np.array([10.0, 10.0]),
+        total_funds=np.array([10.0, 10.0]),
+    )
+    bor.projected_fragility = np.array([1.0, 1.0])
+
+    lend = mock_lender(
+        n=1,
+        queue_h=H,
+        credit_supply=np.array([100.0]),  # plenty for both
+        interest_rate=np.array([0.05]),
+    )
+    lend.opex_shock = np.array([0.5])
+    lb = mock_loanbook()
+
+    bor.loan_apps_targets[0, :H] = [0]
+    bor.loan_apps_targets[1, :H] = [0]
+    bor.loan_apps_head[0] = 0
+    bor.loan_apps_head[1] = H
+
+    firms_apply_for_loans(
+        bor,
+        lend,
+        lb,
+        r_bar=0.02,
+        loan_priority_method="by_appearance",
+        max_leverage=10.0,
+        rng=make_rng(42),
+    )
+
+    # Both firms should be funded (ample supply)
+    assert lb.size == 2
+    assert bor.credit_demand[0] == pytest.approx(0.0)
+    assert bor.credit_demand[1] == pytest.approx(0.0)
+
+
+def test_cascade_credit_default_method_is_by_leverage() -> None:
+    """Default loan_priority_method produces same result as by_leverage."""
+    H = 1
+    bor = mock_borrower(
+        n=2,
+        queue_h=H,
+        wage_bill=np.array([20.0, 20.0]),
+        net_worth=np.array([10.0, 10.0]),
+        credit_demand=np.array([10.0, 10.0]),
+        total_funds=np.array([10.0, 10.0]),
+    )
+    # Firm 0 is MORE fragile; firm 1 is LESS fragile
+    bor.projected_fragility = np.array([2.0, 0.1])
+
+    lend = mock_lender(
+        n=1,
+        queue_h=H,
+        credit_supply=np.array([10.0]),  # only enough for ONE firm
+        interest_rate=np.array([0.05]),
+    )
+    lend.opex_shock = np.array([0.5])
+    lb = mock_loanbook()
+
+    bor.loan_apps_targets[0, :H] = [0]
+    bor.loan_apps_targets[1, :H] = [0]
+    bor.loan_apps_head[0] = 0
+    bor.loan_apps_head[1] = H
+
+    # No explicit loan_priority_method — should default to "by_leverage"
+    firms_apply_for_loans(
+        bor,
+        lend,
+        lb,
+        r_bar=0.02,
+        max_leverage=10.0,
+        rng=make_rng(0),
+    )
+
+    # Firm 1 (less fragile) should be served first, same as explicit by_leverage
+    assert lb.size == 1
+    assert lb.borrower[0] == 1

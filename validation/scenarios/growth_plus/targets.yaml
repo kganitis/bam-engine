@@ -29,23 +29,18 @@ metadata:
     sigma_max: 0.1
     sigma_decay: -1.0
 
-  # Parameters needed by compute_metrics
-  params:
-    firm_size_threshold: 150.0
-    firm_size_threshold_medium: 100.0
-
   # Visualization-specific target structure (used by growth_plus_viz.py)
   visualization:
     time_series:
       unemployment_rate:
         targets:
-          normal_min: 0.02
-          normal_max: 0.15
-          extreme_min: 0.00
-          extreme_max: 0.30
-          mean_target: 0.055
+          normal_min: 0.03
+          normal_max: 0.10
+          extreme_min: 0.02
+          extreme_max: 0.15
+          mean_target: 0.06
           std_min: 0.02
-          std_max: 0.05
+          std_max: 0.045
 
       inflation_rate:
         targets:
@@ -249,19 +244,25 @@ metrics:
   # --------------------------------------------------------------------------
 
   unemployment_rate_mean:
-    target: 0.055
-    tolerance: 0.025
+    target: 0.06
+    tolerance: 0.02
 
-  unemployment_hard_ceiling:
-    threshold: 0.30  # For reference (BOOLEAN uses MetricSpec threshold)
+  unemployment_absolute_ceiling:
+    threshold: 0.20
 
   unemployment_std:
     min: 0.02
-    max: 0.05
+    max: 0.045
 
-  unemployment_pct_in_bounds:
-    target: 0.95
-    min: 0.90
+  unemployment_pct_above_floor:
+    target: 0.90
+    min: 0.80
+    floor: 0.02
+
+  unemployment_pct_below_ceiling:
+    target: 0.90
+    min: 0.80
+    ceiling: 0.15
 
   inflation_rate_mean:
     target: 0.04
@@ -280,6 +281,8 @@ metrics:
   inflation_pct_in_bounds:
     target: 0.90
     min: 0.80
+    bounds_min: -0.02
+    bounds_max: 0.10
 
   log_gdp_mean:
     target: 8.95
@@ -304,6 +307,8 @@ metrics:
   vacancy_rate_pct_in_bounds:
     target: 0.90
     min: 0.80
+    bounds_min: 0.08
+    bounds_max: 0.20
 
   # --------------------------------------------------------------------------
   # Curve Correlations
@@ -349,6 +354,7 @@ metrics:
   firm_size_pct_below:
     min: 0.85
     max: 0.95
+    threshold: 150.0
 
   firm_size_tail_ratio:
     min: 2.0
@@ -357,6 +363,7 @@ metrics:
   firm_size_pct_below_medium:
     target: 0.45
     min: 0.35
+    threshold: 100.0
 
   # --------------------------------------------------------------------------
   # Growth Metrics
@@ -414,6 +421,8 @@ metrics:
   real_interest_rate_pct_in_bounds:
     target: 0.80
     min: 0.70
+    bounds_min: -0.02
+    bounds_max: 0.12
 
   financial_fragility_mean:
     target: 0.08

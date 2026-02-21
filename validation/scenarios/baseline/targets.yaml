@@ -29,23 +29,16 @@ metadata:
     n_banks: 10
     n_periods: 1000
 
-  # Parameters needed by compute_metrics
-  params:
-    firm_size_threshold: 5.0
-    firm_size_threshold_medium: 10.0
-    unemployment_extreme_bounds: [0.00, 0.20]
-    inflation_extreme_bounds: [-0.05, 0.15]
-
   # Visualization-specific target structure (used by baseline_viz.py)
   visualization:
     time_series:
       unemployment_rate:
         targets:
-          normal_min: 0.02
-          normal_max: 0.15
-          extreme_min: 0.00
-          extreme_max: 0.20
-          mean_target: 0.055
+          normal_min: 0.03
+          normal_max: 0.08
+          extreme_min: 0.02
+          extreme_max: 0.12
+          mean_target: 0.06
 
       inflation_rate:
         targets:
@@ -57,11 +50,11 @@ metadata:
 
       log_gdp:
         targets:
-          normal_min: 5.43
-          normal_max: 5.49
-          extreme_min: 5.30
-          extreme_max: 5.53
-          mean_target: 5.45
+          normal_min: 5.438
+          normal_max: 5.491
+          extreme_min: 5.394
+          extreme_max: 5.501
+          mean_target: 5.460
 
       real_wage:
         targets:
@@ -118,29 +111,30 @@ metrics:
   # --------------------------------------------------------------------------
 
   unemployment_rate_mean:
-    # MEAN_TOLERANCE: mean should be ~5.5%
-    target: 0.055
+    # MEAN_TOLERANCE: mean should be ~6% (book Figure 3.2b)
+    target: 0.06
     tolerance: 0.015
 
-  unemployment_hard_ceiling:
-    # RANGE: max unemployment should stay below 20% (model breakdown indicator)
-    min: 0.0
-    max: 0.20
-
-  unemployment_pct_in_bounds:
-    # PCT_WITHIN: 90% of periods should be within extreme bounds
-    target: 0.90
-    min: 0.80
+  unemployment_absolute_ceiling:
+    # BOOLEAN: hard gate — model collapse if max > 20%
+    threshold: 0.20
 
   unemployment_std:
-    # MEAN_TOLERANCE: volatility should be ~2%
-    target: 0.020
-    tolerance: 0.010
+    # RANGE: volatility should be ~2%
+    min: 0.010
+    max: 0.025
 
-  unemployment_autocorrelation:
-    # RANGE: lag-1 autocorrelation should show persistence but not unit root
-    min: 0.30
-    max: 0.99
+  unemployment_pct_above_floor:
+    # PCT_WITHIN: 95% of periods should be above 2% (avoid degenerate low unemployment)
+    target: 0.95
+    min: 0.90
+    floor: 0.02
+
+  unemployment_pct_below_ceiling:
+    # PCT_WITHIN: 95% of periods should be below 12%
+    target: 0.95
+    min: 0.85
+    ceiling: 0.12
 
   # --------------------------------------------------------------------------
   # Inflation Rate Metrics
@@ -160,6 +154,8 @@ metrics:
     # PCT_WITHIN: 90% of periods should be within extreme bounds
     target: 0.90
     min: 0.80
+    bounds_min: -0.05
+    bounds_max: 0.15
 
   inflation_std:
     # MEAN_TOLERANCE: volatility should be ~2.5%
@@ -199,6 +195,8 @@ metrics:
     # PCT_WITHIN: vacancy rate should stay in [8%, 20%] most of the time
     target: 0.90
     min: 0.80
+    bounds_min: 0.08
+    bounds_max: 0.20
 
   # --------------------------------------------------------------------------
   # Curve Correlation Metrics
@@ -247,6 +245,7 @@ metrics:
     # RANGE: most firms should be small
     min: 0.80
     max: 0.95
+    threshold: 5.0
 
   firm_size_tail_ratio:
     # RANGE: long right tail but not dominated by single firm
@@ -257,3 +256,4 @@ metrics:
     # PCT_WITHIN: almost all firms below medium threshold
     target: 0.98
     min: 0.92
+    threshold: 10.0

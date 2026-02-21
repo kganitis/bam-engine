@@ -203,3 +203,8 @@ class Config:
 
     # Pricing phase
     pricing_phase: str = "planning"  # "planning" or "production"
+
+    # Market matching variants
+    labor_matching: str = "cascade"  # "cascade" or "interleaved"
+    credit_matching: str = "cascade"  # "cascade" or "interleaved"
+    min_wage_ratchet: bool = False  # True = upward-only ratchet

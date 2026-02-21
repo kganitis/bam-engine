@@ -1,7 +1,7 @@
 """
 Event classes for BAM Engine simulation.
 
-This package contains 43 event classes organized into 8 modules representing
+This package contains 45 event classes organized into 8 modules representing
 different phases of the BAM economic model. Events are auto-registered via
 __init_subclass__ hook and composed into a Pipeline for execution.
 
@@ -10,15 +10,15 @@ Event Organization
 Events are organized by economic phase:
 
 1. **Planning** (6 events): Firms plan production targets, alternative early pricing
-2. **Labor Market** (7 events): Wage setting, job applications, hiring
-3. **Credit Market** (8 events): Credit supply/demand, loan applications, provision
+2. **Labor Market** (9 events): Wage setting, job applications, hiring
+3. **Credit Market** (9 events): Credit supply/demand, loan applications, provision
 4. **Production** (6 events): Wage payments, breakeven/price, production, contracts
 5. **Goods Market** (6 events): Consumption decisions, shopping
 6. **Revenue** (3 events): Revenue collection, debt repayment, dividends
 7. **Bankruptcy** (5 events): Insolvency detection, agent replacement
 8. **Economy Stats** (2 events): Aggregate metrics (prices, unemployment)
 
-Total: 43 events across 8 modules
+Total: 45 events across 8 modules
 
 Event Execution
 ---------------
@@ -71,6 +71,7 @@ from bamengine.events.credit_market import (
     BanksDecideCreditSupply,
     BanksDecideInterestRate,
     BanksProvideLoans,
+    FirmsApplyForLoans,
     FirmsCalcFinancialFragility,
     FirmsDecideCreditDemand,
     FirmsFireWorkers,
@@ -92,6 +93,8 @@ from bamengine.events.labor_market import (
     FirmsCalcWageBill,
     FirmsDecideWageOffer,
     FirmsHireWorkers,
+    WorkersApplyToBestFirm,
+    WorkersApplyToFirms,
     WorkersDecideFirmsToApply,
     WorkersSendOneRound,
 )
@@ -125,20 +128,23 @@ __all__ = [
     "FirmsDecideDesiredLabor",
     "FirmsDecideVacancies",
     "FirmsFireExcessWorkers",
-    # Labor market events (7)
+    # Labor market events (9)
     "CalcInflationRate",
     "AdjustMinimumWage",
     "FirmsDecideWageOffer",
     "WorkersDecideFirmsToApply",
+    "WorkersApplyToFirms",
+    "WorkersApplyToBestFirm",
     "WorkersSendOneRound",
     "FirmsHireWorkers",
     "FirmsCalcWageBill",
-    # Credit market events (8)
+    # Credit market events (9)
     "BanksDecideCreditSupply",
     "BanksDecideInterestRate",
     "FirmsDecideCreditDemand",
     "FirmsCalcFinancialFragility",
     "FirmsPrepareLoanApplications",
+    "FirmsApplyForLoans",
     "FirmsSendOneLoanApp",
     "BanksProvideLoans",
     "FirmsFireWorkers",
