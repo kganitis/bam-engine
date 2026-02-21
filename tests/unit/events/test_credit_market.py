@@ -73,13 +73,22 @@ def test_firms_fire_workers_executes():
     event.execute(sim)  # Should not crash
 
 
+def test_firms_apply_for_loans_executes():
+    """FirmsApplyForLoans executes without error."""
+    sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+    get_event("banks_decide_interest_rate")().execute(sim)
+    get_event("firms_prepare_loan_applications")().execute(sim)
+    event = get_event("firms_apply_for_loans")()
+    event.execute(sim)  # Should not crash
+
+
 # ============================================================================
 # Event Chain Test
 # ============================================================================
 
 
 def test_credit_market_event_chain():
-    """Credit market events can execute in sequence."""
+    """Credit market events can execute in sequence (legacy interleaved)."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
 
     # Execute in sequence
@@ -91,6 +100,24 @@ def test_credit_market_event_chain():
         "firms_prepare_loan_applications",
         "firms_send_one_loan_app",
         "banks_provide_loans",
+        "firms_fire_workers",
+    ]
+
+    for e in events:
+        get_event(e)().execute(sim)  # Should not crash
+
+
+def test_credit_market_cascade_chain():
+    """Credit market events with cascade matching can execute in sequence."""
+    sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+
+    events = [
+        "banks_decide_credit_supply",
+        "banks_decide_interest_rate",
+        "firms_decide_credit_demand",
+        "firms_calc_financial_fragility",
+        "firms_prepare_loan_applications",
+        "firms_apply_for_loans",
         "firms_fire_workers",
     ]
 

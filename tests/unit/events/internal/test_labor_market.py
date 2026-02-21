@@ -14,10 +14,13 @@ from numpy.typing import NDArray
 
 from bamengine import Rng, make_rng
 from bamengine.events._internal.labor_market import (
+    _hire_workers,
     adjust_minimum_wage,
     calc_inflation_rate,
     firms_decide_wage_offer,
     firms_hire_workers,
+    workers_apply_to_best_firm,
+    workers_apply_to_firms,
     workers_decide_firms_to_apply,
     workers_send_one_round,
 )
@@ -113,14 +116,14 @@ def test_calc_inflation_rate_annualized_deflation() -> None:
 @pytest.mark.parametrize(
     ("prices", "direction"),
     [
-        (np.array([1.00, 1.05, 1.10, 1.15, 1.20]), "up"),  # inflation
-        (np.array([1.00, 0.95, 0.90, 0.85, 0.80]), "down"),  # deflation
-        (np.array([1.00, 1.10, 1.20, 1.30]), "flat"),  # = m  → no change
-        (np.array([1.00, 1.05, 1.10, 1.15, 1.20, 1.30]), "flat"),  # < m  → no change
+        (np.array([1.00, 1.05, 1.10, 1.15, 1.20]), "up"),  # inflation → increases
+        (np.array([1.00, 0.95, 0.90, 0.85, 0.80]), "down"),  # deflation → decreases
+        (np.array([1.00, 1.10, 1.20, 1.30]), "flat"),  # = m  → no revision
+        (np.array([1.00, 1.05, 1.10, 1.15, 1.20, 1.30]), "flat"),  # < m  → no revision
     ],
 )
 def test_adjust_minimum_wage_edges(prices: NDArray[np.float64], direction: str) -> None:
-    """Guard array bounds; min wage may go **up or down** depending on inflation."""
+    """Guard array bounds; min wage moves with inflation or stays flat."""
     ec = mock_economy(
         min_wage=2.0,
         avg_mkt_price_history=prices,
@@ -136,7 +139,7 @@ def test_adjust_minimum_wage_edges(prices: NDArray[np.float64], direction: str) 
         assert ec.min_wage > old
     elif direction == "down":
         assert ec.min_wage < old
-    else:  # no revision
+    else:  # flat (no revision triggered)
         assert ec.min_wage == pytest.approx(old)
 
 
@@ -1118,3 +1121,394 @@ def test_workers_send_one_round_simultaneous_exhausted_list() -> None:
     assert wrk.job_apps_head[0] == -1
     # No application should have been queued
     assert emp.recv_job_apps_head[0] == -1
+
+
+# ============================================================================
+# Minimum Wage Ratchet (upward-only revision)
+# ============================================================================
+
+
+def test_adjust_minimum_wage_ratchet_positive_inflation() -> None:
+    """Positive inflation with ratchet → minimum wage increases."""
+    ec = mock_economy(
+        min_wage=1.0,
+        avg_mkt_price_history=np.array([1, 1, 1, 1, 1]),
+        min_wage_rev_period=4,
+    )
+    ec.inflation_history = np.array([0.05])  # +5%
+    wrk = mock_worker(n=1, employer=np.array([-1], dtype=np.intp))
+    adjust_minimum_wage(ec, wrk, ratchet=True)
+    assert ec.min_wage == pytest.approx(1.05)
+
+
+def test_adjust_minimum_wage_ratchet_negative_inflation() -> None:
+    """Negative inflation with ratchet → minimum wage stays unchanged."""
+    ec = mock_economy(
+        min_wage=1.0,
+        avg_mkt_price_history=np.array([1, 1, 1, 1, 1]),
+        min_wage_rev_period=4,
+    )
+    ec.inflation_history = np.array([-0.10])  # -10% deflation
+    wrk = mock_worker(n=1, employer=np.array([-1], dtype=np.intp))
+    adjust_minimum_wage(ec, wrk, ratchet=True)
+    assert ec.min_wage == pytest.approx(1.0)  # unchanged
+
+
+def test_adjust_minimum_wage_ratchet_zero_inflation() -> None:
+    """Zero inflation with ratchet → minimum wage stays unchanged."""
+    ec = mock_economy(
+        min_wage=1.0,
+        avg_mkt_price_history=np.array([1, 1, 1, 1, 1]),
+        min_wage_rev_period=4,
+    )
+    ec.inflation_history = np.array([0.0])
+    wrk = mock_worker(n=1, employer=np.array([-1], dtype=np.intp))
+    adjust_minimum_wage(ec, wrk, ratchet=True)
+    assert ec.min_wage == pytest.approx(1.0)
+
+
+def test_adjust_minimum_wage_no_ratchet_negative_inflation() -> None:
+    """Negative inflation without ratchet → minimum wage decreases."""
+    ec = mock_economy(
+        min_wage=1.0,
+        avg_mkt_price_history=np.array([1, 1, 1, 1, 1]),
+        min_wage_rev_period=4,
+    )
+    ec.inflation_history = np.array([-0.10])  # -10% deflation
+    wrk = mock_worker(n=1, employer=np.array([-1], dtype=np.intp))
+    adjust_minimum_wage(ec, wrk, ratchet=False)
+    assert ec.min_wage == pytest.approx(0.90)  # decreased
+
+
+def test_adjust_minimum_wage_no_ratchet_positive_inflation() -> None:
+    """Positive inflation without ratchet → minimum wage increases (same as ratchet)."""
+    ec = mock_economy(
+        min_wage=1.0,
+        avg_mkt_price_history=np.array([1, 1, 1, 1, 1]),
+        min_wage_rev_period=4,
+    )
+    ec.inflation_history = np.array([0.05])  # +5%
+    wrk = mock_worker(n=1, employer=np.array([-1], dtype=np.intp))
+    adjust_minimum_wage(ec, wrk, ratchet=False)
+    assert ec.min_wage == pytest.approx(1.05)
+
+
+# ============================================================================
+# _hire_workers helper
+# ============================================================================
+
+
+def test_hire_workers_helper_single() -> None:
+    """_hire_workers correctly updates state for a single worker."""
+    M = 2
+    emp = mock_employer(
+        n=1,
+        queue_m=M,
+        wage_offer=np.array([2.5]),
+        n_vacancies=np.array([3]),
+        current_labor=np.array([0], dtype=np.int64),
+    )
+    wrk = mock_worker(
+        n=1,
+        queue_m=M,
+        employer=np.array([-1], dtype=np.intp),
+        job_apps_head=np.array([0]),
+        job_apps_targets=np.array([[0, -1]], dtype=np.intp),
+    )
+
+    worker_arr = np.array([0], dtype=np.intp)
+    _hire_workers(wrk, emp, 0, worker_arr, theta=8)
+
+    assert wrk.employer[0] == 0
+    assert wrk.wage[0] == 2.5
+    assert wrk.periods_left[0] == 8
+    assert wrk.contract_expired[0] == 0
+    assert wrk.fired[0] == 0
+    assert wrk.job_apps_head[0] == -1
+    assert emp.current_labor[0] == 1
+    assert emp.n_vacancies[0] == 2
+
+
+def test_hire_workers_helper_batch() -> None:
+    """_hire_workers correctly updates state for a batch of workers."""
+    M = 2
+    emp = mock_employer(
+        n=1,
+        queue_m=M,
+        wage_offer=np.array([1.5]),
+        n_vacancies=np.array([5]),
+        current_labor=np.array([0], dtype=np.int64),
+    )
+    wrk = mock_worker(n=3, queue_m=M)
+
+    worker_arr = np.array([0, 1, 2], dtype=np.intp)
+    _hire_workers(wrk, emp, 0, worker_arr, theta=10)
+
+    assert np.all(wrk.employer == 0)
+    assert np.all(wrk.wage == 1.5)
+    assert np.all(wrk.periods_left == 10)
+    assert emp.current_labor[0] == 3
+    assert emp.n_vacancies[0] == 2
+
+
+# ============================================================================
+# workers_apply_to_firms (cascade matching)
+# ============================================================================
+
+
+def test_cascade_basic_hire() -> None:
+    """Worker's 1st-choice firm has vacancy → hired immediately."""
+    M = 2
+    emp = mock_employer(
+        n=2,
+        queue_m=M,
+        wage_offer=np.array([2.0, 1.0]),
+        n_vacancies=np.array([1, 1]),
+        current_labor=np.array([0, 0], dtype=np.int64),
+    )
+    wrk = mock_worker(
+        n=1,
+        queue_m=M,
+        employer=np.array([-1], dtype=np.intp),
+        job_apps_head=np.array([0]),
+        job_apps_targets=np.array([[0, 1]], dtype=np.intp),
+    )
+
+    workers_apply_to_firms(wrk, emp, theta=8, rng=make_rng(0))
+
+    assert wrk.employer[0] == 0
+    assert wrk.employed[0]
+    assert emp.current_labor[0] == 1
+    assert emp.n_vacancies[0] == 0
+
+
+def test_cascade_to_second_firm() -> None:
+    """Worker's 1st-choice firm full → cascades to 2nd → gets hired."""
+    M = 2
+    emp = mock_employer(
+        n=2,
+        queue_m=M,
+        wage_offer=np.array([2.0, 1.0]),
+        n_vacancies=np.array([0, 1]),  # firm 0 full
+        current_labor=np.array([3, 0], dtype=np.int64),
+    )
+    wrk = mock_worker(
+        n=1,
+        queue_m=M,
+        employer=np.array([-1], dtype=np.intp),
+        job_apps_head=np.array([0]),
+        job_apps_targets=np.array([[0, 1]], dtype=np.intp),  # prefers 0
+    )
+
+    workers_apply_to_firms(wrk, emp, theta=8, rng=make_rng(0))
+
+    assert wrk.employer[0] == 1  # cascaded to firm 1
+    assert wrk.employed[0]
+    assert emp.n_vacancies[1] == 0
+
+
+def test_cascade_exhaustion() -> None:
+    """All M firms full → worker stays unemployed."""
+    M = 2
+    emp = mock_employer(
+        n=2,
+        queue_m=M,
+        wage_offer=np.array([2.0, 1.0]),
+        n_vacancies=np.array([0, 0]),  # all full
+        current_labor=np.array([3, 3], dtype=np.int64),
+    )
+    wrk = mock_worker(
+        n=1,
+        queue_m=M,
+        employer=np.array([-1], dtype=np.intp),
+        job_apps_head=np.array([0]),
+        job_apps_targets=np.array([[0, 1]], dtype=np.intp),
+    )
+
+    workers_apply_to_firms(wrk, emp, theta=8, rng=make_rng(0))
+
+    assert not wrk.employed[0]
+    assert wrk.employer[0] == -1
+    assert wrk.job_apps_head[0] == -1  # cleaned up
+
+
+def test_cascade_sequential_depletion() -> None:
+    """First worker depletes last vacancy, second must cascade/stay unemployed."""
+    M = 2
+    emp = mock_employer(
+        n=2,
+        queue_m=M,
+        wage_offer=np.array([2.0, 1.0]),
+        n_vacancies=np.array([1, 0]),  # only 1 vacancy total
+        current_labor=np.array([0, 3], dtype=np.int64),
+    )
+    wrk = mock_worker(
+        n=2,
+        queue_m=M,
+        employer=np.array([-1, -1], dtype=np.intp),
+        job_apps_head=np.array([0, 2]),  # each worker has separate head
+        job_apps_targets=np.array(
+            [[0, 1], [0, 1]], dtype=np.intp
+        ),  # both target same firms
+    )
+
+    # Use a fixed seed so worker order is deterministic
+    workers_apply_to_firms(wrk, emp, theta=8, rng=make_rng(42))
+
+    # Exactly one worker should be hired (first in shuffle order gets the vacancy)
+    assert wrk.employed.sum() == 1
+    assert emp.n_vacancies[0] == 0  # vacancy depleted
+
+
+def test_cascade_only_unemployed_participate() -> None:
+    """Employed workers do not participate in cascade."""
+    M = 2
+    emp = mock_employer(
+        n=1,
+        queue_m=M,
+        wage_offer=np.array([2.0]),
+        n_vacancies=np.array([5]),
+        current_labor=np.array([1], dtype=np.int64),
+    )
+    wrk = mock_worker(
+        n=2,
+        queue_m=M,
+        employer=np.array([0, -1], dtype=np.intp),  # worker 0 employed
+        job_apps_head=np.array([-1, 2]),  # only worker 1 has apps
+        job_apps_targets=np.array([[0, -1], [0, -1]], dtype=np.intp),
+    )
+
+    workers_apply_to_firms(wrk, emp, theta=8, rng=make_rng(0))
+
+    # Worker 0 stays employed (unchanged)
+    assert wrk.employer[0] == 0
+    # Worker 1 hired
+    assert wrk.employer[1] == 0
+    assert emp.current_labor[0] == 2
+
+
+def test_cascade_contract_duration() -> None:
+    """Contract duration set correctly (theta + poisson)."""
+    M = 2
+    emp = mock_employer(
+        n=1,
+        queue_m=M,
+        wage_offer=np.array([2.0]),
+        n_vacancies=np.array([1]),
+        current_labor=np.array([0], dtype=np.int64),
+    )
+    wrk = mock_worker(
+        n=1,
+        queue_m=M,
+        employer=np.array([-1], dtype=np.intp),
+        job_apps_head=np.array([0]),
+        job_apps_targets=np.array([[0, -1]], dtype=np.intp),
+    )
+
+    workers_apply_to_firms(wrk, emp, theta=8, contract_poisson_mean=10, rng=make_rng(0))
+
+    assert wrk.periods_left[0] >= 8  # at least theta
+
+
+def test_cascade_deterministic_with_seed() -> None:
+    """Same seed produces same results."""
+    M = 2
+
+    def run(seed: int) -> tuple[np.ndarray, np.ndarray]:
+        emp = mock_employer(
+            n=3,
+            queue_m=M,
+            wage_offer=np.array([2.0, 1.5, 1.0]),
+            n_vacancies=np.array([1, 1, 1]),
+            current_labor=np.array([0, 0, 0], dtype=np.int64),
+        )
+        wrk = mock_worker(n=4, queue_m=M)
+        workers_decide_firms_to_apply(wrk, emp, max_M=M, rng=make_rng(seed))
+        workers_apply_to_firms(wrk, emp, theta=8, rng=make_rng(seed))
+        return wrk.employer.copy(), emp.current_labor.copy()
+
+    emp1, lab1 = run(42)
+    emp2, lab2 = run(42)
+    np.testing.assert_array_equal(emp1, emp2)
+    np.testing.assert_array_equal(lab1, lab2)
+
+
+def test_cascade_no_applicants_skips() -> None:
+    """If no workers have pending applications, cascade exits early."""
+    M = 2
+    emp = mock_employer(n=1, queue_m=M, n_vacancies=np.array([5]))
+    wrk = mock_worker(n=2, queue_m=M)
+    wrk.job_apps_head.fill(-1)  # no pending applications
+
+    workers_apply_to_firms(wrk, emp, theta=8, rng=make_rng(0))
+    # Nothing should change
+    assert emp.current_labor[0] == 0
+
+
+def test_cascade_full_round() -> None:
+    """Complete labor market phase: decide → cascade. Hires occur, vacancies decrease."""
+    emp, wrk, rng, M = _mini_state()
+    start_labor = emp.current_labor.sum()
+
+    workers_decide_firms_to_apply(wrk, emp, max_M=M, rng=rng)
+    workers_apply_to_firms(wrk, emp, theta=8, rng=rng)
+
+    assert (emp.n_vacancies >= 0).all()
+    assert wrk.employed.any()
+    assert emp.current_labor.sum() >= start_labor
+    assert np.all(wrk.job_apps_head[wrk.employed] == -1)
+
+
+# ============================================================================
+# workers_apply_to_best_firm (single-best matching)
+# ============================================================================
+
+
+def test_best_firm_hired() -> None:
+    """Best-wage firm has vacancy → hired."""
+    M = 2
+    emp = mock_employer(
+        n=2,
+        queue_m=M,
+        wage_offer=np.array([2.0, 1.0]),
+        n_vacancies=np.array([1, 1]),
+        current_labor=np.array([0, 0], dtype=np.int64),
+    )
+    wrk = mock_worker(
+        n=1,
+        queue_m=M,
+        employer=np.array([-1], dtype=np.intp),
+        job_apps_head=np.array([0]),
+        job_apps_targets=np.array([[0, 1]], dtype=np.intp),  # firm 0 is best
+    )
+
+    workers_apply_to_best_firm(wrk, emp, theta=8, rng=make_rng(0))
+
+    assert wrk.employer[0] == 0
+    assert wrk.employed[0]
+
+
+def test_best_firm_full_stays_unemployed() -> None:
+    """Best-wage firm full → worker stays unemployed (no cascade)."""
+    M = 2
+    emp = mock_employer(
+        n=2,
+        queue_m=M,
+        wage_offer=np.array([2.0, 1.0]),
+        n_vacancies=np.array([0, 1]),  # best firm full, other has vacancy
+        current_labor=np.array([3, 0], dtype=np.int64),
+    )
+    wrk = mock_worker(
+        n=1,
+        queue_m=M,
+        employer=np.array([-1], dtype=np.intp),
+        job_apps_head=np.array([0]),
+        job_apps_targets=np.array([[0, 1]], dtype=np.intp),  # firm 0 is best
+    )
+
+    workers_apply_to_best_firm(wrk, emp, theta=8, rng=make_rng(0))
+
+    # Worker should NOT cascade to firm 1 — single-best means no retry
+    assert not wrk.employed[0]
+    assert wrk.employer[0] == -1
+    assert emp.n_vacancies[1] == 1  # firm 1 vacancy untouched

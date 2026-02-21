@@ -106,7 +106,7 @@ def test_workers_decide_firms_to_apply(benchmark, sim_steady_state):
 
 
 @pytest.mark.benchmark(group="events")
-def test_firms_hire_workers(benchmark, sim_steady_state):
-    """Benchmark worker hiring process."""
-    event = sim_steady_state.get_event("firms_hire_workers")
+def test_workers_apply_to_firms(benchmark, sim_steady_state):
+    """Benchmark cascade labor matching process."""
+    event = sim_steady_state.get_event("workers_apply_to_firms")
     benchmark(event.execute, sim_steady_state)

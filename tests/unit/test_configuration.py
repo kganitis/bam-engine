@@ -144,12 +144,9 @@ def test_default_pipeline_when_no_custom_path():
     """Default pipeline is used when pipeline_path is None."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
 
-    # Should have default pipeline (35 base + market rounds with default max_M=4, max_H=2)
-    # Base events increased from 33 to 34 after adding firms_fire_excess_workers
-    # Base events increased from 34 to 35 after switching to consumers_shop_sequential
-    # (no max_Z multiplier since consumers_shop_sequential is a single event)
-    expected_length = 35 + 2 * 4 + 2 * 2
-    assert len(sim.pipeline) == expected_length
+    # Fixed pipeline length after switching to cascade matching events:
+    # No longer depends on max_M or max_H — cascade events are single events
+    assert len(sim.pipeline) == 37
 
     # Check first and last events
     assert sim.pipeline.events[0].name == "firms_decide_desired_production"
@@ -339,7 +336,9 @@ events:
         pipeline_path = f.name
 
     try:
-        with pytest.raises(ValueError, match="pricing_phase cannot be used"):
+        with pytest.raises(
+            ValueError, match="cannot be used with a custom pipeline_path"
+        ):
             Simulation.init(
                 n_firms=10,
                 n_households=50,
@@ -376,6 +375,154 @@ events:
         assert len(sim.pipeline) == 3
     finally:
         Path(pipeline_path).unlink()
+
+
+def test_labor_matching_conflicts_with_pipeline_path():
+    """Setting labor_matching != 'cascade' with pipeline_path should raise."""
+
+    pipeline_yaml = """
+events:
+  - firms_decide_desired_production
+  - firms_calc_breakeven_price
+  - firms_adjust_price
+"""
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write(pipeline_yaml)
+        pipeline_path = f.name
+
+    try:
+        with pytest.raises(
+            ValueError, match="cannot be used with a custom pipeline_path"
+        ):
+            Simulation.init(
+                n_firms=10,
+                n_households=50,
+                pipeline_path=pipeline_path,
+                labor_matching="interleaved",
+                seed=42,
+            )
+    finally:
+        Path(pipeline_path).unlink()
+
+
+def test_credit_matching_conflicts_with_pipeline_path():
+    """Setting credit_matching != 'cascade' with pipeline_path should raise."""
+
+    pipeline_yaml = """
+events:
+  - firms_decide_desired_production
+  - firms_calc_breakeven_price
+  - firms_adjust_price
+"""
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write(pipeline_yaml)
+        pipeline_path = f.name
+
+    try:
+        with pytest.raises(
+            ValueError, match="cannot be used with a custom pipeline_path"
+        ):
+            Simulation.init(
+                n_firms=10,
+                n_households=50,
+                pipeline_path=pipeline_path,
+                credit_matching="interleaved",
+                seed=42,
+            )
+    finally:
+        Path(pipeline_path).unlink()
+
+
+def test_min_wage_ratchet_with_pipeline_path_is_ok():
+    """min_wage_ratchet with pipeline_path should be fine (doesn't affect pipeline)."""
+
+    pipeline_yaml = """
+events:
+  - firms_decide_desired_production
+  - firms_calc_breakeven_price
+  - firms_adjust_price
+"""
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write(pipeline_yaml)
+        pipeline_path = f.name
+
+    try:
+        sim = Simulation.init(
+            n_firms=10,
+            n_households=50,
+            pipeline_path=pipeline_path,
+            min_wage_ratchet=True,
+            seed=42,
+        )
+        assert sim.config.min_wage_ratchet is True
+    finally:
+        Path(pipeline_path).unlink()
+
+
+def test_multiple_pipeline_params_conflict_with_pipeline_path():
+    """Multiple non-default pipeline params with pipeline_path reports all."""
+
+    pipeline_yaml = """
+events:
+  - firms_decide_desired_production
+  - firms_calc_breakeven_price
+  - firms_adjust_price
+"""
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write(pipeline_yaml)
+        pipeline_path = f.name
+
+    try:
+        with pytest.raises(ValueError, match="labor_matching.*credit_matching"):
+            Simulation.init(
+                n_firms=10,
+                n_households=50,
+                pipeline_path=pipeline_path,
+                labor_matching="interleaved",
+                credit_matching="interleaved",
+                seed=42,
+            )
+    finally:
+        Path(pipeline_path).unlink()
+
+
+def test_implementation_variant_config_defaults():
+    """New implementation variant params have correct defaults."""
+    sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+    assert sim.config.labor_matching == "cascade"
+    assert sim.config.credit_matching == "cascade"
+    assert sim.config.min_wage_ratchet is False
+
+
+def test_implementation_variant_config_override():
+    """Implementation variant params can be overridden via kwargs."""
+    sim = Simulation.init(
+        n_firms=10,
+        n_households=50,
+        labor_matching="interleaved",
+        credit_matching="interleaved",
+        min_wage_ratchet=True,
+        seed=42,
+    )
+    assert sim.config.labor_matching == "interleaved"
+    assert sim.config.credit_matching == "interleaved"
+    assert sim.config.min_wage_ratchet is True
+
+
+def test_invalid_labor_matching_value():
+    """Invalid labor_matching value should raise ValueError."""
+    with pytest.raises(ValueError, match="labor_matching"):
+        Simulation.init(n_firms=10, n_households=50, labor_matching="invalid", seed=42)
+
+
+def test_invalid_credit_matching_value():
+    """Invalid credit_matching value should raise ValueError."""
+    with pytest.raises(ValueError, match="credit_matching"):
+        Simulation.init(n_firms=10, n_households=50, credit_matching="invalid", seed=42)
 
 
 def test_config_yaml_non_mapping_root():

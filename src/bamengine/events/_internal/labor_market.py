@@ -117,9 +117,19 @@ def calc_inflation_rate(ec: Economy, *, method: str = "yoy") -> None:
         log.info("--- Inflation Calculation complete ---")
 
 
-def adjust_minimum_wage(ec: Economy, wrk: Worker) -> None:
+def adjust_minimum_wage(ec: Economy, wrk: Worker, *, ratchet: bool = False) -> None:
     """
     Periodically index minimum wage to inflation.
+
+    Parameters
+    ----------
+    ec : Economy
+        Economy state with min_wage and price history.
+    wrk : Worker
+        Worker state (wages updated if below new minimum).
+    ratchet : bool, optional
+        If True, minimum wage never decreases (``max(1, 1 + inflation)``).
+        If False (default), wage tracks inflation both up and down.
 
     See Also
     --------
@@ -142,7 +152,10 @@ def adjust_minimum_wage(ec: Economy, wrk: Worker) -> None:
 
     inflation = float(ec.inflation_history[-1])
     old_min_wage = ec.min_wage
-    ec.min_wage = float(ec.min_wage) * (1.0 + inflation)
+    if ratchet:
+        ec.min_wage = float(ec.min_wage) * max(1.0, 1.0 + inflation)
+    else:
+        ec.min_wage = float(ec.min_wage) * (1.0 + inflation)
     if info_enabled:
         log.info(
             f"  Minimum wage revision: "
@@ -974,6 +987,240 @@ def firms_hire_workers(
             )
     if info_enabled:
         log.info("--- Firms Hiring Workers complete ---")
+
+
+def _hire_workers(
+    wrk: Worker,
+    emp: Employer,
+    firm_idx: int,
+    worker_ids: Idx1D,
+    *,
+    theta: int,
+    contract_poisson_mean: int = 0,
+    rng: Rng = make_rng(),
+) -> None:
+    """Apply state updates for hiring a batch of workers to a firm.
+
+    Shared helper used by both the legacy ``firms_hire_workers`` flow and the
+    new cascade matching events (``workers_apply_to_firms``,
+    ``workers_apply_to_best_firm``).
+    """
+    # worker-side updates
+    wrk.employer[worker_ids] = firm_idx
+    wrk.wage[worker_ids] = emp.wage_offer[firm_idx]
+    if contract_poisson_mean > 0:
+        wrk.periods_left[worker_ids] = theta + rng.poisson(contract_poisson_mean)
+    else:
+        wrk.periods_left[worker_ids] = theta
+    wrk.contract_expired[worker_ids] = 0
+    wrk.fired[worker_ids] = 0
+    wrk.job_apps_head[worker_ids] = -1
+    wrk.job_apps_targets[worker_ids, :] = -1
+
+    # firm-side updates
+    emp.current_labor[firm_idx] += worker_ids.size
+    emp.n_vacancies[firm_idx] -= worker_ids.size
+
+
+def workers_apply_to_firms(
+    wrk: Worker,
+    emp: Employer,
+    *,
+    theta: int,
+    contract_poisson_mean: int = 0,
+    rng: Rng = make_rng(),
+) -> None:
+    """Cascade matching: each worker walks their ranked queue until hired.
+
+    Workers are processed in random order. For each worker, the algorithm
+    pops firms from the application queue one at a time:
+
+    * If the firm has vacancies the worker is hired immediately and moves on.
+    * If the firm has no vacancies the worker cascades to the next firm.
+    * If all queued firms are exhausted the worker stays unemployed.
+
+    Because hiring is immediate, vacancies deplete in real-time as earlier
+    workers are placed. Late workers encounter reduced supply, producing
+    an irreducible floor of frictional unemployment — matching the book's
+    cascade semantics (Section 3.4).
+
+    See Also
+    --------
+    bamengine.events.labor_market.WorkersApplyToFirms : Full documentation
+    """
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Workers Apply to Firms (Cascade) ---")
+
+    stride = wrk.job_apps_targets.shape[1]
+    unemp_ids = np.where(wrk.employed == 0)[0]
+    active_mask = wrk.job_apps_head[unemp_ids] >= 0
+    applicants = unemp_ids[active_mask]
+
+    if applicants.size == 0:
+        if info_enabled:
+            log.info("  No workers with pending applications. Skipping.")
+            log.info("--- Workers Apply to Firms (Cascade) complete ---")
+        return
+
+    rng.shuffle(applicants)
+
+    if info_enabled:
+        total_vacancies = int(emp.n_vacancies.sum())
+        log.info(
+            f"  {applicants.size} workers searching across {total_vacancies} vacancies."
+        )
+
+    total_hires = 0
+    total_cascades = 0
+    total_exhausted = 0
+    debug_enabled = log.isEnabledFor(logging.DEBUG)
+
+    for j in applicants:
+        head = wrk.job_apps_head[j]
+        if head < 0:  # pragma: no cover
+            continue
+
+        hired = False
+        while head < (j + 1) * stride:
+            row, col = divmod(head, stride)
+            firm_id = wrk.job_apps_targets[row, col]
+
+            if firm_id < 0:
+                # End of queue
+                break
+
+            # Clear visited slot
+            wrk.job_apps_targets[row, col] = -1
+            head += 1
+
+            if emp.n_vacancies[firm_id] > 0:
+                # Hire immediately
+                worker_arr = np.array([j], dtype=np.intp)
+                _hire_workers(
+                    wrk,
+                    emp,
+                    firm_id,
+                    worker_arr,
+                    theta=theta,
+                    contract_poisson_mean=contract_poisson_mean,
+                    rng=rng,
+                )
+                total_hires += 1
+                hired = True
+                if debug_enabled:
+                    log.debug(
+                        f"    Worker {j} hired by firm {firm_id} "
+                        f"(vacancy now {emp.n_vacancies[firm_id]})"
+                    )
+                break
+            else:
+                total_cascades += 1
+                if debug_enabled:
+                    log.debug(f"    Worker {j}: firm {firm_id} full, cascading.")
+
+        if not hired:
+            wrk.job_apps_head[j] = -1
+            total_exhausted += 1
+
+    if info_enabled:
+        log.info(
+            f"  Cascade results: {total_hires} hired, "
+            f"{total_exhausted} exhausted queue, "
+            f"{total_cascades} cascade skips."
+        )
+        log.info("--- Workers Apply to Firms (Cascade) complete ---")
+
+
+def workers_apply_to_best_firm(
+    wrk: Worker,
+    emp: Employer,
+    *,
+    theta: int,
+    contract_poisson_mean: int = 0,
+    rng: Rng = make_rng(),
+) -> None:
+    """Single-best matching: each worker applies only to their top-choice firm.
+
+    This is the literal interpretation of book Section 3.4 where the worker
+    "chooses to enter a settlement stage **only** with the firm offering the
+    highest wage." If that firm has no vacancies the worker stays unemployed
+    — no cascade, no retry.
+
+    See Also
+    --------
+    bamengine.events.labor_market.WorkersApplyToBestFirm : Full documentation
+    """
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Workers Apply to Best Firm (Single-Best) ---")
+
+    stride = wrk.job_apps_targets.shape[1]
+    unemp_ids = np.where(wrk.employed == 0)[0]
+    active_mask = wrk.job_apps_head[unemp_ids] >= 0
+    applicants = unemp_ids[active_mask]
+
+    if applicants.size == 0:
+        if info_enabled:
+            log.info("  No workers with pending applications. Skipping.")
+            log.info("--- Workers Apply to Best Firm (Single-Best) complete ---")
+        return
+
+    rng.shuffle(applicants)
+
+    if info_enabled:
+        log.info(f"  {applicants.size} workers each apply to their best firm.")
+
+    total_hires = 0
+    total_rejected = 0
+    debug_enabled = log.isEnabledFor(logging.DEBUG)
+
+    for j in applicants:
+        head = wrk.job_apps_head[j]
+        if head < 0:  # pragma: no cover
+            continue
+
+        row, col = divmod(head, stride)
+
+        if head >= (j + 1) * stride:
+            wrk.job_apps_head[j] = -1
+            continue
+
+        firm_id = wrk.job_apps_targets[row, col]
+        # Clear visited slot
+        wrk.job_apps_targets[row, col] = -1
+        wrk.job_apps_head[j] = -1  # Only one attempt
+
+        if firm_id < 0:
+            continue
+
+        if emp.n_vacancies[firm_id] > 0:
+            worker_arr = np.array([j], dtype=np.intp)
+            _hire_workers(
+                wrk,
+                emp,
+                firm_id,
+                worker_arr,
+                theta=theta,
+                contract_poisson_mean=contract_poisson_mean,
+                rng=rng,
+            )
+            total_hires += 1
+            if debug_enabled:
+                log.debug(f"    Worker {j} hired by best firm {firm_id}.")
+        else:
+            total_rejected += 1
+            if debug_enabled:
+                log.debug(
+                    f"    Worker {j}: best firm {firm_id} full, stays unemployed."
+                )
+
+    if info_enabled:
+        log.info(
+            f"  Single-best results: {total_hires} hired, "
+            f"{total_rejected} rejected (no vacancy at best firm)."
+        )
+        log.info("--- Workers Apply to Best Firm (Single-Best) complete ---")
 
 
 def firms_calc_wage_bill(emp: Employer, wrk: Worker) -> None:

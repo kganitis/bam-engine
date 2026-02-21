@@ -330,6 +330,7 @@ class ConfigValidator:
         # Check boolean implementation variant parameters
         bool_params = [
             "price_cut_allow_increase",
+            "min_wage_ratchet",
         ]
         for key in bool_params:
             if key not in cfg:
@@ -348,6 +349,8 @@ class ConfigValidator:
             "job_search_method",
             "inflation_method",
             "pricing_phase",
+            "labor_matching",
+            "credit_matching",
         ]
         for key in str_enum_params:
             if key not in cfg:
@@ -481,6 +484,8 @@ class ConfigValidator:
             "job_search_method": {"vacancies_only", "all_firms"},
             "inflation_method": {"yoy", "annualized"},
             "pricing_phase": {"planning", "production"},
+            "labor_matching": {"cascade", "interleaved"},
+            "credit_matching": {"cascade", "interleaved"},
         }
 
         # Vector parameters (validated separately by _validate_float1d)

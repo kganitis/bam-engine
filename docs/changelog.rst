@@ -28,6 +28,43 @@ Added
   should be edited directly). Hard-coded mutual exclusion guard in
   ``Pipeline.__post_init__`` prevents both pricing pairs from coexisting.
 
+* Cascade matching for the labor market (book Section 3.3–3.4):
+  ``WorkersApplyToFirms`` event where each unemployed worker walks their
+  ranked firm queue (best→worst wage) and is hired at the first firm with
+  vacancies, or cascades to the next. Replaces the interleaved
+  ``WorkersSendOneRound <-> FirmsHireWorkers × max_M`` pattern in the
+  default pipeline. Shared ``_hire_workers()`` helper used by both legacy
+  and cascade code paths.
+
+* Cascade matching for the credit market (book Section 3.5):
+  ``FirmsApplyForLoans`` event where each firm walks their ranked bank
+  queue (lowest→highest rate). Loans granted immediately (partial if
+  supply < demand), remaining demand carries to next bank. Firms sorted
+  before processing by ``loan_priority_method`` (default:
+  ``"by_leverage"``). Replaces the interleaved
+  ``FirmsSendOneLoanApp <-> BanksProvideLoans × max_H`` pattern in the
+  default pipeline. Shared ``_provide_loan()`` helper used by both legacy
+  and cascade code paths.
+
+* ``WorkersApplyToBestFirm`` event — alternative single-best matching
+  where workers apply only to their top-choice firm (no cascade). Not in
+  default pipeline; available for experimentation.
+
+* ``labor_matching`` configuration parameter (``"cascade"`` or
+  ``"interleaved"``, default ``"cascade"``). Automates switching between
+  cascade and legacy interleaved labor matching events without manual
+  pipeline YAML editing. Raises ``ValueError`` if used with
+  ``pipeline_path``.
+
+* ``credit_matching`` configuration parameter (``"cascade"`` or
+  ``"interleaved"``, default ``"cascade"``). Same as above for the credit
+  market.
+
+* ``min_wage_ratchet`` configuration parameter (boolean, default
+  ``False``). When ``True``, minimum wage never decreases during deflation
+  (``max(1, 1 + inflation)``), matching the book's "revised upward"
+  specification (Section 3.4).
+
 * Diagnostics package (``diagnostics/``) with comprehensive analysis dashboards:
   baseline (13 figures), Growth+ (15 figures), credit market investigation,
   and labor market investigation scripts.
@@ -73,12 +110,41 @@ Changed
 * Default new-firm entry parameters: ``new_firm_size_factor`` 0.8 → 0.5,
   ``new_firm_production_factor`` 0.9 → 0.5, ``new_firm_wage_factor`` 0.9 → 0.5,
   ``new_firm_price_markup`` 1.0 → 1.5
-* Default ``max_loan_to_net_worth``: 2 → 5, ``job_search_method``:
-  ``"vacancies_only"`` → ``"all_firms"``
+* Default ``max_loan_to_net_worth``: 2 → 5
+* Default ``job_search_method``: ``"all_firms"`` → ``"vacancies_only"``
+  (book: "visiting firms that post vacancies")
+* Default ``matching_method``: ``"simultaneous"`` → ``"sequential"``
+  (book Section 3.4: "closed sequentially"). Only affects legacy
+  interleaved events; cascade events are inherently sequential.
+* Default pipeline now uses cascade matching (fixed 37 events, no longer
+  depends on ``max_M`` or ``max_H``). Legacy interleaved events retained
+  but off default path.
+* ``create_default_pipeline()`` accepts ``labor_matching`` and
+  ``credit_matching`` parameters for event swapping at pipeline creation.
+* Pipeline-altering parameter conflict check now covers
+  ``labor_matching`` and ``credit_matching`` in addition to
+  ``pricing_phase``. Error message reports all conflicting parameters.
 * ``Scenario.default_config`` now optional (defaults to ``{}``)
 * Growth+ and buffer-stock scenarios no longer override agent counts
-* Baseline targets: updated log GDP and unemployment bounds for 100-firm/500-household economy
+* Baseline targets: updated log GDP and unemployment bounds for
+  100-firm/500-household economy
 * Renamed 'destroyed' flag to 'collapsed' in ``Simulation``
+* Validation: unemployment metrics split across all scenarios —
+  ``unemployment_pct_in_bounds`` → ``unemployment_pct_above_floor`` +
+  ``unemployment_pct_below_ceiling`` (separate floor/ceiling checks).
+  ``unemployment_hard_ceiling`` → ``unemployment_absolute_ceiling``
+  (tightened from 30% to 20%, now BOOLEAN check type in baseline).
+  Removed ``unemployment_autocorrelation`` from baseline.
+* Validation: metric parameters (thresholds, bounds) moved from
+  ``metadata.params`` to inline in each metric's YAML entry (targets
+  files are now fully self-contained).
+* Validation: tightened visualization bounds and recalibrated targets
+  across all three scenarios (baseline, Growth+, buffer-stock).
+* Examples: default logging level ``"INFO"`` → ``"ERROR"`` in baseline
+  and Growth+ examples for cleaner output.
+* Event count: 43 → 45 events (2 new labor market, 1 new credit market).
+* Sphinx API docs: added ``FirmsApplyForLoans`` to
+  ``docs/api/events/credit_market.rst``.
 
 Fixed
 ~~~~~
