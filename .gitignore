@@ -35,6 +35,9 @@ asv_benchmarks/.asv/
 asv_benchmarks/env/
 asv_benchmarks/__pycache__/
 
+# Analysis outputs
+analysis/output/
+
 # Calibration outputs
 calibration/output/
 

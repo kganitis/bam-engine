@@ -6,13 +6,17 @@ Supports multiple scenarios:
     - buffer_stock: Buffer-stock consumption with R&D (Section 3.9.4)
 
 Usage:
-    # Run all phases sequentially (baseline)
+    # Run all phases sequentially (baseline, Morris default)
     python -m calibration --scenario baseline --workers 10
 
     # Run individual phases
     python -m calibration --phase sensitivity --scenario baseline
+    python -m calibration --phase morris --scenario baseline
     python -m calibration --phase grid --scenario baseline
     python -m calibration --phase stability --scenario baseline
+
+    # Use OAT instead of Morris for sensitivity
+    python -m calibration --phase sensitivity --method oat --scenario baseline
 
     # Run pairwise interaction analysis
     python -m calibration --phase pairwise --scenario baseline
@@ -28,6 +32,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from calibration.morris import MorrisResult, print_morris_report, run_morris_screening
 from calibration.optimizer import (
     CalibrationResult,
     analyze_parameter_patterns,
@@ -214,14 +219,46 @@ def _load_screening(
 
 
 # =============================================================================
+# Morris JSON serialization
+# =============================================================================
+
+
+def _save_morris(morris: MorrisResult, path: Path) -> None:
+    """Save Morris result to JSON."""
+    data = {
+        "scenario": morris.scenario,
+        "n_trajectories": morris.n_trajectories,
+        "n_evaluations": morris.n_evaluations,
+        "avg_time_per_run": morris.avg_time_per_run,
+        "n_seeds": morris.n_seeds,
+        "effects": {
+            e.name: {
+                "mu": e.mu,
+                "mu_star": e.mu_star,
+                "sigma": e.sigma,
+                "elementary_effects": e.elementary_effects,
+                "value_scores": {
+                    str(v): scores for v, scores in e.value_scores.items()
+                },
+            }
+            for e in morris.effects
+        },
+    }
+    path.parent.mkdir(exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2, default=str)
+    print(f"Morris results saved to {path}")
+
+
+# =============================================================================
 # Phase execution
 # =============================================================================
 
 
-def _run_sensitivity_phase(args: argparse.Namespace) -> SensitivityResult:
-    """Run Phase 1: Sensitivity analysis."""
+def _run_oat_phase(args: argparse.Namespace) -> SensitivityResult:
+    """Run Phase 1 using OAT sensitivity analysis."""
     print("=" * 70)
-    print(f"PHASE 1: SENSITIVITY ANALYSIS ({args.scenario})")
+    print(f"PHASE 1: OAT SENSITIVITY ANALYSIS ({args.scenario})")
     print("=" * 70)
 
     sensitivity = run_sensitivity_analysis(
@@ -237,6 +274,42 @@ def _run_sensitivity_phase(args: argparse.Namespace) -> SensitivityResult:
     _save_sensitivity(sensitivity, output_path)
 
     return sensitivity
+
+
+def _run_morris_phase(args: argparse.Namespace) -> SensitivityResult:
+    """Run Phase 1 using Morris Method screening."""
+    print("=" * 70)
+    print(f"PHASE 1: MORRIS METHOD SCREENING ({args.scenario})")
+    print("=" * 70)
+
+    morris = run_morris_screening(
+        scenario=args.scenario,
+        n_trajectories=args.morris_trajectories,
+        n_seeds=args.sensitivity_seeds,
+        n_periods=args.periods,
+        n_workers=args.workers,
+    )
+    print_morris_report(morris, args.sensitivity_threshold, args.sensitivity_threshold)
+
+    # Save detailed Morris results
+    morris_path = OUTPUT_DIR / f"{args.scenario}_morris.json"
+    _save_morris(morris, morris_path)
+
+    # Convert to SensitivityResult for downstream compatibility
+    sensitivity = morris.to_sensitivity_result()
+
+    # Save standard sensitivity JSON (for grid phase compatibility)
+    sens_path = OUTPUT_DIR / f"{args.scenario}_sensitivity.json"
+    _save_sensitivity(sensitivity, sens_path)
+
+    return sensitivity
+
+
+def _run_sensitivity_phase(args: argparse.Namespace) -> SensitivityResult:
+    """Run Phase 1: Sensitivity analysis (Morris or OAT)."""
+    if args.method == "oat":
+        return _run_oat_phase(args)
+    return _run_morris_phase(args)
 
 
 def _run_grid_phase(
@@ -500,14 +573,21 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Run all phases (baseline)
+  # Run all phases (baseline, Morris default)
   python -m calibration --scenario baseline --workers 10
 
   # Run individual phases
   python -m calibration --phase sensitivity --scenario baseline
+  python -m calibration --phase morris --scenario baseline
   python -m calibration --phase grid --scenario baseline
   python -m calibration --phase stability --scenario baseline
   python -m calibration --phase pairwise --scenario baseline
+
+  # Use OAT instead of Morris
+  python -m calibration --phase sensitivity --method oat --scenario baseline
+
+  # Morris with custom trajectories
+  python -m calibration --phase sensitivity --morris-trajectories 20
 
   # Resume interrupted grid search
   python -m calibration --phase grid --scenario baseline --resume
@@ -524,9 +604,21 @@ Examples:
     )
     parser.add_argument(
         "--phase",
-        choices=["sensitivity", "grid", "stability", "pairwise"],
+        choices=["sensitivity", "morris", "grid", "stability", "pairwise"],
         default=None,
         help="Run a single phase (default: all phases sequentially)",
+    )
+    parser.add_argument(
+        "--method",
+        choices=["morris", "oat"],
+        default="morris",
+        help='Sensitivity method: "morris" (default) or "oat"',
+    )
+    parser.add_argument(
+        "--morris-trajectories",
+        type=int,
+        default=10,
+        help="Number of Morris trajectories (default: 10)",
     )
     parser.add_argument(
         "--workers",
@@ -584,6 +676,8 @@ Examples:
     # Dispatch to phase
     if args.phase == "sensitivity":
         _run_sensitivity_phase(args)
+    elif args.phase == "morris":
+        _run_morris_phase(args)
     elif args.phase == "grid":
         _run_grid_phase(args)
     elif args.phase == "stability":

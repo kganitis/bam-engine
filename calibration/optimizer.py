@@ -235,7 +235,7 @@ def screen_single_seed(
     CalibrationResult
         Result with single-seed metrics.
     """
-    validate, _ = get_validation_funcs(scenario)
+    validate, _, _, _ = get_validation_funcs(scenario)
     result = validate(seed=seed, n_periods=n_periods, **params)
     return CalibrationResult(
         params=params,
@@ -282,7 +282,7 @@ def evaluate_stability(
     CalibrationResult
         Result with stability metrics and combined score.
     """
-    _, run_stability = get_validation_funcs(scenario)
+    _, run_stability, _, _ = get_validation_funcs(scenario)
     stability = run_stability(seeds=seeds, n_periods=n_periods, **params)
     combined = compute_combined_score(stability)
     return CalibrationResult(
