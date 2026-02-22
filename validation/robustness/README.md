@@ -33,8 +33,8 @@ python -m validation.robustness --entry-experiment
 # PA experiment without baseline comparison
 python -m validation.robustness --pa-experiment --no-baseline
 
-# Growth+ model (R&D extension)
-python -m validation.robustness --growth-plus
+# Use baseline model instead of Growth+ (Growth+ is the default)
+python -m validation.robustness --no-growth-plus
 
 # Custom settings
 python -m validation.robustness --seeds 10 --periods 500 --workers 4 --no-plots

@@ -20,7 +20,7 @@ two parts:
 
 For the full analysis (20 seeds x 5 experiments x 5-7 values), use::
 
-    python -m validation.robustness --growth-plus
+    python -m validation.robustness
 
 This example uses reduced settings for a quick demonstration.
 """

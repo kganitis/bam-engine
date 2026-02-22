@@ -2,6 +2,9 @@
 
 Runs internal validity analysis, sensitivity analysis (Section 3.10.1),
 and/or structural experiments (Section 3.10.2) from Delli Gatti et al. (2011).
+
+Uses the Growth+ (R&D) model by default, matching the book. Pass
+``--no-growth-plus`` to run with the baseline model instead.
 """
 
 from __future__ import annotations
@@ -102,9 +105,9 @@ def main(argv: list[str] | None = None) -> None:
         help="Skip baseline comparison in PA experiment.",
     )
     parser.add_argument(
-        "--growth-plus",
+        "--no-growth-plus",
         action="store_true",
-        help="Use Growth+ model (R&D extension) instead of baseline.",
+        help="Use baseline model instead of Growth+ (R&D extension).",
     )
 
     args = parser.parse_args(argv)
@@ -133,12 +136,12 @@ def main(argv: list[str] | None = None) -> None:
     if args.experiments:
         experiments = [e.strip() for e in args.experiments.split(",")]
 
-    # Growth+ setup hook and collect config
-    setup_hook = None
-    collect_config = None
-    model_label = "baseline"
-
-    if args.growth_plus:
+    # Growth+ is the default (book's Section 3.10 uses Growth+ model)
+    if args.no_growth_plus:
+        setup_hook = None
+        collect_config = None
+        model_label = "baseline"
+    else:
         from validation.robustness.internal_validity import (
             GROWTH_PLUS_COLLECT_CONFIG,
             setup_growth_plus,
