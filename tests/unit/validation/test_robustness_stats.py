@@ -310,16 +310,18 @@ class TestExperiments:
     """Test experiment definitions."""
 
     def test_all_experiments_registered(self) -> None:
-        """All 5 experiments should be in the registry."""
+        """All experiments should be in the registry."""
         from validation.robustness.experiments import ALL_EXPERIMENT_NAMES, EXPERIMENTS
 
-        assert len(EXPERIMENTS) == 5
+        assert len(EXPERIMENTS) == 7  # 5 parameter + 2 structural
         assert set(ALL_EXPERIMENT_NAMES) == {
             "credit_market",
             "goods_market",
             "labor_applications",
             "contract_length",
             "economy_size",
+            "goods_market_no_pa",
+            "entry_neutrality",
         }
 
     def test_experiment_labels_match_values(self) -> None:
@@ -379,3 +381,58 @@ class TestExperiments:
         from validation.robustness.experiments import ECONOMY_SIZE
 
         assert len(ECONOMY_SIZE.values) == 7
+
+    def test_structural_experiments_registered(self) -> None:
+        """Structural experiments should be in both registries."""
+        from validation.robustness.experiments import (
+            STRUCTURAL_EXPERIMENT_NAMES,
+            STRUCTURAL_EXPERIMENTS,
+        )
+
+        assert set(STRUCTURAL_EXPERIMENT_NAMES) == {
+            "goods_market_no_pa",
+            "entry_neutrality",
+        }
+        assert len(STRUCTURAL_EXPERIMENTS) == 2
+
+    def test_entry_neutrality_has_setup_fn(self) -> None:
+        """Entry neutrality should have a setup_fn for taxation extension."""
+        from validation.robustness.experiments import ENTRY_NEUTRALITY
+
+        assert ENTRY_NEUTRALITY.setup_fn is not None
+        assert callable(ENTRY_NEUTRALITY.setup_fn)
+
+    def test_goods_market_no_pa_has_no_setup_fn(self) -> None:
+        """Goods market no-PA should not need a setup_fn."""
+        from validation.robustness.experiments import GOODS_MARKET_NO_PA
+
+        assert GOODS_MARKET_NO_PA.setup_fn is None
+
+    def test_entry_neutrality_values(self) -> None:
+        """Entry neutrality should sweep tax rates from 0 to 90%."""
+        from validation.robustness.experiments import ENTRY_NEUTRALITY
+
+        assert ENTRY_NEUTRALITY.param == "profit_tax_rate"
+        assert ENTRY_NEUTRALITY.values == [0.0, 0.3, 0.5, 0.7, 0.9]
+        assert ENTRY_NEUTRALITY.baseline_value == 0.0
+
+    def test_goods_market_no_pa_values(self) -> None:
+        """Goods market no-PA should combine random matching with Z sweep."""
+        from validation.robustness.experiments import GOODS_MARKET_NO_PA
+
+        assert GOODS_MARKET_NO_PA.param is None  # multi-param
+        assert len(GOODS_MARKET_NO_PA.values) == 5
+        for v in GOODS_MARKET_NO_PA.values:
+            assert v["consumer_matching"] == "random"
+            assert "max_Z" in v
+
+    def test_setup_taxation_is_picklable(self) -> None:
+        """setup_taxation must be picklable for ProcessPoolExecutor."""
+        import pickle
+
+        from validation.robustness.experiments import setup_taxation
+
+        # Module-level functions are picklable; lambdas/closures are not
+        pickled = pickle.dumps(setup_taxation)
+        restored = pickle.loads(pickled)
+        assert callable(restored)

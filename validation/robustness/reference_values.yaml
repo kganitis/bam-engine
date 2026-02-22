@@ -198,6 +198,42 @@ sensitivity:
         mechanism: "increased competition → more rationing → less profit → less R&D"
       collapse_risk: low
 
+# ─── Structural Experiments (Section 3.10.2) ────────────────────────────────
+
+structural:
+  pa_experiment:
+    description: >
+      Disable preferential attachment (consumer loyalty) and observe the
+      effect on volatility, co-movements, and AR structure.
+
+    pa_off:
+      ar_phi1: 0.4  # "autoregressive parameter drops to ~0.4"
+      gdp_volatility: lower  # "sharp drop in volatility"
+      deep_crises: absent  # "disappearance of deep crises"
+      real_wage_comovement: lagging_or_acyclical
+      price_comovement: lagging
+      firm_size_kurtosis: lower  # firms become more alike
+
+    comparison:
+      volatility_direction: decrease  # PA-off has lower volatility than PA-on
+      persistence_direction: decrease  # phi_1 drops from ~0.8 to ~0.4
+      kurtosis_direction: decrease     # firm size distribution becomes more uniform
+
+  entry_neutrality:
+    description: >
+      Heavy profit taxation without redistribution to test whether automatic
+      firm entry artificially drives recovery.
+
+    tax_rates: [0.0, 0.3, 0.5, 0.7, 0.9]
+    expected_pattern: monotonic_degradation
+    monotonicity:
+      unemployment: increasing  # worsens with higher tax
+      gdp_growth: decreasing   # declines with higher tax
+      gdp_volatility: increasing  # increases with higher tax
+    conclusion: >
+      Monotonic degradation confirms that firm entry does NOT artificially
+      drive recovery. Business cycle dynamics are genuinely endogenous.
+
 # ─── Tolerance Guidelines ───────────────────────────────────────────────────
 #
 # These are NOT from the book but provide practical thresholds for checking

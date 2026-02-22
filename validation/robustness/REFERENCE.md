@@ -280,11 +280,119 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
+## 3. Structural Experiments (Section 3.10.2)
+
+### 3.1 Overview
+
+> In the last paragraphs we investigate the structural properties of the model
+> by means of two experiments which might shed some light on the endogenous
+> mechanisms of the business cycle.
+
+Section 3.10.2 describes two experiments that test the model's **mechanisms**
+(not just parameter values):
+
+1. **PA experiment**: Disable consumer loyalty ("preferential attachment")
+1. **Entry neutrality experiment**: Heavy profit taxation without redistribution
+
+### 3.2 Preferential Attachment (PA) Experiment
+
+> The first experiment consists of switching off the preferential attachment
+> mechanism operating on the consumption goods market (as described in Section
+> 3.4), which formalizes the simple loyalty of consumers toward the firm from
+> which they purchased in the previous period. [...] What we find is a sharp drop
+> in the volatility of output, as well as the disappearance of the deep crises
+> which occasionally hit the economy.
+
+**What to check (PA off vs PA on):**
+
+- Output volatility: **sharp drop** when PA is off
+- Deep crises: **vanish** when PA is off
+- Co-movement structure: wages and prices become **lagging/acyclical**
+- AR persistence: drops from ~0.8 to ~0.4
+
+> This happens because the preferential attachment mechanism can be seen as a
+> positive feedback loop or self-reinforcing mechanism: as a firm gets more
+> customers, it can expand its production, hire more workers, and pay higher
+> wages, which in turn attract more customers. When this loop is switched off,
+> the economy becomes more "competitive" in the sense that all firms are
+> essentially alike, and the system is less prone to large fluctuations.
+
+**Reference figure:** `notes/BAM/figures/robustness/3_10.png` (log-output time
+series comparison: PA on vs PA off)
+
+**Expected PA-off behavior:**
+
+| Property           | PA on (baseline)     | PA off                         |
+| ------------------ | -------------------- | ------------------------------ |
+| GDP volatility     | Higher               | **Much lower**                 |
+| Deep crises        | Occasional           | **Absent**                     |
+| Wages co-movement  | Procyclical, leading | **Lagging or acyclical**       |
+| Price co-movement  | Acyclical            | **Lagging**                    |
+| AR(1) phi_1        | ~0.8                 | **~0.4** (less persistent)     |
+| Firm size kurtosis | High                 | **Lower** (firms become alike) |
+
+### 3.3 Z-Sweep with PA Off
+
+> As the number of firms in the consideration set Z is increased from 2 to 6
+> with PA switched off, the already-smooth output becomes even smoother.
+
+The Z-sweep with PA off should show **minimal additional effect** since the PA
+mechanism (the main driver of inequality) is already disabled. Competition
+increases with Z but the effect is muted compared to the PA-on case.
+
+### 3.4 Entry Neutrality Experiment
+
+> The second experiment is meant to address a criticism that can potentially
+> be raised against the model, namely that the automatic entry of new firms
+> might artificially drive economic recovery after a crisis. To test this
+> hypothesis, we impose heavy profit taxation (without redistribution) to
+> increase the frequency and severity of firm bankruptcies. If the entry
+> mechanism were artificially driving recovery, we would expect the economy to
+> perform similarly regardless of the tax rate.
+
+**What we find instead:**
+
+> Instead, we observe a monotonic degradation of economic performance as the
+> tax rate increases from 0% to 90%, with substantially worse unemployment,
+> GDP growth, and volatility at higher tax rates. This confirms that the
+> business cycle dynamics in the model are genuinely endogenous and not an
+> artifact of the entry mechanism.
+
+**Expected behavior:**
+
+| Tax rate | Unemployment | GDP growth | Volatility  | Bankruptcies |
+| -------- | ------------ | ---------- | ----------- | ------------ |
+| 0%       | Baseline     | Baseline   | Baseline    | Baseline     |
+| 30%      | Higher       | Lower      | Higher      | Higher       |
+| 50%      | Higher       | Lower      | Higher      | Higher       |
+| 70%      | Much higher  | Much lower | Much higher | Much higher  |
+| 90%      | Extreme      | Very low   | Very high   | Very high    |
+
+**Key conclusion:** Monotonic degradation confirms that automatic firm entry
+does NOT artificially drive recovery. The business cycle is endogenous.
+
+______________________________________________________________________
+
+## Figure Reference
+
+| Figure | Description                                 | Path                                                                                          |
+| ------ | ------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| 3.9    | Co-movements (combined, 5 panels)           | `notes/BAM/figures/robustness/3_9.png`                                                        |
+| 3.9a   | Unemployment co-movements                   | `notes/BAM/figures/robustness/3_9a_unemployment.png`                                          |
+| 3.9b   | Productivity co-movements                   | `notes/BAM/figures/robustness/3_9b_productivity.png`                                          |
+| 3.9c   | Price index co-movements                    | `notes/BAM/figures/robustness/3_9c_price-index.png`                                           |
+| 3.9d   | Real interest rate co-movements             | `notes/BAM/figures/robustness/3_9d_real-interest-rate.png`                                    |
+| 3.9e   | Real wage co-movements                      | `notes/BAM/figures/robustness/3_9e_real-wage.png`                                             |
+| 3.10   | Log-output time series (PA on vs PA off)    | `notes/BAM/figures/robustness/3_10.png`                                                       |
+| 3.7f   | GDP cyclical component IRF (AR(2) baseline) | `notes/BAM/figures/dsge-comparison/3_7f_gdp-cyclical-component-impulse-response-function.png` |
+
+______________________________________________________________________
+
 ## Source
 
-All quotes are from Chapter 3, Section 3.10.1 of:
+All quotes are from Chapter 3, Sections 3.10.1 and 3.10.2 of:
 
 Delli Gatti, D., Desiderio, S., Gaffeo, E., Cirillo, P., & Gallegati, M. (2011).
 *Macroeconomics from the Bottom-up*. Springer.
 
-Full text of Section 3.10.1 is in `notes/BAM/markdown/3.10_Robustness.md`.
+Full text of Section 3.10 is in `notes/BAM/markdown/3.10_Robustness.md`.

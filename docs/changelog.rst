@@ -16,6 +16,36 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Added
 ~~~~~
 
+* ``consumer_matching`` configuration parameter (``"loyalty"`` or ``"random"``,
+  default ``"loyalty"``). Controls whether consumers use preferential attachment
+  (loyalty to previous largest producer) when selecting firms to visit.
+  ``"random"`` disables the positive feedback loop for structural experiments.
+
+* ``extensions/taxation/`` package for profit taxation without redistribution.
+  ``FirmsTaxProfits`` event hooks after ``firms_validate_debt_commitments``
+  and deducts ``profit_tax_rate * max(0, net_profit)`` from profitable firms.
+  Revenue vanishes (not redistributed). Used by entry neutrality experiment.
+
+* ``setup_fn`` field on ``Experiment`` dataclass for experiments that need
+  post-init simulation setup (e.g. attaching extension events/config).
+  Must be a module-level function for ``ProcessPoolExecutor`` pickling.
+
+* Section 3.10.2 structural experiments in ``validation/robustness/``:
+
+  - **PA experiment** (``run_pa_experiment``): Disables consumer loyalty and
+    runs internal validity + Z-sweep to show volatility drops and deep crises
+    vanish. Optional baseline comparison.
+  - **Entry neutrality experiment** (``run_entry_experiment``): Sweeps profit
+    tax rate from 0% to 90% to confirm automatic firm entry does NOT
+    artificially drive recovery (monotonic degradation expected).
+  - New experiment definitions: ``goods_market_no_pa``, ``entry_neutrality``
+  - New CLI flags: ``--structural-only``, ``--pa-experiment``,
+    ``--entry-experiment``, ``--no-baseline``
+  - Visualization: ``plot_pa_gdp_comparison``, ``plot_pa_comovements``,
+    ``plot_entry_comparison``
+  - Reporting: ``format_pa_report``, ``format_entry_report`` with
+    monotonicity assessment
+
 * Planning-phase breakeven price and price adjustment events
   (``firms_plan_breakeven_price``, ``firms_plan_price``) that use previous
   period's costs and desired production. These are mutually exclusive with the

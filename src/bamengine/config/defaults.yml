@@ -173,3 +173,7 @@ credit_matching: interleaved         # Credit market matching algorithm
 min_wage_ratchet: false              # Minimum wage ratchet (upward-only revision)
                                      # true = max(1, 1 + inflation) — wage never decreases
                                      # false = (1 + inflation) — wage can decrease during deflation
+
+consumer_matching: loyalty           # Consumer firm selection strategy
+                                     # "loyalty" = preferential attachment (largest prev producer)
+                                     # "random" = pure random selection (no loyalty)

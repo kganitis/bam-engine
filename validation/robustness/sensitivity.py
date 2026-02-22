@@ -331,6 +331,7 @@ def run_sensitivity_analysis(
                         irf_periods,
                         setup_hook,
                         collect_config,
+                        exp.setup_fn,
                     )
                     seed_analyses.append(analysis)
                     if verbose and i % 5 == 0:
@@ -349,6 +350,7 @@ def run_sensitivity_analysis(
                             irf_periods,
                             setup_hook,
                             collect_config,
+                            exp.setup_fn,
                         ): seed
                         for seed in seeds
                     }

@@ -548,3 +548,72 @@ for i, var in enumerate(COMOVEMENT_VARS):
 
 plt.tight_layout()
 plt.show()
+
+# %%
+# Structural Experiments (Section 3.10.2)
+# ----------------------------------------
+#
+# Section 3.10.2 describes two experiments that test model **mechanisms**:
+#
+# 1. **PA experiment**: Disable consumer loyalty ("preferential attachment")
+#    to show that volatility drops and deep crises vanish.
+#
+# 2. **Entry neutrality**: Apply heavy profit taxation without redistribution
+#    to confirm that automatic firm entry does NOT drive recovery.
+#
+# Here we demonstrate both using the ``validation.robustness`` API.
+
+from validation.robustness import run_entry_experiment, run_pa_experiment
+
+# %%
+# PA Experiment (quick demo)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Disabling consumer loyalty removes the positive feedback loop where
+# successful firms attract more customers.  Without PA, the economy
+# becomes more "competitive" and less prone to large fluctuations.
+
+print("\n--- PA Experiment (quick demo) ---")
+pa_result = run_pa_experiment(
+    n_seeds=2,
+    n_periods=200,
+    burn_in=100,
+    n_workers=1,
+    verbose=False,
+    include_baseline=True,
+)
+
+# Show key comparison if baseline available
+if pa_result.baseline_validity is not None:
+    bl = pa_result.baseline_validity
+    iv = pa_result.pa_off_validity
+    vol_on = bl.cross_sim_stats.get("gdp_growth_std", {}).get("mean", float("nan"))
+    vol_off = iv.cross_sim_stats.get("gdp_growth_std", {}).get("mean", float("nan"))
+    print(f"  GDP volatility: PA on = {vol_on:.4f}, PA off = {vol_off:.4f}")
+    print(
+        f"  AR persistence: PA on phi_1 = {bl.mean_ar_coeffs[1]:.3f},"
+        f" PA off phi_1 = {iv.mean_ar_coeffs[1]:.3f}"
+    )
+
+# %%
+# Entry Neutrality Experiment (quick demo)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Heavy taxation without redistribution increases bankruptcies.
+# If entry were artificially driving recovery, performance would be
+# unchanged.  Instead, we expect monotonic degradation.
+
+print("\n--- Entry Neutrality Experiment (quick demo) ---")
+entry_result = run_entry_experiment(
+    n_seeds=2,
+    n_periods=200,
+    burn_in=100,
+    n_workers=1,
+    verbose=False,
+)
+
+exp = entry_result.tax_sweep.experiments["entry_neutrality"]
+print(f"  Tax rates tested: {[vr.label for vr in exp.value_results]}")
+for vr in exp.value_results:
+    u = vr.stats.get("unemployment_mean", {}).get("mean", float("nan"))
+    print(f"  {vr.label}: unemployment = {u:.1%}")

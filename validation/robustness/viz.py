@@ -1,12 +1,14 @@
 """Visualization for robustness analysis.
 
 Generates co-movement plots (Figure 3.9 from the book), impulse-response
-function comparisons, and sensitivity analysis summary plots.
+function comparisons, sensitivity analysis summary plots, and structural
+experiment visualizations (Section 3.10.2).
 """
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -15,6 +17,12 @@ from validation.robustness.internal_validity import (
     InternalValidityResult,
 )
 from validation.robustness.sensitivity import ExperimentResult
+
+if TYPE_CHECKING:
+    from validation.robustness.structural import (
+        EntryExperimentResult,
+        PAExperimentResult,
+    )
 
 _OUTPUT_DIR = Path(__file__).parent / "output"
 
@@ -299,6 +307,244 @@ def plot_sensitivity_comovements(
     plt.tight_layout()
 
     fname = f"sensitivity_{exp.name}_comovements.png"
+    fig.savefig(output_dir / fname, bbox_inches="tight", dpi=150)
+    print(f"Saved {fname} to {output_dir}/")
+
+    if show:
+        plt.show()
+
+
+# ─── Section 3.10.2: Structural Experiment Plots ─────────────────────────
+
+
+def plot_pa_gdp_comparison(
+    pa_result: PAExperimentResult,
+    output_dir: Path | None = None,
+    show: bool = True,
+    seed: int = 0,
+) -> None:
+    """Plot GDP time series comparison: PA on vs PA off (Figure 3.10).
+
+    Runs two quick single-seed simulations to produce overlaid GDP
+    time series showing how volatility drops when PA is disabled.
+
+    Parameters
+    ----------
+    pa_result : PAExperimentResult
+        Result from :func:`run_pa_experiment`.
+    output_dir : Path or None
+        Directory for saving figures.
+    show : bool
+        Whether to call plt.show().
+    seed : int
+        Seed for the comparison simulations.
+    """
+    import matplotlib.pyplot as plt
+
+    import bamengine as bam
+
+    if output_dir is None:
+        output_dir = _OUTPUT_DIR
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    n_periods = pa_result.pa_off_validity.n_periods
+
+    # Run two quick sims for visual comparison
+    sim_on = bam.Simulation.init(
+        seed=seed, n_periods=n_periods, logging={"default_level": "ERROR"}
+    )
+    res_on = sim_on.run(collect=True)
+    gdp_on = res_on.economy_data["real_gdp"]
+
+    sim_off = bam.Simulation.init(
+        seed=seed,
+        n_periods=n_periods,
+        consumer_matching="random",
+        logging={"default_level": "ERROR"},
+    )
+    res_off = sim_off.run(collect=True)
+    gdp_off = res_off.economy_data["real_gdp"]
+
+    fig, ax = plt.subplots(1, 1, figsize=(12, 5))
+    periods = np.arange(len(gdp_on))
+    ax.plot(periods, np.log(gdp_on), "b-", linewidth=1, alpha=0.8, label="PA on")
+    ax.plot(periods, np.log(gdp_off), "r-", linewidth=1, alpha=0.8, label="PA off")
+    ax.set_title(
+        "Log GDP: Preferential Attachment on vs off (Section 3.10.2, Figure 3.10)",
+        fontsize=12,
+    )
+    ax.set_xlabel("Period")
+    ax.set_ylabel("Log GDP")
+    ax.legend(fontsize=10)
+    ax.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    fname = "pa_gdp_comparison.png"
+    fig.savefig(output_dir / fname, bbox_inches="tight", dpi=150)
+    print(f"Saved {fname} to {output_dir}/")
+
+    if show:
+        plt.show()
+
+
+def plot_pa_comovements(
+    pa_result: PAExperimentResult,
+    output_dir: Path | None = None,
+    show: bool = True,
+) -> None:
+    """Plot co-movement comparison: baseline vs PA-off.
+
+    3x2 grid with both conditions overlaid. Shows price index and wages
+    shifting to lagging/acyclical when PA is disabled.
+
+    Parameters
+    ----------
+    pa_result : PAExperimentResult
+        Result from :func:`run_pa_experiment`.
+    output_dir : Path or None
+        Directory for saving figures.
+    show : bool
+        Whether to call plt.show().
+    """
+    import matplotlib.pyplot as plt
+
+    if output_dir is None:
+        output_dir = _OUTPUT_DIR
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    pa_off = pa_result.pa_off_validity
+    baseline = pa_result.baseline_validity
+
+    max_lag = (len(next(iter(pa_off.mean_comovements.values()))) - 1) // 2
+    lags = np.arange(-max_lag, max_lag + 1)
+
+    fig, axes = plt.subplots(3, 2, figsize=(10, 12))
+    fig.suptitle(
+        "Co-movements: PA on (baseline) vs PA off\n"
+        f"{pa_off.n_seeds} seeds, {pa_off.n_periods} periods",
+        fontsize=13,
+        y=0.98,
+    )
+
+    for i, var in enumerate(COMOVEMENT_VARIABLES):
+        ax = axes.flat[i]
+        title = _VARIABLE_TITLES[var]
+
+        # PA off (always available)
+        ax.plot(
+            lags,
+            pa_off.mean_comovements[var],
+            "ro-",
+            markersize=5,
+            linewidth=1.5,
+            label="PA off (mean)",
+        )
+
+        # Baseline (if available)
+        if baseline is not None:
+            ax.plot(
+                lags,
+                baseline.mean_comovements[var],
+                "b+-",
+                markersize=8,
+                linewidth=1.5,
+                label="PA on (mean)",
+                markeredgewidth=1.5,
+            )
+
+        ax.axhline(y=0, color="gray", linewidth=0.5)
+        ax.axhline(y=0.2, color="gray", linewidth=0.5, linestyle=":")
+        ax.axhline(y=-0.2, color="gray", linewidth=0.5, linestyle=":")
+        ax.set_title(f"{_PANEL_LABELS[i]} {title}", fontsize=10)
+        ax.set_xlabel("Lead/lag (quarters)")
+        ax.set_xticks(lags)
+        ax.legend(fontsize=8, loc="best")
+
+    axes.flat[5].set_visible(False)
+    plt.tight_layout()
+
+    fname = "pa_comovements_comparison.png"
+    fig.savefig(output_dir / fname, bbox_inches="tight", dpi=150)
+    print(f"Saved {fname} to {output_dir}/")
+
+    if show:
+        plt.show()
+
+
+def plot_entry_comparison(
+    entry_result: EntryExperimentResult,
+    output_dir: Path | None = None,
+    show: bool = True,
+) -> None:
+    """Plot entry neutrality results across tax rates.
+
+    Shows unemployment, GDP growth volatility, and collapse rate across
+    profit tax rates. Monotonic degradation confirms entry mechanism
+    does not artificially drive recovery.
+
+    Parameters
+    ----------
+    entry_result : EntryExperimentResult
+        Result from :func:`run_entry_experiment`.
+    output_dir : Path or None
+        Directory for saving figures.
+    show : bool
+        Whether to call plt.show().
+    """
+    import matplotlib.pyplot as plt
+
+    if output_dir is None:
+        output_dir = _OUTPUT_DIR
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    exp_result = entry_result.tax_sweep.experiments["entry_neutrality"]
+    vrs = exp_result.value_results
+    labels = [vr.label for vr in vrs]
+
+    # Extract statistics
+    unemp = [
+        vr.stats.get("unemployment_mean", {}).get("mean", float("nan")) for vr in vrs
+    ]
+    gdp_vol = [
+        vr.stats.get("gdp_growth_std", {}).get("mean", float("nan")) for vr in vrs
+    ]
+    collapse_rates = [vr.collapse_rate for vr in vrs]
+
+    fig, axes = plt.subplots(1, 3, figsize=(14, 5))
+    fig.suptitle(
+        "Entry Neutrality: Impact of Profit Taxation (Section 3.10.2)",
+        fontsize=13,
+    )
+
+    x = np.arange(len(labels))
+
+    # Unemployment
+    axes[0].bar(x, [u * 100 for u in unemp], color="steelblue")
+    axes[0].set_xticks(x)
+    axes[0].set_xticklabels(labels)
+    axes[0].set_ylabel("Unemployment (%)")
+    axes[0].set_title("Mean Unemployment")
+
+    # GDP growth volatility
+    axes[1].bar(x, [v * 100 for v in gdp_vol], color="coral")
+    axes[1].set_xticks(x)
+    axes[1].set_xticklabels(labels)
+    axes[1].set_ylabel("GDP Growth Volatility (%)")
+    axes[1].set_title("GDP Volatility")
+
+    # Collapse rate
+    axes[2].bar(x, [c * 100 for c in collapse_rates], color="gray")
+    axes[2].set_xticks(x)
+    axes[2].set_xticklabels(labels)
+    axes[2].set_ylabel("Collapse Rate (%)")
+    axes[2].set_title("Collapse Rate")
+
+    plt.tight_layout()
+
+    fname = "entry_neutrality_comparison.png"
     fig.savefig(output_dir / fname, bbox_inches="tight", dpi=150)
     print(f"Saved {fname} to {output_dir}/")
 

@@ -1,11 +1,15 @@
 """Text reporting for robustness analysis.
 
-Generates formatted console output summarising internal validity
-and sensitivity analysis results.  Reports are designed to mirror the
-qualitative findings described in Section 3.10.1 of the book.
+Generates formatted console output summarising internal validity,
+sensitivity analysis, and structural experiment results.  Reports are
+designed to mirror the qualitative findings described in Sections
+3.10.1 and 3.10.2 of the book.
 """
 
 from __future__ import annotations
+
+from itertools import pairwise
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -14,6 +18,12 @@ from validation.robustness.internal_validity import (
     InternalValidityResult,
 )
 from validation.robustness.sensitivity import ExperimentResult, SensitivityResult
+
+if TYPE_CHECKING:
+    from validation.robustness.structural import (
+        EntryExperimentResult,
+        PAExperimentResult,
+    )
 
 # ─── Formatting Helpers ──────────────────────────────────────────────────────
 
@@ -382,3 +392,243 @@ def format_sensitivity_report(result: SensitivityResult) -> str:
 def print_sensitivity_report(result: SensitivityResult) -> None:
     """Print sensitivity analysis report to stdout."""
     print(format_sensitivity_report(result))
+
+
+# ─── Structural Experiment Reports (Section 3.10.2) ─────────────────────────
+
+
+def format_pa_report(pa_result: PAExperimentResult) -> str:
+    """Format the preferential attachment experiment as a text report.
+
+    Parameters
+    ----------
+    pa_result : PAExperimentResult
+        Result from :func:`run_pa_experiment`.
+
+    Returns
+    -------
+    str
+        Formatted report covering PA-off validity, baseline comparison,
+        and Z-sweep results.
+    """
+    lines: list[str] = []
+
+    lines.append(_header("PA Experiment (Section 3.10.2)"))
+
+    # ── PA-off internal validity summary ──────────────────────────────
+    iv = pa_result.pa_off_validity
+    lines.append(_subheader("1. Internal Validity (PA off)"))
+    lines.append(
+        f"  Configuration: {iv.n_seeds} seeds, "
+        f"{iv.n_periods} periods, {iv.burn_in} burn-in"
+    )
+    n_valid = iv.n_seeds - iv.n_degenerate
+    lines.append(
+        f"  Valid: {n_valid}, "
+        f"Collapsed: {iv.n_collapsed}, "
+        f"Degenerate: {iv.n_degenerate}"
+    )
+
+    # Key macroeconomic statistics
+    stat_keys = [
+        ("unemployment_mean", "Unemployment rate"),
+        ("gdp_growth_mean", "GDP growth rate"),
+        ("gdp_growth_std", "GDP growth volatility"),
+        ("inflation_mean", "Inflation rate"),
+    ]
+    lines.append(f"\n  {'Statistic':<30s} {'Mean':>10s} {'Std':>10s} {'CV':>8s}")
+    for key, label in stat_keys:
+        if key in iv.cross_sim_stats:
+            s = iv.cross_sim_stats[key]
+            lines.append(
+                f"  {label:<30s} {_fmt(s['mean'], '.4f'):>10s} "
+                f"{_fmt(s['std'], '.4f'):>10s} "
+                f"{_fmt(s['cv'], '.3f'):>8s}"
+            )
+
+    # Co-movement structure (PA off)
+    var_labels = {
+        "unemployment": "Unemployment",
+        "productivity": "Productivity",
+        "price_index": "Price index",
+        "interest_rate": "Real interest rate",
+        "real_wage": "Real wage",
+    }
+    if iv.mean_comovements:
+        max_lag = (len(next(iter(iv.mean_comovements.values()))) - 1) // 2
+        lines.append("\n  Co-movements (lag=0):")
+        lines.append(f"  {'Variable':<25s} {'Corr':>8s} {'Std':>8s}  Classification")
+        for var in COMOVEMENT_VARIABLES:
+            mean_val = iv.mean_comovements[var][max_lag]
+            std_val = iv.std_comovements[var][max_lag]
+            if abs(mean_val) <= 0.2:
+                classification = "acyclical"
+            elif mean_val > 0:
+                classification = "procyclical"
+            else:
+                classification = "countercyclical"
+            lines.append(
+                f"  {var_labels[var]:<25s} {mean_val:>8.3f} "
+                f"{std_val:>8.3f}  {classification}"
+            )
+
+    # AR structure (PA off)
+    valid = [a for a in iv.seed_analyses if not a.collapsed and not a.degenerate]
+    if valid:
+        lines.append(
+            f"\n  AR structure: AR({iv.mean_ar_order}),"
+            f" phi_1={iv.mean_ar_coeffs[1]:.3f},"
+            f" R²={iv.mean_ar_r_squared:.3f}"
+        )
+
+    # ── Comparison with baseline (PA on) ──────────────────────────────
+    if pa_result.baseline_validity is not None:
+        bl = pa_result.baseline_validity
+        lines.append(_subheader("2. Comparison: PA off vs PA on (baseline)"))
+        lines.append(
+            f"\n  {'Statistic':<30s} {'PA off':>10s} {'PA on':>10s} {'Change':>10s}"
+        )
+        for key, label in stat_keys:
+            pa_off_val = iv.cross_sim_stats.get(key, {}).get("mean", float("nan"))
+            pa_on_val = bl.cross_sim_stats.get(key, {}).get("mean", float("nan"))
+            if not (np.isnan(pa_off_val) or np.isnan(pa_on_val)):
+                change = pa_off_val - pa_on_val
+                lines.append(
+                    f"  {label:<30s} {_fmt(pa_off_val, '.4f'):>10s} "
+                    f"{_fmt(pa_on_val, '.4f'):>10s} "
+                    f"{change:>+10.4f}"
+                )
+            else:
+                lines.append(
+                    f"  {label:<30s} {_fmt(pa_off_val, '.4f'):>10s} "
+                    f"{_fmt(pa_on_val, '.4f'):>10s} {'N/A':>10s}"
+                )
+
+        # Co-movement comparison
+        if bl.mean_comovements and iv.mean_comovements:
+            bl_max_lag = (len(next(iter(bl.mean_comovements.values()))) - 1) // 2
+            lines.append(
+                f"\n  {'Variable':<25s} {'PA off':>8s} {'PA on':>8s} {'Shift':>8s}"
+            )
+            for var in COMOVEMENT_VARIABLES:
+                off_val = iv.mean_comovements[var][max_lag]
+                on_val = bl.mean_comovements[var][bl_max_lag]
+                shift = off_val - on_val
+                lines.append(
+                    f"  {var_labels[var]:<25s} {off_val:>8.3f} "
+                    f"{on_val:>8.3f} {shift:>+8.3f}"
+                )
+
+        # AR comparison
+        bl_valid = [a for a in bl.seed_analyses if not a.collapsed and not a.degenerate]
+        if valid and bl_valid:
+            lines.append(
+                f"\n  AR persistence:"
+                f" PA off phi_1={iv.mean_ar_coeffs[1]:.3f},"
+                f" PA on phi_1={bl.mean_ar_coeffs[1]:.3f}"
+            )
+
+    # ── Z-sweep (PA off) ─────────────────────────────────────────────
+    lines.append(_subheader("3. Z-Sweep Sensitivity (PA off)"))
+    for _exp_name, exp_result in pa_result.pa_off_z_sweep.experiments.items():
+        lines.append(_format_experiment_report(exp_result))
+
+    lines.append("")
+    return "\n".join(lines)
+
+
+def print_pa_report(pa_result: PAExperimentResult) -> None:
+    """Print PA experiment report to stdout."""
+    print(format_pa_report(pa_result))
+
+
+def format_entry_report(entry_result: EntryExperimentResult) -> str:
+    """Format the entry neutrality experiment as a text report.
+
+    Parameters
+    ----------
+    entry_result : EntryExperimentResult
+        Result from :func:`run_entry_experiment`.
+
+    Returns
+    -------
+    str
+        Formatted report with tax sweep table and monotonicity assessment.
+    """
+    lines: list[str] = []
+
+    lines.append(_header("Entry Neutrality Experiment (Section 3.10.2)"))
+
+    sa = entry_result.tax_sweep
+    lines.append(
+        f"\nConfiguration: {sa.n_seeds_per_value} seeds per value, "
+        f"{sa.n_periods} periods, {sa.burn_in} burn-in"
+    )
+
+    for _exp_name, exp_result in sa.experiments.items():
+        # Main summary table (reuse existing formatter)
+        lines.append(_format_experiment_report(exp_result))
+
+        # ── Monotonicity assessment ───────────────────────────────────
+        lines.append(_subheader("Monotonicity Assessment"))
+        lines.append(
+            "  Expected: unemployment increases, GDP growth decreases,"
+            " volatility increases"
+        )
+
+        unemp_vals = []
+        gdp_vals = []
+        vol_vals = []
+        for vr in exp_result.value_results:
+            unemp_vals.append(
+                vr.stats.get("unemployment_mean", {}).get("mean", float("nan"))
+            )
+            gdp_vals.append(
+                vr.stats.get("gdp_growth_mean", {}).get("mean", float("nan"))
+            )
+            vol_vals.append(
+                vr.stats.get("gdp_growth_std", {}).get("mean", float("nan"))
+            )
+
+        def _is_monotonic_increasing(vals: list[float]) -> bool:
+            clean = [v for v in vals if not np.isnan(v)]
+            return all(a <= b for a, b in pairwise(clean))
+
+        def _is_monotonic_decreasing(vals: list[float]) -> bool:
+            clean = [v for v in vals if not np.isnan(v)]
+            return all(a >= b for a, b in pairwise(clean))
+
+        unemp_mono = _is_monotonic_increasing(unemp_vals)
+        gdp_mono = _is_monotonic_decreasing(gdp_vals)
+        vol_mono = _is_monotonic_increasing(vol_vals)
+
+        lines.append(
+            f"  Unemployment monotonically increasing: {'YES' if unemp_mono else 'NO'}"
+        )
+        lines.append(
+            f"  GDP growth monotonically decreasing:   {'YES' if gdp_mono else 'NO'}"
+        )
+        lines.append(
+            f"  GDP volatility monotonically increasing: {'YES' if vol_mono else 'NO'}"
+        )
+
+        # Conclusion
+        all_monotonic = unemp_mono and gdp_mono and vol_mono
+        if all_monotonic:
+            lines.append(
+                "\n  Conclusion: Monotonic degradation confirmed."
+                " Firm entry does NOT artificially drive recovery."
+            )
+        else:
+            lines.append(
+                "\n  Conclusion: Non-monotonic pattern detected."
+                " Entry mechanism may partially offset taxation effects."
+            )
+
+    lines.append("")
+    return "\n".join(lines)
+
+
+def print_entry_report(entry_result: EntryExperimentResult) -> None:
+    """Print entry neutrality experiment report to stdout."""
+    print(format_entry_report(entry_result))

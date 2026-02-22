@@ -928,6 +928,7 @@ class Simulation:
             labor_matching=p["labor_matching"],
             credit_matching=p["credit_matching"],
             min_wage_ratchet=p["min_wage_ratchet"],
+            consumer_matching=p["consumer_matching"],
             # New firm entry parameters
             new_firm_size_factor=p["new_firm_size_factor"],
             new_firm_production_factor=p["new_firm_production_factor"],

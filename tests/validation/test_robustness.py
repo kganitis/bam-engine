@@ -250,3 +250,110 @@ def test_unknown_experiment_raises() -> None:
             n_periods=50,
             n_workers=1,
         )
+
+
+# =============================================================================
+# Structural Experiments (Section 3.10.2)
+# =============================================================================
+
+
+@pytest.mark.slow
+@pytest.mark.validation
+class TestPAExperiment:
+    """Integration tests for the PA (preferential attachment) experiment."""
+
+    @pytest.fixture(scope="class")
+    def pa_result(self):
+        from validation.robustness import run_pa_experiment
+
+        return run_pa_experiment(
+            n_seeds=2,
+            n_periods=100,
+            burn_in=50,
+            n_workers=1,
+            verbose=False,
+            include_baseline=True,
+        )
+
+    def test_returns_correct_type(self, pa_result) -> None:
+        from validation.robustness import PAExperimentResult
+
+        assert isinstance(pa_result, PAExperimentResult)
+
+    def test_pa_off_validity_present(self, pa_result) -> None:
+        assert pa_result.pa_off_validity is not None
+        assert pa_result.pa_off_validity.n_seeds == 2
+
+    def test_baseline_present(self, pa_result) -> None:
+        assert pa_result.baseline_validity is not None
+        assert pa_result.baseline_validity.n_seeds == 2
+
+    def test_z_sweep_present(self, pa_result) -> None:
+        assert pa_result.pa_off_z_sweep is not None
+        assert "goods_market_no_pa" in pa_result.pa_off_z_sweep.experiments
+
+    def test_no_collapse_pa_off(self, pa_result) -> None:
+        assert pa_result.pa_off_validity.n_collapsed == 0
+
+    def test_report_generation(self, pa_result) -> None:
+        from validation.robustness import format_pa_report
+
+        report = format_pa_report(pa_result)
+        assert "PA Experiment" in report
+        assert "PA off" in report
+
+
+@pytest.mark.slow
+@pytest.mark.validation
+class TestEntryExperiment:
+    """Integration tests for the entry neutrality experiment."""
+
+    @pytest.fixture(scope="class")
+    def entry_result(self):
+        from validation.robustness import run_entry_experiment
+
+        return run_entry_experiment(
+            n_seeds=2,
+            n_periods=100,
+            burn_in=50,
+            n_workers=1,
+            verbose=False,
+        )
+
+    def test_returns_correct_type(self, entry_result) -> None:
+        from validation.robustness import EntryExperimentResult
+
+        assert isinstance(entry_result, EntryExperimentResult)
+
+    def test_tax_sweep_present(self, entry_result) -> None:
+        assert entry_result.tax_sweep is not None
+        assert "entry_neutrality" in entry_result.tax_sweep.experiments
+
+    def test_correct_value_count(self, entry_result) -> None:
+        """Entry neutrality has 5 tax rate values."""
+        exp = entry_result.tax_sweep.experiments["entry_neutrality"]
+        assert len(exp.value_results) == 5
+
+    def test_report_generation(self, entry_result) -> None:
+        from validation.robustness import format_entry_report
+
+        report = format_entry_report(entry_result)
+        assert "Entry Neutrality" in report
+        assert "Monotonicity" in report
+
+
+@pytest.mark.slow
+@pytest.mark.validation
+def test_sensitivity_with_setup_fn() -> None:
+    """run_sensitivity_analysis should work with entry_neutrality (has setup_fn)."""
+    result = run_sensitivity_analysis(
+        experiments=["entry_neutrality"],
+        n_seeds=2,
+        n_periods=100,
+        burn_in=50,
+        n_workers=1,
+        verbose=False,
+    )
+    assert "entry_neutrality" in result.experiments
+    exp = result.experiments["entry_neutrality"]
+    assert len(exp.value_results) == 5
