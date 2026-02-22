@@ -7,13 +7,20 @@ Tools for finding optimal parameter values through sensitivity analysis, focused
 ### Command Line
 
 ```bash
-# Run all phases (baseline)
+# Run all phases (baseline, Morris default)
 python -m calibration --scenario baseline --workers 10
 
 # Run individual phases
 python -m calibration --phase sensitivity --scenario baseline
+python -m calibration --phase morris --scenario baseline
 python -m calibration --phase grid --scenario baseline
 python -m calibration --phase stability --scenario baseline
+
+# Use OAT instead of Morris for sensitivity
+python -m calibration --phase sensitivity --method oat --scenario baseline
+
+# Morris with custom number of trajectories
+python -m calibration --phase sensitivity --morris-trajectories 20
 
 # Pairwise interaction analysis
 python -m calibration --phase pairwise --scenario baseline
@@ -29,17 +36,18 @@ python -m calibration --phase stability --stability-tiers "50:10,20:30,5:100"
 
 ```python
 from calibration import (
-    run_sensitivity_analysis,
+    run_morris_screening,
+    print_morris_report,
     build_focused_grid,
     run_focused_calibration,
-    print_sensitivity_report,
     export_best_config,
     compare_configs,
 )
 
-# Phase 1: Sensitivity analysis (multi-seed)
-sensitivity = run_sensitivity_analysis(scenario="baseline", n_workers=10, n_seeds=3)
-print_sensitivity_report(sensitivity)
+# Phase 1: Morris screening (default, recommended)
+morris = run_morris_screening(scenario="baseline", n_workers=10, n_seeds=3)
+print_morris_report(morris)
+sensitivity = morris.to_sensitivity_result()
 
 # Phase 2: Build focused grid
 grid, fixed = build_focused_grid(sensitivity)
@@ -58,9 +66,38 @@ comparison = compare_configs({}, results[0].params, "baseline")
 
 ### Phase 1: Sensitivity Analysis
 
-One-at-a-time (OAT) testing of each parameter while holding others at defaults. Supports multi-seed evaluation for robustness. Tracks per-metric-group score decomposition to understand *why* a parameter is sensitive.
+Two methods are available for Phase 1:
+
+#### Morris Method (Default)
+
+Morris Method (Morris 1991) runs multiple OAT trajectories from random starting points across the parameter space, producing two measures per parameter:
+
+- **mu\*** (mean absolute elementary effect): Average importance across different parameter contexts
+- **sigma** (std of elementary effects): Interaction/nonlinearity indicator — how much the effect varies depending on other parameters
+
+Classification uses a **dual threshold**:
+
+- `INCLUDE: mu* > threshold OR sigma > threshold` — important OR interaction-prone
+- `FIX: mu* <= threshold AND sigma <= threshold` — truly unimportant
+
+This catches parameters whose sensitivity depends on other parameter values (interaction effects) that standard OAT would miss.
+
+Output: `output/{scenario}_morris.json` + `output/{scenario}_sensitivity.json`
+
+#### OAT (One-at-a-Time)
+
+Traditional OAT testing of each parameter while holding others at defaults. Faster but sensitive to baseline choice — parameter rankings can change depending on which defaults are used. Use `--method oat` to select.
 
 Output: `output/{scenario}_sensitivity.json`
+
+#### Morris vs OAT: When to Use Which
+
+| Aspect                   | Morris                   | OAT                    |
+| ------------------------ | ------------------------ | ---------------------- |
+| Interaction detection    | Yes (via sigma)          | No                     |
+| Baseline dependency      | Minimal (random starts)  | High (single baseline) |
+| Cost (baseline, 3 seeds) | ~660 sim runs (~2.5 min) | ~216 sim runs (~50s)   |
+| Recommended for          | Production calibration   | Quick exploration      |
 
 ### Phase 2: Grid Screening
 
@@ -125,7 +162,14 @@ Extension-specific:
 
 ## API Reference
 
-### Sensitivity Analysis
+### Morris Method Screening
+
+- `run_morris_screening(scenario, grid, n_trajectories, seed, n_seeds, n_periods, n_workers) -> MorrisResult`
+- `print_morris_report(result, mu_star_threshold, sigma_threshold)` — Formatted report with dual classification
+- `MorrisResult` — Full result with `effects`, `to_sensitivity_result()` for downstream compatibility
+- `MorrisParameterEffect` — Per-parameter mu\*, sigma, elementary effects, value scores
+
+### OAT Sensitivity Analysis
 
 - `run_sensitivity_analysis(scenario, grid, baseline, seed, n_seeds, n_periods, n_workers) -> SensitivityResult`
 - `print_sensitivity_report(result)` — Formatted report with score decomposition
@@ -168,24 +212,27 @@ Extension-specific:
 
 ## CLI Options
 
-| Option                    | Default               | Description                                                 |
-| ------------------------- | --------------------- | ----------------------------------------------------------- |
-| `--scenario`              | baseline              | Scenario to calibrate (baseline, growth_plus, buffer_stock) |
-| `--phase`                 | all                   | Run a single phase (sensitivity, grid, stability, pairwise) |
-| `--workers`               | 10                    | Number of parallel workers                                  |
-| `--periods`               | 1000                  | Simulation periods                                          |
-| `--output`                | auto                  | Output file for results                                     |
-| `--sensitivity-threshold` | 0.02                  | Minimum Δ for INCLUDE in grid search                        |
-| `--pruning-threshold`     | "auto"                | Max score gap for keeping values: "auto", "none", or float  |
-| `--sensitivity-seeds`     | 3                     | Seeds per sensitivity evaluation                            |
-| `--stability-tiers`       | "100:10,50:20,10:100" | Tiers as "configs:seeds,..."                                |
-| `--resume`                | false                 | Resume from checkpoint                                      |
+| Option                    | Default               | Description                                                         |
+| ------------------------- | --------------------- | ------------------------------------------------------------------- |
+| `--scenario`              | baseline              | Scenario to calibrate (baseline, growth_plus, buffer_stock)         |
+| `--phase`                 | all                   | Run a single phase (sensitivity, morris, grid, stability, pairwise) |
+| `--method`                | morris                | Sensitivity method: "morris" or "oat"                               |
+| `--morris-trajectories`   | 10                    | Number of Morris trajectories                                       |
+| `--workers`               | 10                    | Number of parallel workers                                          |
+| `--periods`               | 1000                  | Simulation periods                                                  |
+| `--output`                | auto                  | Output file for results                                             |
+| `--sensitivity-threshold` | 0.02                  | Minimum Δ for INCLUDE in grid search                                |
+| `--pruning-threshold`     | "auto"                | Max score gap for keeping values: "auto", "none", or float          |
+| `--sensitivity-seeds`     | 3                     | Seeds per sensitivity evaluation                                    |
+| `--stability-tiers`       | "100:10,50:20,10:100" | Tiers as "configs:seeds,..."                                        |
+| `--resume`                | false                 | Resume from checkpoint                                              |
 
 ## Output Files
 
 Results are saved to `calibration/output/`:
 
-- `{scenario}_sensitivity.json` — Sensitivity analysis with score decomposition
+- `{scenario}_morris.json` — Morris method detailed results (mu\*, sigma, elementary effects)
+- `{scenario}_sensitivity.json` — Sensitivity analysis (from Morris or OAT)
 - `{scenario}_screening.json` — Grid screening results with patterns
 - `{scenario}_calibration_results.json` — Final stability-tested results
 - `{scenario}_best_config.yml` — Best config as ready-to-use YAML
@@ -199,6 +246,7 @@ calibration/
 ├── __init__.py         # Package exports
 ├── __main__.py         # CLI entry point
 ├── cli.py              # Command-line interface (phase orchestration)
+├── morris.py           # Morris Method screening (elementary effects)
 ├── sensitivity.py      # OAT sensitivity + pairwise interaction
 ├── optimizer.py        # Grid search, tiered stability, patterns, export, comparison
 ├── parameter_space.py  # Parameter grids (26 common + extensions)

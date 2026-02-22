@@ -201,7 +201,9 @@ def compute_baseline_metrics(
     # Derived metrics
     avg_productivity_mean = float(np.mean(avg_productivity_ss))
     real_wage_mean = float(np.mean(real_wage_ss))
-    wage_to_productivity_ratio = real_wage_mean / avg_productivity_mean
+    wage_to_productivity_ratio = (
+        real_wage_mean / avg_productivity_mean if avg_productivity_mean > 0 else 0.0
+    )
 
     return BaselineMetrics(
         unemployment=unemployment,

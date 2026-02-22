@@ -1,10 +1,11 @@
 """Parameter calibration package for BAM Engine.
 
 This package provides tools for finding optimal parameter values using
-sensitivity analysis followed by focused grid search with tiered stability.
+Morris Method screening (or OAT sensitivity) followed by focused grid
+search with tiered stability testing.
 
 Usage:
-    # Run full calibration from command line
+    # Run full calibration from command line (Morris is default)
     python -m calibration --workers 10 --periods 1000
 
     # Run individual phases
@@ -13,13 +14,20 @@ Usage:
     python -m calibration --phase stability --scenario baseline
 
     # Programmatic usage
-    from calibration import run_sensitivity_analysis, build_focused_grid, run_focused_calibration
+    from calibration import run_morris_screening, build_focused_grid, run_focused_calibration
 
-    sensitivity = run_sensitivity_analysis(n_workers=10)
+    morris = run_morris_screening(n_workers=10, n_seeds=3)
+    sensitivity = morris.to_sensitivity_result()
     grid, fixed = build_focused_grid(sensitivity)
     results = run_focused_calibration(grid, fixed)  # default tiers: 100:10, 50:20, 10:100
 """
 
+from calibration.morris import (
+    MorrisParameterEffect,
+    MorrisResult,
+    print_morris_report,
+    run_morris_screening,
+)
 from calibration.optimizer import (
     CalibrationResult,
     ComparisonResult,
@@ -66,7 +74,12 @@ __all__ = [
     "count_combinations",
     "get_parameter_grid",
     "get_default_values",
-    # Sensitivity analysis
+    # Morris method screening
+    "MorrisParameterEffect",
+    "MorrisResult",
+    "run_morris_screening",
+    "print_morris_report",
+    # OAT sensitivity analysis
     "ParameterSensitivity",
     "SensitivityResult",
     "run_sensitivity_analysis",

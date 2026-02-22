@@ -200,17 +200,23 @@ Calibration Package
 ~~~~~~~~~~~~~~~~~~~
 
 The ``calibration/`` package finds optimal parameter values through sensitivity
-analysis and focused grid search.
+screening and focused grid search.
 
 **Command line usage:**
 
 .. code-block:: bash
 
-   # Run sensitivity analysis only
+   # Full calibration (baseline, Morris screening is default)
+   python -m calibration --workers 10 --periods 1000
+
+   # Morris screening only
    python -m calibration --phase sensitivity --workers 10
 
-   # Full calibration (baseline scenario)
-   python -m calibration --workers 10 --periods 1000
+   # Use OAT instead of Morris
+   python -m calibration --phase sensitivity --method oat --workers 10
+
+   # Morris with more trajectories
+   python -m calibration --phase sensitivity --morris-trajectories 20
 
    # Calibrate Growth+ scenario
    python -m calibration --scenario growth_plus --workers 10
@@ -220,15 +226,16 @@ analysis and focused grid search.
 .. code-block:: python
 
    from calibration import (
-       run_sensitivity_analysis,
+       run_morris_screening,
+       print_morris_report,
        build_focused_grid,
        run_focused_calibration,
-       print_sensitivity_report,
    )
 
-   # Phase 1: Sensitivity analysis
-   sensitivity = run_sensitivity_analysis(scenario="baseline", n_workers=10)
-   print_sensitivity_report(sensitivity)
+   # Phase 1: Morris screening (default, recommended)
+   morris = run_morris_screening(scenario="baseline", n_workers=10, n_seeds=3)
+   print_morris_report(morris)
+   sensitivity = morris.to_sensitivity_result()
 
    # Phase 2: Build focused grid
    grid, fixed = build_focused_grid(sensitivity)
@@ -239,8 +246,10 @@ analysis and focused grid search.
 
 **Calibration process:**
 
-1. **Sensitivity Analysis**: One-at-a-time (OAT) testing to identify impactful parameters
-2. **Build Focused Grid**: Categorize parameters by sensitivity (HIGH/MEDIUM/LOW)
+1. **Sensitivity Screening**: Morris Method (default) or OAT to identify impactful
+   and interaction-prone parameters. Morris produces mu* (importance) and sigma
+   (interaction indicator) per parameter.
+2. **Build Focused Grid**: INCLUDE (mu* or sigma above threshold) vs FIX classification
 3. **Grid Search Screening**: Test combinations using single seed
 4. **Stability Testing**: Multi-seed validation of top candidates
 

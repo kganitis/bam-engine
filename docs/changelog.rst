@@ -95,9 +95,20 @@ Added
   * CLI entry point: ``python -m validation.robustness``
   * Example: ``examples/advanced/example_robustness.py``
 
-* Calibration package overhaul — multi-phase framework with tiered stability
-  testing, pairwise interaction analysis, and production-quality tooling:
+* Calibration package overhaul — multi-phase framework with Morris method
+  screening, tiered stability testing, pairwise interaction analysis, and
+  production-quality tooling:
 
+  * **Morris Method screening** (default sensitivity method): runs multiple
+    OAT trajectories from random starting points (Morris 1991). Produces
+    mu* (mean absolute elementary effect) and sigma (std of effects) per
+    parameter. Dual-threshold classification: ``INCLUDE`` if mu* > threshold
+    OR sigma > threshold (catches interaction-prone parameters that single-
+    baseline OAT would miss). New ``MorrisResult``, ``MorrisParameterEffect``
+    types, ``run_morris_screening()``, ``print_morris_report()``.
+    ``MorrisResult.to_sensitivity_result()`` converts for downstream
+    compatibility. New ``--method morris|oat`` and ``--morris-trajectories``
+    CLI options.
   * **Tiered stability testing**: incremental tournament system
     (default: 100×10, 50×20, 10×100 seeds) that efficiently narrows candidates
     while accumulating seed scores. Replaces flat ``top_k × N seeds`` approach.
@@ -115,9 +126,9 @@ Added
     ``pruning_threshold`` below the best value for that parameter.
     ``SensitivityResult.prune_grid()`` method. Default: ``auto`` (2× sensitivity
     threshold). Disable with ``--pruning-threshold none``.
-  * **Phase-based CLI**: ``--phase sensitivity|grid|stability|pairwise`` for
-    individual phase execution, or omit for all phases sequentially. Replaces
-    ``--sensitivity-only``.
+  * **Phase-based CLI**: ``--phase sensitivity|morris|grid|stability|pairwise``
+    for individual phase execution, or omit for all phases sequentially.
+    Replaces ``--sensitivity-only``.
   * **Checkpointing and resume**: grid screening and stability testing save
     periodic checkpoints; ``--resume`` flag skips already-evaluated configs.
   * **Progress tracking with ETA**: ``format_eta()`` / ``format_progress()``
@@ -185,6 +196,8 @@ Changed
 * Event count: 43 → 45 events (2 new labor market, 1 new credit market).
 * Sphinx API docs: added ``FirmsApplyForLoans`` to
   ``docs/api/events/credit_market.rst``.
+* Calibration: default sensitivity method changed from OAT to Morris Method.
+  OAT still available via ``--method oat``.
 * Calibration: simplified sensitivity classification from HIGH/MEDIUM/LOW
   to binary INCLUDE/FIX with single ``sensitivity_threshold`` (default 0.02).
   ``build_focused_grid()`` parameters renamed: ``high_threshold`` /
