@@ -1,14 +1,17 @@
-"""Experiment definitions for sensitivity analysis (Section 3.10.1).
+"""Experiment definitions for robustness analysis (Sections 3.10.1 & 3.10.2).
 
 Defines the five parameter groups from the book's univariate sensitivity
-analysis. Each experiment varies one parameter (or parameter group) at a
-time while holding all others at baseline defaults.
+analysis (Section 3.10.1) and the two structural experiments (Section 3.10.2):
+preferential attachment (PA) toggle and entry neutrality via taxation.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
+
+import bamengine as bam
 
 
 @dataclass(frozen=True)
@@ -30,6 +33,10 @@ class Experiment:
         Display labels for each value. Defaults to str(value).
     baseline_value : Any
         The default/baseline value (for highlighting in reports).
+    setup_fn : callable or None
+        Optional function ``(sim) -> None`` called after ``Simulation.init()``
+        to attach extension roles, events, and config. Must be a
+        **module-level function** for ``ProcessPoolExecutor`` pickling.
     """
 
     name: str
@@ -38,6 +45,7 @@ class Experiment:
     values: list[Any]
     labels: list[str] | None = None
     baseline_value: Any = None
+    setup_fn: Callable[[bam.Simulation], None] | None = None
 
     def get_labels(self) -> list[str]:
         """Return display labels for each parameter value."""
@@ -54,7 +62,7 @@ class Experiment:
         return dict(val)
 
 
-# ─── Experiment Definitions ─────────────────────────────────────────────────
+# ─── Section 3.10.1: Parameter Sweep Experiments ──────────────────────────
 
 CREDIT_MARKET = Experiment(
     name="credit_market",
@@ -130,13 +138,70 @@ ECONOMY_SIZE = Experiment(
     baseline_value={"n_firms": 100, "n_households": 500, "n_banks": 10},
 )
 
-# Registry of all experiments
-EXPERIMENTS: dict[str, Experiment] = {
+# Registry of Section 3.10.1 experiments
+PARAMETER_EXPERIMENTS: dict[str, Experiment] = {
     "credit_market": CREDIT_MARKET,
     "goods_market": GOODS_MARKET,
     "labor_applications": LABOR_APPLICATIONS,
     "contract_length": CONTRACT_LENGTH,
     "economy_size": ECONOMY_SIZE,
+}
+
+PARAMETER_EXPERIMENT_NAMES: list[str] = list(PARAMETER_EXPERIMENTS.keys())
+
+
+# ─── Section 3.10.2: Structural Experiments ───────────────────────────────
+
+
+def setup_taxation(sim: bam.Simulation) -> None:
+    """Attach taxation extension to a simulation.
+
+    Module-level function so it can be pickled by ``ProcessPoolExecutor``.
+    """
+    from extensions.taxation import TAXATION_CONFIG, TAXATION_EVENTS
+
+    sim.use_events(*TAXATION_EVENTS)
+    sim.use_config(TAXATION_CONFIG)
+
+
+GOODS_MARKET_NO_PA = Experiment(
+    name="goods_market_no_pa",
+    description=(
+        "Goods market with preferential attachment disabled + Z sweep. "
+        "Section 3.10.2 (PA experiment)."
+    ),
+    param=None,  # Multi-param: consumer_matching + max_Z
+    values=[{"consumer_matching": "random", "max_Z": z} for z in [2, 3, 4, 5, 6]],
+    labels=[f"random, Z={z}" for z in [2, 3, 4, 5, 6]],
+    baseline_value={"consumer_matching": "random", "max_Z": 2},
+)
+
+ENTRY_NEUTRALITY = Experiment(
+    name="entry_neutrality",
+    description=(
+        "Entry neutrality: heavy profit taxation without redistribution. "
+        "Section 3.10.2. Tests that firm entry does NOT artificially drive recovery."
+    ),
+    param="profit_tax_rate",
+    values=[0.0, 0.3, 0.5, 0.7, 0.9],
+    labels=["0%", "30%", "50%", "70%", "90%"],
+    baseline_value=0.0,
+    setup_fn=setup_taxation,
+)
+
+# Registry of Section 3.10.2 experiments
+STRUCTURAL_EXPERIMENTS: dict[str, Experiment] = {
+    "goods_market_no_pa": GOODS_MARKET_NO_PA,
+    "entry_neutrality": ENTRY_NEUTRALITY,
+}
+
+STRUCTURAL_EXPERIMENT_NAMES: list[str] = list(STRUCTURAL_EXPERIMENTS.keys())
+
+# ─── Combined registry ────────────────────────────────────────────────────
+
+EXPERIMENTS: dict[str, Experiment] = {
+    **PARAMETER_EXPERIMENTS,
+    **STRUCTURAL_EXPERIMENTS,
 }
 
 ALL_EXPERIMENT_NAMES: list[str] = list(EXPERIMENTS.keys())

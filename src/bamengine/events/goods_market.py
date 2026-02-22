@@ -291,6 +291,7 @@ class ConsumersDecideFirmsToVisit:
             sim.prod,
             max_Z=sim.config.max_Z,
             rng=sim.rng,
+            consumer_matching=sim.config.consumer_matching,
         )
 
 

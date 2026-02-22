@@ -351,6 +351,7 @@ class ConfigValidator:
             "pricing_phase",
             "labor_matching",
             "credit_matching",
+            "consumer_matching",
         ]
         for key in str_enum_params:
             if key not in cfg:
@@ -486,6 +487,7 @@ class ConfigValidator:
             "pricing_phase": {"planning", "production"},
             "labor_matching": {"cascade", "interleaved"},
             "credit_matching": {"cascade", "interleaved"},
+            "consumer_matching": {"loyalty", "random"},
         }
 
         # Vector parameters (validated separately by _validate_float1d)

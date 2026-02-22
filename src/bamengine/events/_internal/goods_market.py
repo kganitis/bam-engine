@@ -165,6 +165,7 @@ def consumers_decide_firms_to_visit(
     *,
     max_Z: int,
     rng: Rng = make_rng(),
+    consumer_matching: str = "loyalty",
 ) -> None:
     """
     Consumers select firms to visit and set loyalty BEFORE shopping.
@@ -223,10 +224,11 @@ def consumers_decide_firms_to_visit(
     priorities = rng.random((n_active, n_firms))
 
     # For consumers with loyalty, give their loyalty firm highest priority (> 1.0)
-    loyal_consumer_local_idx = np.where(has_loyalty)[0]
-    if loyal_consumer_local_idx.size > 0:
-        loyal_firm_ids = loyalty_firms[has_loyalty].astype(np.intp)
-        priorities[loyal_consumer_local_idx, loyal_firm_ids] = 1.1
+    if consumer_matching == "loyalty":
+        loyal_consumer_local_idx = np.where(has_loyalty)[0]
+        if loyal_consumer_local_idx.size > 0:
+            loyal_firm_ids = loyalty_firms[has_loyalty].astype(np.intp)
+            priorities[loyal_consumer_local_idx, loyal_firm_ids] = 1.1
 
     # Select top effective_Z firms per consumer using argpartition (O(n) vs O(n log n))
     if effective_Z < n_firms:
@@ -249,11 +251,12 @@ def consumers_decide_firms_to_visit(
         con.shop_visits_head[h] = h * stride
 
     # Update loyalty to largest producer in consideration set (vectorized)
-    # For each consumer, find the firm with max production among selected firms
-    production_selected = prod.production[sorted_firms]
-    largest_local_idx = np.argmax(production_selected, axis=1)
-    largest_firm_ids = sorted_firms[np.arange(n_active), largest_local_idx]
-    con.largest_prod_prev[budget_indices] = largest_firm_ids
+    if consumer_matching == "loyalty":
+        # For each consumer, find the firm with max production among selected firms
+        production_selected = prod.production[sorted_firms]
+        largest_local_idx = np.argmax(production_selected, axis=1)
+        largest_firm_ids = sorted_firms[np.arange(n_active), largest_local_idx]
+        con.largest_prod_prev[budget_indices] = largest_firm_ids
 
     # Compute statistics for logging
     loyalty_applied = has_loyalty.sum()

@@ -208,3 +208,6 @@ class Config:
     labor_matching: str = "cascade"  # "cascade" or "interleaved"
     credit_matching: str = "cascade"  # "cascade" or "interleaved"
     min_wage_ratchet: bool = False  # True = upward-only ratchet
+
+    # Consumer matching strategy
+    consumer_matching: str = "loyalty"  # "loyalty" or "random"

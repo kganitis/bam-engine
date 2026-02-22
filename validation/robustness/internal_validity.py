@@ -552,12 +552,20 @@ def _run_seed(
     irf_periods: int,
     setup_hook: Callable[[bam.Simulation], None] | None = None,
     collect_config: dict[str, Any] | None = None,
+    exp_setup_fn: Callable[[bam.Simulation], None] | None = None,
 ) -> SeedAnalysis:
     """Run a single simulation and return analysis.
 
     Designed for ``ProcessPoolExecutor`` — all arguments must be picklable.
-    In particular, *setup_hook* must be a **module-level function** (not a
-    lambda or closure).
+    In particular, *setup_hook* and *exp_setup_fn* must be **module-level
+    functions** (not lambdas or closures).
+
+    Parameters
+    ----------
+    setup_hook : callable or None
+        Global setup (e.g. attach R&D extension for Growth+).
+    exp_setup_fn : callable or None
+        Per-experiment setup (e.g. attach taxation extension).
     """
     sim = bam.Simulation.init(
         seed=seed,
@@ -567,6 +575,8 @@ def _run_seed(
     )
     if setup_hook is not None:
         setup_hook(sim)
+    if exp_setup_fn is not None:
+        exp_setup_fn(sim)
     results = sim.run(collect=collect_config or ROBUSTNESS_COLLECT_CONFIG)
 
     ts = _extract_time_series(seed, sim, results)
