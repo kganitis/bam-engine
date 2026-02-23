@@ -144,9 +144,9 @@ def test_default_pipeline_when_no_custom_path():
     """Default pipeline is used when pipeline_path is None."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
 
-    # Fixed pipeline length after switching to cascade matching events:
-    # No longer depends on max_M or max_H — cascade events are single events
-    assert len(sim.pipeline) == 37
+    # Interleaved matching (default): pipeline length depends on max_M and max_H
+    # 37 base events + (max_M-1)*2 extra labor rounds + (max_H-1)*2 extra credit rounds
+    assert len(sim.pipeline) == 47
 
     # Check first and last events
     assert sim.pipeline.events[0].name == "firms_decide_desired_production"
@@ -378,7 +378,7 @@ events:
 
 
 def test_labor_matching_conflicts_with_pipeline_path():
-    """Setting labor_matching != 'cascade' with pipeline_path should raise."""
+    """Setting labor_matching != default with pipeline_path should raise."""
 
     pipeline_yaml = """
 events:
@@ -399,7 +399,7 @@ events:
                 n_firms=10,
                 n_households=50,
                 pipeline_path=pipeline_path,
-                labor_matching="interleaved",
+                labor_matching="cascade",
                 seed=42,
             )
     finally:
@@ -407,7 +407,7 @@ events:
 
 
 def test_credit_matching_conflicts_with_pipeline_path():
-    """Setting credit_matching != 'cascade' with pipeline_path should raise."""
+    """Setting credit_matching != default with pipeline_path should raise."""
 
     pipeline_yaml = """
 events:
@@ -428,7 +428,7 @@ events:
                 n_firms=10,
                 n_households=50,
                 pipeline_path=pipeline_path,
-                credit_matching="interleaved",
+                credit_matching="cascade",
                 seed=42,
             )
     finally:
@@ -482,8 +482,8 @@ events:
                 n_firms=10,
                 n_households=50,
                 pipeline_path=pipeline_path,
-                labor_matching="interleaved",
-                credit_matching="interleaved",
+                labor_matching="cascade",
+                credit_matching="cascade",
                 seed=42,
             )
     finally:
@@ -493,8 +493,8 @@ events:
 def test_implementation_variant_config_defaults():
     """New implementation variant params have correct defaults."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    assert sim.config.labor_matching == "cascade"
-    assert sim.config.credit_matching == "cascade"
+    assert sim.config.labor_matching == "interleaved"
+    assert sim.config.credit_matching == "interleaved"
     assert sim.config.min_wage_ratchet is False
 
 
@@ -503,13 +503,13 @@ def test_implementation_variant_config_override():
     sim = Simulation.init(
         n_firms=10,
         n_households=50,
-        labor_matching="interleaved",
-        credit_matching="interleaved",
+        labor_matching="cascade",
+        credit_matching="cascade",
         min_wage_ratchet=True,
         seed=42,
     )
-    assert sim.config.labor_matching == "interleaved"
-    assert sim.config.credit_matching == "interleaved"
+    assert sim.config.labor_matching == "cascade"
+    assert sim.config.credit_matching == "cascade"
     assert sim.config.min_wage_ratchet is True
 
 

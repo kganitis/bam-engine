@@ -151,7 +151,7 @@ class TestScreenSingleSeed:
         def mock_validate(**kwargs):
             return _make_score(0.75)
 
-        mock_get_funcs.return_value = (mock_validate, None)
+        mock_get_funcs.return_value = (mock_validate, None, None, None)
 
         result = screen_single_seed({"a": 1}, "baseline", 0, 50)
         assert isinstance(result, CalibrationResult)
@@ -175,7 +175,7 @@ class TestRunScreening:
             call_idx[0] += 1
             return _make_score(scores[idx % len(scores)])
 
-        mock_get_funcs.return_value = (mock_validate, None)
+        mock_get_funcs.return_value = (mock_validate, None, None, None)
 
         results = run_screening(
             [{"a": 1}, {"a": 2}, {"a": 3}],
