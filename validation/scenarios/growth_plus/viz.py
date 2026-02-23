@@ -797,6 +797,14 @@ def visualize_financial_dynamics(
     ax = axes[0, 1]
     networth_growth = metrics.networth_growth_rates
     networth_growth_filtered = networth_growth[np.isfinite(networth_growth)]
+
+    # Exclude re-entries from plot (firms whose slot was reused after bankruptcy).
+    # Growth > 100% in a single period is physically unrealistic — it indicates a
+    # bankrupt firm's slot was re-initialized with trim_mean(survivors) × size_factor.
+    reentry_mask = np.abs(networth_growth_filtered) <= 1.0
+    n_reentries = int(np.sum(~reentry_mask))
+    networth_growth_for_plot = networth_growth_filtered[reentry_mask]
+
     if len(networth_growth_filtered) > 0:
         # Get target bounds from YAML
         nwd_bounds = fin_bounds.get("networth_growth_distribution", {}).get(
@@ -823,9 +831,9 @@ def visualize_financial_dynamics(
         ax.axvline(tight_min, color="green", linestyle="--", alpha=0.7, zorder=1)
         ax.axvline(tight_max, color="green", linestyle="--", alpha=0.7, zorder=1)
 
-        # Separate negative and positive growth rates
-        neg_nw = networth_growth_filtered[networth_growth_filtered < 0]
-        pos_nw = networth_growth_filtered[networth_growth_filtered >= 0]
+        # Separate negative and positive growth rates (using plot-filtered data)
+        neg_nw = networth_growth_for_plot[networth_growth_for_plot < 0]
+        pos_nw = networth_growth_for_plot[networth_growth_for_plot >= 0]
 
         # Sort and compute ranks
         neg_sorted = np.sort(neg_nw)
@@ -857,10 +865,16 @@ def visualize_financial_dynamics(
                 check_outlier_penalty(pct_outliers, max_outlier),
             )
         ]
+        n_plot = len(networth_growth_for_plot)
+        n_line = (
+            f"N = {n_plot} ({n_reentries} re-entries excluded)"
+            if n_reentries > 0
+            else f"N = {n_total}"
+        )
         ax.text(
             0.02,
             0.97,
-            f"N = {n_total}\n"
+            f"{n_line}\n"
             f"Tight: {pct_tight * 100:.1f}% (target: {target_tight * 100:.0f}%)\n"
             f"Normal: {pct_normal * 100:.1f}% (target: {target_normal * 100:.0f}%)\n"
             f"Outliers: {pct_outliers * 100:.1f}% (max: {max_outlier * 100:.0f}%)\n"
