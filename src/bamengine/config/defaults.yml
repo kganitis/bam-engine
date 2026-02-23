@@ -74,11 +74,11 @@ delta:                0.10       # Dividend payout ratio (share of profits)
 # Balance sheet values at t=0. Can be scalars (broadcast to all agents) or
 # arrays of length n_firms/n_households for heterogeneous initialization.
 
-price_init:           1.50       # Goods price at t=0 (money unit per good unit)
-min_wage_ratio:       0.67       # Minimum wage at t=0 (as fraction of mean wage)
-net_worth_ratio:      1.0        # Firm net worth at t=0 (as fraction of production)
+price_init:           0.5        # Goods price at t=0 (money unit per good unit)
+min_wage_ratio:       0.5        # Minimum wage at t=0 (as fraction of mean wage)
+net_worth_ratio:      3.0        # Firm net worth at t=0 (as fraction of production)
 equity_base_init:     5.0        # Bank equity at t=0 (money units)
-savings_init:         3.0        # Household savings at t=0 (money units)
+savings_init:         1.0        # Household savings at t=0 (money units)
 
 # ── NEW FIRM ENTRY PARAMETERS ───────────────────────────────────────────────
 # Control how replacement firms are initialized after bankruptcy.
@@ -86,36 +86,36 @@ savings_init:         3.0        # Household savings at t=0 (money units)
 # scaled by these factors. This follows Delli Gatti et al. (2011) where new
 # entrants start "below the average size of incumbent firms".
 
-new_firm_size_factor: 0.5           # Core "size at entry" measure (as fraction of avg)
-new_firm_production_factor: 0.5     # Initial output capacity as fraction of avg output
-new_firm_wage_factor: 0.5           # Initial wage offer as a fraction of avg wage
-new_firm_price_markup: 1.5          # Initial price markup over average market price
+new_firm_size_factor: 0.5            # Core "size at entry" measure (as fraction of avg)
+new_firm_production_factor: 0.5      # Initial output capacity as fraction of avg output
+new_firm_wage_factor: 0.5            # Initial wage offer as a fraction of avg wage
+new_firm_price_markup: 1.15          # Initial price markup over average market price
 
 # ── RANDOM NUMBER GENERATION ──────────────────────────────────────────────────
 # Seed for deterministic simulations.
 # Set to null for non-deterministic behavior.
 
-seed:                 0          # RNG seed (null = random seed)
+seed:                 0              # RNG seed (null = random seed)
 
 # ── PIPELINE CONFIGURATION ────────────────────────────────────────────────────
 # Path to custom event pipeline YAML. If null, uses config/default_pipeline.yml.
 # Custom pipelines allow reordering events, removing events, or adding custom
 # events. See config/default_pipeline.yml for syntax.
 
-pipeline_path:      null         # Custom pipeline path (null = use default)
+pipeline_path:      null             # Custom pipeline path (null = use default)
 
 # ── LOGGING CONFIGURATION ─────────────────────────────────────────────────────
 # Control log output verbosity globally and per-event.
 # Levels: TRACE (5), DEBUG (10), INFO (20), WARNING (30), ERROR (40), CRITICAL (50)
 
 logging:
-  default_level:    INFO         # Default log level for all events
-  log_file:         null         # Path to log file (null = console only)
-  events:           {}           # Per-event overrides
-                                 # Example:
-                                 #   workers_send_one_round: WARNING
-                                 #   firms_hire_workers: DEBUG
-                                 #   firms_adjust_price: TRACE
+  default_level:    INFO             # Default log level for all events
+  log_file:         null             # Path to log file (null = console only)
+  events:           {}               # Per-event overrides
+                                     # Example:
+                                     #   workers_send_one_round: WARNING
+                                     #   firms_hire_workers: DEBUG
+                                     #   firms_adjust_price: TRACE
 
 # ── IMPLEMENTATION VARIANTS ─────────────────────────────────────────────────
 # Control specific behavioral details. These parameters allow experimenting
@@ -125,7 +125,7 @@ contract_poisson_mean: 0             # Poisson mean added to theta for contract 
                                      # Set to 0 for exact theta-only contracts
                                      # Actual duration: θ + Poisson(contract_poisson_mean)
 
-max_loan_to_net_worth: 5             # Max loan as multiple of borrower's net worth
+max_loan_to_net_worth: 2             # Max loan as multiple of borrower's net worth
                                      # Caps individual loans: loan <= X * net_worth
 
 max_leverage: 10                     # Maximum leverage ratio (fragility cap)
@@ -140,7 +140,7 @@ firing_method: random                # How firms select workers to fire
                                      # "random" = random selection
                                      # "expensive" = highest wage first
 
-job_search_method: vacancies_only    # How workers sample firms for job applications
+job_search_method: all_firms         # How workers sample firms for job applications
                                      # "vacancies_only" = sample only firms with vacancies
                                      # "all_firms" = sample from ALL firms (wasted apps)
 
