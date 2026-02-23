@@ -584,17 +584,17 @@ class Simulation:
 
         # Validate pipeline-altering params vs pipeline_path conflict
         pricing_phase = cfg_dict.get("pricing_phase", "planning")
-        labor_matching = cfg_dict.get("labor_matching", "cascade")
-        credit_matching = cfg_dict.get("credit_matching", "cascade")
+        labor_matching = cfg_dict.get("labor_matching", "interleaved")
+        credit_matching = cfg_dict.get("credit_matching", "interleaved")
         pipeline_path = cfg_dict.get("pipeline_path")
 
         if pipeline_path is not None:
             non_defaults = []
             if pricing_phase != "planning":
                 non_defaults.append(f"pricing_phase='{pricing_phase}'")
-            if labor_matching != "cascade":
+            if labor_matching != "interleaved":
                 non_defaults.append(f"labor_matching='{labor_matching}'")
-            if credit_matching != "cascade":
+            if credit_matching != "interleaved":
                 non_defaults.append(f"credit_matching='{credit_matching}'")
             if non_defaults:
                 raise ValueError(
