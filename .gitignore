@@ -89,7 +89,8 @@ docs/sg_execution_times.rst
 *.swp
 *.tmp
 
-# Local notes
+# Local scripts and notes
+analysis/
 notes/
 
 # Git worktrees
