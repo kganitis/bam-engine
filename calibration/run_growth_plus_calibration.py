@@ -31,15 +31,15 @@ GRID = {
 
 # 13 FIX params (held at defaults.yml values)
 FIXED = {
-    "price_init": 1.5,
-    "savings_init": 3.0,
-    "net_worth_ratio": 1.0,
+    "price_init": 0.5,
+    "savings_init": 1.0,
+    "net_worth_ratio": 3.0,
     "equity_base_init": 5.0,
     "pricing_phase": "planning",
-    "min_wage_ratio": 1.0,
+    "min_wage_ratio": 0.5,
     "beta": 2.5,
     "labor_matching": "interleaved",
-    "max_leverage": 5,
+    "max_leverage": 10,
     "sigma_decay": -1.0,
     "max_loan_to_net_worth": 2,
     "credit_matching": "interleaved",
