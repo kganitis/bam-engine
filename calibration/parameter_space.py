@@ -77,10 +77,7 @@ PARAMETER_GRIDS: dict[str, dict[str, list[Any]]] = {
 SCENARIO_OVERRIDES: dict[str, dict[str, Any]] = {
     "baseline": {},
     "growth_plus": {
-        "new_firm_size_factor": 0.5,
-        "new_firm_production_factor": 0.5,
-        "new_firm_wage_factor": 0.5,
-        "new_firm_price_markup": 1.0,
+        "new_firm_price_markup": 1.15,
         "sigma_decay": -1.0,
         "sigma_max": 0.1,
     },

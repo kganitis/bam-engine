@@ -194,10 +194,10 @@ def spawn_replacement_firms(
     bor: Borrower,
     wrk: Worker,
     *,
-    new_firm_size_factor: float = 0.9,
-    new_firm_production_factor: float = 0.9,
-    new_firm_wage_factor: float = 0.9,
-    new_firm_price_markup: float = 1.0,
+    new_firm_size_factor: float = 0.5,
+    new_firm_production_factor: float = 0.5,
+    new_firm_wage_factor: float = 0.5,
+    new_firm_price_markup: float = 1.15,
     rng: Rng = make_rng(),
 ) -> None:
     """

@@ -84,23 +84,23 @@ class Config:
         How workers and firms are matched in labor market:
         "sequential" = workers shuffled, apply one at a time (efficient)
         "simultaneous" = all workers apply at once, creating crowding at
-        high-wage firms (creates natural unemployment). Default: "simultaneous".
+        high-wage firms (creates natural unemployment). Default: "sequential".
     job_search_method : str, optional
         How unemployed workers sample firms for job applications:
-        "vacancies_only" = sample only from firms with open vacancies (default)
+        "vacancies_only" = sample only from firms with open vacancies
         "all_firms" = sample from ALL firms (applications to non-hiring firms
-        are wasted). Default: "vacancies_only".
+        are wasted) (default). Default: "all_firms".
     price_cut_allow_increase : bool, optional
         Whether to allow price increase when trying to cut due to
         breakeven floor. Default: True.
     new_firm_size_factor : float, optional
-        Scale factor for new firm net worth vs survivor mean. Default: 0.8.
+        Scale factor for new firm net worth vs survivor mean. Default: 0.5.
     new_firm_production_factor : float, optional
-        Scale factor for new firm production vs survivor mean. Default: 0.9.
+        Scale factor for new firm production vs survivor mean. Default: 0.5.
     new_firm_wage_factor : float, optional
-        Scale factor for new firm wage offer vs survivor mean. Default: 0.9.
+        Scale factor for new firm wage offer vs survivor mean. Default: 0.5.
     new_firm_price_markup : float, optional
-        Price markup for new firms vs avg market price. Default: 1.0.
+        Price markup for new firms vs avg market price. Default: 1.15.
 
     Examples
     --------
@@ -188,15 +188,15 @@ class Config:
         "by_leverage"  # "by_net_worth", "by_leverage", "by_appearance"
     )
     firing_method: str = "random"  # "random" or "expensive"
-    matching_method: str = "simultaneous"  # "sequential" or "simultaneous"
-    job_search_method: str = "vacancies_only"  # "vacancies_only" or "all_firms"
+    matching_method: str = "sequential"  # "sequential" or "simultaneous"
+    job_search_method: str = "all_firms"  # "vacancies_only" or "all_firms"
     price_cut_allow_increase: bool = True  # Allow price increase when cutting
 
     # New firm entry parameters
-    new_firm_size_factor: float = 0.8  # Net worth scale factor vs survivor mean
-    new_firm_production_factor: float = 0.9  # Production scale factor vs survivor mean
-    new_firm_wage_factor: float = 0.9  # Wage offer scale factor vs survivor mean
-    new_firm_price_markup: float = 1.0  # Price = avg_mkt_price * markup
+    new_firm_size_factor: float = 0.5  # Net worth scale factor vs survivor mean
+    new_firm_production_factor: float = 0.5  # Production scale factor vs survivor mean
+    new_firm_wage_factor: float = 0.5  # Wage offer scale factor vs survivor mean
+    new_firm_price_markup: float = 1.15  # Price = avg_mkt_price * markup
 
     # Inflation calculation method
     inflation_method: str = "yoy"  # "yoy" (year-over-year) or "annualized"
@@ -205,8 +205,8 @@ class Config:
     pricing_phase: str = "planning"  # "planning" or "production"
 
     # Market matching variants
-    labor_matching: str = "cascade"  # "cascade" or "interleaved"
-    credit_matching: str = "cascade"  # "cascade" or "interleaved"
+    labor_matching: str = "interleaved"  # "cascade" or "interleaved"
+    credit_matching: str = "interleaved"  # "cascade" or "interleaved"
     min_wage_ratchet: bool = False  # True = upward-only ratchet
 
     # Consumer matching strategy

@@ -37,7 +37,7 @@ FIXED_CALIBRATED = {
     "new_firm_size_factor": 0.5,
     "new_firm_production_factor": 0.5,
     "new_firm_wage_factor": 0.5,
-    "new_firm_price_markup": 1.0,
+    "new_firm_price_markup": 1.15,
     "max_M": 4,
     "job_search_method": "all_firms",
     "price_cut_allow_increase": True,
