@@ -233,6 +233,7 @@ markers = [
     "invariants: marks invariant validation tests (deselect with '-m \"not invariants\"')",
     "integration: marks integration tests (deselect with '-m \"not integration\"')",
     "validation: marks validation scenario tests (deselect with '-m \"not validation\"')",
+    "calibration: marks calibration tests (deselect with '-m \"not calibration\"')",
 ]
 addopts = """
 -ra
