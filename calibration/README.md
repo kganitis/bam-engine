@@ -141,19 +141,19 @@ Output: `output/{scenario}_pairwise.json`
 
 | Scenario       | Parameters            | Description                              |
 | -------------- | --------------------- | ---------------------------------------- |
-| `baseline`     | 26 common             | Standard BAM model (Section 3.9.1)       |
-| `growth_plus`  | 26 + 2 R&D            | Endogenous R&D growth (Section 3.9.2)    |
-| `buffer_stock` | 26 + 3 (R&D + buffer) | Buffer-stock consumption (Section 3.9.4) |
+| `baseline`     | 14 common             | Standard BAM model (Section 3.9.1)       |
+| `growth_plus`  | 14 + 2 R&D            | Endogenous R&D growth (Section 3.9.2)    |
+| `buffer_stock` | 14 + 3 (R&D + buffer) | Buffer-stock consumption (Section 3.9.4) |
 
 ## Parameter Grid
 
-The 26 common parameters cover:
+The 14 common parameters cover:
 
 - **Initial conditions**: `price_init`, `min_wage_ratio`, `net_worth_ratio`, `equity_base_init`, `savings_init`
 - **New firm entry**: `new_firm_size_factor`, `new_firm_production_factor`, `new_firm_wage_factor`, `new_firm_price_markup`
 - **Economy-wide**: `beta`
 - **Search frictions**: `max_M`
-- **Implementation variants**: `contract_poisson_mean`, `max_loan_to_net_worth`, `max_leverage`, `loan_priority_method`, `firing_method`, `job_search_method`, `price_cut_allow_increase`, `inflation_method`, `pricing_phase`, `labor_matching`, `matching_method`, `credit_matching`, `min_wage_ratchet`
+- **Implementation variants**: `max_loan_to_net_worth`, `max_leverage`, `job_search_method`
 
 Extension-specific:
 
@@ -249,7 +249,7 @@ calibration/
 ├── morris.py           # Morris Method screening (elementary effects)
 ├── sensitivity.py      # OAT sensitivity + pairwise interaction
 ├── optimizer.py        # Grid search, tiered stability, patterns, export, comparison
-├── parameter_space.py  # Parameter grids (26 common + extensions)
+├── parameter_space.py  # Parameter grids (14 common + extensions)
 ├── run_grid_search.py  # Alternative standalone grid search script
 └── output/             # Results JSON/YAML files
 ```

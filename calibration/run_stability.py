@@ -80,13 +80,7 @@ for i, r in enumerate(results):
         f"nfsf={p.get('new_firm_size_factor')}, "
         f"nfpf={p.get('new_firm_production_factor')}"
     )
-    print(
-        f"  pca={p.get('price_cut_allow_increase')}, "
-        f"im={p.get('inflation_method')}, "
-        f"mwr={p.get('min_wage_ratchet')}, "
-        f"js={p.get('job_search_method')}, "
-        f"mM={p.get('max_M')}"
-    )
+    print(f"  js={p.get('job_search_method')}, mM={p.get('max_M')}")
 
 # Save results
 output = {"scenario": "growth_plus", "tiers": [list(t) for t in tiers], "results": []}

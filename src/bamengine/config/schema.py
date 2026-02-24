@@ -70,16 +70,6 @@ class Config:
     cap_factor : float or None, optional
         Cap factor for breakeven price calculation (>= 1.0 if specified).
         If None, no cap is applied.
-    contract_poisson_mean : int, optional
-        Mean of Poisson distribution added to theta for contract duration.
-        If 0, contracts last exactly theta periods. Default: 0.
-    loan_priority_method : str, optional
-        How banks rank loan applicants: "by_net_worth" (descending),
-        "by_leverage" (ascending), or "by_appearance" (first-come-first-served).
-        Default: "by_leverage".
-    firing_method : str, optional
-        How firms select workers to fire: "random" or "expensive"
-        (highest wage first). Default: "random".
     matching_method : str, optional
         How workers and firms are matched in labor market:
         "sequential" = workers shuffled, apply one at a time (efficient)
@@ -181,16 +171,8 @@ class Config:
     cap_factor: float | None = None
 
     # Implementation variant parameters
-    contract_poisson_mean: int = (
-        0  # Mean for Poisson addition to theta (0 = theta-only)
-    )
-    loan_priority_method: str = (
-        "by_leverage"  # "by_net_worth", "by_leverage", "by_appearance"
-    )
-    firing_method: str = "random"  # "random" or "expensive"
     matching_method: str = "sequential"  # "sequential" or "simultaneous"
     job_search_method: str = "all_firms"  # "vacancies_only" or "all_firms"
-    price_cut_allow_increase: bool = True  # Allow price increase when cutting
 
     # New firm entry parameters
     new_firm_size_factor: float = 0.5  # Net worth scale factor vs survivor mean
@@ -198,16 +180,15 @@ class Config:
     new_firm_wage_factor: float = 0.5  # Wage offer scale factor vs survivor mean
     new_firm_price_markup: float = 1.15  # Price = avg_mkt_price * markup
 
-    # Inflation calculation method
-    inflation_method: str = "yoy"  # "yoy" (year-over-year) or "annualized"
-
     # Pricing phase
     pricing_phase: str = "planning"  # "planning" or "production"
 
-    # Market matching variants
-    labor_matching: str = "interleaved"  # "cascade" or "interleaved"
-    credit_matching: str = "interleaved"  # "cascade" or "interleaved"
-    min_wage_ratchet: bool = False  # True = upward-only ratchet
-
     # Consumer matching strategy
     consumer_matching: str = "loyalty"  # "loyalty" or "random"
+
+    # === DEPRECATED (may be removed in future) ===
+    price_cut_allow_increase: bool = True  # DEPRECATED
+    inflation_method: str = "yoy"  # DEPRECATED — Inflation calculation method
+    labor_matching: str = "interleaved"  # DEPRECATED — Always interleaved
+    credit_matching: str = "interleaved"  # DEPRECATED — Always interleaved
+    min_wage_ratchet: bool = False  # DEPRECATED — Minimum wage ratchet

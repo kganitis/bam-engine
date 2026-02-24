@@ -816,7 +816,6 @@ def firms_hire_workers(
     emp: Employer,
     *,
     theta: int,
-    contract_poisson_mean: int = 10,
     matching_method: str = "sequential",
     rng: Rng = make_rng(),
 ) -> None:
@@ -930,10 +929,7 @@ def firms_hire_workers(
             )
         wrk.employer[final_hires] = i
         wrk.wage[final_hires] = emp.wage_offer[i]
-        if contract_poisson_mean > 0:
-            wrk.periods_left[final_hires] = theta + rng.poisson(contract_poisson_mean)
-        else:
-            wrk.periods_left[final_hires] = theta
+        wrk.periods_left[final_hires] = theta
         wrk.contract_expired[final_hires] = 0
         wrk.fired[final_hires] = 0
         wrk.job_apps_head[final_hires] = -1
@@ -996,7 +992,6 @@ def _hire_workers(
     worker_ids: Idx1D,
     *,
     theta: int,
-    contract_poisson_mean: int = 0,
     rng: Rng = make_rng(),
 ) -> None:
     """Apply state updates for hiring a batch of workers to a firm.
@@ -1008,10 +1003,7 @@ def _hire_workers(
     # worker-side updates
     wrk.employer[worker_ids] = firm_idx
     wrk.wage[worker_ids] = emp.wage_offer[firm_idx]
-    if contract_poisson_mean > 0:
-        wrk.periods_left[worker_ids] = theta + rng.poisson(contract_poisson_mean)
-    else:
-        wrk.periods_left[worker_ids] = theta
+    wrk.periods_left[worker_ids] = theta
     wrk.contract_expired[worker_ids] = 0
     wrk.fired[worker_ids] = 0
     wrk.job_apps_head[worker_ids] = -1
@@ -1027,7 +1019,6 @@ def workers_apply_to_firms(
     emp: Employer,
     *,
     theta: int,
-    contract_poisson_mean: int = 0,
     rng: Rng = make_rng(),
 ) -> None:
     """Cascade matching: each worker walks their ranked queue until hired.
@@ -1103,7 +1094,6 @@ def workers_apply_to_firms(
                     firm_id,
                     worker_arr,
                     theta=theta,
-                    contract_poisson_mean=contract_poisson_mean,
                     rng=rng,
                 )
                 total_hires += 1
@@ -1137,7 +1127,6 @@ def workers_apply_to_best_firm(
     emp: Employer,
     *,
     theta: int,
-    contract_poisson_mean: int = 0,
     rng: Rng = make_rng(),
 ) -> None:
     """Single-best matching: each worker applies only to their top-choice firm.
@@ -1202,7 +1191,6 @@ def workers_apply_to_best_firm(
                 firm_id,
                 worker_arr,
                 theta=theta,
-                contract_poisson_mean=contract_poisson_mean,
                 rng=rng,
             )
             total_hires += 1

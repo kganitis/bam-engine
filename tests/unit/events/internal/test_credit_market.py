@@ -561,7 +561,7 @@ def test_firms_fire_workers_random_sufficient_mask_branch() -> None:
     wrk.employer[:] = 0
     wrk.wage[:] = 1.0
 
-    firms_fire_workers(emp, wrk, rng=make_rng(123), method="random")
+    firms_fire_workers(emp, wrk, rng=make_rng(123))
 
     # Minimal number that covers 2.4 with 1.0 wages is 3 workers
     assert wrk.fired.sum() == 3
@@ -601,67 +601,6 @@ def test_send_one_loan_app_exhausted_then_cleanup_next_round() -> None:
     # Sanity: two apps actually landed (one per bank), no extra writes happened
     assert lend.recv_loan_apps_head[0] >= 0
     assert lend.recv_loan_apps_head[1] >= 0
-
-
-def test_firms_fire_workers_expensive_picks_top_wages() -> None:
-    """
-    'expensive' method should fire the highest-wage workers first until gap is covered.
-    Wages = [1, 3, 4, 5], gap = 9 → fire 5 and 4 (2 workers), keep 1 and 3.
-    """
-    # Employer: one firm, 4 workers, wage bill equals sum(wages)
-    wages = np.array([1.0, 3.0, 4.0, 5.0])
-    emp = mock_employer(
-        n=1,
-        current_labor=np.array([4]),
-        wage_bill=np.array([wages.sum()]),  # 13
-        total_funds=np.array([wages.sum() - 9.0]),  # gap = 9
-    )
-    wrk = mock_worker(n=4)
-    wrk.employed[:] = 1
-    wrk.employer[:] = 0
-    wrk.wage[:] = wages
-
-    firms_fire_workers(emp, wrk, method="expensive", rng=make_rng(0))
-
-    fired_idx = set(np.flatnonzero(wrk.fired))
-    # Expect the two most expensive: indices 3 (wage 5) and 2 (wage 4)
-    assert fired_idx == {2, 3}
-    # Current labor decreased by exactly 2
-    assert emp.current_labor[0] == 2
-    # Wage bill recomputed from remaining workers: 1 + 3 = 4
-    assert emp.wage_bill[0] == pytest.approx(4.0, rel=0, abs=1e-12)
-    # Fired workers cleared
-    assert np.all(wrk.employed[list(fired_idx)] == 0)
-    assert np.all(wrk.employer[list(fired_idx)] == -1)
-    assert np.all(wrk.wage[list(fired_idx)] == 0.0)
-
-
-def test_firms_fire_workers_expensive_fire_all_if_insufficient() -> None:
-    """
-    If even all workers together can't cover the gap, 'expensive' should fire everyone.
-    Wages = [5, 1], gap = 10 → cumsum [5, 6] < 10 ⇒ fire both.
-    """
-    wages = np.array([5.0, 1.0])
-    emp = mock_employer(
-        n=1,
-        current_labor=np.array([2]),
-        wage_bill=np.array([wages.sum()]),  # 6
-        total_funds=np.array([wages.sum() - 10.0]),  # gap = 10
-    )
-    wrk = mock_worker(n=2)
-    wrk.employed[:] = 1
-    wrk.employer[:] = 0
-    wrk.wage[:] = wages
-
-    firms_fire_workers(emp, wrk, method="expensive", rng=make_rng(0))
-
-    # Both fired
-    assert wrk.fired.sum() == 2
-    assert emp.current_labor[0] == 0
-    assert emp.wage_bill[0] == pytest.approx(0.0, rel=0, abs=1e-12)
-    assert np.all(wrk.employed == 0)
-    assert np.all(wrk.employer == -1)
-    assert np.all(wrk.wage == 0.0)
 
 
 def test_send_one_loan_app_head_negative_after_shuffle_branch() -> None:
@@ -852,46 +791,6 @@ def test_multi_lender_loans_persist_across_rounds() -> None:
 # ============================================================================
 
 
-def test_clean_queue_sorts_by_net_worth_when_enabled() -> None:
-    """Test that _clean_queue sorts by net worth when sort_by_net_worth=True."""
-    bor = mock_borrower(
-        n=5,
-        net_worth=np.array([10.0, 50.0, 30.0, 20.0, 40.0]),
-        credit_demand=np.array([100.0, 200.0, 150.0, 120.0, 180.0]),
-    )
-
-    # Queue with borrowers [1, 2, 3, 4] (exclude 0)
-    raw_queue = np.array([1, 2, 3, 4], dtype=np.int64)
-
-    result = _clean_queue(
-        raw_queue, bor, bank_idx_for_log=0, priority_method="by_net_worth"
-    )
-
-    # Should be sorted by net worth descending: [1(50), 4(40), 2(30), 3(20)]
-    expected = np.array([1, 4, 2, 3], dtype=np.int64)
-    np.testing.assert_array_equal(result, expected)
-
-
-def test_clean_queue_preserves_order_when_disabled() -> None:
-    """Test _clean_queue preserves order when priority_method='by_appearance'."""
-    bor = mock_borrower(
-        n=5,
-        net_worth=np.array([10.0, 50.0, 30.0, 20.0, 40.0]),
-        credit_demand=np.array([100.0, 200.0, 150.0, 120.0, 180.0]),
-    )
-
-    # Queue with borrowers [1, 2, 3, 4] (exclude 0)
-    raw_queue = np.array([1, 2, 3, 4], dtype=np.int64)
-
-    result = _clean_queue(
-        raw_queue, bor, bank_idx_for_log=0, priority_method="by_appearance"
-    )
-
-    # Should preserve order: [1, 2, 3, 4]
-    expected = np.array([1, 2, 3, 4], dtype=np.int64)
-    np.testing.assert_array_equal(result, expected)
-
-
 def test_clean_queue_filters_negative_sentinels() -> None:
     """Test that _clean_queue removes -1 sentinels regardless of sorting."""
     bor = mock_borrower(
@@ -903,21 +802,9 @@ def test_clean_queue_filters_negative_sentinels() -> None:
     # Queue with sentinels
     raw_queue = np.array([1, -1, 2, -1, 3], dtype=np.int64)
 
-    # With sorting
-    result_sorted = _clean_queue(
-        raw_queue, bor, bank_idx_for_log=0, priority_method="by_net_worth"
-    )
-    # Should be [3(30), 2(20), 1(10)] - no -1s
-    assert -1 not in result_sorted
-    assert result_sorted.size == 3
-
-    # Without sorting
-    result_unsorted = _clean_queue(
-        raw_queue, bor, bank_idx_for_log=0, priority_method="by_appearance"
-    )
-    # Should be [1, 2, 3] - no -1s, order preserved
-    assert -1 not in result_unsorted
-    np.testing.assert_array_equal(result_unsorted, [1, 2, 3])
+    result = _clean_queue(raw_queue, bor, bank_idx_for_log=0)
+    assert -1 not in result
+    assert result.size == 3
 
 
 def test_clean_queue_filters_zero_credit_demand() -> None:
@@ -932,9 +819,7 @@ def test_clean_queue_filters_zero_credit_demand() -> None:
 
     raw_queue = np.array([0, 1, 2, 3, 4], dtype=np.int64)
 
-    result = _clean_queue(
-        raw_queue, bor, bank_idx_for_log=0, priority_method="by_appearance"
-    )
+    result = _clean_queue(raw_queue, bor, bank_idx_for_log=0)
 
     # Should only include borrowers with positive demand: [0, 2, 4]
     expected = np.array([0, 2, 4], dtype=np.int64)
@@ -952,9 +837,7 @@ def test_clean_queue_removes_duplicates() -> None:
     # Queue with duplicates
     raw_queue = np.array([1, 2, 1, 3, 2], dtype=np.int64)
 
-    result = _clean_queue(
-        raw_queue, bor, bank_idx_for_log=0, priority_method="by_appearance"
-    )
+    result = _clean_queue(raw_queue, bor, bank_idx_for_log=0)
 
     # Should keep only first occurrence of each: [1, 2, 3]
     expected = np.array([1, 2, 3], dtype=np.int64)
@@ -971,9 +854,7 @@ def test_clean_queue_empty_after_filtering() -> None:
 
     raw_queue = np.array([0, 1, 2], dtype=np.int64)
 
-    result = _clean_queue(
-        raw_queue, bor, bank_idx_for_log=0, priority_method="by_net_worth"
-    )
+    result = _clean_queue(raw_queue, bor, bank_idx_for_log=0)
 
     # Should be empty
     assert result.size == 0
@@ -1185,11 +1066,8 @@ def test_cascade_credit_only_positive_demand() -> None:
     assert lb.size == 0
 
 
-# ── Cascade credit: loan_priority_method sorting ──────────────────────
-
-
 def test_cascade_credit_leverage_sorting_priority() -> None:
-    """With by_leverage, the least-fragile firm is served first."""
+    """Least-fragile firm is served first when supply is scarce."""
     H = 1
     bor = mock_borrower(
         n=2,
@@ -1217,148 +1095,10 @@ def test_cascade_credit_leverage_sorting_priority() -> None:
     bor.loan_apps_head[0] = 0
     bor.loan_apps_head[1] = H  # stride = H, so firm 1's head = 1 * H
 
-    firms_apply_for_loans(
-        bor,
-        lend,
-        lb,
-        r_bar=0.02,
-        loan_priority_method="by_leverage",
-        max_leverage=10.0,
-        rng=make_rng(0),
-    )
+    firms_apply_for_loans(bor, lend, lb, r_bar=0.02, max_leverage=10.0, rng=make_rng(0))
 
     # Firm 1 (fragility=0.1) should be served first, consuming all supply
     assert lb.size == 1
     assert lb.borrower[0] == 1
     assert bor.credit_demand[1] == pytest.approx(0.0)
     assert bor.credit_demand[0] == pytest.approx(10.0)  # unfunded
-
-
-def test_cascade_credit_net_worth_sorting_priority() -> None:
-    """With by_net_worth, the wealthier firm is served first."""
-    H = 1
-    bor = mock_borrower(
-        n=2,
-        queue_h=H,
-        wage_bill=np.array([50.0, 50.0]),
-        net_worth=np.array([10.0, 40.0]),
-        credit_demand=np.array([40.0, 10.0]),
-        total_funds=np.array([10.0, 40.0]),
-    )
-    bor.projected_fragility = np.array([1.0, 1.0])
-
-    lend = mock_lender(
-        n=1,
-        queue_h=H,
-        credit_supply=np.array([10.0]),  # only enough for ONE firm
-        interest_rate=np.array([0.05]),
-    )
-    lend.opex_shock = np.array([0.5])
-    lb = mock_loanbook()
-
-    bor.loan_apps_targets[0, :H] = [0]
-    bor.loan_apps_targets[1, :H] = [0]
-    bor.loan_apps_head[0] = 0
-    bor.loan_apps_head[1] = H
-
-    firms_apply_for_loans(
-        bor,
-        lend,
-        lb,
-        r_bar=0.02,
-        loan_priority_method="by_net_worth",
-        max_leverage=10.0,
-        rng=make_rng(0),
-    )
-
-    # Firm 1 (NW=40) should be served first, consuming all supply
-    assert lb.size == 1
-    assert lb.borrower[0] == 1
-    assert bor.credit_demand[1] == pytest.approx(0.0)
-    assert bor.credit_demand[0] == pytest.approx(40.0)  # unfunded
-
-
-def test_cascade_credit_by_appearance_shuffles() -> None:
-    """With by_appearance, both firms get funded when supply is ample."""
-    H = 1
-    bor = mock_borrower(
-        n=2,
-        queue_h=H,
-        wage_bill=np.array([20.0, 20.0]),
-        net_worth=np.array([10.0, 10.0]),
-        credit_demand=np.array([10.0, 10.0]),
-        total_funds=np.array([10.0, 10.0]),
-    )
-    bor.projected_fragility = np.array([1.0, 1.0])
-
-    lend = mock_lender(
-        n=1,
-        queue_h=H,
-        credit_supply=np.array([100.0]),  # plenty for both
-        interest_rate=np.array([0.05]),
-    )
-    lend.opex_shock = np.array([0.5])
-    lb = mock_loanbook()
-
-    bor.loan_apps_targets[0, :H] = [0]
-    bor.loan_apps_targets[1, :H] = [0]
-    bor.loan_apps_head[0] = 0
-    bor.loan_apps_head[1] = H
-
-    firms_apply_for_loans(
-        bor,
-        lend,
-        lb,
-        r_bar=0.02,
-        loan_priority_method="by_appearance",
-        max_leverage=10.0,
-        rng=make_rng(42),
-    )
-
-    # Both firms should be funded (ample supply)
-    assert lb.size == 2
-    assert bor.credit_demand[0] == pytest.approx(0.0)
-    assert bor.credit_demand[1] == pytest.approx(0.0)
-
-
-def test_cascade_credit_default_method_is_by_leverage() -> None:
-    """Default loan_priority_method produces same result as by_leverage."""
-    H = 1
-    bor = mock_borrower(
-        n=2,
-        queue_h=H,
-        wage_bill=np.array([20.0, 20.0]),
-        net_worth=np.array([10.0, 10.0]),
-        credit_demand=np.array([10.0, 10.0]),
-        total_funds=np.array([10.0, 10.0]),
-    )
-    # Firm 0 is MORE fragile; firm 1 is LESS fragile
-    bor.projected_fragility = np.array([2.0, 0.1])
-
-    lend = mock_lender(
-        n=1,
-        queue_h=H,
-        credit_supply=np.array([10.0]),  # only enough for ONE firm
-        interest_rate=np.array([0.05]),
-    )
-    lend.opex_shock = np.array([0.5])
-    lb = mock_loanbook()
-
-    bor.loan_apps_targets[0, :H] = [0]
-    bor.loan_apps_targets[1, :H] = [0]
-    bor.loan_apps_head[0] = 0
-    bor.loan_apps_head[1] = H
-
-    # No explicit loan_priority_method — should default to "by_leverage"
-    firms_apply_for_loans(
-        bor,
-        lend,
-        lb,
-        r_bar=0.02,
-        max_leverage=10.0,
-        rng=make_rng(0),
-    )
-
-    # Firm 1 (less fragile) should be served first, same as explicit by_leverage
-    assert lb.size == 1
-    assert lb.borrower[0] == 1

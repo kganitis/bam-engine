@@ -674,8 +674,6 @@ def create_default_pipeline(
     max_H: int,
     max_Z: int,
     pricing_phase: str = "planning",
-    labor_matching: str = "interleaved",
-    credit_matching: str = "interleaved",
 ) -> Pipeline:
     """
     Create default BAM simulation event pipeline.
@@ -683,6 +681,11 @@ def create_default_pipeline(
     Loads the pipeline from config/default_pipeline.yml and substitutes
     market round parameters (max_M, max_H, max_Z). Applies event swaps
     based on implementation variant parameters.
+
+    The pipeline always uses interleaved matching for both labor and credit
+    markets: ``workers_send_one_round`` / ``firms_hire_workers`` repeated
+    ``max_M`` times, and ``firms_send_one_loan_app`` / ``banks_provide_loans``
+    repeated ``max_H`` times.
 
     Parameters
     ----------
@@ -697,16 +700,6 @@ def create_default_pipeline(
         ``"planning"`` (default) uses previous period's costs / desired
         production. ``"production"`` uses current period's costs / projected
         production (after labor/credit markets).
-    labor_matching : str, optional
-        Labor market matching algorithm. ``"interleaved"`` (default) uses
-        ``workers_send_one_round`` / ``firms_hire_workers`` repeated
-        ``max_M`` times. ``"cascade"`` uses a single
-        ``workers_apply_to_firms`` event.
-    credit_matching : str, optional
-        Credit market matching algorithm. ``"interleaved"`` (default) uses
-        ``firms_send_one_loan_app`` / ``banks_provide_loans`` repeated
-        ``max_H`` times. ``"cascade"`` uses a single
-        ``firms_apply_for_loans`` event.
 
     Returns
     -------
@@ -752,22 +745,19 @@ def create_default_pipeline(
             ["firms_calc_breakeven_price", "firms_adjust_price"],
         )
 
-    # Swap labor matching if interleaved requested
-    if labor_matching == "interleaved":
-        pipeline.remove("workers_apply_to_firms")
-        legacy_labor: list[Event | str] = [
-            "workers_send_one_round",
-            "firms_hire_workers",
-        ] * max_M
-        pipeline.insert_after("workers_decide_firms_to_apply", legacy_labor)
+    # Swap cascade events for interleaved matching (always active)
+    pipeline.remove("workers_apply_to_firms")
+    legacy_labor: list[Event | str] = [
+        "workers_send_one_round",
+        "firms_hire_workers",
+    ] * max_M
+    pipeline.insert_after("workers_decide_firms_to_apply", legacy_labor)
 
-    # Swap credit matching if interleaved requested
-    if credit_matching == "interleaved":
-        pipeline.remove("firms_apply_for_loans")
-        legacy_credit: list[Event | str] = [
-            "firms_send_one_loan_app",
-            "banks_provide_loans",
-        ] * max_H
-        pipeline.insert_after("firms_prepare_loan_applications", legacy_credit)
+    pipeline.remove("firms_apply_for_loans")
+    legacy_credit: list[Event | str] = [
+        "firms_send_one_loan_app",
+        "banks_provide_loans",
+    ] * max_H
+    pipeline.insert_after("firms_prepare_loan_applications", legacy_credit)
 
     return pipeline

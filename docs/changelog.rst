@@ -251,6 +251,18 @@ Changed
   units. Default ``net_worth_ratio`` changed from 3.0 to 6.0 to preserve the
   same default net worth (7.5). Semantics changed from "fraction of production
   capacity" to "multiple of initial revenue".
+* Pipeline always uses interleaved matching for both labor and credit markets.
+* ``pricing_phase`` and ``matching_method`` removed from ``defaults.yml``
+  (schema defaults still apply).
+
+Deprecated
+~~~~~~~~~~
+
+* ``price_cut_allow_increase``, ``inflation_method``, ``labor_matching``,
+  ``credit_matching``, ``min_wage_ratchet`` config params — may be removed
+  in a future release.
+* ``create_default_pipeline()`` no longer accepts ``labor_matching`` /
+  ``credit_matching`` params.
 
 Fixed
 ~~~~~
@@ -302,6 +314,11 @@ Fixed
 Removed
 ~~~~~~~
 
+* ``contract_poisson_mean`` config param — contracts now always use exact
+  ``theta`` duration.
+* ``loan_priority_method`` config param — credit matching always uses
+  leverage-based ordering.
+* ``firing_method`` config param — worker firing always uses random selection.
 * ``SMALL_ECONOMY_CONFIG`` and ``validation/scenarios/_configs.py``
   (redundant with unified defaults)
 * ``capture_timing`` workarounds for ``Economy.n_firm_bankruptcies`` /

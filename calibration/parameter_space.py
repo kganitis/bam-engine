@@ -39,13 +39,6 @@ _COMMON_GRID: dict[str, list[Any]] = {
     "max_loan_to_net_worth": [0, 2, 5, 10],
     "max_leverage": [0, 5, 10, 20],
     "job_search_method": ["vacancies_only", "all_firms"],
-    "price_cut_allow_increase": [True, False],
-    "inflation_method": ["yoy", "annualized"],
-    "pricing_phase": ["planning", "production"],
-    "labor_matching": ["cascade", "interleaved"],
-    "matching_method": ["sequential", "simultaneous"],
-    "credit_matching": ["cascade", "interleaved"],
-    "min_wage_ratchet": [True, False],
 }
 
 # =============================================================================

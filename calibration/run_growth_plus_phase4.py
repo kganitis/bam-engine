@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Growth+ Phase 4: Second-pass calibration of structural/initial-condition params.
 
-Phase 2-3 calibrated the 9 most sensitive parameters (new-firm entry, labor market,
-inflation). This second pass fixes those 9 at their current default values and
+Phase 2-3 calibrated the 6 most sensitive parameters (new-firm entry, labor market).
+This second pass fixes those 6 at their current default values and
 optimizes the 8 structural/initial-condition params that were held fixed.
 
 Run with:
@@ -31,8 +31,8 @@ GRID = {
     "max_leverage": [0, 5, 10, 20],
 }
 
-# ─── Fixed parameters (14 total) ────────────────────────────────────────────
-# 9 calibrated INCLUDE params from Phase 2-3 (at current defaults)
+# ─── Fixed parameters (7 total) ─────────────────────────────────────────────
+# 6 calibrated INCLUDE params from Phase 2-3 (at current defaults)
 FIXED_CALIBRATED = {
     "new_firm_size_factor": 0.5,
     "new_firm_production_factor": 0.5,
@@ -40,18 +40,11 @@ FIXED_CALIBRATED = {
     "new_firm_price_markup": 1.15,
     "max_M": 4,
     "job_search_method": "all_firms",
-    "price_cut_allow_increase": True,
-    "inflation_method": "yoy",
-    "min_wage_ratchet": False,
 }
 
-# 5 invariant params (excluded from both searches)
+# 1 invariant param (excluded from both searches)
 FIXED_INVARIANT = {
     "sigma_decay": -1.0,
-    "pricing_phase": "planning",
-    "labor_matching": "interleaved",
-    "credit_matching": "interleaved",
-    "matching_method": "sequential",
 }
 
 FIXED = {**FIXED_CALIBRATED, **FIXED_INVARIANT}

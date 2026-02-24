@@ -688,8 +688,6 @@ def test_firms_hire_workers_basic() -> None:
     wrk = mock_worker(n=3, queue_m=M)
 
     rng = make_rng(0)
-    rng_check = make_rng(0)
-    expected_extra = rng_check.poisson(10)
 
     # preload queue with worker-ids 0 and 1
     emp.recv_job_apps_head[0] = 1  # queue length = 2
@@ -710,9 +708,8 @@ def test_firms_hire_workers_basic() -> None:
     assert wrk.employed[[0, 1]].all()  # both hired
     assert np.all(wrk.employer[[0, 1]] == 0)  # employer set
 
-    # contract length: same scalar for both hires
-    expected_periods = theta + expected_extra
-    assert np.all(wrk.periods_left[[0, 1]] == expected_periods)
+    # contract length: exact theta for both hires
+    assert np.all(wrk.periods_left[[0, 1]] == theta)
 
     # queues cleared for those workers
     assert np.all(wrk.job_apps_head[[0, 1]] == -1)
@@ -1388,7 +1385,7 @@ def test_cascade_only_unemployed_participate() -> None:
 
 
 def test_cascade_contract_duration() -> None:
-    """Contract duration set correctly (theta + poisson)."""
+    """Contract duration is set to exactly theta."""
     M = 2
     emp = mock_employer(
         n=1,
@@ -1405,9 +1402,9 @@ def test_cascade_contract_duration() -> None:
         job_apps_targets=np.array([[0, -1]], dtype=np.intp),
     )
 
-    workers_apply_to_firms(wrk, emp, theta=8, contract_poisson_mean=10, rng=make_rng(0))
+    workers_apply_to_firms(wrk, emp, theta=8, rng=make_rng(0))
 
-    assert wrk.periods_left[0] >= 8  # at least theta
+    assert wrk.periods_left[0] == 8  # exact theta
 
 
 def test_cascade_deterministic_with_seed() -> None:

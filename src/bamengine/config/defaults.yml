@@ -121,59 +121,26 @@ logging:
 # Control specific behavioral details. These parameters allow experimenting
 # with different implementation choices to match reference model results.
 
-contract_poisson_mean: 0             # Poisson mean added to theta for contract duration
-                                     # Set to 0 for exact theta-only contracts
-                                     # Actual duration: θ + Poisson(contract_poisson_mean)
-
 max_loan_to_net_worth: 2             # Max loan as multiple of borrower's net worth
                                      # Caps individual loans: loan <= X * net_worth
 
 max_leverage: 10                     # Maximum leverage ratio (fragility cap)
                                      # for interest rate calculation
 
-loan_priority_method: by_leverage    # How firms are ordered for credit matching
-                                     # "by_net_worth" = sort by net worth (desc)
-                                     # "by_leverage" = sort by leverage (asc), book value
-                                     # "by_appearance" = first-come-first-served
-
-firing_method: random                # How firms select workers to fire
-                                     # "random" = random selection
-                                     # "expensive" = highest wage first
-
 job_search_method: all_firms         # How workers sample firms for job applications
                                      # "vacancies_only" = sample only firms with vacancies
                                      # "all_firms" = sample from ALL firms (wasted apps)
 
-price_cut_allow_increase: true       # Allow price increase when trying to cut
-                                     # (due to breakeven price floor being higher than cut price)
-
-inflation_method: yoy                # How to calculate inflation rate
-                                     # "yoy" = year-over-year (compare t to t-4)
-                                     # "annualized" = annualize quarterly rate ((1+q)^4 - 1)
-
-pricing_phase: planning              # When breakeven price and price adjustment occur
-                                     # "planning" = before labor/credit markets
-                                     #   (uses previous period's costs / desired production)
-                                     # "production" = after labor/credit markets
-                                     #   (uses current period's costs / projected production)
-
-labor_matching: interleaved          # Labor market matching algorithm
-                                     # "cascade" = single workers_apply_to_firms event
-                                     # "interleaved" = workers_send_one_round <-> firms_hire_workers × max_M
-
-matching_method: sequential          # How workers and firms are matched in labor market
-                                     #   (only used with "interleaved" labor_matching)
-                                     # "sequential" = workers shuffled, apply one at a time
-                                     # "simultaneous" = all workers apply at once (crowding)
-
-credit_matching: interleaved         # Credit market matching algorithm
-                                     # "cascade" = single firms_apply_for_loans event
-                                     # "interleaved" = firms_send_one_loan_app <-> banks_provide_loans × max_H
-
-min_wage_ratchet: false              # Minimum wage ratchet (upward-only revision)
-                                     # true = max(1, 1 + inflation) — wage never decreases
-                                     # false = (1 + inflation) — wage can decrease during deflation
-
 consumer_matching: loyalty           # Consumer firm selection strategy
                                      # "loyalty" = preferential attachment (largest prev producer)
                                      # "random" = pure random selection (no loyalty)
+
+# === DEPRECATED (may be removed in future) ===================================
+# These parameters are retained for backward compatibility but their values
+# should not be changed. The defaults below are the only supported values.
+
+price_cut_allow_increase: true       # DEPRECATED — Allow price increase when cutting
+inflation_method: yoy                # DEPRECATED — Inflation calculation method
+labor_matching: interleaved          # DEPRECATED — Always interleaved (cascade removed)
+credit_matching: interleaved         # DEPRECATED — Always interleaved (cascade removed)
+min_wage_ratchet: false              # DEPRECATED — Minimum wage ratchet
