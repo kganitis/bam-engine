@@ -176,6 +176,31 @@ Added
     implementation variants. Extension-specific: ``sigma_decay`` / ``sigma_max``
     (Growth+), ``buffer_stock_h`` (buffer-stock).
 
+* Calibration package rebuilt into focused modules:
+
+  * **Module decomposition**: monolithic ``optimizer.py`` split into
+    ``analysis.py`` (types/patterns/export), ``grid.py`` (grid building/
+    YAML loading/combinations), ``screening.py`` (single-seed screening/
+    checkpointing), ``stability.py`` (tiered stability/ranking).
+  * **Centralized serialization** (``io.py``): all save/load functions with
+    ``_schema_version`` field, timestamped output directories
+    (``output/YYYY-MM-DD_HHMMSS_{scenario}/``).
+  * **Auto-generated reports** (``reporting.py``): markdown reports for each
+    phase (sensitivity, screening, stability) and a combined full report.
+  * **Ranking strategies**: ``--rank-by combined|stability|mean`` with
+    configurable ``--k-factor`` for the combined formula
+    ``mean × (1 - k × std)``.
+  * **Custom grid input**: ``--grid PATH`` loads parameter grid from YAML/JSON.
+    ``--fixed KEY=VALUE`` (repeatable) pins specific parameters.
+  * **Custom output**: ``--output-dir PATH`` for user-specified output location.
+  * **Cleaned parameter space**: removed deprecated params from grids,
+    moved ``generate_combinations()``/``count_combinations()`` to ``grid.py``.
+  * **Comprehensive tests**: 145+ unit tests covering all new modules,
+    plus integration tests for pipeline and YAML roundtrips.
+  * **Example**: ``examples/advanced/example_calibration.py`` demonstrating
+    programmatic Morris → grid → stability workflow.
+  * Deleted 7 standalone scripts and ``optimizer.py`` (fully decomposed).
+
 Changed
 ~~~~~~~
 

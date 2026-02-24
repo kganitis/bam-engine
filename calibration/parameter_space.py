@@ -1,18 +1,18 @@
 """Parameter space definition for calibration.
 
-This module defines the parameter grid for calibration and the default
-values used as a baseline for sensitivity analysis.
+This module defines the parameter grids and scenario-specific defaults
+used as baselines for sensitivity analysis.
 
 Supports multiple scenarios:
     - baseline: Standard BAM model (Section 3.9.1)
     - growth_plus: Endogenous productivity growth via R&D (Section 3.9.2)
     - buffer_stock: Buffer-stock consumption with R&D (Section 3.9.4)
+
+For grid combination generation, see :mod:`calibration.grid`.
 """
 
 from __future__ import annotations
 
-from collections.abc import Iterator
-from itertools import product
 from typing import Any
 
 # =============================================================================
@@ -35,9 +35,10 @@ _COMMON_GRID: dict[str, list[Any]] = {
     "beta": [0.5, 1.0, 2.5, 5.0, 10.0],
     # Search frictions
     "max_M": [2, 4],
-    # Implementation variants
+    # Credit
     "max_loan_to_net_worth": [0, 2, 5, 10],
     "max_leverage": [0, 5, 10, 20],
+    # Labor
     "job_search_method": ["vacancies_only", "all_firms"],
 }
 
@@ -145,54 +146,3 @@ def get_default_values(scenario: str = "baseline") -> dict[str, Any]:
             f"Available: {list(SCENARIO_OVERRIDES.keys())}"
         )
     return SCENARIO_OVERRIDES[scenario]
-
-
-def generate_combinations(
-    grid: dict[str, list[Any]] | None = None,
-    scenario: str = "baseline",
-) -> Iterator[dict[str, Any]]:
-    """Generate all parameter combinations from grid.
-
-    Parameters
-    ----------
-    grid : dict, optional
-        Parameter grid to use. If None, uses scenario-specific grid.
-    scenario : str
-        Scenario name (used if grid is None).
-
-    Yields
-    ------
-    dict
-        Dictionary mapping parameter names to values.
-    """
-    if grid is None:
-        grid = get_parameter_grid(scenario)
-    keys = list(grid.keys())
-    for values in product(*grid.values()):
-        yield dict(zip(keys, values, strict=True))
-
-
-def count_combinations(
-    grid: dict[str, list[Any]] | None = None,
-    scenario: str = "baseline",
-) -> int:
-    """Count total combinations in grid.
-
-    Parameters
-    ----------
-    grid : dict, optional
-        Parameter grid to use. If None, uses scenario-specific grid.
-    scenario : str
-        Scenario name (used if grid is None).
-
-    Returns
-    -------
-    int
-        Number of combinations in the grid.
-    """
-    if grid is None:
-        grid = get_parameter_grid(scenario)
-    count = 1
-    for values in grid.values():
-        count *= len(values)
-    return count
