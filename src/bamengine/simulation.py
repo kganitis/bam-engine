@@ -1338,7 +1338,7 @@ class Simulation:
         self.pipeline.execute(self)
 
         if self.ec.collapsed:  # May be set during pipeline.execute()
-            log.info("SIMULATION TERMINATED")  # type: ignore[unreachable]
+            log.info("SIMULATION TERMINATED")
 
     def get_role(self, name: str) -> Any:
         """
