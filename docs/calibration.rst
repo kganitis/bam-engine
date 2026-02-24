@@ -1,7 +1,7 @@
 Calibration
 ===========
 
-The ``calibration/`` package optimizes BAM model parameters via a multi-phase
+The ``calibration`` package (under ``src/calibration/``) optimizes BAM model parameters via a multi-phase
 pipeline: sensitivity analysis (Morris Method or OAT) → focused grid screening
 → tiered stability testing.
 
@@ -97,10 +97,10 @@ Module Structure
    * - ``parameter_space.py``
      - Parameter grids for all three scenarios
 
-For full API documentation, see ``calibration/README.md``.
+For full API documentation, see ``src/calibration/README.md``.
 
 See Also
 --------
 
-* ``calibration/README.md`` — comprehensive API reference and calibration guide
+* ``src/calibration/README.md`` — comprehensive API reference and calibration guide
 * ``examples/advanced/example_calibration.py`` — programmatic usage example

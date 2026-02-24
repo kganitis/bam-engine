@@ -154,7 +154,7 @@ print_sensitivity_report(sa)
 
 ### Growth+ Extension (RnD Role)
 
-The R&D extension for Growth+ is in the `extensions/` package:
+The R&D extension for Growth+ is in the `extensions` package (under `src/extensions/`):
 
 ```python
 from extensions.rnd import RnD, RND_EVENTS
@@ -167,7 +167,7 @@ sim.use_events(*RND_EVENTS)
 
 ### Buffer-Stock Extension
 
-The buffer-stock consumption extension is in `extensions/buffer_stock/`:
+The buffer-stock consumption extension is in `src/extensions/buffer_stock/`:
 
 ```python
 from extensions.buffer_stock import BufferStock, BUFFER_STOCK_EVENTS
@@ -229,9 +229,9 @@ sim.use_events(*BUFFER_STOCK_EVENTS)
 
 Target values are defined in YAML files with standardized keys:
 
-- `validation/scenarios/baseline/targets.yaml` - Baseline scenario targets (25 metrics)
-- `validation/scenarios/growth_plus/targets.yaml` - Growth+ scenario targets (65 metrics)
-- `validation/scenarios/buffer_stock/targets.yaml` - Buffer-stock scenario targets (~30 metrics)
+- `src/validation/scenarios/baseline/targets.yaml` - Baseline scenario targets (25 metrics)
+- `src/validation/scenarios/growth_plus/targets.yaml` - Growth+ scenario targets (65 metrics)
+- `src/validation/scenarios/buffer_stock/targets.yaml` - Buffer-stock scenario targets (~30 metrics)
 
 YAML structure uses standardized keys per check type:
 
@@ -284,7 +284,7 @@ validation/
 │   ├── reporting.py         # Text report formatting
 │   └── output/              # Saved figures
 
-extensions/                  # Separate package for model extensions
+../extensions/               # Sibling package for model extensions
 ├── rnd/
 │   ├── __init__.py          # Exports RnD role and events
 │   ├── role.py              # RnD role definition

@@ -561,9 +561,8 @@ plt.show()
 # 2. **Entry neutrality**: Apply heavy profit taxation without redistribution
 #    to confirm that automatic firm entry does NOT drive recovery.
 #
-# Here we demonstrate both using the ``validation.robustness`` API.
-
-from validation.robustness import run_entry_experiment, run_pa_experiment
+# Here we run these as simple inline experiments using only ``bamengine``
+# and ``extensions`` APIs, reusing the helpers defined above.
 
 # %%
 # PA Experiment (quick demo)
@@ -572,30 +571,57 @@ from validation.robustness import run_entry_experiment, run_pa_experiment
 # Disabling consumer loyalty removes the positive feedback loop where
 # successful firms attract more customers.  Without PA, the economy
 # becomes more "competitive" and less prone to large fluctuations.
+# We compare two runs at the same seed: PA on (default loyalty matching)
+# vs PA off (random matching).
+
+PA_SEED = 0
+PA_PERIODS = 200
+PA_BURN_IN = 100
 
 print("\n--- PA Experiment (quick demo) ---")
-pa_result = run_pa_experiment(
-    n_seeds=2,
-    n_periods=200,
-    burn_in=100,
-    n_workers=1,
-    verbose=False,
-    include_baseline=True,
-    setup_hook=setup_growth_plus,
-    collect_config=COLLECT_CONFIG,
-)
 
-# Show key comparison if baseline available
-if pa_result.baseline_validity is not None:
-    bl = pa_result.baseline_validity
-    iv = pa_result.pa_off_validity
-    vol_on = bl.cross_sim_stats.get("gdp_growth_std", {}).get("mean", float("nan"))
-    vol_off = iv.cross_sim_stats.get("gdp_growth_std", {}).get("mean", float("nan"))
-    print(f"  GDP volatility: PA on = {vol_on:.4f}, PA off = {vol_off:.4f}")
-    print(
-        f"  AR persistence: PA on phi_1 = {bl.mean_ar_coeffs[1]:.3f},"
-        f" PA off phi_1 = {iv.mean_ar_coeffs[1]:.3f}"
-    )
+# PA on (default: consumer_matching="loyalty")
+sim_on = bam.Simulation.init(seed=PA_SEED, logging={"default_level": "ERROR"})
+setup_growth_plus(sim_on)
+res_on = sim_on.run(n_periods=PA_PERIODS, collect=COLLECT_CONFIG)
+series_on = extract_series(res_on, PA_PERIODS)
+
+# PA off (random matching)
+sim_off = bam.Simulation.init(
+    seed=PA_SEED, consumer_matching="random", logging={"default_level": "ERROR"}
+)
+setup_growth_plus(sim_off)
+res_off = sim_off.run(n_periods=PA_PERIODS, collect=COLLECT_CONFIG)
+series_off = extract_series(res_off, PA_PERIODS)
+
+# Compare GDP volatility and AR persistence
+bi = PA_BURN_IN
+gdp_gr_on = np.diff(series_on["gdp"][bi:]) / series_on["gdp"][bi:-1]
+gdp_gr_off = np.diff(series_off["gdp"][bi:]) / series_off["gdp"][bi:-1]
+vol_on = np.std(gdp_gr_on)
+vol_off = np.std(gdp_gr_off)
+
+_, cycle_on = hp_filter(series_on["log_gdp"][bi:])
+_, cycle_off = hp_filter(series_off["log_gdp"][bi:])
+ar_on, _ = fit_ar(cycle_on, order=2)
+ar_off, _ = fit_ar(cycle_off, order=2)
+
+print(f"  GDP volatility: PA on = {vol_on:.4f}, PA off = {vol_off:.4f}")
+print(f"  AR persistence: PA on phi_1 = {ar_on[1]:.3f}, PA off phi_1 = {ar_off[1]:.3f}")
+
+# Plot GDP cycles overlay
+fig, ax = plt.subplots(1, 1, figsize=(10, 4))
+t = np.arange(len(cycle_on))
+ax.plot(t, cycle_on, "b-", linewidth=1, alpha=0.8, label="PA on (loyalty)")
+ax.plot(t, cycle_off, "r-", linewidth=1, alpha=0.8, label="PA off (random)")
+ax.axhline(0, color="gray", linewidth=0.5)
+ax.set_title("GDP cyclical component: PA on vs PA off", fontsize=12)
+ax.set_xlabel("Period (after burn-in)")
+ax.set_ylabel("HP-filtered log GDP cycle")
+ax.legend(fontsize=9)
+ax.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.show()
 
 # %%
 # Entry Neutrality Experiment (quick demo)
@@ -605,19 +631,37 @@ if pa_result.baseline_validity is not None:
 # If entry were artificially driving recovery, performance would be
 # unchanged.  Instead, we expect monotonic degradation.
 
-print("\n--- Entry Neutrality Experiment (quick demo) ---")
-entry_result = run_entry_experiment(
-    n_seeds=2,
-    n_periods=200,
-    burn_in=100,
-    n_workers=1,
-    verbose=False,
-    setup_hook=setup_growth_plus,
-    collect_config=COLLECT_CONFIG,
-)
+from extensions.taxation import TAXATION_CONFIG, TAXATION_EVENTS
 
-exp = entry_result.tax_sweep.experiments["entry_neutrality"]
-print(f"  Tax rates tested: {[vr.label for vr in exp.value_results]}")
-for vr in exp.value_results:
-    u = vr.stats.get("unemployment_mean", {}).get("mean", float("nan"))
-    print(f"  {vr.label}: unemployment = {u:.1%}")
+ENTRY_SEED = 0
+ENTRY_PERIODS = 200
+ENTRY_BURN_IN = 100
+TAX_RATES = [0.0, 0.5, 0.9]
+
+print("\n--- Entry Neutrality Experiment (quick demo) ---")
+print(f"{'Tax rate':<12} {'Unemployment':>15}")
+print("-" * 29)
+
+entry_unemployment = []
+for tax_rate in TAX_RATES:
+    sim = bam.Simulation.init(seed=ENTRY_SEED, logging={"default_level": "ERROR"})
+    setup_growth_plus(sim)
+    sim.use_events(*TAXATION_EVENTS)
+    sim.use_config({**TAXATION_CONFIG, "profit_tax_rate": tax_rate})
+    results = sim.run(n_periods=ENTRY_PERIODS, collect=COLLECT_CONFIG)
+
+    series = extract_series(results, ENTRY_PERIODS)
+    u_mean = np.mean(series["unemployment"][ENTRY_BURN_IN:])
+    entry_unemployment.append(u_mean)
+    print(f"{tax_rate:<12.0%} {u_mean:>14.1%}")
+
+# Bar chart showing monotonic degradation
+fig, ax = plt.subplots(1, 1, figsize=(6, 4))
+labels = [f"{r:.0%}" for r in TAX_RATES]
+ax.bar(labels, [u * 100 for u in entry_unemployment], color="steelblue", width=0.5)
+ax.set_xlabel("Profit tax rate")
+ax.set_ylabel("Mean unemployment (%)")
+ax.set_title("Entry neutrality: unemployment vs profit tax rate", fontsize=11)
+ax.grid(True, alpha=0.3, axis="y")
+plt.tight_layout()
+plt.show()

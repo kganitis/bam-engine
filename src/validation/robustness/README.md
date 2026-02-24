@@ -407,7 +407,7 @@ Expected findings (from the book):
 Tests whether automatic firm entry artificially drives recovery by imposing heavy profit taxation without redistribution:
 
 - Sweeps `profit_tax_rate` from 0% to 90%
-- Uses the `extensions/taxation/` package for profit taxation
+- Uses the `src/extensions/taxation/` package for profit taxation
 - Expected finding: **monotonic degradation** of economic performance, confirming that the business cycle is genuinely endogenous
 
 ### API

@@ -12,10 +12,8 @@ from sphinx_gallery.sorting import ExplicitOrder
 # Suppress verbose bamengine simulation logs during doc builds
 logging.getLogger("bamengine").setLevel(logging.ERROR)
 
-# Add project root to path so we can import bamengine
+# Add src/ to path so Sphinx can import all packages (bamengine, validation, etc.)
 sys.path.insert(0, os.path.abspath("../src"))
-# TODO: Remove this once examples are refactored to not depend on validation package
-sys.path.insert(0, os.path.abspath(".."))  # For validation and calibration packages
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
