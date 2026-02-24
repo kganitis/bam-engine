@@ -96,9 +96,9 @@ events:
   - adjust_minimum_wage                # Adjust min wage based on inflation
   - firms_decide_wage_offer            # Firms set wage offers for vacancies
   - workers_decide_firms_to_apply      # Unemployed workers select firms to apply to
-  - workers_apply_to_firms             # Cascade: each worker walks their ranked
-                                       # queue until hired or exhausted (swapped
-                                       # for interleaved rounds by default)
+  - workers_apply_to_firms             # Deprecated cascade placeholder — always
+                                       # swapped for interleaved rounds by
+                                       # create_default_pipeline()
   - firms_calc_wage_bill               # Calculate total wage obligations
 
   # ────────────────────────────────────────────────────────────────────────────
@@ -106,17 +106,17 @@ events:
   # ────────────────────────────────────────────────────────────────────────────
   # Banks decide credit supply, firms calculate credit needs, matching,
   # then firms fire workers if credit insufficient.
-  # Note: cascade events below are swapped for interleaved rounds at pipeline
-  # creation time when credit_matching="interleaved" (the default).
+  # Note: cascade event below is a deprecated placeholder, always swapped
+  # for interleaved rounds by create_default_pipeline().
 
   - banks_decide_credit_supply         # Banks determine lending capacity
   - banks_decide_interest_rate         # Banks set interest rates
   - firms_decide_credit_demand         # Firms calculate financing needs
   - firms_calc_financial_fragility     # Calculate firm financial fragility metrics
   - firms_prepare_loan_applications    # Firms prepare ranked bank applications
-  - firms_apply_for_loans              # Cascade: each firm walks their ranked
-                                       # bank queue until funded or exhausted
-                                       # (swapped for interleaved rounds by default)
+  - firms_apply_for_loans              # Deprecated cascade placeholder — always
+                                       # swapped for interleaved rounds by
+                                       # create_default_pipeline()
   - firms_fire_workers                 # Lay off workers if credit insufficient
 
   # ────────────────────────────────────────────────────────────────────────────

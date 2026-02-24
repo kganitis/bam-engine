@@ -546,13 +546,13 @@ class TestUncoveredTypeValidation:
 
     def test_bool_param_rejects_string(self):
         """Boolean parameters should reject string 'true' values."""
-        cfg = {"price_cut_allow_increase": "true"}
+        cfg = {"min_wage_ratchet": "true"}
         with pytest.raises(ValueError, match="must be bool"):
             ConfigValidator._validate_types(cfg)
 
     def test_string_enum_param_rejects_int(self):
         """String enum parameters should reject int values."""
-        cfg = {"loan_priority_method": 123}
+        cfg = {"job_search_method": 123}
         with pytest.raises(ValueError, match="must be str"):
             ConfigValidator._validate_types(cfg)
 
@@ -591,7 +591,7 @@ class TestUncoveredRangeValidation:
 
     def test_enum_invalid_value(self):
         """Invalid enum values should be rejected."""
-        cfg = {"loan_priority_method": "invalid_method"}
+        cfg = {"job_search_method": "invalid_method"}
         with pytest.raises(ValueError, match="must be one of"):
             ConfigValidator._validate_ranges(cfg)
 

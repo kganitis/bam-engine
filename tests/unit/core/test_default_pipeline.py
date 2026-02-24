@@ -68,33 +68,6 @@ def test_default_pipeline_first_event():
     ) or first_event_name.startswith("firms_")
 
 
-def test_cascade_pipeline_length_independent_of_market_params():
-    """Cascade pipeline length is the same regardless of max_M/max_H values."""
-    p1 = create_default_pipeline(
-        max_M=2,
-        max_H=2,
-        max_Z=2,
-        labor_matching="cascade",
-        credit_matching="cascade",
-    )
-    p2 = create_default_pipeline(
-        max_M=7,
-        max_H=4,
-        max_Z=3,
-        labor_matching="cascade",
-        credit_matching="cascade",
-    )
-    p3 = create_default_pipeline(
-        max_M=1,
-        max_H=1,
-        max_Z=1,
-        labor_matching="cascade",
-        credit_matching="cascade",
-    )
-
-    assert len(p1) == len(p2) == len(p3) == 37
-
-
 def test_default_pipeline_contains_all_phases():
     """Default pipeline contains events from all market phases."""
     pipeline = create_default_pipeline(max_M=4, max_H=2, max_Z=2)
@@ -124,80 +97,6 @@ def test_default_pipeline_executes_without_error():
 
     # Note: t is not incremented by pipeline.execute(), that's Simulation.step()'s job
     # Just verify pipeline executed without errors
-
-
-def test_cascade_labor_matching_pipeline():
-    """Cascade labor matching uses single workers_apply_to_firms event."""
-    max_M = 3
-    pipeline = create_default_pipeline(
-        max_M=max_M, max_H=2, max_Z=2, labor_matching="cascade"
-    )
-
-    event_names = [e.name for e in pipeline.events]
-
-    # Cascade event should be present
-    assert event_names.count("workers_apply_to_firms") == 1
-
-    # Interleaved events should NOT appear
-    assert event_names.count("workers_send_one_round") == 0
-    assert event_names.count("firms_hire_workers") == 0
-
-    # Credit side should still be interleaved (default)
-    assert event_names.count("firms_send_one_loan_app") == 2
-    assert event_names.count("banks_provide_loans") == 2
-
-    # 37 - 1 cascade credit + 2*max_H credit interleaved
-    assert len(pipeline) == 37 - 1 + 2 * 2
-
-
-def test_cascade_credit_matching_pipeline():
-    """Cascade credit matching uses single firms_apply_for_loans event."""
-    max_H = 3
-    pipeline = create_default_pipeline(
-        max_M=4, max_H=max_H, max_Z=2, credit_matching="cascade"
-    )
-
-    event_names = [e.name for e in pipeline.events]
-
-    # Cascade event should be present
-    assert event_names.count("firms_apply_for_loans") == 1
-
-    # Interleaved credit events should NOT appear
-    assert event_names.count("firms_send_one_loan_app") == 0
-    assert event_names.count("banks_provide_loans") == 0
-
-    # Labor side should still be interleaved (default)
-    assert event_names.count("workers_send_one_round") == 4
-    assert event_names.count("firms_hire_workers") == 4
-
-    # 37 - 1 cascade labor + 2*max_M labor interleaved
-    assert len(pipeline) == 37 - 1 + 2 * 4
-
-
-def test_both_cascade_matching_pipeline():
-    """Both labor and credit cascade produces fixed 37-event pipeline."""
-    max_M, max_H = 4, 2
-    pipeline = create_default_pipeline(
-        max_M=max_M,
-        max_H=max_H,
-        max_Z=2,
-        labor_matching="cascade",
-        credit_matching="cascade",
-    )
-
-    event_names = [e.name for e in pipeline.events]
-
-    # Both cascade events present
-    assert event_names.count("workers_apply_to_firms") == 1
-    assert event_names.count("firms_apply_for_loans") == 1
-
-    # No interleaved events
-    assert event_names.count("workers_send_one_round") == 0
-    assert event_names.count("firms_hire_workers") == 0
-    assert event_names.count("firms_send_one_loan_app") == 0
-    assert event_names.count("banks_provide_loans") == 0
-
-    assert len(pipeline) == 37
 
 
 def test_interleaved_labor_event_order():

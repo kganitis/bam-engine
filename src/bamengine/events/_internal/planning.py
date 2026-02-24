@@ -403,7 +403,6 @@ def firms_fire_excess_workers(
     emp: Employer,
     wrk: Worker,
     *,
-    method: str = "random",
     rng: Rng = make_rng(),
 ) -> None:
     """
@@ -423,8 +422,7 @@ def firms_fire_excess_workers(
 
     if info_enabled:
         log.info(
-            f"  {firing_ids.size} firms have excess labor totaling {total_excess:,} workers "
-            f"using '{method}' method."
+            f"  {firing_ids.size} firms have excess labor totaling {total_excess:,} workers."
         )
 
     total_workers_fired_this_step = 0
@@ -464,23 +462,10 @@ def firms_fire_excess_workers(
                 f"(total: {worker_wages.sum():.2f})"
             )
 
-        if method not in ("random", "expensive"):  # pragma: no cover
-            log.error(
-                f"    Unknown firing method '{method}' specified. "
-                f"Defaulting to 'random'."
-            )
-            method = "random"
-
-        if method == "expensive":
-            # Fire most expensive workers first
-            sorted_indices = np.argsort(worker_wages)[::-1]  # Descending order
-            victims_indices = sorted_indices[:n_to_fire]
-            victims = workforce[victims_indices]
-        else:  # method == "random"
-            # Random firing
-            shuffled_indices = rng.permutation(workforce.size)
-            victims_indices = shuffled_indices[:n_to_fire]
-            victims = workforce[victims_indices]
+        # Random firing
+        shuffled_indices = rng.permutation(workforce.size)
+        victims_indices = shuffled_indices[:n_to_fire]
+        victims = workforce[victims_indices]
 
         fired_wages = wrk.wage[victims]
         total_fired_wage = fired_wages.sum()

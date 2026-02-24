@@ -416,12 +416,13 @@ def _clean_queue(
     slice_: Idx1D,
     bor: Borrower,
     bank_idx_for_log: int,
-    *,
-    priority_method: str = "by_net_worth",
 ) -> Idx1D:  # pragma: no cover
     """
     Return a queue (Idx1D) of *unique* borrower ids that still demand credit
     from the raw queue slice (may contain -1 sentinels and duplicates).
+
+    Borrowers are sorted by leverage (ascending projected_fragility),
+    so the least fragile firms are served first.
 
     Parameters
     ----------
@@ -431,12 +432,6 @@ def _clean_queue(
         Borrower role with credit_demand and net_worth
     bank_idx_for_log : int
         Bank index for logging purposes
-    priority_method : str, default "by_net_worth"
-        Sorting method for the queue:
-        - "by_net_worth": Sort by net worth (descending) - safest borrowers first
-        - "by_leverage": Sort by leverage (ascending) - least leveraged first
-          (uses projected_fragility as proxy for leverage)
-        - "by_appearance": Preserve application order (first-come-first-served)
 
     Returns
     -------
@@ -483,41 +478,16 @@ def _clean_queue(
             )
         return filtered_queue
 
-    # Sort queue based on priority method
-    # TODO: Introduce a separate `leverage` variable for Borrower role.
-    # Currently we use projected_fragility as a proxy for leverage. In future
-    # variations, projected_fragility will be calculated as rnd_intensity * leverage,
-    # but we will still need only leverage for loan applicant sorting.
-    if priority_method == "by_net_worth":
-        # Sort by net worth (descending) - safest borrowers first
-        sort_idx = np.argsort(-bor.net_worth[filtered_queue])
-        ordered_queue = filtered_queue[sort_idx]
-        if log.isEnabledFor(logging.TRACE):
-            log.trace(
-                f"    Bank {bank_idx_for_log}: "
-                f"Final cleaned queue (net_worth-desc): {ordered_queue}"
-            )
-        return ordered_queue
-    # TODO Keep only by_leverage method
-    elif priority_method == "by_leverage":
-        # Sort by leverage (ascending) - least leveraged first
-        # Uses projected_fragility as proxy for leverage
-        sort_idx = np.argsort(bor.projected_fragility[filtered_queue])
-        ordered_queue = filtered_queue[sort_idx]
-        if log.isEnabledFor(logging.TRACE):
-            log.trace(
-                f"    Bank {bank_idx_for_log}: "
-                f"Final cleaned queue (leverage-asc): {ordered_queue}"
-            )
-        return ordered_queue
-    else:
-        # by_appearance: Preserve application order (first-come-first-served)
-        if log.isEnabledFor(logging.TRACE):
-            log.trace(
-                f"    Bank {bank_idx_for_log}: "
-                f"Final cleaned queue (FCFS order): {filtered_queue}"
-            )
-        return filtered_queue
+    # Sort by leverage (ascending) - least leveraged first
+    # Uses projected_fragility as proxy for leverage
+    sort_idx = np.argsort(bor.projected_fragility[filtered_queue])
+    ordered_queue = filtered_queue[sort_idx]
+    if log.isEnabledFor(logging.TRACE):
+        log.trace(
+            f"    Bank {bank_idx_for_log}: "
+            f"Final cleaned queue (leverage-asc): {ordered_queue}"
+        )
+    return ordered_queue
 
 
 def banks_provide_loans(
@@ -526,7 +496,6 @@ def banks_provide_loans(
     lend: Lender,
     *,
     r_bar: float,
-    loan_priority_method: str = "by_net_worth",
     max_loan_to_net_worth: float = 0.0,
     max_leverage: float = 0.0,
 ) -> None:
@@ -574,9 +543,7 @@ def banks_provide_loans(
                 f"({n_recv} applications): {raw_queue}"
             )
 
-        queue = _clean_queue(
-            raw_queue, bor, bank_idx_for_log=k, priority_method=loan_priority_method
-        )
+        queue = _clean_queue(raw_queue, bor, bank_idx_for_log=k)
 
         if queue.size == 0:
             if log.isEnabledFor(logging.DEBUG):
@@ -730,20 +697,14 @@ def firms_apply_for_loans(
     lb: LoanBook,
     *,
     r_bar: float,
-    loan_priority_method: str = "by_leverage",
     max_loan_to_net_worth: float = 0.0,
     max_leverage: float = 0.0,
     rng: Rng = make_rng(),
 ) -> None:
     """Cascade credit matching: each firm walks their ranked bank queue.
 
-    Firms are sorted according to ``loan_priority_method`` before processing:
-
-    * ``"by_leverage"`` (default) — ascending ``projected_fragility``, so
-      the least fragile firms apply first (book Section 3.5).
-    * ``"by_net_worth"`` — descending net worth, so the wealthiest firms
-      apply first.
-    * ``"by_appearance"`` — random shuffle (backward-compatible fallback).
+    Firms are sorted by ascending ``projected_fragility`` (least fragile
+    first), matching the book's leverage-based ordering (Section 3.5).
 
     For each firm, the algorithm pops banks from the application queue one
     at a time:
@@ -782,15 +743,8 @@ def firms_apply_for_loans(
             log.info("--- Firms Apply for Loans (Cascade) complete ---")
         return
 
-    if loan_priority_method == "by_leverage":
-        sort_idx = np.argsort(bor.projected_fragility[applicants])
-        applicants = applicants[sort_idx]
-    elif loan_priority_method == "by_net_worth":
-        sort_idx = np.argsort(-bor.net_worth[applicants])
-        applicants = applicants[sort_idx]
-    else:
-        # by_appearance: random shuffle (backward-compatible fallback)
-        rng.shuffle(applicants)
+    sort_idx = np.argsort(bor.projected_fragility[applicants])
+    applicants = applicants[sort_idx]
 
     if info_enabled:
         total_supply = float(lend.credit_supply.sum())
@@ -880,7 +834,6 @@ def firms_fire_workers(
     emp: Employer,
     wrk: Worker,
     *,
-    method: str = "random",
     rng: Rng = make_rng(),
 ) -> None:
     """
@@ -902,7 +855,7 @@ def firms_fire_workers(
     if info_enabled:
         log.info(
             f"  {firing_ids.size} firms have financing gaps totaling {total_gap:,.2f} "
-            f"and need to fire workers using '{method}' method."
+            f"and need to fire workers."
         )
 
     total_workers_fired_this_step = 0
@@ -942,44 +895,20 @@ def firms_fire_workers(
                 f"(total: {worker_wages.sum():.2f})"
             )
 
-        if method not in ("random", "expensive"):  # pragma: no cover
-            log.error(
-                f"    Unknown firing method '{method}' specified. "
-                f"Defaulting to 'random'."
-            )
-            method = "random"
+        # Random firing until gap is covered
+        shuffled_indices = rng.permutation(workforce.size)
+        shuffled_wages = worker_wages[shuffled_indices]
+        cumsum_wages = np.cumsum(shuffled_wages)
 
-        if method == "expensive":
-            # Fire most expensive workers first
-            sorted_indices = np.argsort(worker_wages)[::-1]  # Descending order
-            sorted_wages = worker_wages[sorted_indices]
-            cumsum_wages = np.cumsum(sorted_wages)
+        # Find first position where cumulative wages >= gap
+        sufficient_mask = cumsum_wages >= gap
+        if sufficient_mask.any():
+            n_fire = sufficient_mask.argmax() + 1
+        else:
+            n_fire = workforce.size  # Fire everyone if still not enough
 
-            # Find first position where cumulative wages >= gap
-            sufficient_mask = cumsum_wages >= gap
-            if sufficient_mask.any():
-                n_fire = sufficient_mask.argmax() + 1
-            else:
-                n_fire = workforce.size  # Fire everyone if still not enough
-
-            victims_indices = sorted_indices[:n_fire]
-            victims = workforce[victims_indices]
-
-        else:  # method == "random"
-            # Sequential random firing until gap is covered
-            shuffled_indices = rng.permutation(workforce.size)
-            shuffled_wages = worker_wages[shuffled_indices]
-            cumsum_wages = np.cumsum(shuffled_wages)
-
-            # Find first position where cumulative wages >= gap
-            sufficient_mask = cumsum_wages >= gap
-            if sufficient_mask.any():
-                n_fire = sufficient_mask.argmax() + 1
-            else:
-                n_fire = workforce.size  # Fire everyone if still not enough
-
-            victims_indices = shuffled_indices[:n_fire]
-            victims = workforce[victims_indices]
+        victims_indices = shuffled_indices[:n_fire]
+        victims = workforce[victims_indices]
 
         fired_wages = wrk.wage[victims]
         total_fired_wage = fired_wages.sum()

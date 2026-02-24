@@ -398,10 +398,6 @@ class FirmsFireExcessWorkers:
     Workers fired here have their `fired` flag set to True, which affects
     their job search behavior (loyalty rule does not apply).
 
-    The firing method is controlled by `sim.config.firing_method`:
-    - "random": Fire random workers (default)
-    - "expensive": Fire highest-wage workers first
-
     See Also
     --------
     FirmsDecideVacancies : Calculate job openings
@@ -415,6 +411,5 @@ class FirmsFireExcessWorkers:
         firms_fire_excess_workers(
             sim.emp,
             sim.wrk,
-            method=sim.config.firing_method,
             rng=sim.rng,
         )

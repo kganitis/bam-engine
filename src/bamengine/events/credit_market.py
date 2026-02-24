@@ -676,7 +676,6 @@ class BanksProvideLoans:
             sim.lb,
             sim.lend,
             r_bar=sim.r_bar,
-            loan_priority_method=sim.config.loan_priority_method,
             max_loan_to_net_worth=sim.config.max_loan_to_net_worth,
             max_leverage=sim.config.max_leverage,
         )
@@ -687,6 +686,10 @@ class FirmsApplyForLoans:
     """
     Firms apply to banks via cascade matching (book-faithful default).
 
+    .. deprecated::
+       Cascade credit matching is deprecated. Use interleaved matching
+       (default) instead.
+
     Each firm with positive credit demand walks their ranked bank queue from
     lowest to highest interest rate.  At each bank the firm requests a loan:
 
@@ -696,12 +699,8 @@ class FirmsApplyForLoans:
     * **No credit supply** — the firm cascades to the next bank.
     * **Queue exhausted** — the firm stops with whatever funding it obtained.
 
-    Firms are sorted by ``loan_priority_method`` before processing:
-
-    * ``"by_leverage"`` (default) — ascending ``projected_fragility``, so
-      the least fragile firms apply first (book Section 3.5).
-    * ``"by_net_worth"`` — descending net worth (wealthiest first).
-    * ``"by_appearance"`` — random shuffle (backward-compatible fallback).
+    Firms are sorted by ascending ``projected_fragility`` (least fragile
+    first), matching the book's leverage-based ordering (Section 3.5).
 
     Because loan granting is immediate, credit supply depletes in real-time
     as earlier firms are served.  Later firms encounter reduced supply,
@@ -713,7 +712,7 @@ class FirmsApplyForLoans:
     Algorithm
     ---------
     1. Identify firms with ``credit_demand > 0`` and pending queues
-    2. Sort firms by ``loan_priority_method`` (default: least fragile first)
+    2. Sort firms by leverage (ascending ``projected_fragility``)
     3. For each firm i (outer loop):
        - For each bank in their ranked queue (inner loop, up to max_H):
          - Pop next bank from queue
@@ -744,7 +743,6 @@ class FirmsApplyForLoans:
             lend=sim.lend,
             lb=sim.lb,
             r_bar=sim.r_bar,
-            loan_priority_method=sim.config.loan_priority_method,
             max_loan_to_net_worth=sim.config.max_loan_to_net_worth,
             max_leverage=sim.config.max_leverage,
             rng=sim.rng,
@@ -757,16 +755,16 @@ class FirmsFireWorkers:
     Firms with insufficient funds after credit provision fire workers.
 
     Firms that failed to secure enough credit to cover their wage bill must lay
-    off workers to match their available funds. By default, firms fire the most
-    expensive workers first to minimize the number of layoffs.
+    off workers to match their available funds. Workers are selected randomly
+    for firing.
 
     Algorithm
     ---------
     For each firm i with :math:`W_i > A_i` (wage bill exceeds available funds):
 
     1. Calculate unfunded amount: :math:`U_i = W_i - A_i`
-    2. Get list of employees sorted by wage (descending)
-    3. Fire workers from the list until unfunded amount <= 0:
+    2. Randomly shuffle employee list
+    3. Fire workers from the shuffled list until unfunded amount <= 0:
        - Set worker's employer = -1 (unemployed)
        - Set worker's wage = 0
        - Set worker's fired flag = True
@@ -782,7 +780,7 @@ class FirmsFireWorkers:
     .. math::
         U_i = W_i - A_i
 
-    Fire workers j in descending wage order until:
+    Fire randomly selected workers j until:
 
     .. math::
         \\sum_{j \\in \\text{fired}} w_j \\geq U_i
@@ -828,9 +826,6 @@ class FirmsFireWorkers:
     -----
     This event must execute after all BanksProvideLoans rounds complete.
 
-    Firing strategy: most expensive workers first minimizes the number of layoffs
-    (better to fire one high-wage worker than multiple low-wage workers).
-
     Fired workers have their `fired` flag set to True, which affects their job
     search behavior in the next period (loyalty rule does not apply).
 
@@ -851,6 +846,5 @@ class FirmsFireWorkers:
         firms_fire_workers(
             sim.emp,
             sim.wrk,
-            method=sim.config.firing_method,
             rng=sim.rng,
         )

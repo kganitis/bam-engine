@@ -21,7 +21,7 @@ class TestCommonGrid:
     """Tests for _COMMON_GRID shared parameters."""
 
     def test_common_grid_has_expected_params(self):
-        assert len(_COMMON_GRID) == 21
+        assert len(_COMMON_GRID) == 14
 
     def test_common_params_in_all_scenarios(self):
         """Every _COMMON_GRID param should appear in every scenario grid."""

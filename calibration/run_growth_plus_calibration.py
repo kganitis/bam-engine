@@ -16,34 +16,27 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 OUTPUT_DIR = Path("calibration/output")
 
 # ─── Grid definition ──────────────────────────────────────────────────────────
-# 9 INCLUDE params (varied in grid)
+# 6 INCLUDE params (varied in grid)
 GRID = {
     "new_firm_price_markup": [1.0, 1.05, 1.10, 1.25, 1.50],
     "new_firm_wage_factor": [0.5, 0.7, 0.8, 0.9, 1.0],
     "new_firm_size_factor": [0.5, 0.7, 0.8, 0.9],
     "new_firm_production_factor": [0.5, 0.7, 0.8, 0.9, 1.0],
-    "price_cut_allow_increase": [True, False],
-    "inflation_method": ["yoy", "annualized"],
-    "min_wage_ratchet": [True, False],
     "job_search_method": ["vacancies_only", "all_firms"],
     "max_M": [2, 4],
 }
 
-# 13 FIX params (held at defaults.yml values)
+# 9 FIX params (held at defaults.yml values)
 FIXED = {
     "price_init": 0.5,
     "savings_init": 1.0,
     "net_worth_ratio": 6.0,
     "equity_base_init": 5.0,
-    "pricing_phase": "planning",
     "min_wage_ratio": 0.5,
     "beta": 2.5,
-    "labor_matching": "interleaved",
     "max_leverage": 10,
     "sigma_decay": -1.0,
     "max_loan_to_net_worth": 2,
-    "credit_matching": "interleaved",
-    "matching_method": "sequential",
 }
 
 

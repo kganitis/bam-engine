@@ -584,23 +584,13 @@ class Simulation:
 
         # Validate pipeline-altering params vs pipeline_path conflict
         pricing_phase = cfg_dict.get("pricing_phase", "planning")
-        labor_matching = cfg_dict.get("labor_matching", "interleaved")
-        credit_matching = cfg_dict.get("credit_matching", "interleaved")
         pipeline_path = cfg_dict.get("pipeline_path")
 
-        if pipeline_path is not None:
-            non_defaults = []
-            if pricing_phase != "planning":
-                non_defaults.append(f"pricing_phase='{pricing_phase}'")
-            if labor_matching != "interleaved":
-                non_defaults.append(f"labor_matching='{labor_matching}'")
-            if credit_matching != "interleaved":
-                non_defaults.append(f"credit_matching='{credit_matching}'")
-            if non_defaults:
-                raise ValueError(
-                    f"{', '.join(non_defaults)} cannot be used with a custom "
-                    "pipeline_path. Customize the pipeline YAML directly instead."
-                )
+        if pipeline_path is not None and pricing_phase != "planning":
+            raise ValueError(
+                f"pricing_phase='{pricing_phase}' cannot be used with a custom "
+                "pipeline_path. Customize the pipeline YAML directly instead."
+            )
 
         # Validate pipeline path if specified
         if pipeline_path is not None:
@@ -917,18 +907,16 @@ class Simulation:
             max_leverage=p["max_leverage"],
             cap_factor=p.get("cap_factor"),
             # Implementation variants
-            contract_poisson_mean=p["contract_poisson_mean"],
-            loan_priority_method=p["loan_priority_method"],
-            firing_method=p["firing_method"],
-            matching_method=p["matching_method"],
             job_search_method=p["job_search_method"],
+            pricing_phase=p.get("pricing_phase", "planning"),
+            # Deprecated params (retained for backward compatibility)
             price_cut_allow_increase=p["price_cut_allow_increase"],
             inflation_method=p["inflation_method"],
-            pricing_phase=p["pricing_phase"],
-            # Market matching variants
             labor_matching=p["labor_matching"],
             credit_matching=p["credit_matching"],
             min_wage_ratchet=p["min_wage_ratchet"],
+            # Silently disabled params (not in defaults.yml)
+            matching_method=p.get("matching_method", "sequential"),
             consumer_matching=p["consumer_matching"],
             # New firm entry parameters
             new_firm_size_factor=p["new_firm_size_factor"],
@@ -978,9 +966,7 @@ class Simulation:
                 max_M=p["max_M"],
                 max_H=p["max_H"],
                 max_Z=p["max_Z"],
-                pricing_phase=p["pricing_phase"],
-                labor_matching=p["labor_matching"],
-                credit_matching=p["credit_matching"],
+                pricing_phase=p.get("pricing_phase", "planning"),
             )
 
         # Configure logging (if specified)

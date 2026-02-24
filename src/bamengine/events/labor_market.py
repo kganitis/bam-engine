@@ -673,7 +673,6 @@ class FirmsHireWorkers:
             wrk=sim.wrk,
             emp=sim.emp,
             theta=sim.config.theta,
-            contract_poisson_mean=sim.config.contract_poisson_mean,
             matching_method=sim.config.matching_method,
             rng=sim.rng,
         )
@@ -683,6 +682,10 @@ class FirmsHireWorkers:
 class WorkersApplyToFirms:
     """
     Workers apply to firms via cascade matching.
+
+    .. deprecated::
+       Cascade labor matching is deprecated. Use interleaved matching
+       (default) instead.
 
     Each unemployed worker walks their ranked application queue from best to
     worst wage offer.  At each firm the worker checks for vacancies:
@@ -732,7 +735,6 @@ class WorkersApplyToFirms:
             wrk=sim.wrk,
             emp=sim.emp,
             theta=sim.config.theta,
-            contract_poisson_mean=sim.config.contract_poisson_mean,
             rng=sim.rng,
         )
 
@@ -741,6 +743,10 @@ class WorkersApplyToFirms:
 class WorkersApplyToBestFirm:
     """
     Workers apply only to their best-wage firm (no cascade, no retry).
+
+    .. deprecated::
+       Cascade labor matching is deprecated. Use interleaved matching
+       (default) instead.
 
     This is the literal interpretation of book Section 3.4: the worker
     "chooses to enter a settlement stage **only** with the firm offering the
@@ -778,7 +784,6 @@ class WorkersApplyToBestFirm:
             wrk=sim.wrk,
             emp=sim.emp,
             theta=sim.config.theta,
-            contract_poisson_mean=sim.config.contract_poisson_mean,
             rng=sim.rng,
         )
 

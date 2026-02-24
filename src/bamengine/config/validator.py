@@ -252,7 +252,6 @@ class ConfigValidator:
             "max_Z",
             "theta",
             "min_wage_rev_period",
-            "contract_poisson_mean",
         ]
 
         # Float parameters (scalars only)
@@ -343,8 +342,6 @@ class ConfigValidator:
 
         # Check string enum implementation variant parameters
         str_enum_params = [
-            "loan_priority_method",
-            "firing_method",
             "matching_method",
             "job_search_method",
             "inflation_method",
@@ -466,7 +463,6 @@ class ConfigValidator:
             "min_wage_ratio": (0.0, 1.0),
             "net_worth_ratio": (0.0, None),
             # Implementation variant parameters
-            "contract_poisson_mean": (0, None),
             "max_loan_to_net_worth": (0.0, None),
             "max_leverage": (0.0, None),
             "cap_factor": (1.0, None),
@@ -479,8 +475,6 @@ class ConfigValidator:
 
         # Valid values for string enum parameters
         valid_enums = {
-            "loan_priority_method": {"by_net_worth", "by_leverage", "by_appearance"},
-            "firing_method": {"random", "expensive"},
             "matching_method": {"sequential", "simultaneous"},
             "job_search_method": {"vacancies_only", "all_firms"},
             "inflation_method": {"yoy", "annualized"},

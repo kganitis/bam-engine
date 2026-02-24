@@ -277,7 +277,7 @@ class TestExportBestConfig:
 
     def test_creates_yaml_file(self, tmp_path):
         result = CalibrationResult(
-            {"beta": 2.5, "firing_method": "expensive"},
+            {"beta": 2.5, "job_search_method": "all_firms"},
             0.85,
             1,
             0,
@@ -294,7 +294,7 @@ class TestExportBestConfig:
         with open(path) as f:
             content = f.read()
         assert "beta" in content
-        assert "firing_method" in content
+        assert "job_search_method" in content
         assert "Best calibration config" in content
 
 
