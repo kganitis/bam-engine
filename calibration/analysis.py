@@ -163,7 +163,7 @@ def analyze_parameter_patterns(
         return {}
 
     # Collect all parameter names
-    all_params = set()
+    all_params: set[str] = set()
     for r in top:
         all_params.update(r.params.keys())
 

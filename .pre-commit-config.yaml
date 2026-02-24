@@ -50,7 +50,7 @@ repos:
           - numpy>=1.26
           - pandas-stubs>=2.0
         args: ["--config-file=pyproject.toml"]
-        files: ^src/
+        files: ^(src|validation|extensions|calibration)/
         exclude: \.pyi$
 
   # Spell checking

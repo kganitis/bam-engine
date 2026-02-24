@@ -27,7 +27,7 @@ def lint(session: nox.Session) -> None:
     session.install("-e", ".[lint]")
     session.run("black", "--check", ".")
     session.run("ruff", "check", ".")
-    session.run("mypy", "src/")
+    session.run("mypy")
 
 
 @nox.session(python=DEFAULT_PYTHON)
@@ -97,7 +97,7 @@ def coverage(session: nox.Session) -> None:
 def typecheck(session: nox.Session) -> None:
     """Run type checking with mypy."""
     session.install("-e", ".[lint]")
-    session.run("mypy", "src/", *session.posargs)
+    session.run("mypy", *session.posargs)
 
 
 if __name__ == "__main__":

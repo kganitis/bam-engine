@@ -37,7 +37,8 @@ def _write_json(data: dict[str, Any], path: Path) -> None:
 def _read_json(path: Path) -> dict[str, Any]:
     """Read JSON file and return parsed data."""
     with open(path) as f:
-        return json.load(f)
+        result: dict[str, Any] = json.load(f)
+        return result
 
 
 def create_run_dir(scenario: str, output_dir: Path | None = None) -> Path:
