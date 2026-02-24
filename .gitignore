@@ -41,9 +41,6 @@ analysis/output/
 # Calibration outputs
 calibration/output/
 
-# Diagnostics outputs
-diagnostics/output/
-
 # Validation outputs
 validation/scenarios/*/output/
 validation/robustness/output/
@@ -91,6 +88,7 @@ docs/sg_execution_times.rst
 
 # Local scripts and notes
 analysis/
+diagnostics/
 notes/
 
 # Git worktrees
