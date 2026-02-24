@@ -164,10 +164,18 @@ def attach_extensions(sim):
 # ------------------
 #
 # Buffer-stock parameter ``h`` controls the desired savings-income ratio.
+# We scale initial conditions by K=100,000 so the wealth CCDF x-axis spans
+# [10,000 – 1,000,000], matching Figure 3.8 from the book.
 
 sim = bam.Simulation.init(
     # Buffer-stock specific parameters
     buffer_stock_h=2.0,
+    # Scale initial conditions by K=100,000 so the wealth CCDF x-axis
+    # spans [10,000 – 1,000,000], matching Figure 3.8 from the book.
+    price_init=50_000,  # K × 0.5 (default)
+    savings_init=100_000,  # K × 1.0 (default)
+    equity_base_init=500_000,  # K × 5.0 (default)
+    # net_worth scales automatically: 2.5 * 50,000 * 6.0 = 750,000
     # Growth+ specific parameters
     sigma_min=0.0,
     sigma_max=0.1,
@@ -190,16 +198,23 @@ print(f"Completed: {results.metadata['runtime_seconds']:.2f}s")
 #
 # We fit the distribution of household wealth (savings) in the last period to
 # three heavy-tailed distributions: Singh-Maddala (Burr Type XII), Dagum, and
-# GB2 (Beta Prime).
+# GB2 (Beta Prime).  Data is normalized by its median before fitting to avoid
+# numerical overflow in scipy's power-law PDF evaluations (x**k overflows when
+# x ~ 50,000+).  The CCDF is scale-invariant, so we evaluate on normalized x
+# but plot against original x.
 
+import numpy as np
 from scipy import stats as sp_stats
 
 savings = results.get_array("Consumer", "savings")
 last_period_savings = savings[-1]
 
-sm_params = sp_stats.burr12.fit(last_period_savings, floc=0)
-dagum_params = sp_stats.mielke.fit(last_period_savings, floc=0)
-gb2_params = sp_stats.betaprime.fit(last_period_savings, floc=0)
+fit_scale = float(np.median(last_period_savings))
+norm_savings = last_period_savings / fit_scale
+
+sm_params = sp_stats.burr12.fit(norm_savings, floc=0)
+dagum_params = sp_stats.mielke.fit(norm_savings, floc=0)
+gb2_params = sp_stats.betaprime.fit(norm_savings, floc=0)
 
 # %%
 # Visualize Wealth CCDF (Figure 3.8)
@@ -230,25 +245,28 @@ ax.scatter(
 )
 
 x_range = np.linspace(sorted_wealth[0], sorted_wealth[-1], 500)
+x_norm = x_range / fit_scale  # normalized x for distribution evaluation
 
-# Calculate CCDF for each fitted distribution
+# Calculate CCDF (survival function) for each fitted distribution.
+# We use .sf() instead of 1-cdf() for better numerical stability in the tail.
 # Note: scipy's 'burr12' distribution is a reparameterization of the Singh-Maddala distribution.
-sm_ccdf = 1.0 - sp_stats.burr12.cdf(x_range, *sm_params)
+sm_ccdf = sp_stats.burr12.sf(x_norm, *sm_params)
 ax.plot(x_range, sm_ccdf, color="#0000FE", linewidth=1.5, label="Singh-Maddala")
 
 # Note: scipy's 'mielke' distribution is a reparameterization of the Dagum distribution.
-dagum_ccdf = 1.0 - sp_stats.mielke.cdf(x_range, *dagum_params)
+dagum_ccdf = sp_stats.mielke.sf(x_norm, *dagum_params)
 ax.plot(x_range, dagum_ccdf, color="#FE00FE", linewidth=1.5, label="Dagum")
 
 # Note: scipy's 'betaprime' distribution is a reparameterization of the GB2 distribution.
-gb2_ccdf = 1.0 - sp_stats.betaprime.cdf(x_range, *gb2_params)
+gb2_ccdf = sp_stats.betaprime.sf(x_norm, *gb2_params)
 ax.plot(x_range, gb2_ccdf, color="#00FEFE", linewidth=1.5, label="GB2")
 
 ax.set_xscale("log")
 ax.set_yscale("log")
+ax.set_xlim(1e4, 1e7)
 ax.legend(fontsize=8)
 
-ax.set_title("Fitting of the CCDF of personal incomes (last period)", fontweight="bold")
+ax.set_title("Fitting of the CCDF of personal wealth (Figure 3.8)", fontweight="bold")
 ax.set_xlabel("Household wealth (savings)")
 ax.set_ylabel("Complementary cumulative distribution")
 ax.grid(True, linestyle="--", alpha=0.3)
