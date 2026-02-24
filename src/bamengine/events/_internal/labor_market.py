@@ -424,7 +424,7 @@ def workers_send_one_round(
     --------
     bamengine.events.labor_market.WorkersSendOneRound : Full documentation
     """
-    if matching_method == "simultaneous":
+    if matching_method == "simultaneous":  # DEPRECATED-PATH
         _workers_send_one_round_simultaneous(wrk, emp, rng)
     else:
         _workers_send_one_round_sequential(wrk, emp, rng)
@@ -586,7 +586,7 @@ def _workers_send_one_round_simultaneous(wrk: Worker, emp: Employer, rng: Rng) -
         if info_enabled:
             log.info("  No workers with pending applications found. Skipping round.")
             log.info("--- Application Sending Round complete ---")
-        return
+        return  # DEPRECATED-PATH
 
     if info_enabled:
         log.info(
@@ -625,7 +625,7 @@ def _workers_send_one_round_simultaneous(wrk: Worker, emp: Employer, rng: Rng) -
             continue
 
         firm_id = wrk.job_apps_targets[row_from_head, col]
-        if firm_id < 0:
+        if firm_id < 0:  # DEPRECATED-PATH
             if debug_enabled:
                 log.debug(
                     f"    Worker {j} encountered sentinel (-1) at col {col}. "
@@ -894,7 +894,7 @@ def firms_hire_workers(
             total_rejected_this_round += num_rejected
 
         # Selection method depends on matching_method
-        if matching_method == "simultaneous":
+        if matching_method == "simultaneous":  # DEPRECATED-PATH
             # Random selection: shuffles queue and takes first num_to_hire
             # This creates coordination failure - workers who "crowded" at
             # the firm may be randomly rejected even if they arrived "first"
@@ -1077,7 +1077,7 @@ def workers_apply_to_firms(
             row, col = divmod(head, stride)
             firm_id = wrk.job_apps_targets[row, col]
 
-            if firm_id < 0:
+            if firm_id < 0:  # DEPRECATED-PATH
                 # End of queue
                 break
 
@@ -1153,7 +1153,7 @@ def workers_apply_to_best_firm(
         if info_enabled:
             log.info("  No workers with pending applications. Skipping.")
             log.info("--- Workers Apply to Best Firm (Single-Best) complete ---")
-        return
+        return  # DEPRECATED-PATH
 
     rng.shuffle(applicants)
 
@@ -1171,7 +1171,7 @@ def workers_apply_to_best_firm(
 
         row, col = divmod(head, stride)
 
-        if head >= (j + 1) * stride:
+        if head >= (j + 1) * stride:  # DEPRECATED-PATH
             wrk.job_apps_head[j] = -1
             continue
 
@@ -1180,7 +1180,7 @@ def workers_apply_to_best_firm(
         wrk.job_apps_targets[row, col] = -1
         wrk.job_apps_head[j] = -1  # Only one attempt
 
-        if firm_id < 0:
+        if firm_id < 0:  # DEPRECATED-PATH
             continue
 
         if emp.n_vacancies[firm_id] > 0:
