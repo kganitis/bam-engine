@@ -14,10 +14,8 @@ from pathlib import Path
 from typing import Any
 
 from calibration.analysis import CalibrationResult, format_eta, format_progress
+from calibration.io import OUTPUT_DIR
 from validation import get_validation_funcs
-
-# Output directory for checkpoints
-OUTPUT_DIR = Path(__file__).parent / "output"
 
 
 def screen_single_seed(

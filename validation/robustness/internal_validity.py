@@ -31,7 +31,11 @@ from validation.robustness.stats import (
     hp_filter,
     impulse_response,
 )
-from validation.scenarios._utils import adjust_burn_in, filter_outliers_iqr
+from validation.scenarios._utils import (
+    adjust_burn_in,
+    compute_real_interest_rate,
+    filter_outliers_iqr,
+)
 
 # ─── Collection Configuration ───────────────────────────────────────────────
 
@@ -268,18 +272,9 @@ def _extract_time_series(
     real_wage = ops.divide(avg_employed_wage, avg_price)
 
     # Weighted average loan interest rate (weighted by actual loan principals)
-    n_periods_total = len(inflation)
-    real_interest_rate = np.zeros(n_periods_total)
-    for t in range(n_periods_total):
-        principals_t = loan_principals[t]
-        rates_t = loan_rates[t]
-        if len(principals_t) > 0 and np.sum(principals_t) > 0:
-            weighted_nominal = float(
-                np.sum(rates_t * principals_t) / np.sum(principals_t)
-            )
-        else:
-            weighted_nominal = sim.config.r_bar
-        real_interest_rate[t] = weighted_nominal - inflation[t]
+    real_interest_rate = compute_real_interest_rate(
+        loan_principals, loan_rates, inflation, sim.config.r_bar
+    )
 
     # Vacancy rate
     total_vacancies = ops.sum(n_vacancies, axis=1)

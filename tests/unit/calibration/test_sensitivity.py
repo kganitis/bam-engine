@@ -14,27 +14,7 @@ from calibration.sensitivity import (
     print_sensitivity_report,
     run_sensitivity_analysis,
 )
-from validation.types import MetricGroup, MetricResult, ValidationScore
-
-
-def _make_score(total: float, group: str = "TIME_SERIES") -> ValidationScore:
-    """Create a minimal ValidationScore for testing."""
-    mr = MetricResult(
-        name="test_metric",
-        status="PASS",
-        actual=total,
-        target_desc="test",
-        score=total,
-        weight=1.0,
-        group=MetricGroup[group],
-    )
-    return ValidationScore(
-        metric_results=[mr],
-        total_score=total,
-        n_pass=1,
-        n_warn=0,
-        n_fail=0,
-    )
+from tests.helpers.scores import make_score as _make_score
 
 
 class TestParameterSensitivity:

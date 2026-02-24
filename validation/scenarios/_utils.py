@@ -6,6 +6,39 @@ import numpy as np
 from numpy.typing import NDArray
 
 
+def compute_detrended_correlation(
+    x: NDArray[np.floating], y: NDArray[np.floating]
+) -> float:
+    """Compute correlation of linearly detrended series.
+
+    Removes linear trend from each series before computing correlation,
+    which measures cyclical co-movement rather than trend co-movement.
+
+    Parameters
+    ----------
+    x, y : NDArray
+        Time series of equal length.
+
+    Returns
+    -------
+    float
+        Pearson correlation of detrended series, or 0.0 if series
+        are too short or detrending fails.
+    """
+    if len(x) < 10 or len(y) < 10:
+        return 0.0
+    t = np.arange(len(x))
+    try:
+        x_trend = np.polyval(np.polyfit(t, x, 1), t)
+        y_trend = np.polyval(np.polyfit(t, y, 1), t)
+    except np.linalg.LinAlgError:
+        return 0.0
+    x_detrended = x - x_trend
+    y_detrended = y - y_trend
+    corr = np.corrcoef(x_detrended, y_detrended)[0, 1]
+    return float(corr) if np.isfinite(corr) else 0.0
+
+
 def filter_outliers_iqr(
     x: NDArray[np.floating], y: NDArray[np.floating]
 ) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
@@ -37,6 +70,48 @@ def filter_outliers_iqr(
 
     mask = (x >= x_lower) & (x <= x_upper) & (y >= y_lower) & (y <= y_upper)
     return x[mask], y[mask]
+
+
+def compute_real_interest_rate(
+    loan_principals: list[NDArray[np.floating]],
+    loan_rates: list[NDArray[np.floating]],
+    inflation: NDArray[np.floating],
+    fallback_rate: float,
+) -> NDArray[np.floating]:
+    """Compute per-period real interest rate from loan data.
+
+    For each period, computes the principal-weighted average nominal
+    interest rate across all active loans, then subtracts inflation.
+
+    Parameters
+    ----------
+    loan_principals : list of NDArray
+        Per-period arrays of loan principal amounts.
+    loan_rates : list of NDArray
+        Per-period arrays of loan interest rates.
+    inflation : NDArray
+        Inflation rate per period.
+    fallback_rate : float
+        Nominal rate to use when no active loans exist (typically r_bar).
+
+    Returns
+    -------
+    NDArray
+        Real interest rate per period.
+    """
+    n_periods = len(inflation)
+    real_interest_rate = np.zeros(n_periods)
+    for t in range(n_periods):
+        principals_t = loan_principals[t]
+        rates_t = loan_rates[t]
+        if len(principals_t) > 0 and np.sum(principals_t) > 0:
+            weighted_nominal = float(
+                np.sum(rates_t * principals_t) / np.sum(principals_t)
+            )
+        else:
+            weighted_nominal = fallback_rate
+        real_interest_rate[t] = weighted_nominal - inflation[t]
+    return real_interest_rate
 
 
 def adjust_burn_in(burn_in: int, n_periods: int, *, verbose: bool = False) -> int:
