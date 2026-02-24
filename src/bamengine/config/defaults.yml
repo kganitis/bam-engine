@@ -76,7 +76,7 @@ delta:                0.10       # Dividend payout ratio (share of profits)
 
 price_init:           0.5        # Goods price at t=0 (money unit per good unit)
 min_wage_ratio:       0.5        # Minimum wage at t=0 (as fraction of mean wage)
-net_worth_ratio:      3.0        # Firm net worth at t=0 (as fraction of production)
+net_worth_ratio:      6.0        # Firm net worth at t=0 (as multiple of initial revenue)
 equity_base_init:     5.0        # Bank equity at t=0 (money units)
 savings_init:         1.0        # Household savings at t=0 (money units)
 
