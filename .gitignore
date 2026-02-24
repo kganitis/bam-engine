@@ -39,11 +39,11 @@ asv_benchmarks/__pycache__/
 analysis/output/
 
 # Calibration outputs
-calibration/output/
+src/calibration/output/
 
 # Validation outputs
-validation/scenarios/*/output/
-validation/robustness/output/
+src/validation/scenarios/*/output/
+src/validation/robustness/output/
 
 # Example outputs
 examples/*/**/output/

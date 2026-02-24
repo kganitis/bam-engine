@@ -46,8 +46,8 @@ Run all code quality checks:
    ruff format . && ruff check --fix . && mypy
 
 The configuration in ``pyproject.toml`` automatically includes all Python packages
-(``src/``, ``tests/``, ``validation/``, ``extensions/``, ``calibration/``,
-``diagnostics/``, ``benchmarks/``, ``examples/``, and ``docs/conf.py``)
+(``src/`` covers ``bamengine``, ``validation``, ``extensions``, ``calibration``;
+plus ``tests/``, ``diagnostics/``, ``benchmarks/``, ``examples/``, and ``docs/conf.py``)
 while excluding generated files.
 
 Testing
@@ -153,8 +153,8 @@ BAM Engine includes two packages for model validation and parameter calibration.
 Validation Package
 ~~~~~~~~~~~~~~~~~~
 
-The ``validation/`` package validates simulation results against empirical targets
-from Delli Gatti et al. (2011).
+The ``validation`` package (under ``src/validation/``) validates simulation results
+against empirical targets from Delli Gatti et al. (2011).
 
 .. code-block:: python
 
@@ -194,15 +194,15 @@ from Delli Gatti et al. (2011).
 Status checks use a weight-derived escalation multiplier to adjust the WARN→FAIL
 boundary. High-weight metrics (e.g., 3.0) fail more strictly, while low-weight
 metrics (e.g., 0.5) require extreme deviations to FAIL. BOOLEAN checks are exempt.
-See ``validation/README.md`` for the full mapping table.
+See ``src/validation/README.md`` for the full mapping table.
 
-See ``validation/README.md`` for the full API reference.
+See ``src/validation/README.md`` for the full API reference.
 
 Calibration Package
 ~~~~~~~~~~~~~~~~~~~
 
-The ``calibration/`` package finds optimal parameter values through sensitivity
-screening and focused grid search.
+The ``calibration`` package (under ``src/calibration/``) finds optimal parameter
+values through sensitivity screening and focused grid search.
 
 **Command line usage:**
 
@@ -255,7 +255,7 @@ screening and focused grid search.
 3. **Grid Search Screening**: Test combinations using single seed
 4. **Stability Testing**: Multi-seed validation of top candidates
 
-See ``calibration/README.md`` for CLI options and full API reference.
+See ``src/calibration/README.md`` for CLI options and full API reference.
 
 Building Documentation
 ----------------------

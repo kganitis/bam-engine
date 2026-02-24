@@ -54,15 +54,30 @@ classifiers = [
 
 [project.optional-dependencies]
 # DataFrame export support (optional)
-pandas = [
-    "pandas>=2.0",
-]
+pandas = ["pandas>=2.0"]
+
+# Extensions (no extra deps beyond core bamengine)
+extensions-rnd = []
+extensions-buffer-stock = []
+extensions-taxation = []
+extensions = ["bamengine[extensions-rnd,extensions-buffer-stock,extensions-taxation]"]
+
+# Validation (scipy required at top-level in scenario modules)
+validation = ["scipy>=1.11"]
+
+# Calibration (depends on validation)
+calibration = ["bamengine[validation]"]
+
+# Visualization (lazy-imported in validation/calibration viz modules)
+viz = ["matplotlib>=3.8"]
+
+# Development
 dev = [
-    "bamengine[test,lint,docs,pandas]",
+    "bamengine[test,lint,docs,pandas,extensions,calibration,viz]",
     "nox>=2024.3.2",
 ]
 test = [
-    "bamengine[pandas]",
+    "bamengine[pandas,extensions,calibration,viz]",
     "pytest>=8.3",
     "pytest-cov>=5.0",
     "hypothesis>=6.131.9",
@@ -77,7 +92,7 @@ lint = [
     "pandas-stubs>=2.0",
 ]
 docs = [
-    "bamengine[pandas]",
+    "bamengine[pandas,extensions,calibration,viz]",
     "sphinx>=7.0",
     "sphinx-gallery>=0.15.0",
     "pydata-sphinx-theme>=0.15.0",
@@ -99,6 +114,8 @@ test = [
     "hypothesis>=6.131.9",
     "pytest-benchmark>=4.0.0",
     "pandas>=2.0",
+    "scipy>=1.11",
+    "matplotlib>=3.8",
 ]
 lint = [
     "ruff>=0.4",
@@ -132,6 +149,12 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 bamengine = ["config/*.yml", "config/*.yaml", "py.typed"]
+validation = [
+    "scenarios/baseline/targets.yaml",
+    "scenarios/growth_plus/targets.yaml",
+    "scenarios/buffer_stock/targets.yaml",
+    "robustness/reference_values.yaml",
+]
 
 [tool.setuptools.dynamic]
 version = {attr = "bamengine.__version__"}
@@ -144,9 +167,6 @@ line-length = 88
 include = [
     "src/**/*.py",
     "tests/**/*.py",
-    "validation/**/*.py",
-    "extensions/**/*.py",
-    "calibration/**/*.py",
     "diagnostics/**/*.py",
     "benchmarks/**/*.py",
     "examples/**/*.py",
@@ -198,10 +218,10 @@ ignore = [
 # Diagnostics are exploratory scripts with inline imports and print output
 "diagnostics/**/*.py" = ["E402", "T20", "B905"]
 # Validation viz modules use print for report output
-"validation/**/viz.py" = ["T20"]
+"src/validation/**/viz.py" = ["T20"]
 # Calibration CLI/reporting uses print for user-facing output
-"calibration/cli.py" = ["T20"]
-"calibration/reporting.py" = ["T20"]
+"src/calibration/cli.py" = ["T20"]
+"src/calibration/reporting.py" = ["T20"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["bamengine", "validation", "extensions", "calibration", "diagnostics"]
@@ -221,7 +241,7 @@ docstring-code-format = true
 [tool.mypy]
 python_version = "3.11"
 strict = true
-files = ["src/", "validation/", "extensions/", "calibration/"]
+files = ["src/"]
 disallow_untyped_decorators = false  # Allow @event, @role decorators
 enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
 
@@ -230,9 +250,9 @@ enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
 module = "bamengine.simulation"
 disable_error_code = ["call-arg"]
 
-# scipy has no type stubs
+# scipy and matplotlib have no type stubs
 [[tool.mypy.overrides]]
-module = ["scipy", "scipy.*"]
+module = ["scipy", "scipy.*", "matplotlib", "matplotlib.*"]
 ignore_missing_imports = true
 
 # Extensions use @role/@event decorators that shadow core submodule names

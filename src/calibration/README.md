@@ -234,7 +234,7 @@ Extension-specific:
 
 ## Output Files
 
-Results are saved to timestamped directories under `calibration/output/`:
+Results are saved to timestamped directories under `src/calibration/output/`:
 
 ```
 output/2026-02-24_143052_baseline/
