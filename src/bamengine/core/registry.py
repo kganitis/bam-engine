@@ -59,17 +59,12 @@ See Also
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover
     from bamengine.core.event import Event
     from bamengine.core.relationship import Relationship
     from bamengine.core.role import Role
-
-# Type variables for generic decorator typing
-R = TypeVar("R", bound="Role")
-E = TypeVar("E", bound="Event")
-L = TypeVar("L", bound="Relationship")
 
 # Global registry storage
 _ROLE_REGISTRY: dict[str, type[Role]] = {}

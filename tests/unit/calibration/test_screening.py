@@ -9,27 +9,7 @@ import pytest
 
 from calibration.analysis import CalibrationResult
 from calibration.screening import run_screening, screen_single_seed
-from validation.types import MetricGroup, MetricResult, ValidationScore
-
-
-def _make_score(total: float) -> ValidationScore:
-    """Create a minimal ValidationScore for testing."""
-    mr = MetricResult(
-        name="test_metric",
-        status="PASS",
-        actual=total,
-        target_desc="test",
-        score=total,
-        weight=1.0,
-        group=MetricGroup.TIME_SERIES,
-    )
-    return ValidationScore(
-        metric_results=[mr],
-        total_score=total,
-        n_pass=1,
-        n_warn=0,
-        n_fail=0,
-    )
+from tests.helpers.scores import make_score as _make_score
 
 
 class TestScreenSingleSeed:

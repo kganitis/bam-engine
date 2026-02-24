@@ -143,6 +143,20 @@ def _make_stability(scenario_name: str):  # type: ignore[no-untyped-def]
     return _stability
 
 
+def _make_scenario_runner(scenario_name: str):  # type: ignore[no-untyped-def]
+    def _runner(**kwargs: Any) -> Any:
+        import importlib
+
+        mod = importlib.import_module(f"validation.scenarios.{scenario_name}")
+        return mod.run_scenario(**kwargs)
+
+    _runner.__doc__ = (
+        f"Run {scenario_name} scenario with visualization.\n\n"
+        f"See validation.scenarios.{scenario_name}.run_scenario for parameters."
+    )
+    return _runner
+
+
 # Backwards-compatible names
 run_validation = _make_validate("baseline")
 run_stability_test = _make_stability("baseline")
@@ -152,7 +166,7 @@ run_buffer_stock_validation = _make_validate("buffer_stock")
 run_buffer_stock_stability_test = _make_stability("buffer_stock")
 
 # =============================================================================
-# Report printers (generated via partial from Scenario.title)
+# Report printers (partial from Scenario.title)
 # =============================================================================
 
 print_validation_report = partial(print_report, title=get_scenario("baseline").title)
@@ -172,40 +186,13 @@ print_buffer_stock_stability_report = partial(
     print_stability_report, title=get_scenario("buffer_stock").stability_title
 )
 
-
 # =============================================================================
 # Scenario Runner Functions (with visualization — lazy imports)
 # =============================================================================
 
-
-def run_baseline_scenario(**kwargs: Any) -> Any:
-    """Run baseline scenario with visualization.
-
-    See validation.scenarios.baseline.run_scenario for parameters.
-    """
-    from validation.scenarios.baseline import run_scenario
-
-    return run_scenario(**kwargs)
-
-
-def run_growth_plus_scenario(**kwargs: Any) -> Any:
-    """Run Growth+ scenario with visualization.
-
-    See validation.scenarios.growth_plus.run_scenario for parameters.
-    """
-    from validation.scenarios.growth_plus import run_scenario
-
-    return run_scenario(**kwargs)
-
-
-def run_buffer_stock_scenario(**kwargs: Any) -> Any:
-    """Run buffer-stock scenario with visualization.
-
-    See validation.scenarios.buffer_stock.run_scenario for parameters.
-    """
-    from validation.scenarios.buffer_stock import run_scenario
-
-    return run_scenario(**kwargs)
+run_baseline_scenario = _make_scenario_runner("baseline")
+run_growth_plus_scenario = _make_scenario_runner("growth_plus")
+run_buffer_stock_scenario = _make_scenario_runner("buffer_stock")
 
 
 # =============================================================================
