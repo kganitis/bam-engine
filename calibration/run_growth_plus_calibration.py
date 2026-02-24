@@ -33,7 +33,7 @@ GRID = {
 FIXED = {
     "price_init": 0.5,
     "savings_init": 1.0,
-    "net_worth_ratio": 3.0,
+    "net_worth_ratio": 6.0,
     "equity_base_init": 5.0,
     "pricing_phase": "planning",
     "min_wage_ratio": 0.5,

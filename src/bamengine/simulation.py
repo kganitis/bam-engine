@@ -769,7 +769,8 @@ class Simulation:
                 net_worth = np.asarray(net_worth_init).copy()
         else:
             net_worth = np.full(
-                p["n_firms"], fill_value=production_init * p["net_worth_ratio"]
+                p["n_firms"],
+                fill_value=production_init * p["price_init"] * p["net_worth_ratio"],
             )
         total_funds = net_worth.copy()
         gross_profit = np.zeros_like(net_worth)

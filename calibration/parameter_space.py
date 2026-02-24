@@ -23,7 +23,7 @@ _COMMON_GRID: dict[str, list[Any]] = {
     # Initial conditions
     "price_init": [0.5, 1.0, 1.5, 2.0, 3.0],
     "min_wage_ratio": [0.50, 0.67, 0.80, 1.0],
-    "net_worth_ratio": [0.5, 1.0, 2.0, 3.0, 5.0],
+    "net_worth_ratio": [1.0, 2.0, 4.0, 6.0, 10.0],
     "equity_base_init": [1.0, 3.0, 5.0, 10.0],
     "savings_init": [1.0, 3.0, 5.0, 10.0],
     # New firm entry

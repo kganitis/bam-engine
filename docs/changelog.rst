@@ -245,6 +245,12 @@ Changed
 * Calibration: parameter grid restructured around shared ``_COMMON_GRID``
   (26 params) with scenario-specific extensions via dict unpacking.
 * Docs: updated ``development.rst`` calibration examples to match new CLI.
+* ``net_worth_ratio`` formula changed from ``production_init * net_worth_ratio``
+  to ``production_init * price_init * net_worth_ratio``, fixing a dimensional
+  mismatch where net worth was computed in goods units while wages were in money
+  units. Default ``net_worth_ratio`` changed from 3.0 to 6.0 to preserve the
+  same default net worth (7.5). Semantics changed from "fraction of production
+  capacity" to "multiple of initial revenue".
 
 Fixed
 ~~~~~
@@ -288,6 +294,10 @@ Fixed
   ``spawn_replacement_*``, so they persist through end-of-period data capture.
 * Spawned replacement firms set ``production = production_prev`` to avoid
   immediate ghost-firm re-bankruptcy on the next period.
+* Fixed ``net_worth_ratio`` dimensional mismatch: firm net worth was initialized
+  in goods units (``production_init * ratio``) while wages scaled with
+  ``price_init``. Scaling ``price_init`` without overriding ``net_worth_init``
+  would cause firms to be unable to hire, collapsing the economy.
 
 Removed
 ~~~~~~~
