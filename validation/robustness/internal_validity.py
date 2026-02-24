@@ -173,6 +173,9 @@ class SeedAnalysis:
     # Wage-productivity ratio
     wage_productivity_ratio: float
 
+    # Full log GDP time series (for PA comparison plots)
+    log_gdp: NDArray[np.floating]
+
     # HP-filtered GDP cycle (for cross-seed averaging)
     hp_gdp_cycle: NDArray[np.floating]
 
@@ -363,6 +366,7 @@ def _analyze_seed(
             firm_size_tail_index=np.nan,
             peak_lags={v: 0 for v in COMOVEMENT_VARIABLES},
             wage_productivity_ratio=np.nan,
+            log_gdp=ts.log_gdp,
             hp_gdp_cycle=np.array([]),
             degenerate=True,
             degenerate_reasons=["collapsed"],
@@ -532,6 +536,7 @@ def _analyze_seed(
         firm_size_tail_index=tail_index,
         peak_lags=peak_lags,
         wage_productivity_ratio=wage_productivity_ratio,
+        log_gdp=ts.log_gdp,
         hp_gdp_cycle=gdp_cycle,
         degenerate=len(degenerate_reasons) > 0,
         degenerate_reasons=degenerate_reasons,

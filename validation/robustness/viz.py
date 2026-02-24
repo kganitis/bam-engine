@@ -341,35 +341,31 @@ def plot_pa_gdp_comparison(
     """
     import matplotlib.pyplot as plt
 
-    import bamengine as bam
-
     if output_dir is None:
         output_dir = _OUTPUT_DIR
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    n_periods = pa_result.pa_off_validity.n_periods
-
-    # Run two quick sims for visual comparison
-    sim_on = bam.Simulation.init(
-        seed=seed, n_periods=n_periods, logging={"default_level": "ERROR"}
-    )
-    res_on = sim_on.run(collect=True)
-    gdp_on = res_on.economy_data["real_gdp"]
-
-    sim_off = bam.Simulation.init(
-        seed=seed,
-        n_periods=n_periods,
-        consumer_matching="random",
-        logging={"default_level": "ERROR"},
-    )
-    res_off = sim_off.run(collect=True)
-    gdp_off = res_off.economy_data["real_gdp"]
+    # Use log_gdp from the PA-off seed analysis and baseline for comparison
+    log_gdp_off = pa_result.pa_off_validity.seed_analyses[seed].log_gdp
+    if pa_result.baseline_validity is not None:
+        log_gdp_on = pa_result.baseline_validity.seed_analyses[seed].log_gdp
+    else:
+        raise ValueError(
+            "PA GDP comparison requires baseline; re-run with include_baseline=True"
+        )
 
     fig, ax = plt.subplots(1, 1, figsize=(12, 5))
-    periods = np.arange(len(gdp_on))
-    ax.plot(periods, np.log(gdp_on), "b-", linewidth=1, alpha=0.8, label="PA on")
-    ax.plot(periods, np.log(gdp_off), "r-", linewidth=1, alpha=0.8, label="PA off")
+    periods = np.arange(len(log_gdp_on))
+    ax.plot(periods, log_gdp_on, "b-", linewidth=1, alpha=0.8, label="PA on")
+    ax.plot(
+        periods[: len(log_gdp_off)],
+        log_gdp_off,
+        "r-",
+        linewidth=1,
+        alpha=0.8,
+        label="PA off",
+    )
     ax.set_title(
         "Log GDP: Preferential Attachment on vs off (Section 3.10.2, Figure 3.10)",
         fontsize=12,
