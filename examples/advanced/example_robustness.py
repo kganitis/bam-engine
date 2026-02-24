@@ -581,6 +581,8 @@ pa_result = run_pa_experiment(
     n_workers=1,
     verbose=False,
     include_baseline=True,
+    setup_hook=setup_growth_plus,
+    collect_config=COLLECT_CONFIG,
 )
 
 # Show key comparison if baseline available
@@ -610,6 +612,8 @@ entry_result = run_entry_experiment(
     burn_in=100,
     n_workers=1,
     verbose=False,
+    setup_hook=setup_growth_plus,
+    collect_config=COLLECT_CONFIG,
 )
 
 exp = entry_result.tax_sweep.experiments["entry_neutrality"]
