@@ -769,7 +769,7 @@ def firms_apply_for_loans(
             row, col = divmod(head, stride)
             bank_id = bor.loan_apps_targets[row, col]
 
-            if bank_id < 0:
+            if bank_id < 0:  # DEPRECATED-PATH
                 break
 
             # Clear visited slot
@@ -786,11 +786,11 @@ def firms_apply_for_loans(
             grant = min(bor.credit_demand[i], lend.credit_supply[bank_id])
 
             # Apply loan-to-net-worth cap
-            if max_loan_to_net_worth > 0.0:
+            if max_loan_to_net_worth > 0.0:  # DEPRECATED-PATH
                 nw_cap = bor.net_worth[i] * max_loan_to_net_worth
                 grant = min(grant, nw_cap)
 
-            if grant <= 0.0:
+            if grant <= 0.0:  # DEPRECATED-PATH
                 continue
 
             # Calculate interest rate with fragility premium
