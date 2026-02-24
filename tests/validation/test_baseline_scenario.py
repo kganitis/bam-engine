@@ -36,7 +36,6 @@ from validation import (
 
 
 @pytest.mark.slow
-@pytest.mark.validation
 def test_baseline_scenario_validation() -> None:
     """Validate baseline scenario results against book targets.
 
@@ -61,7 +60,6 @@ def test_baseline_scenario_validation() -> None:
 
 
 @pytest.mark.slow
-@pytest.mark.validation
 def test_baseline_seed_stability() -> None:
     """Test that baseline passes consistently across multiple seeds.
 

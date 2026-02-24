@@ -26,7 +26,6 @@ from validation.robustness import (
 
 
 @pytest.mark.slow
-@pytest.mark.validation
 class TestInternalValidity:
     """Integration tests for internal validity analysis."""
 
@@ -148,7 +147,6 @@ class TestInternalValidity:
 
 
 @pytest.mark.slow
-@pytest.mark.validation
 class TestSensitivityAnalysis:
     """Integration tests for sensitivity analysis."""
 
@@ -240,7 +238,6 @@ class TestSensitivityAnalysis:
 
 
 @pytest.mark.slow
-@pytest.mark.validation
 def test_unknown_experiment_raises() -> None:
     """Requesting a non-existent experiment should raise ValueError."""
     with pytest.raises(ValueError, match="Unknown experiment"):
@@ -258,7 +255,6 @@ def test_unknown_experiment_raises() -> None:
 
 
 @pytest.mark.slow
-@pytest.mark.validation
 class TestPAExperiment:
     """Integration tests for the PA (preferential attachment) experiment."""
 
@@ -304,7 +300,6 @@ class TestPAExperiment:
 
 
 @pytest.mark.slow
-@pytest.mark.validation
 class TestEntryExperiment:
     """Integration tests for the entry neutrality experiment."""
 
@@ -343,7 +338,6 @@ class TestEntryExperiment:
 
 
 @pytest.mark.slow
-@pytest.mark.validation
 def test_sensitivity_with_setup_fn() -> None:
     """run_sensitivity_analysis should work with entry_neutrality (has setup_fn)."""
     result = run_sensitivity_analysis(

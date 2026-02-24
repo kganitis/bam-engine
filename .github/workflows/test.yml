@@ -33,7 +33,7 @@ jobs:
         # Only use DEBUG logging for the specific run that uploads coverage
         COVERAGE_RUN: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12' && 'true' || 'false' }}
       run: |
-        pytest -m "not regression and not validation"
+        pytest -m "not slow and not regression and not validation"
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v5

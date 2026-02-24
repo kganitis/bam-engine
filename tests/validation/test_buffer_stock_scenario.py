@@ -38,7 +38,7 @@ from validation import (
 # =============================================================================
 
 
-@pytest.mark.validation
+@pytest.mark.slow
 def test_buffer_stock_scenario_validation() -> None:
     """Validate buffer-stock scenario results against book targets.
 
@@ -64,7 +64,6 @@ def test_buffer_stock_scenario_validation() -> None:
 
 
 @pytest.mark.slow
-@pytest.mark.validation
 def test_buffer_stock_seed_stability() -> None:
     """Test that buffer-stock passes consistently across multiple seeds.
 
