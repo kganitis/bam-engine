@@ -39,7 +39,6 @@ from validation import (
 
 
 @pytest.mark.slow
-@pytest.mark.validation
 def test_growth_plus_scenario_validation() -> None:
     """Validate Growth+ scenario results against book targets.
 
@@ -65,7 +64,6 @@ def test_growth_plus_scenario_validation() -> None:
 
 
 @pytest.mark.slow
-@pytest.mark.validation
 def test_growth_plus_seed_stability() -> None:
     """Test that Growth+ passes consistently across multiple seeds.
 

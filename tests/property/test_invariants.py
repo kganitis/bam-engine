@@ -25,7 +25,6 @@ shock_strategy = st.floats(min_value=0.01, max_value=0.25)
 friction_strategy = st.integers(min_value=1, max_value=10)
 
 
-@pytest.mark.invariants
 @pytest.mark.filterwarnings("ignore:n_households.*n_firms:UserWarning")
 class TestSimulationInvariants:
     """Test that economic invariants hold for any valid parameters."""
@@ -150,7 +149,6 @@ class TestSimulationInvariants:
                 consecutive_mass_unemployment = 0  # Reset counter
 
 
-@pytest.mark.invariants
 class TestProductionInvariants:
     """Test production-specific invariants."""
 
@@ -199,7 +197,6 @@ class TestProductionInvariants:
         assert (sim.prod.inventory >= 0).all(), "Inventory became negative"
 
 
-@pytest.mark.invariants
 @pytest.mark.filterwarnings("ignore:n_households.*n_firms:UserWarning")
 class TestLaborMarketInvariants:
     """Test labor market invariants."""
@@ -256,7 +253,6 @@ class TestLaborMarketInvariants:
                 )
 
 
-@pytest.mark.invariants
 class TestFinancialInvariants:
     """Test financial/accounting invariants."""
 
@@ -307,7 +303,6 @@ class TestFinancialInvariants:
             )
 
 
-@pytest.mark.invariants
 class TestPricingInvariants:
     """Test pricing mechanism invariants."""
 
@@ -351,7 +346,6 @@ class TestPricingInvariants:
             assert 0.01 < avg_price < 1000, f"Average price unreasonable: {avg_price}"
 
 
-@pytest.mark.invariants
 @pytest.mark.filterwarnings("ignore:n_households.*n_firms:UserWarning")
 class TestNumericalStability:
     """Test numerical stability (no NaN, Inf, overflow)."""
