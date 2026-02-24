@@ -674,8 +674,8 @@ def create_default_pipeline(
     max_H: int,
     max_Z: int,
     pricing_phase: str = "planning",
-    labor_matching: str = "cascade",
-    credit_matching: str = "cascade",
+    labor_matching: str = "interleaved",
+    credit_matching: str = "interleaved",
 ) -> Pipeline:
     """
     Create default BAM simulation event pipeline.
@@ -698,15 +698,15 @@ def create_default_pipeline(
         production. ``"production"`` uses current period's costs / projected
         production (after labor/credit markets).
     labor_matching : str, optional
-        Labor market matching algorithm. ``"cascade"`` (default) uses a
-        single ``workers_apply_to_firms`` event. ``"interleaved"`` uses
+        Labor market matching algorithm. ``"interleaved"`` (default) uses
         ``workers_send_one_round`` / ``firms_hire_workers`` repeated
-        ``max_M`` times.
+        ``max_M`` times. ``"cascade"`` uses a single
+        ``workers_apply_to_firms`` event.
     credit_matching : str, optional
-        Credit market matching algorithm. ``"cascade"`` (default) uses a
-        single ``firms_apply_for_loans`` event. ``"interleaved"`` uses
+        Credit market matching algorithm. ``"interleaved"`` (default) uses
         ``firms_send_one_loan_app`` / ``banks_provide_loans`` repeated
-        ``max_H`` times.
+        ``max_H`` times. ``"cascade"`` uses a single
+        ``firms_apply_for_loans`` event.
 
     Returns
     -------
