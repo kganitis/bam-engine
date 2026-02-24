@@ -1,8 +1,8 @@
-"""Tests for progress tracking and ETA helpers in calibration.optimizer."""
+"""Tests for progress tracking and ETA helpers in calibration.analysis."""
 
 from __future__ import annotations
 
-from calibration.optimizer import format_eta, format_progress
+from calibration.analysis import format_eta, format_progress
 
 
 class TestFormatEta:

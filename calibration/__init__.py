@@ -22,36 +22,71 @@ Usage:
     results = run_focused_calibration(grid, fixed)  # default tiers: 100:10, 50:20, 10:100
 """
 
+# Analysis (types and utilities)
+from calibration.analysis import (
+    CalibrationResult,
+    ComparisonResult,
+    analyze_parameter_patterns,
+    compare_configs,
+    export_best_config,
+    format_eta,
+    format_progress,
+    print_comparison,
+    print_parameter_patterns,
+)
+
+# Grid
+from calibration.grid import (
+    build_focused_grid,
+    count_combinations,
+    generate_combinations,
+    load_grid,
+    validate_grid,
+)
+
+# IO
+from calibration.io import (
+    create_run_dir,
+    load_morris,
+    load_pairwise,
+    load_screening,
+    load_sensitivity,
+    load_stability,
+    save_morris,
+    save_pairwise,
+    save_screening,
+    save_sensitivity,
+    save_stability,
+)
+
+# Morris
 from calibration.morris import (
     MorrisParameterEffect,
     MorrisResult,
     print_morris_report,
     run_morris_screening,
 )
-from calibration.optimizer import (
-    CalibrationResult,
-    ComparisonResult,
-    analyze_parameter_patterns,
-    build_focused_grid,
-    compare_configs,
-    evaluate_stability,
-    export_best_config,
-    format_eta,
-    format_progress,
-    parse_stability_tiers,
-    run_focused_calibration,
-    run_screening,
-    run_tiered_stability,
-    screen_single_seed,
-)
+
+# Parameter space
 from calibration.parameter_space import (
     DEFAULT_VALUES,
     PARAMETER_GRID,
-    count_combinations,
-    generate_combinations,
     get_default_values,
     get_parameter_grid,
 )
+
+# Reporting
+from calibration.reporting import (
+    generate_full_report,
+    generate_screening_report,
+    generate_sensitivity_report,
+    generate_stability_report,
+)
+
+# Screening
+from calibration.screening import run_screening, screen_single_seed
+
+# Sensitivity
 from calibration.sensitivity import (
     PairInteraction,
     PairwiseResult,
@@ -63,47 +98,81 @@ from calibration.sensitivity import (
     run_sensitivity_analysis,
 )
 
+# Stability
+from calibration.stability import (
+    evaluate_stability,
+    parse_stability_tiers,
+    run_focused_calibration,
+    run_tiered_stability,
+)
+
 # Re-export from validation for backwards compatibility
 from validation import compute_combined_score
 
 __all__ = [
-    # Parameter space
-    "PARAMETER_GRID",
-    "DEFAULT_VALUES",
-    "generate_combinations",
+    # Analysis (types)
+    "CalibrationResult",
+    "ComparisonResult",
+    # Grid
+    "build_focused_grid",
     "count_combinations",
-    "get_parameter_grid",
-    "get_default_values",
-    # Morris method screening
+    "generate_combinations",
+    "load_grid",
+    "validate_grid",
+    # Screening
+    "screen_single_seed",
+    "run_screening",
+    # Stability
+    "evaluate_stability",
+    "run_tiered_stability",
+    "run_focused_calibration",
+    "parse_stability_tiers",
+    # Morris
     "MorrisParameterEffect",
     "MorrisResult",
     "run_morris_screening",
     "print_morris_report",
-    # OAT sensitivity analysis
+    # Sensitivity
     "ParameterSensitivity",
     "SensitivityResult",
     "run_sensitivity_analysis",
     "print_sensitivity_report",
-    # Pairwise interaction
+    # Pairwise
     "PairInteraction",
     "PairwiseResult",
     "run_pairwise_analysis",
     "print_pairwise_report",
-    # Optimization
-    "CalibrationResult",
-    "ComparisonResult",
-    "build_focused_grid",
-    "compute_combined_score",
-    "screen_single_seed",
-    "evaluate_stability",
-    "run_focused_calibration",
-    "run_screening",
-    "run_tiered_stability",
-    "parse_stability_tiers",
+    # IO
+    "create_run_dir",
+    "save_sensitivity",
+    "load_sensitivity",
+    "save_morris",
+    "load_morris",
+    "save_screening",
+    "load_screening",
+    "save_stability",
+    "load_stability",
+    "save_pairwise",
+    "load_pairwise",
+    # Reporting
+    "generate_sensitivity_report",
+    "generate_screening_report",
+    "generate_stability_report",
+    "generate_full_report",
+    # Analysis
     "analyze_parameter_patterns",
+    "print_parameter_patterns",
     "export_best_config",
     "compare_configs",
+    "print_comparison",
     # Progress
     "format_eta",
     "format_progress",
+    # Parameter space
+    "PARAMETER_GRID",
+    "DEFAULT_VALUES",
+    "get_parameter_grid",
+    "get_default_values",
+    # Validation re-export
+    "compute_combined_score",
 ]

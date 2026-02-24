@@ -70,6 +70,7 @@ Contents
    :caption: Development
 
    development
+   calibration
    performance
    changelog
 
