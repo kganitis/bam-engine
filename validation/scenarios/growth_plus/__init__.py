@@ -24,7 +24,12 @@ from scipy.signal import find_peaks
 import bamengine as bam
 from bamengine import SimulationResults, ops
 from bamengine.utils import EPS
-from validation.scenarios._utils import adjust_burn_in, filter_outliers_iqr
+from validation.scenarios._utils import (
+    adjust_burn_in,
+    compute_detrended_correlation,
+    compute_real_interest_rate,
+    filter_outliers_iqr,
+)
 from validation.types import CheckType, MetricFormat, MetricGroup, MetricSpec, Scenario
 
 # =============================================================================
@@ -265,29 +270,6 @@ def _compute_pct_within_range(
     return float(within / len(valid))
 
 
-def _compute_detrended_correlation(
-    x: NDArray[np.floating], y: NDArray[np.floating]
-) -> float:
-    """Compute correlation of linearly detrended series.
-
-    Removes linear trend from each series before computing correlation,
-    which measures cyclical co-movement rather than trend co-movement.
-    """
-    if len(x) < 10 or len(y) < 10:
-        return 0.0
-    t = np.arange(len(x))
-    # Remove linear trend from each series
-    try:
-        x_trend = np.polyval(np.polyfit(t, x, 1), t)
-        y_trend = np.polyval(np.polyfit(t, y, 1), t)
-    except np.linalg.LinAlgError:
-        return 0.0
-    x_detrended = x - x_trend
-    y_detrended = y - y_trend
-    corr = np.corrcoef(x_detrended, y_detrended)[0, 1]
-    return float(corr) if np.isfinite(corr) else 0.0
-
-
 def _compute_cv(series: NDArray[np.floating]) -> float:
     """Compute coefficient of variation (std / mean)."""
     mean_val = float(np.mean(series))
@@ -304,7 +286,7 @@ def _compute_gdp_cyclicality(
     """
     smoothed = _smooth_series(series)
     smoothed_gdp = _smooth_series(gdp)
-    return _compute_detrended_correlation(smoothed, smoothed_gdp)
+    return compute_detrended_correlation(smoothed, smoothed_gdp)
 
 
 def _compute_tent_shape_r2(
@@ -536,7 +518,7 @@ def compute_growth_plus_metrics(
     log_gdp_total_growth = float(log_gdp_ss[-1] - log_gdp_ss[0])
 
     # Productivity-wage co-movement metrics
-    productivity_wage_correlation = _compute_detrended_correlation(
+    productivity_wage_correlation = compute_detrended_correlation(
         avg_productivity_ss, real_wage_ss
     )
 
@@ -546,18 +528,9 @@ def compute_growth_plus_metrics(
     wage_productivity_ratio_std = float(np.std(wage_prod_ratio))
 
     # Financial dynamics
-    n_periods = len(inflation)
-    real_interest_rate = np.zeros(n_periods)
-    for t in range(n_periods):
-        principals_t = loan_principals[t]
-        rates_t = loan_rates[t]
-        if len(principals_t) > 0 and np.sum(principals_t) > 0:
-            weighted_nominal = float(
-                np.sum(rates_t * principals_t) / np.sum(principals_t)
-            )
-        else:
-            weighted_nominal = sim.r_bar
-        real_interest_rate[t] = weighted_nominal - inflation[t]
+    real_interest_rate = compute_real_interest_rate(
+        loan_principals, loan_rates, inflation, sim.r_bar
+    )
 
     total_wage_bill = ops.sum(wages * employed.astype(float), axis=1)
     total_net_worth = ops.sum(net_worth, axis=1)

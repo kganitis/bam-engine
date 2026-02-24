@@ -18,9 +18,6 @@ import yaml
 
 from validation import StabilityResult, get_validation_func
 
-# Output directory for calibration results
-OUTPUT_DIR = Path(__file__).parent / "output"
-
 
 @dataclass
 class CalibrationResult:
@@ -242,6 +239,8 @@ def export_best_config(
         Path to exported config file.
     """
     if path is None:
+        from calibration.io import OUTPUT_DIR
+
         OUTPUT_DIR.mkdir(exist_ok=True)
         path = OUTPUT_DIR / f"{scenario}_best_config.yml"
 

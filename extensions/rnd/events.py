@@ -80,10 +80,7 @@ class FirmsComputeRnDIntensity:
         sigma_decay = sim.sigma_decay
 
         # Calculate fragility = W/A (wage_bill / net_worth)
-        # Use safe division with small epsilon to avoid division by zero
-        eps = 1e-10
-        safe_net_worth = ops.where(ops.greater(bor.net_worth, eps), bor.net_worth, eps)
-        fragility = ops.divide(emp.wage_bill, safe_net_worth)
+        fragility = ops.divide(emp.wage_bill, bor.net_worth)
 
         # Store fragility
         ops.assign(rnd.fragility, fragility)
@@ -98,13 +95,11 @@ class FirmsComputeRnDIntensity:
         ops.assign(rnd.sigma, sigma)
 
         # Calculate mu = sigma * net_profit / (price * production)
-        # This is the expected productivity gain (scale parameter for exponential)
         revenue = ops.multiply(prod.price, prod.production)
-        safe_revenue = ops.where(ops.greater(revenue, eps), revenue, eps)
-        mu = ops.divide(ops.multiply(sigma, bor.net_profit), safe_revenue)
+        mu = ops.divide(ops.multiply(sigma, bor.net_profit), revenue)
 
-        # Clamp mu to reasonable range
-        mu = ops.where(ops.greater(mu, 0.0), mu, 0.0)
+        # Clamp mu to non-negative range
+        mu = ops.maximum(mu, 0.0)
         ops.assign(rnd.rnd_intensity, mu)
 
 

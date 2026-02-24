@@ -558,7 +558,7 @@ ax = axes2[1, 1]
 add_recession_bands(ax, periods, recession_mask[burn_in:])
 ax.plot(periods, bankruptcies[burn_in:], linewidth=1, color="#F18F01")
 ax.set_title("Number of Firms' Bankruptcies", fontsize=12, fontweight="bold")
-ax.set_ylabel("ankruptcies")
+ax.set_ylabel("Bankruptcies")
 ax.set_xlabel("t")
 ax.set_ylim(bottom=0)
 ax.grid(True, linestyle="--", alpha=0.3)

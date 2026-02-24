@@ -90,16 +90,11 @@ log-likelihood.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from extensions.buffer_stock.events import (
     ConsumersCalcBufferStockPropensity,
     ConsumersDecideBufferStockSpending,
 )
 from extensions.buffer_stock.role import BufferStock
-
-if TYPE_CHECKING:
-    import bamengine as bam
 
 BUFFER_STOCK_EVENTS = [
     ConsumersCalcBufferStockPropensity,
@@ -110,32 +105,10 @@ BUFFER_STOCK_CONFIG = {
     "buffer_stock_h": 2.0,
 }
 
-
-def attach_buffer_stock(sim: bam.Simulation) -> BufferStock:
-    """Attach the BufferStock role to a simulation with household-sized arrays.
-
-    .. deprecated::
-        Use ``sim.use_role(BufferStock, n_agents=sim.n_households)`` and
-        ``sim.use_events(*BUFFER_STOCK_EVENTS)`` instead.
-
-    Parameters
-    ----------
-    sim : bam.Simulation
-        Simulation instance to attach the role to.
-
-    Returns
-    -------
-    BufferStock
-        The attached role instance.
-    """
-    return sim.use_role(BufferStock, n_agents=sim.n_households)
-
-
 __all__ = [
     "BufferStock",
     "BUFFER_STOCK_EVENTS",
     "BUFFER_STOCK_CONFIG",
     "ConsumersCalcBufferStockPropensity",
     "ConsumersDecideBufferStockSpending",
-    "attach_buffer_stock",
 ]

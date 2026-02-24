@@ -59,7 +59,7 @@ from __future__ import annotations
 
 from abc import ABC
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 import numpy as np
 
@@ -67,8 +67,6 @@ from bamengine.typing import Float1D, Idx1D
 
 if TYPE_CHECKING:  # pragma: no cover
     from bamengine.core.role import Role
-
-T = TypeVar("T")
 
 
 @dataclass(slots=True)

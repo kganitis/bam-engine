@@ -57,7 +57,7 @@ See Also
 """
 
 from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import Any
 
 from bamengine.core.agent import Agent, AgentType
 from bamengine.core.decorators import event as event_decorator
@@ -75,8 +75,6 @@ from bamengine.core.registry import (
 )
 from bamengine.core.relationship import Relationship
 from bamengine.core.role import Role
-
-_T = TypeVar("_T")
 
 # Export decorator functions with their intended names
 # These override the submodule names to provide cleaner API
