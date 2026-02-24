@@ -45,8 +45,7 @@ def firms_update_net_worth(bor: Borrower) -> None:
     np.add(bor.net_worth, bor.retained_profit, out=bor.net_worth)
 
     # sync cash and clamp at zero
-    bor.total_funds[:] = bor.net_worth
-    np.maximum(bor.total_funds, 0.0, out=bor.total_funds)
+    np.maximum(bor.net_worth, 0.0, out=bor.total_funds)
 
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
