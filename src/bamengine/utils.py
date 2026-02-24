@@ -97,7 +97,7 @@ def trim_mean(values: Float1D, trim_pct: float = 0.05) -> float:
         return float(values.mean())
     idx = np.argpartition(values, (k, values.size - k - 1))
     core = values[idx[k : values.size - k]]
-    return float(core.mean())
+    return float(core.mean()) if core.size > 0 else 0.0
 
 
 def trimmed_weighted_mean(
@@ -171,19 +171,8 @@ def trimmed_weighted_mean(
     """
     values = np.asarray(values)
 
-    # If weights is None, use unweighted logic
     if weights is None:
-        if trim_pct == 0.0:
-            return float(values.mean())
-        # Trimming only, unweighted
-        k = int(round(trim_pct * values.size))
-        if k == 0 or values.size == 0:  # TODO Branch uncovered by tests
-            return float(values.mean())
-        idx = np.argsort(values)
-        trimmed = values[idx][k : values.size - k]
-        if trimmed.size == 0:  # TODO Branch uncovered by tests
-            return 0.0
-        return float(trimmed.mean())
+        return trim_mean(values, trim_pct)
 
     # Weighted logic
     weights = np.asarray(weights)
@@ -344,7 +333,7 @@ def select_top_k_indices_sorted(
         values = np.array(values, dtype=float)  # type: ignore[unreachable]
 
     # Ensure values is at least 1D for consistent axis=-1 operations.
-    if values.ndim == 0:  # TODO Branch uncovered by tests
+    if values.ndim == 0:
         values = np.atleast_1d(values)
 
     # If k is non-positive, return an empty array with appropriate shape.

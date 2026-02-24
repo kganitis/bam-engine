@@ -284,15 +284,11 @@ def test_twm_unweighted_k_zero_branch_returns_mean() -> None:
     assert res == pytest.approx(vals.mean())
 
 
-def test_twm_unweighted_empty_values_hits_size_zero_branch_returns_nan() -> None:
-    """
-    When weights is None and values.size == 0, the code returns values.mean(),
-    which is NaN. Assert behavior (and the expected RuntimeWarning).
-    """
+def test_twm_unweighted_empty_values_returns_zero() -> None:
+    """Empty values with no weights delegates to trim_mean, which returns 0.0."""
     vals = np.array([], dtype=np.float64)
-    with pytest.warns(RuntimeWarning):
-        res = trimmed_weighted_mean(vals, weights=None, trim_pct=0.25)
-    assert np.isnan(res)
+    res = trimmed_weighted_mean(vals, weights=None, trim_pct=0.25)
+    assert res == 0.0
 
 
 def test_twm_unweighted_trimmed_empty_returns_zero() -> None:

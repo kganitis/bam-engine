@@ -45,6 +45,7 @@ from calibration.grid import (
     generate_combinations,
 )
 from calibration.io import (
+    OUTPUT_DIR,
     create_run_dir,
     load_screening,
     load_sensitivity,
@@ -71,9 +72,6 @@ from calibration.sensitivity import (
     run_sensitivity_analysis,
 )
 from calibration.stability import parse_stability_tiers, run_tiered_stability
-
-# Output directory for calibration results
-OUTPUT_DIR = Path(__file__).parent / "output"
 
 
 def print_results(results: list[CalibrationResult], top_n: int = 10) -> None:
@@ -131,6 +129,43 @@ def _resolve_pruning_threshold(raw: str, sensitivity_threshold: float) -> float 
     if raw.lower() == "none" or raw == "0":
         return None
     return float(raw)
+
+
+# =============================================================================
+# File resolution
+# =============================================================================
+
+
+def _find_result_file(filename: str, run_dir: Path | None, error_msg: str) -> Path:
+    """Find a result file in run_dir or fall back to OUTPUT_DIR.
+
+    Parameters
+    ----------
+    filename : str
+        JSON filename to look for.
+    run_dir : Path or None
+        Primary directory to search.
+    error_msg : str
+        Error message if the file is not found.
+
+    Returns
+    -------
+    Path
+        Resolved path to existing file.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file is not found in either location.
+    """
+    out = run_dir or OUTPUT_DIR
+    path = out / filename
+    if path.exists():
+        return path
+    path = OUTPUT_DIR / filename
+    if path.exists():
+        return path
+    raise FileNotFoundError(error_msg)
 
 
 # =============================================================================
@@ -226,14 +261,11 @@ def _run_grid_phase(
 
     # Load sensitivity if not provided
     if sensitivity is None:
-        sens_path = out / f"{args.scenario}_sensitivity.json"
-        if not sens_path.exists():
-            # Fall back to non-timestamped output
-            sens_path = OUTPUT_DIR / f"{args.scenario}_sensitivity.json"
-        if not sens_path.exists():
-            raise FileNotFoundError(
-                "Sensitivity results not found. Run --phase sensitivity first."
-            )
+        sens_path = _find_result_file(
+            f"{args.scenario}_sensitivity.json",
+            run_dir,
+            "Sensitivity results not found. Run --phase sensitivity first.",
+        )
         sensitivity = load_sensitivity(sens_path)
         print(f"Loaded sensitivity from {sens_path}")
 
@@ -336,13 +368,11 @@ def _run_stability_phase(
 
     # Load screening if not provided
     if screening_results is None:
-        screen_path = out / f"{args.scenario}_screening.json"
-        if not screen_path.exists():
-            screen_path = OUTPUT_DIR / f"{args.scenario}_screening.json"
-        if not screen_path.exists():
-            raise FileNotFoundError(
-                "Screening results not found. Run --phase grid first."
-            )
+        screen_path = _find_result_file(
+            f"{args.scenario}_screening.json",
+            run_dir,
+            "Screening results not found. Run --phase grid first.",
+        )
         screening_results, avg_time = load_screening(screen_path)
         print(f"Loaded {len(screening_results)} screening results from {screen_path}")
 
@@ -407,13 +437,11 @@ def _run_pairwise_phase(
 
     # Load sensitivity if not provided
     if sensitivity is None:
-        sens_path = out / f"{args.scenario}_sensitivity.json"
-        if not sens_path.exists():
-            sens_path = OUTPUT_DIR / f"{args.scenario}_sensitivity.json"
-        if not sens_path.exists():
-            raise FileNotFoundError(
-                "Sensitivity results not found. Run --phase sensitivity first."
-            )
+        sens_path = _find_result_file(
+            f"{args.scenario}_sensitivity.json",
+            run_dir,
+            "Sensitivity results not found. Run --phase sensitivity first.",
+        )
         sensitivity = load_sensitivity(sens_path)
 
     included, _ = sensitivity.get_important(args.sensitivity_threshold)

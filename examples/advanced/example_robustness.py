@@ -120,7 +120,7 @@ class RnD:
     fragility: Float  # Financial fragility (wage_bill / net_worth)
 
 
-@event(name="firms_compute_rnd_intensity", after="firms_pay_dividends")
+@event(name="firms_compute_rnd_intensity", after="firms_validate_debt_commitments")
 class FirmsComputeRnDIntensity:
     """Compute R&D share and intensity for firms."""
 
@@ -168,13 +168,13 @@ class FirmsApplyProductivityGrowth:
 
 @event(after="firms_apply_productivity_growth")
 class FirmsDeductRnDExpenditure:
-    """Adjust retained profits for R&D expenditure."""
+    """Adjust net profit for R&D expenditure."""
 
     def execute(self, sim):
         bor = sim.get_role("Borrower")
         rnd = sim.get_role("RnD")
-        new_retained = ops.multiply(bor.retained_profit, ops.subtract(1.0, rnd.sigma))
-        ops.assign(bor.retained_profit, new_retained)
+        new_net_profit = ops.multiply(bor.net_profit, ops.subtract(1.0, rnd.sigma))
+        ops.assign(bor.net_profit, new_net_profit)
 
 
 RND_EVENTS = [

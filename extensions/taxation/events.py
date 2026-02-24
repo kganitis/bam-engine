@@ -42,7 +42,7 @@ class FirmsTaxProfits:
         bor = sim.get_role("Borrower")
 
         # Tax only positive profits
-        taxable = ops.where(ops.greater(bor.net_profit, 0.0), bor.net_profit, 0.0)
+        taxable = ops.maximum(bor.net_profit, 0.0)
         tax = ops.multiply(rate, taxable)
 
         # Deduct from net_profit and total_funds

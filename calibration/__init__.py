@@ -106,9 +106,6 @@ from calibration.stability import (
     run_tiered_stability,
 )
 
-# Re-export from validation for backwards compatibility
-from validation import compute_combined_score
-
 __all__ = [
     # Analysis (types)
     "CalibrationResult",
@@ -173,6 +170,4 @@ __all__ = [
     "DEFAULT_VALUES",
     "get_parameter_grid",
     "get_default_values",
-    # Validation re-export
-    "compute_combined_score",
 ]

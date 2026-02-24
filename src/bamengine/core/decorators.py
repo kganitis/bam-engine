@@ -79,10 +79,26 @@ from typing import TYPE_CHECKING, Any, Literal, TypeVar
 if TYPE_CHECKING:  # pragma: no cover
     from bamengine.core import Role
 
-if TYPE_CHECKING:  # pragma: no cover
-    pass
-
 T = TypeVar("T")
+
+
+def _inject_base_class(cls: type, base_cls: type) -> type:
+    """Create a new class inheriting from *base_cls*, copying *cls*'s namespace.
+
+    Used by the ``role``, ``event`` and ``relationship`` decorators when the
+    decorated class does not already inherit from the required base.  The copy
+    ensures ``@dataclass(slots=True)`` works without multiple-inheritance issues.
+    """
+    namespace = {
+        "__module__": cls.__module__,
+        "__qualname__": cls.__qualname__,
+        "__doc__": cls.__doc__,
+        "__annotations__": getattr(cls, "__annotations__", {}),
+    }
+    for attr_name in dir(cls):
+        if not attr_name.startswith("__"):
+            namespace[attr_name] = getattr(cls, attr_name)
+    return type(cls.__name__, (base_cls,), namespace)
 
 
 def role(
@@ -138,23 +154,8 @@ def role(
     dataclass_kwargs.setdefault("slots", True)
 
     def decorator(cls: type[T]) -> type[T]:
-        # Check if cls already inherits from Role
         if not issubclass(cls, Role):
-            # Dynamically create a new class that inherits ONLY from Role
-            # Copy annotations and methods from the original class
-            # This ensures slots work properly (no multiple inheritance issues)
-            namespace = {
-                "__module__": cls.__module__,
-                "__qualname__": cls.__qualname__,
-                "__doc__": cls.__doc__,  # Preserve docstring for Sphinx
-                "__annotations__": getattr(cls, "__annotations__", {}),
-            }
-            # Copy methods and class attributes (but not __dict__, __weakref__, etc.)
-            for attr_name in dir(cls):
-                if not attr_name.startswith("__"):
-                    namespace[attr_name] = getattr(cls, attr_name)
-
-            cls = type(cls.__name__, (Role,), namespace)
+            cls = _inject_base_class(cls, Role)
 
         # Set custom name BEFORE applying dataclass
         # This ensures __init_subclass__ sees the correct name
@@ -287,23 +288,8 @@ def event(
     dataclass_kwargs.setdefault("slots", True)
 
     def decorator(cls: type[T]) -> type[T]:
-        # Check if cls already inherits from Event
         if not issubclass(cls, Event):
-            # Dynamically create a new class that inherits ONLY from Event
-            # Copy annotations and methods from the original class
-            # This ensures slots work properly (no multiple inheritance issues)
-            namespace = {
-                "__module__": cls.__module__,
-                "__qualname__": cls.__qualname__,
-                "__doc__": cls.__doc__,  # Preserve docstring for Sphinx
-                "__annotations__": getattr(cls, "__annotations__", {}),
-            }
-            # Copy methods and class attributes (but not __dict__, __weakref__, etc.)
-            for attr_name in dir(cls):
-                if not attr_name.startswith("__"):
-                    namespace[attr_name] = getattr(cls, attr_name)
-
-            cls = type(cls.__name__, (Event,), namespace)
+            cls = _inject_base_class(cls, Event)
 
         # Set custom name BEFORE applying dataclass
         # This ensures __init_subclass__ sees the correct name
@@ -403,22 +389,8 @@ def relationship(
     dataclass_kwargs.setdefault("slots", True)
 
     def decorator(cls: type[T]) -> type[T]:
-        # Check if cls already inherits from Relationship
         if not issubclass(cls, Relationship):
-            # Dynamically create a new class that inherits from Relationship
-            # Copy annotations and methods from the original class
-            namespace = {
-                "__module__": cls.__module__,
-                "__qualname__": cls.__qualname__,
-                "__doc__": cls.__doc__,  # Preserve docstring for Sphinx
-                "__annotations__": getattr(cls, "__annotations__", {}),
-            }
-            # Copy methods and class attributes
-            for attr_name in dir(cls):
-                if not attr_name.startswith("__"):
-                    namespace[attr_name] = getattr(cls, attr_name)
-
-            cls = type(cls.__name__, (Relationship,), namespace)
+            cls = _inject_base_class(cls, Relationship)
 
         # Set metadata as class variables
         cls.source_role = source  # type: ignore[attr-defined]

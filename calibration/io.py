@@ -26,6 +26,20 @@ _SCHEMA_VERSION = 1
 OUTPUT_DIR = Path(__file__).parent / "output"
 
 
+def _write_json(data: dict[str, Any], path: Path) -> None:
+    """Write versioned JSON with consistent formatting."""
+    data["_schema_version"] = _SCHEMA_VERSION
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2, default=str)
+
+
+def _read_json(path: Path) -> dict[str, Any]:
+    """Read JSON file and return parsed data."""
+    with open(path) as f:
+        return json.load(f)
+
+
 def create_run_dir(scenario: str, output_dir: Path | None = None) -> Path:
     """Create timestamped output directory.
 
@@ -55,33 +69,31 @@ def create_run_dir(scenario: str, output_dir: Path | None = None) -> Path:
 
 def save_sensitivity(result: SensitivityResult, path: Path) -> None:
     """Save sensitivity result to JSON."""
-    data = {
-        "_schema_version": _SCHEMA_VERSION,
-        "scenario": result.scenario,
-        "baseline_score": result.baseline_score,
-        "avg_time_per_run": result.avg_time_per_run,
-        "n_seeds": result.n_seeds,
-        "parameters": {
-            p.name: {
-                "sensitivity": p.sensitivity,
-                "best_value": p.best_value,
-                "best_score": p.best_score,
-                "values": p.values,
-                "scores": p.scores,
-                "group_scores": p.group_scores,
-            }
-            for p in result.parameters
+    _write_json(
+        {
+            "scenario": result.scenario,
+            "baseline_score": result.baseline_score,
+            "avg_time_per_run": result.avg_time_per_run,
+            "n_seeds": result.n_seeds,
+            "parameters": {
+                p.name: {
+                    "sensitivity": p.sensitivity,
+                    "best_value": p.best_value,
+                    "best_score": p.best_score,
+                    "values": p.values,
+                    "scores": p.scores,
+                    "group_scores": p.group_scores,
+                }
+                for p in result.parameters
+            },
         },
-    }
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2, default=str)
+        path,
+    )
 
 
 def load_sensitivity(path: Path) -> SensitivityResult:
     """Load sensitivity result from JSON."""
-    with open(path) as f:
-        data = json.load(f)
+    data = _read_json(path)
 
     parameters = []
     for name, pdata in data["parameters"].items():
@@ -113,35 +125,33 @@ def load_sensitivity(path: Path) -> SensitivityResult:
 
 def save_morris(result: MorrisResult, path: Path) -> None:
     """Save Morris result to JSON."""
-    data = {
-        "_schema_version": _SCHEMA_VERSION,
-        "scenario": result.scenario,
-        "n_trajectories": result.n_trajectories,
-        "n_evaluations": result.n_evaluations,
-        "avg_time_per_run": result.avg_time_per_run,
-        "n_seeds": result.n_seeds,
-        "effects": {
-            e.name: {
-                "mu": e.mu,
-                "mu_star": e.mu_star,
-                "sigma": e.sigma,
-                "elementary_effects": e.elementary_effects,
-                "value_scores": {
-                    str(v): scores for v, scores in e.value_scores.items()
-                },
-            }
-            for e in result.effects
+    _write_json(
+        {
+            "scenario": result.scenario,
+            "n_trajectories": result.n_trajectories,
+            "n_evaluations": result.n_evaluations,
+            "avg_time_per_run": result.avg_time_per_run,
+            "n_seeds": result.n_seeds,
+            "effects": {
+                e.name: {
+                    "mu": e.mu,
+                    "mu_star": e.mu_star,
+                    "sigma": e.sigma,
+                    "elementary_effects": e.elementary_effects,
+                    "value_scores": {
+                        str(v): scores for v, scores in e.value_scores.items()
+                    },
+                }
+                for e in result.effects
+            },
         },
-    }
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2, default=str)
+        path,
+    )
 
 
 def load_morris(path: Path) -> MorrisResult:
     """Load Morris result from JSON."""
-    with open(path) as f:
-        data = json.load(f)
+    data = _read_json(path)
 
     effects = []
     for name, edata in data["effects"].items():
@@ -194,43 +204,41 @@ def save_screening(
     path: Path,
 ) -> None:
     """Save screening results to JSON."""
-    data = {
-        "_schema_version": _SCHEMA_VERSION,
-        "scenario": scenario,
-        "avg_time_per_run": sensitivity.avg_time_per_run,
-        "sensitivity": {
-            p.name: {"sensitivity": p.sensitivity, "best_value": p.best_value}
-            for p in sensitivity.parameters
+    _write_json(
+        {
+            "scenario": scenario,
+            "avg_time_per_run": sensitivity.avg_time_per_run,
+            "sensitivity": {
+                p.name: {"sensitivity": p.sensitivity, "best_value": p.best_value}
+                for p in sensitivity.parameters
+            },
+            "grid_params": grid,
+            "fixed_params": fixed,
+            "patterns": {
+                param: {str(v): c for v, c in counts.items()}
+                for param, counts in patterns.items()
+            },
+            "results": [
+                {
+                    "rank": i + 1,
+                    "params": r.params,
+                    "single_score": r.single_score,
+                    "n_pass": r.n_pass,
+                    "n_warn": r.n_warn,
+                    "n_fail": r.n_fail,
+                }
+                for i, r in enumerate(results)
+            ],
         },
-        "grid_params": grid,
-        "fixed_params": fixed,
-        "patterns": {
-            param: {str(v): c for v, c in counts.items()}
-            for param, counts in patterns.items()
-        },
-        "results": [
-            {
-                "rank": i + 1,
-                "params": r.params,
-                "single_score": r.single_score,
-                "n_pass": r.n_pass,
-                "n_warn": r.n_warn,
-                "n_fail": r.n_fail,
-            }
-            for i, r in enumerate(results)
-        ],
-    }
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2, default=str)
+        path,
+    )
 
 
 def load_screening(
     path: Path,
 ) -> tuple[list[CalibrationResult], float]:
     """Load screening results from JSON. Returns (results, avg_time_per_run)."""
-    with open(path) as f:
-        data = json.load(f)
+    data = _read_json(path)
 
     results = [
         CalibrationResult(
@@ -256,32 +264,30 @@ def save_stability(
     path: Path,
 ) -> None:
     """Save stability testing results to JSON."""
-    data = {
-        "_schema_version": _SCHEMA_VERSION,
-        "scenario": scenario,
-        "results": [
-            {
-                "rank": i + 1,
-                "params": r.params,
-                "combined_score": r.combined_score,
-                "mean_score": r.mean_score,
-                "std_score": r.std_score,
-                "pass_rate": r.pass_rate,
-                "seed_scores": r.seed_scores,
-                "single_score": r.single_score,
-            }
-            for i, r in enumerate(results)
-        ],
-    }
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2, default=str)
+    _write_json(
+        {
+            "scenario": scenario,
+            "results": [
+                {
+                    "rank": i + 1,
+                    "params": r.params,
+                    "combined_score": r.combined_score,
+                    "mean_score": r.mean_score,
+                    "std_score": r.std_score,
+                    "pass_rate": r.pass_rate,
+                    "seed_scores": r.seed_scores,
+                    "single_score": r.single_score,
+                }
+                for i, r in enumerate(results)
+            ],
+        },
+        path,
+    )
 
 
 def load_stability(path: Path) -> list[CalibrationResult]:
     """Load stability results from JSON."""
-    with open(path) as f:
-        data = json.load(f)
+    data = _read_json(path)
 
     return [
         CalibrationResult(
@@ -307,33 +313,31 @@ def load_stability(path: Path) -> list[CalibrationResult]:
 
 def save_pairwise(result: PairwiseResult, scenario: str, path: Path) -> None:
     """Save pairwise interaction results to JSON."""
-    data = {
-        "_schema_version": _SCHEMA_VERSION,
-        "scenario": scenario,
-        "baseline_score": result.baseline_score,
-        "interactions": [
-            {
-                "param_a": ix.param_a,
-                "value_a": ix.value_a,
-                "param_b": ix.param_b,
-                "value_b": ix.value_b,
-                "combined_score": ix.combined_score,
-                "individual_a_score": ix.individual_a_score,
-                "individual_b_score": ix.individual_b_score,
-                "interaction_strength": ix.interaction_strength,
-            }
-            for ix in result.ranked
-        ],
-    }
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2, default=str)
+    _write_json(
+        {
+            "scenario": scenario,
+            "baseline_score": result.baseline_score,
+            "interactions": [
+                {
+                    "param_a": ix.param_a,
+                    "value_a": ix.value_a,
+                    "param_b": ix.param_b,
+                    "value_b": ix.value_b,
+                    "combined_score": ix.combined_score,
+                    "individual_a_score": ix.individual_a_score,
+                    "individual_b_score": ix.individual_b_score,
+                    "interaction_strength": ix.interaction_strength,
+                }
+                for ix in result.ranked
+            ],
+        },
+        path,
+    )
 
 
 def load_pairwise(path: Path) -> PairwiseResult:
     """Load pairwise results from JSON."""
-    with open(path) as f:
-        data = json.load(f)
+    data = _read_json(path)
 
     interactions = [
         PairInteraction(
