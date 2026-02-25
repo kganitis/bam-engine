@@ -6,7 +6,7 @@ import pytest
 import bamengine.events  # noqa: F401 - register events
 from bamengine import role
 from bamengine.simulation import Simulation
-from bamengine.typing import Float1D
+from bamengine.typing import Bool1D, Float1D, Int1D
 
 
 class TestInputValidation:
@@ -394,6 +394,41 @@ class TestUseRole:
         # And vice versa
         sim._role_instances["AnotherRole"] = "test"
         assert sim._custom_roles["AnotherRole"] == "test"
+
+    def test_use_role_correct_dtypes(self) -> None:
+        """use_role() initializes arrays with correct dtypes from annotations."""
+        from bamengine import Agent
+
+        @role
+        class MultiTypeRole:
+            """Role with different annotation types."""
+
+            price: Float1D
+            count: Int1D
+            flag: Bool1D
+            owner: Agent  # bamengine.Agent = Agent class → intp, fill=-1
+
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+
+        instance = sim.use_role(MultiTypeRole)
+
+        assert instance.price.dtype == np.float64
+        assert instance.count.dtype == np.int64
+        assert instance.flag.dtype == np.bool_
+        assert instance.owner.dtype == np.intp
+        # Agent fields initialized to -1 (unassigned sentinel)
+        np.testing.assert_array_equal(instance.owner, np.full(10, -1))
+        # All others initialized to 0
+        np.testing.assert_array_equal(instance.price, np.zeros(10))
+        np.testing.assert_array_equal(instance.count, np.zeros(10, dtype=np.int64))
+        np.testing.assert_array_equal(instance.flag, np.zeros(10, dtype=np.bool_))
+
+    def test_builtin_roles_have_float64(self) -> None:
+        """Built-in roles still get float64 arrays."""
+        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+
+        assert sim.prod.price.dtype == np.float64
+        assert sim.prod.production.dtype == np.float64
 
 
 class TestExtraParams:

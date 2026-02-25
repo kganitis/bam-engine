@@ -106,6 +106,20 @@ from bamengine.typing import Float1D
 
 __all__ = ["Simulation"]
 
+# Dtype and fill-value mapping for custom role annotations.
+# Maps annotation string → (numpy dtype, fill value).
+# Agent/Idx1D use -1 (unassigned sentinel); others use 0.
+_ANNOTATION_DTYPE: dict[str, tuple[type[np.generic], int]] = {
+    "Float": (np.float64, 0),
+    "Float1D": (np.float64, 0),
+    "Int": (np.int64, 0),
+    "Int1D": (np.int64, 0),
+    "Bool": (np.bool_, 0),
+    "Bool1D": (np.bool_, 0),
+    "Agent": (np.intp, -1),
+    "Idx1D": (np.intp, -1),
+}
+
 log = logging.getLogger(__name__)
 
 
@@ -1519,10 +1533,43 @@ class Simulation:
         """
         kwargs = {}
         annotations = getattr(role_cls, "__annotations__", {})
-        for field_name in annotations:
+        for field_name, ann in annotations.items():
             if not field_name.startswith("_"):
-                kwargs[field_name] = np.zeros(n_agents, dtype=np.float64)
+                dtype, fill = self._resolve_annotation_dtype(ann)
+                kwargs[field_name] = np.full(n_agents, fill, dtype=dtype)
         return role_cls(**kwargs)
+
+    @staticmethod
+    def _resolve_annotation_dtype(ann: Any) -> tuple[type[np.generic], int]:
+        """Resolve a role field annotation to (numpy dtype, fill value).
+
+        Handles string annotations (from ``__future__`` annotations),
+        resolved ``GenericAlias`` / type objects, and the Agent class.
+        Agent/Idx1D annotations use -1 fill (unassigned sentinel);
+        all others use 0.
+        """
+        # String annotations (e.g., 'Float', 'Int1D')
+        if isinstance(ann, str):
+            return _ANNOTATION_DTYPE.get(ann, (np.float64, 0))
+
+        # Agent class (bamengine.core.agent.Agent) — special case
+        from bamengine.core.agent import Agent as AgentCls
+
+        if ann is AgentCls:
+            return np.intp, -1
+
+        # Resolved GenericAlias: NDArray[np.float64] → extract inner dtype
+        args: tuple[Any, ...] = getattr(ann, "__args__", ())
+        if len(args) >= 2:
+            inner_args: tuple[Any, ...] = getattr(args[1], "__args__", ())
+            if (
+                inner_args
+                and isinstance(inner_args[0], type)
+                and issubclass(inner_args[0], np.generic)
+            ):
+                return inner_args[0], 0
+
+        return np.float64, 0
 
     def get_event(self, name: str) -> Any:
         """
