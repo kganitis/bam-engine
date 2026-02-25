@@ -243,6 +243,7 @@ python_version = "3.11"
 strict = true
 files = ["src/"]
 disallow_untyped_decorators = false  # Allow @event, @role decorators
+warn_unreachable = true
 enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
 
 # @role decorator generates dataclass-like __init__ that mypy can't see
