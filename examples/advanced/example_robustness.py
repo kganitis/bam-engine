@@ -293,7 +293,7 @@ baseline_ar_coeffs = None
 baseline_irf = None
 
 for seed in range(N_SEEDS):
-    sim = bam.Simulation.init(seed=seed, logging={"default_level": "ERROR"})
+    sim = bam.Simulation.init(seed=seed)
     setup_growth_plus(sim)
     results = sim.run(collect=COLLECT_CONFIG)
 
@@ -364,7 +364,7 @@ for var in COMOVEMENT_VARS:
 # Firm size kurtosis (from final period of seed 0)
 from scipy import stats as sp_stats
 
-sim0 = bam.Simulation.init(seed=0, logging={"default_level": "ERROR"})
+sim0 = bam.Simulation.init(seed=0)
 setup_growth_plus(sim0)
 res0 = sim0.run(collect=COLLECT_CONFIG)
 prod0 = res0.get_array("Producer", "production")[-1]
@@ -495,7 +495,7 @@ print("-" * 49)
 
 sensitivity_comovements = {}
 for label, overrides in SENSITIVITY_CONFIGS.items():
-    sim = bam.Simulation.init(seed=0, logging={"default_level": "ERROR"}, **overrides)
+    sim = bam.Simulation.init(seed=0, **overrides)
     setup_growth_plus(sim)
     results = sim.run(collect=COLLECT_CONFIG)
 
@@ -581,15 +581,13 @@ PA_BURN_IN = 100
 print("\n--- PA Experiment (quick demo) ---")
 
 # PA on (default: consumer_matching="loyalty")
-sim_on = bam.Simulation.init(seed=PA_SEED, logging={"default_level": "ERROR"})
+sim_on = bam.Simulation.init(seed=PA_SEED)
 setup_growth_plus(sim_on)
 res_on = sim_on.run(n_periods=PA_PERIODS, collect=COLLECT_CONFIG)
 series_on = extract_series(res_on, PA_PERIODS)
 
 # PA off (random matching)
-sim_off = bam.Simulation.init(
-    seed=PA_SEED, consumer_matching="random", logging={"default_level": "ERROR"}
-)
+sim_off = bam.Simulation.init(seed=PA_SEED, consumer_matching="random")
 setup_growth_plus(sim_off)
 res_off = sim_off.run(n_periods=PA_PERIODS, collect=COLLECT_CONFIG)
 series_off = extract_series(res_off, PA_PERIODS)
@@ -645,7 +643,7 @@ print("-" * 29)
 
 entry_unemployment = []
 for tax_rate in TAX_RATES:
-    sim = bam.Simulation.init(seed=ENTRY_SEED, logging={"default_level": "ERROR"})
+    sim = bam.Simulation.init(seed=ENTRY_SEED)
     setup_growth_plus(sim)
     sim.use_events(*TAXATION_EVENTS)
     sim.use_config({**TAXATION_CONFIG, "profit_tax_rate": tax_rate})

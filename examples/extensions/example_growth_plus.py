@@ -140,9 +140,8 @@ sim = bam.Simulation.init(
     sigma_min=0.0,
     sigma_max=0.1,
     sigma_decay=-1.0,
-    # Seed and logging
+    # Seed
     seed=0,
-    logging={"default_level": "ERROR"},
 )
 
 sim.use_role(RnD)

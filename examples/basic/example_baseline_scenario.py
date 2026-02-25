@@ -24,9 +24,7 @@ For detailed validation with bounds and statistical annotations, run:
 import bamengine as bam
 from bamengine import ops
 
-sim = bam.Simulation.init(
-    logging={"default_level": "ERROR"},
-)
+sim = bam.Simulation.init()
 
 print("Initialized baseline scenario with:")
 print(f"  - {sim.n_firms} firms")

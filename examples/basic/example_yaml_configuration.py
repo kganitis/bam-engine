@@ -133,7 +133,6 @@ config_dict = {
     "h_rho": 0.05,  # Lower shocks for stability
     "theta": 12,  # Longer contracts
     "seed": 12345,
-    "logging": {"default_level": "ERROR"},
 }
 
 sim_dict = bam.Simulation.init(config=config_dict)
@@ -159,7 +158,6 @@ high_friction_config = {
     "max_H": 1,  # Fewer loan applications
     "max_Z": 1,  # Fewer shopping rounds
     "seed": 42,
-    "logging": {"default_level": "ERROR"},
 }
 
 # Scenario 2: Low friction economy (more search attempts)
@@ -170,7 +168,6 @@ low_friction_config = {
     "max_H": 4,  # More loan applications
     "max_Z": 4,  # More shopping rounds
     "seed": 42,
-    "logging": {"default_level": "ERROR"},
 }
 
 # Run both simulations with data collection for unemployment calculation
