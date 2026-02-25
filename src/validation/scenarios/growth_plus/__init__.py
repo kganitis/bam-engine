@@ -573,6 +573,10 @@ def compute_growth_plus_metrics(
     gdp_after_burnin = gdp[burn_in:]
     output_growth_rates = np.diff(gdp_after_burnin) / gdp_after_burnin[:-1]
 
+    # Net worth growth: cross-sectional snapshot of the last simulation period,
+    # per the book (Section 3.9.2: "cross-sectional outcome in the last
+    # simulation period"). This is intentionally a single-period snapshot,
+    # unlike output_growth_rates which is a time series.
     nw_prev = net_worth[-2]
     nw_final = net_worth[-1]
     valid_firms = (nw_prev > 0) & (nw_final > 0)
