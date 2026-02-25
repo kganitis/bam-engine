@@ -127,7 +127,14 @@ def evaluate_metric(
             ):
                 status = "FAIL"
             elif status == "FAIL":
-                status = "WARN"
+                # Only downgrade if FAIL was NOT caused by escalation
+                base_status = check_mean_tolerance(
+                    actual, target, tolerance, escalation=1.0
+                )
+                if base_status == "FAIL":
+                    # Genuine FAIL even without escalation — boundary can soften
+                    status = "WARN"
+                # else: escalation caused this FAIL — respect it, keep FAIL
         if spec.target_desc is not None:
             target_desc = spec.target_desc
         else:

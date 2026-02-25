@@ -179,3 +179,76 @@ class TestCheckOutlierPenaltyEscalation:
     def test_low_escalation_makes_warn_become_fail(self) -> None:
         """High-weight: FAIL boundary = 0.02 * 2 * 0.5 = 0.02."""
         assert check_outlier_penalty(0.03, 0.02, escalation=0.5) == "FAIL"
+
+
+# =============================================================================
+# evaluate_metric: MEAN_TOLERANCE boundary + escalation interaction
+# =============================================================================
+
+
+class TestEvaluateMetricBoundaryEscalation:
+    """Test that boundary softening respects weight-based escalation."""
+
+    def test_escalation_fail_within_bounds_stays_fail(self) -> None:
+        """Escalation-caused FAIL within [min, max] must NOT be softened to WARN.
+
+        Setup: actual=1.15, target=1.0, tol=0.1, min=0.5, max=1.5, weight=3.0
+        - diff=0.15 > tol=0.10 → not PASS
+        - escalation = fail_escalation_multiplier(3.0) = clamp(5-6, 0.5, 5.0) = 0.5
+        - FAIL boundary = tol * 2 * 0.5 = 0.10 → diff=0.15 > 0.10 → FAIL
+        - But at escalation=1.0: boundary = 0.20 → diff=0.15 < 0.20 → WARN
+        - So the FAIL was caused by escalation; boundary must NOT soften it.
+        """
+        from types import SimpleNamespace
+
+        from validation.engine import evaluate_metric
+        from validation.types import CheckType, MetricSpec
+
+        spec = MetricSpec(
+            name="test_metric",
+            field="value",
+            check_type=CheckType.MEAN_TOLERANCE,
+            target_path="section.mean",
+            weight=3.0,
+        )
+        metrics = SimpleNamespace(value=1.15)
+        targets = {
+            "section": {
+                "mean": {"target": 1.0, "tolerance": 0.1, "min": 0.5, "max": 1.5}
+            }
+        }
+
+        result = evaluate_metric(spec, metrics, targets)
+        # Must be FAIL (escalation-caused), not softened to WARN
+        assert result.status == "FAIL"
+
+    def test_genuine_fail_within_bounds_softened_to_warn(self) -> None:
+        """Genuine FAIL (even without escalation) within bounds → softened to WARN.
+
+        Setup: actual=1.25, target=1.0, tol=0.1, min=0.5, max=1.5, weight=1.0
+        - diff=0.25 > boundary (tol * 2 * 1.0 = 0.20) → FAIL
+        - At escalation=1.0: still FAIL (diff=0.25 > 0.20)
+        - But actual is within [0.5, 1.5] → soften to WARN
+        """
+        from types import SimpleNamespace
+
+        from validation.engine import evaluate_metric
+        from validation.types import CheckType, MetricSpec
+
+        spec = MetricSpec(
+            name="test_metric",
+            field="value",
+            check_type=CheckType.MEAN_TOLERANCE,
+            target_path="section.mean",
+            weight=1.0,
+        )
+        metrics = SimpleNamespace(value=1.25)
+        targets = {
+            "section": {
+                "mean": {"target": 1.0, "tolerance": 0.1, "min": 0.5, "max": 1.5}
+            }
+        }
+
+        result = evaluate_metric(spec, metrics, targets)
+        # Genuine FAIL within bounds → softened to WARN
+        assert result.status == "WARN"
