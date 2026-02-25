@@ -6,13 +6,10 @@ They are marked slow because each simulation takes ~1-2 seconds.
 
 from __future__ import annotations
 
-import pytest
-
 from calibration.grid import count_combinations, load_grid
 from calibration.io import create_run_dir
 
 
-@pytest.mark.slow
 class TestTimestampedOutput:
     """Test that timestamped output directories are created correctly."""
 
@@ -33,7 +30,6 @@ class TestTimestampedOutput:
         assert dir2.exists()
 
 
-@pytest.mark.slow
 class TestCustomGridYAML:
     """Test loading and using custom YAML grids."""
 

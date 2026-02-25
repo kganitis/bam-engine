@@ -5,7 +5,6 @@ These tests verify that the simulation remains stable over extended periods
 """
 
 import numpy as np
-import pytest
 
 from bamengine import Simulation
 
@@ -126,9 +125,8 @@ class TestLongRunningStability:
         assert np.isfinite(total_production), "Total production not finite"
         assert total_production > 0, "Total production non-positive"
 
-    @pytest.mark.slow
     def test_500_period_stability(self):
-        """Simulation should remain stable for 500 periods (marked slow)."""
+        """Simulation should remain stable for 500 periods."""
         sim = Simulation.init(
             n_firms=100,
             n_households=500,
