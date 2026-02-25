@@ -3,8 +3,19 @@ name: Repo Review
 on:
   push:
     branches: [main]
+    paths:
+      - 'pyproject.toml'
+      - '.github/**'
+      - 'LICENSE'
+      - 'README.rst'
   pull_request:
     branches: [main]
+    paths:
+      - 'pyproject.toml'
+      - '.github/**'
+      - 'LICENSE'
+      - 'README.rst'
+  workflow_dispatch:
 
 jobs:
   repo-review:

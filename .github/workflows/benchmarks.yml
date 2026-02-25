@@ -6,6 +6,8 @@ on:
     paths:
       - 'src/**'
       - 'asv_benchmarks/**'
+      - 'pyproject.toml'
+      - '.github/workflows/benchmarks.yml'
   workflow_dispatch:
     inputs:
       benchmark_tags:
