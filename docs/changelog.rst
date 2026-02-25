@@ -10,345 +10,102 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 
    Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.
 
-[Unreleased]
-------------
+[0.4.0] - 2026-02-25
+--------------------
+
+This release adds the robustness analysis package (Section 3.10 of Delli Gatti
+et al., 2011), overhauls the calibration package, re-calibrates defaults, and
+fixes several issues in internal event logic.
 
 Added
 ~~~~~
 
-* ``consumer_matching`` configuration parameter (``"loyalty"`` or ``"random"``,
-  default ``"loyalty"``). Controls whether consumers use preferential attachment
-  (loyalty to previous largest producer) when selecting firms to visit.
-  ``"random"`` disables the positive feedback loop for structural experiments.
+**Robustness Analysis**
 
-* ``extensions/taxation/`` package for profit taxation without redistribution.
-  ``FirmsTaxProfits`` event hooks after ``firms_validate_debt_commitments``
-  and deducts ``profit_tax_rate * max(0, net_profit)`` from profitable firms.
-  Revenue vanishes (not redistributed). Used by entry neutrality experiment.
+* ``validation/robustness/`` package implementing Sections 3.10.1–3.10.2:
 
-* ``setup_fn`` field on ``Experiment`` dataclass for experiments that need
-  post-init simulation setup (e.g. attaching extension events/config).
-  Must be a module-level function for ``ProcessPoolExecutor`` pickling.
+  * **Exploration of the parameter space** (Section 3.10.1)
 
-* Section 3.10.2 structural experiments in ``validation/robustness/``:
+    * **Internal validity**: 20-seed stability of co-movements, AR structure,
+      firm size distributions, and empirical curves (HP filter, cross-correlations,
+      AR fitting, impulse-response).
+    * **Sensitivity analysis**: univariate sweeps across credit (H), goods (Z),
+      labor (M), contract length (theta), and economy size.
 
-  - **PA experiment** (``run_pa_experiment``): Disables consumer loyalty and
-    runs internal validity + Z-sweep to show volatility drops and deep crises
-    vanish. Optional baseline comparison.
-  - **Entry neutrality experiment** (``run_entry_experiment``): Sweeps profit
-    tax rate from 0% to 90% to confirm automatic firm entry does NOT
-    artificially drive recovery (monotonic degradation expected).
-  - New experiment definitions: ``goods_market_no_pa``, ``entry_neutrality``
-  - New CLI flags: ``--structural-only``, ``--pa-experiment``,
-    ``--entry-experiment``, ``--no-baseline``
-  - Visualization: ``plot_pa_gdp_comparison``, ``plot_pa_comovements``,
-    ``plot_entry_comparison``
-  - Reporting: ``format_pa_report``, ``format_entry_report`` with
-    monotonicity assessment
+  * **Preferential attachment in consumption and the entry mechanism** (Section 3.10.2)
 
-* Planning-phase breakeven price and price adjustment events
-  (``firms_plan_breakeven_price``, ``firms_plan_price``) that use previous
-  period's costs and desired production. These are mutually exclusive with the
-  production-phase pair — use one or the other.
+    * **Preferential attachment**: New experiment (``run_pa_experiment``) that removes
+      PA by setting new config parameter ``consumer_matching``: ``loyalty`` → ``random``.
+    * **Entry mechanism**: New experiment (``run_entry_experiment``) that uses the
+      new taxation extension (``extensions/taxation/``).
 
-* ``pricing_phase`` configuration parameter (``"planning"`` or ``"production"``,
-  default ``"planning"``). Automates switching between planning-phase and
-  production-phase pricing events without manual pipeline YAML editing.
-  Raises ``ValueError`` if used with ``pipeline_path`` (custom pipelines
-  should be edited directly). Hard-coded mutual exclusion guard in
-  ``Pipeline.__post_init__`` prevents both pricing pairs from coexisting.
+  * **CLI**: ``python -m validation.robustness --help``
+  * **Example**: ``examples/advanced/example_robustness.py``
 
-* Cascade matching for the labor market (book Section 3.3–3.4):
-  ``WorkersApplyToFirms`` event where each unemployed worker walks their
-  ranked firm queue (best→worst wage) and is hired at the first firm with
-  vacancies, or cascades to the next. Replaces the interleaved
-  ``WorkersSendOneRound <-> FirmsHireWorkers × max_M`` pattern in the
-  default pipeline. Shared ``_hire_workers()`` helper used by both legacy
-  and cascade code paths.
+**Packaging**
 
-* Cascade matching for the credit market (book Section 3.5):
-  ``FirmsApplyForLoans`` event where each firm walks their ranked bank
-  queue (lowest→highest rate). Loans granted immediately (partial if
-  supply < demand), remaining demand carries to next bank. Firms sorted
-  before processing by ``loan_priority_method`` (default:
-  ``"by_leverage"``). Replaces the interleaved
-  ``FirmsSendOneLoanApp <-> BanksProvideLoans × max_H`` pattern in the
-  default pipeline. Shared ``_provide_loan()`` helper used by both legacy
-  and cascade code paths.
-
-* ``WorkersApplyToBestFirm`` event — alternative single-best matching
-  where workers apply only to their top-choice firm (no cascade). Not in
-  default pipeline; available for experimentation.
-
-* ``labor_matching`` configuration parameter (``"cascade"`` or
-  ``"interleaved"``, default ``"cascade"``). Automates switching between
-  cascade and legacy interleaved labor matching events without manual
-  pipeline YAML editing. Raises ``ValueError`` if used with
-  ``pipeline_path``.
-
-* ``credit_matching`` configuration parameter (``"cascade"`` or
-  ``"interleaved"``, default ``"cascade"``). Same as above for the credit
-  market.
-
-* ``min_wage_ratchet`` configuration parameter (boolean, default
-  ``False``). When ``True``, minimum wage never decreases during deflation
-  (``max(1, 1 + inflation)``), matching the book's "revised upward"
-  specification (Section 3.4).
-
-* Diagnostics package (``diagnostics/``) with comprehensive analysis dashboards:
-  baseline (13 figures), Growth+ (15 figures), credit market investigation,
-  and labor market investigation scripts.
-
-* ``LoanBook.principal_per_borrower()`` method for aggregating total
-  principal per borrower (complements ``debt_per_borrower()`` and
-  ``interest_per_borrower()``).
-
-* Robustness analysis package (Section 3.10.1 of Delli Gatti et al., 2011):
-
-  * ``validation/robustness/`` package with internal validity and sensitivity analysis
-  * Internal validity: multi-seed simulation (20 seeds) verifying cross-simulation
-    stability of co-movements, AR structure, firm size distributions, and empirical curves
-  * Sensitivity analysis: univariate parameter sweeps across 5 experiment groups —
-    credit markets (H), goods markets (Z), labor markets (M), contract length (theta),
-    and economy size/composition
-  * Statistical tools: Hodrick-Prescott filter, lead-lag cross-correlations,
-    AR model fitting (OLS), impulse-response function computation
-  * Visualization: co-movement plots (Figure 3.9 replica), IRF comparison,
-    sensitivity co-movement comparison
-  * Text reporting: formatted cross-simulation variance tables, co-movement
-    summaries, AR fit results, empirical curve persistence
-  * Firm size distribution metrics: kurtosis (excess), tail index (log-log rank-size
-    slope), and distribution shape classification (pareto-like/exponential/uniform-like)
-  * Peak-lag detection in co-movement analysis (lag of max |correlation| per variable)
-  * Wage/productivity ratio tracking across experiments
-  * GDP growth volatility in sensitivity summary tables
-  * CLI entry point: ``python -m validation.robustness``
-  * Example: ``examples/advanced/example_robustness.py``
-
-* Calibration package overhaul — multi-phase framework with Morris method
-  screening, tiered stability testing, pairwise interaction analysis, and
-  production-quality tooling:
-
-  * **Morris Method screening** (default sensitivity method): runs multiple
-    OAT trajectories from random starting points (Morris 1991). Produces
-    mu* (mean absolute elementary effect) and sigma (std of effects) per
-    parameter. Dual-threshold classification: ``INCLUDE`` if mu* > threshold
-    OR sigma > threshold (catches interaction-prone parameters that single-
-    baseline OAT would miss). New ``MorrisResult``, ``MorrisParameterEffect``
-    types, ``run_morris_screening()``, ``print_morris_report()``.
-    ``MorrisResult.to_sensitivity_result()`` converts for downstream
-    compatibility. New ``--method morris|oat`` and ``--morris-trajectories``
-    CLI options.
-  * **Tiered stability testing**: incremental tournament system
-    (default: 100×10, 50×20, 10×100 seeds) that efficiently narrows candidates
-    while accumulating seed scores. Replaces flat ``top_k × N seeds`` approach.
-    Total evaluations: 2,300 vs naive 10,000 for same coverage.
-  * **Pairwise interaction analysis**: tests all 2-param combinations among
-    sensitive parameters to detect synergies and conflicts. New
-    ``PairInteraction`` / ``PairwiseResult`` types with ``synergies`` and
-    ``conflicts`` properties.
-  * **Multi-seed sensitivity**: ``n_seeds`` parameter for OAT evaluation
-    (default: 3). Averages across seeds for more robust sensitivity measurement.
-  * **Per-metric-group score decomposition**: ``ParameterSensitivity.group_scores``
-    tracks which metric groups (TIME_SERIES, CURVES, etc.) each parameter
-    affects, printed in sensitivity report.
-  * **Value pruning**: drops grid values whose OAT score is more than
-    ``pruning_threshold`` below the best value for that parameter.
-    ``SensitivityResult.prune_grid()`` method. Default: ``auto`` (2× sensitivity
-    threshold). Disable with ``--pruning-threshold none``.
-  * **Phase-based CLI**: ``--phase sensitivity|morris|grid|stability|pairwise``
-    for individual phase execution, or omit for all phases sequentially.
-    Replaces ``--sensitivity-only``.
-  * **Checkpointing and resume**: grid screening and stability testing save
-    periodic checkpoints; ``--resume`` flag skips already-evaluated configs.
-  * **Progress tracking with ETA**: ``format_eta()`` / ``format_progress()``
-    helpers using sensitivity-measured ``avg_time_per_run``.
-  * **Config export**: ``export_best_config()`` writes best result as
-    ready-to-use YAML (``output/{scenario}_best_config.yml``).
-  * **Before/after comparison**: ``compare_configs()`` runs default vs calibrated
-    side-by-side and reports per-metric changes. ``ComparisonResult`` type.
-  * **Parameter pattern analysis**: ``analyze_parameter_patterns()`` identifies
-    which values consistently appear in top configs.
-  * **Buffer-stock scenario support**: all calibration phases support
-    ``--scenario buffer_stock`` (26 common + 3 extension params).
-  * **Expanded parameter grid**: 26 common parameters covering initial
-    conditions, new-firm entry, economy-wide, search frictions, and
-    implementation variants. Extension-specific: ``sigma_decay`` / ``sigma_max``
-    (Growth+), ``buffer_stock_h`` (buffer-stock).
-
-* Calibration package rebuilt into focused modules:
-
-  * **Module decomposition**: monolithic ``optimizer.py`` split into
-    ``analysis.py`` (types/patterns/export), ``grid.py`` (grid building/
-    YAML loading/combinations), ``screening.py`` (single-seed screening/
-    checkpointing), ``stability.py`` (tiered stability/ranking).
-  * **Centralized serialization** (``io.py``): all save/load functions with
-    ``_schema_version`` field, timestamped output directories
-    (``output/YYYY-MM-DD_HHMMSS_{scenario}/``).
-  * **Auto-generated reports** (``reporting.py``): markdown reports for each
-    phase (sensitivity, screening, stability) and a combined full report.
-  * **Ranking strategies**: ``--rank-by combined|stability|mean`` with
-    configurable ``--k-factor`` for the combined formula
-    ``mean × (1 - k × std)``.
-  * **Custom grid input**: ``--grid PATH`` loads parameter grid from YAML/JSON.
-    ``--fixed KEY=VALUE`` (repeatable) pins specific parameters.
-  * **Custom output**: ``--output-dir PATH`` for user-specified output location.
-  * **Cleaned parameter space**: removed deprecated params from grids,
-    moved ``generate_combinations()``/``count_combinations()`` to ``grid.py``.
-  * **Comprehensive tests**: 145+ unit tests covering all new modules,
-    plus integration tests for pipeline and YAML roundtrips.
-  * **Example**: ``examples/advanced/example_calibration.py`` demonstrating
-    programmatic Morris → grid → stability workflow.
-  * Deleted 7 standalone scripts and ``optimizer.py`` (fully decomposed).
-
-Changed
-~~~~~~~
-
-* Moved ``FirmsCalcBreakevenPrice`` and ``FirmsAdjustPrice`` from
-  ``events/planning.py`` to ``events/production.py`` to match their actual
-  pipeline phase. Pipeline keys unchanged — no breaking changes for YAML
-  configurations.
-* Loan records are now retained through planning and labor phases (purged
-  when the credit market opens instead of during revenue settlement). This
-  enables planning-phase events to access previous-period interest data.
-* Default agent counts unified to match book setup: ``n_firms``: 300 → 100,
-  ``n_households``: 3000 → 500
-* Default new-firm entry parameters: ``new_firm_size_factor`` 0.8 → 0.5,
-  ``new_firm_production_factor`` 0.9 → 0.5, ``new_firm_wage_factor`` 0.9 → 0.5,
-  ``new_firm_price_markup`` 1.0 → 1.5
-* Default ``max_loan_to_net_worth``: 2 → 5
-* Default ``job_search_method``: ``"all_firms"`` → ``"vacancies_only"``
-  (book: "visiting firms that post vacancies")
-* Default ``matching_method``: ``"simultaneous"`` → ``"sequential"``
-  (book Section 3.4: "closed sequentially"). Only affects legacy
-  interleaved events; cascade events are inherently sequential.
-* Default pipeline now uses cascade matching (fixed 37 events, no longer
-  depends on ``max_M`` or ``max_H``). Legacy interleaved events retained
-  but off default path.
-* ``create_default_pipeline()`` accepts ``labor_matching`` and
-  ``credit_matching`` parameters for event swapping at pipeline creation.
-* Pipeline-altering parameter conflict check now covers
-  ``labor_matching`` and ``credit_matching`` in addition to
-  ``pricing_phase``. Error message reports all conflicting parameters.
-* ``Scenario.default_config`` now optional (defaults to ``{}``)
-* Growth+ and buffer-stock scenarios no longer override agent counts
-* Baseline targets: updated log GDP and unemployment bounds for
-  100-firm/500-household economy
-* Renamed 'destroyed' flag to 'collapsed' in ``Simulation``
-* Validation: unemployment metrics split across all scenarios —
-  ``unemployment_pct_in_bounds`` → ``unemployment_pct_above_floor`` +
-  ``unemployment_pct_below_ceiling`` (separate floor/ceiling checks).
-  ``unemployment_hard_ceiling`` → ``unemployment_absolute_ceiling``
-  (tightened from 30% to 20%, now BOOLEAN check type in baseline).
-  Removed ``unemployment_autocorrelation`` from baseline.
-* Validation: metric parameters (thresholds, bounds) moved from
-  ``metadata.params`` to inline in each metric's YAML entry (targets
-  files are now fully self-contained).
-* Validation: tightened visualization bounds and recalibrated targets
-  across all three scenarios (baseline, Growth+, buffer-stock).
-* Examples: default logging level ``"INFO"`` → ``"ERROR"`` in baseline
-  and Growth+ examples for cleaner output.
-* Event count: 43 → 45 events (2 new labor market, 1 new credit market).
-* Sphinx API docs: added ``FirmsApplyForLoans`` to
-  ``docs/api/events/credit_market.rst``.
-* Calibration: default sensitivity method changed from OAT to Morris Method.
-  OAT still available via ``--method oat``.
-* Calibration: simplified sensitivity classification from HIGH/MEDIUM/LOW
-  to binary INCLUDE/FIX with single ``sensitivity_threshold`` (default 0.02).
-  ``build_focused_grid()`` parameters renamed: ``high_threshold`` /
-  ``medium_threshold`` → ``sensitivity_threshold`` / ``pruning_threshold``.
-* Calibration: ``run_focused_calibration()`` now uses tiered stability
-  internally. Removed ``top_k`` and ``stability_seeds`` parameters;
-  replaced with ``stability_tiers`` list.
-* Calibration: CLI arguments restructured — removed ``--sensitivity-only``,
-  ``--top-k``, ``--high-threshold``, ``--medium-threshold``; added
-  ``--phase``, ``--sensitivity-threshold``, ``--pruning-threshold``,
-  ``--sensitivity-seeds``, ``--stability-tiers``, ``--resume``.
-* Calibration: ``screen_single_seed()`` now returns ``CalibrationResult``
-  (was ``float``). ``CalibrationResult`` gains ``seed_scores`` field for
-  incremental stability.
-* Calibration: parameter grid restructured around shared ``_COMMON_GRID``
-  (26 params) with scenario-specific extensions via dict unpacking.
-* Docs: updated ``development.rst`` calibration examples to match new CLI.
-* ``net_worth_ratio`` formula changed from ``production_init * net_worth_ratio``
-  to ``production_init * price_init * net_worth_ratio``, fixing a dimensional
-  mismatch where net worth was computed in goods units while wages were in money
-  units. Default ``net_worth_ratio`` changed from 3.0 to 6.0 to preserve the
-  same default net worth (7.5). Semantics changed from "fraction of production
-  capacity" to "multiple of initial revenue".
-* Pipeline always uses interleaved matching for both labor and credit markets.
-* ``pricing_phase`` and ``matching_method`` removed from ``defaults.yml``
-  (schema defaults still apply).
-
-Deprecated
-~~~~~~~~~~
-
-* ``price_cut_allow_increase``, ``inflation_method``, ``labor_matching``,
-  ``credit_matching``, ``min_wage_ratchet`` config params — may be removed
-  in a future release.
-* ``create_default_pipeline()`` no longer accepts ``labor_matching`` /
-  ``credit_matching`` params.
+* ``extensions/``, ``validation/``, ``calibration/`` are now pip-installable
+  sibling packages (``pip install bamengine[validation]``, etc.).
 
 Fixed
 ~~~~~
 
-* Fixed co-movement convention comments in ``reference_values.yaml`` (negative/positive
-  lag semantics were inverted).
-* Fixed missing empty-valid guard in co-movement aggregation loop in
-  ``internal_validity.py`` (would fail if all seeds collapsed).
-* Fixed mean AR fit method: now fits AR(1) on the pointwise-averaged GDP cycle
-  across seeds instead of averaging individual AR coefficients, matching the
-  book's methodology.
-* Fixed Growth+ R&D event ordering: R&D deduction (``FirmsDeductRnDExpenditure``)
-  now runs *before* dividend distribution, matching book Section 3.8.
-  Previously R&D hooked after ``firms_pay_dividends``, overstating dividends
-  by δσπ. R&D now deducts from ``net_profit`` (not ``retained_profit``) so
-  dividends correctly equal δ(1−σ)π.
-* Fixed uninitialized ``projected_fragility`` buffer for firms with non-positive
-  net worth. ``firms_calc_financial_fragility()`` now pre-fills with
-  ``max_leverage`` before the conditional divide, ensuring deterministic
-  behavior and correct credit priority (insolvent firms get lowest priority).
-* Fixed gross_profit overstatement: removed redundant ``wage_bill``
-  recalculation in ``workers_update_contracts`` that was using post-expiration
-  values instead of the actual wages paid.
-* Bad debt formula: fixed recovery-vs-loss inversion in
-  ``firms_validate_debt_commitments()``. The formula ``clip(frac × net_worth,
-  0, principal)`` computes the bank's *recovery* (proportional claim on firm
-  equity), but was incorrectly subtracted as the *loss*. Actual loss is now
-  ``principal - recovery``. Banks previously lost what they should have
-  recovered, suppressing the credit feedback loop.
-* Loan purge in ``banks_provide_loans()`` moved from per-bank loop to
-  one-time safety clear in ``firms_prepare_loan_applications()``. This
-  enables multi-lender support: firms can now accumulate loans from
-  multiple banks across credit matching rounds (max_H).
+* New ``FirmsPlanBreakevenPrice`` / ``FirmsPlanPrice`` events (mutually exclusive
+  with production-phase pair). Source relocation: ``events/planning.py`` →
+  ``events/production.py`` (pipeline keys unchanged).
+* Loan records retained through planning/labor phases (purged at credit market
+  opening) for previous-period interest access.
+* ``projected_fragility`` pre-filled with ``max_leverage`` for NW ≤ 0 firms.
+* Loan rate now uses per-bank ``opex_shock`` (φ_k) instead of constant ``h_phi``
+  upper bound, restoring bank heterogeneity (book eq. 3.7).
+* Multi-lender: firms accumulate loans from multiple banks across credit rounds.
+* ``LoanBook.principal_per_borrower()`` new method for efficient per-firm
+  principal aggregation.
+* Removed spurious ``wage_bill`` recalculation in ``workers_update_contracts``
+  (overstated gross profit).
+* Bad debt: ``clip(frac × NW, 0, principal)`` computes *recovery*, was
+  subtracted as *loss*. Now ``loss = principal - recovery``.
+* R&D deduction moved before dividends (book Section 3.8); operates on
+  ``net_profit`` so dividends = δ(1−σ)π.
+* ``net_worth_ratio`` formula: ``prod × ratio`` → ``prod × price × ratio``
+  (dimensional fix).
+* Bankruptcy counters persist through end-of-period data capture.
+* Spawned firms set ``production = production_prev`` (prevents re-bankruptcy).
 
-* Loan rate formula in ``banks_provide_loans()`` now uses per-bank ``opex_shock``
-  (φ_k) instead of the constant upper bound ``h_phi``, matching book equation 3.7.
-  Previously all banks applied the maximum rate markup, eliminating bank heterogeneity
-  and systematically overcharging borrowers.
-* Bankruptcy counter now captures correct counts with basic ``collect=True``.
-  ``exiting_firms`` / ``exiting_banks`` arrays are no longer cleared in
-  ``spawn_replacement_*``, so they persist through end-of-period data capture.
-* Spawned replacement firms set ``production = production_prev`` to avoid
-  immediate ghost-firm re-bankruptcy on the next period.
-* Fixed ``net_worth_ratio`` dimensional mismatch: firm net worth was initialized
-  in goods units (``production_init * ratio``) while wages scaled with
-  ``price_init``. Scaling ``price_init`` without overriding ``net_worth_init``
-  would cause firms to be unable to hire, collapsing the economy.
-
-Removed
+Changed
 ~~~~~~~
 
-* ``contract_poisson_mean`` config param — contracts now always use exact
-  ``theta`` duration.
-* ``loan_priority_method`` config param — credit matching always uses
-  leverage-based ordering.
-* ``firing_method`` config param — worker firing always uses random selection.
-* ``SMALL_ECONOMY_CONFIG`` and ``validation/scenarios/_configs.py``
-  (redundant with unified defaults)
-* ``capture_timing`` workarounds for ``Economy.n_firm_bankruptcies`` /
-  ``Economy.n_bank_bankruptcies`` in scenarios and examples (no longer needed)
+**Validation**
 
+* Unemployment metrics restructured: ``unemployment_pct_in_bounds`` → separate
+  floor/ceiling checks; ``unemployment_hard_ceiling`` → ``unemployment_absolute_ceiling``
+  (30% → 20%, BOOLEAN in baseline). Removed ``unemployment_autocorrelation``.
+
+**Calibration**
+
+* Rebuilt into focused modules (``analysis``, ``grid``, ``screening``,
+  ``stability``, ``io``, ``reporting``), replacing monolithic ``optimizer.py``.
+* **Morris Method screening** (default): multi-trajectory OAT (Morris 1991)
+  with dual-threshold classification (mu* and sigma). OAT via ``--method oat``.
+* **Tiered stability**: incremental tournament (100×10 → 50×20 → 10×100 seeds).
+* **Pairwise interaction analysis** for synergy/conflict detection.
+* Phase-based CLI (``--phase``, ``--resume``, ``--rank-by``, ``--grid``,
+  ``--fixed``), markdown reports, config export, before/after comparison.
+
+**Breaking Changes**
+
+* **Calibrated defaults**: n_firms 300→100, n_households 3000→500,
+  New-firm entry: size 0.8→0.5, production 0.9→0.5, wage 0.9→0.5, markup 1.0→1.5,
+  ``job_search_method``:  ``"vacancies_only"`` → ``"all_firms"``,
+  ``matching_method``: ``"simultaneous"`` → ``"sequential"`` *(also removed from config)*
+* **Config removed**: ``contract_poisson_mean``, ``loan_priority_method``,
+  ``firing_method``, ``matching_method``
+* **Config deprecated**: ``price_cut_allow_increase``, ``inflation_method``
+* **Net worth**: ``net_worth_ratio`` semantics → "multiple of initial revenue";
+  default 3.0 → 6.0
+* **Renamed**: ``destroyed`` → ``collapsed`` on ``Simulation``
+* **Calibration CLI**: ``--phase`` replaces ``--sensitivity-only``; new
+  ``--resume``, ``--rank-by``, ``--k-factor``, ``--output-dir``
 
 [0.3.0] - 2026-02-11
 --------------------
