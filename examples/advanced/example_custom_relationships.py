@@ -35,9 +35,7 @@ import bamengine as bam
 from bamengine import Bool, Float, Int, get_role, ops, relationship
 
 # Check the built-in LoanBook relationship
-sim = bam.Simulation.init(
-    n_firms=50, n_households=250, n_banks=5, seed=42, logging={"default_level": "ERROR"}
-)
+sim = bam.Simulation.init(n_firms=50, n_households=250, n_banks=5, seed=42)
 loans = sim.get_relationship("LoanBook")
 
 print("Built-in LoanBook relationship:")
@@ -420,9 +418,7 @@ plt.show()
 
 # Fresh simulation for loan analysis
 # Run longer to ensure loans are generated
-sim = bam.Simulation.init(
-    n_firms=100, n_households=500, seed=42, logging={"default_level": "ERROR"}
-)
+sim = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
 sim.run(n_periods=50)
 
 loans = sim.get_relationship("LoanBook")

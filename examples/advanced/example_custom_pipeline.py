@@ -38,9 +38,7 @@ from pathlib import Path
 import bamengine as bam
 
 # Initialize simulation
-sim = bam.Simulation.init(
-    n_firms=50, n_households=250, seed=42, logging={"default_level": "ERROR"}
-)
+sim = bam.Simulation.init(n_firms=50, n_households=250, seed=42)
 
 print("Default pipeline has events like:")
 print("  - firms_decide_desired_production")
@@ -121,7 +119,6 @@ sim_minimal = bam.Simulation.init(
     n_firms=50,
     n_households=250,
     seed=42,
-    logging={"default_level": "ERROR"},
     pipeline_path=str(pipeline_path),
 )
 
@@ -200,7 +197,6 @@ sim_planning = bam.Simulation.init(
     n_firms=100,
     n_households=500,
     seed=42,
-    logging={"default_level": "ERROR"},
     pipeline_path=str(planning_price_path),
 )
 sim_planning.run(n_periods=20)
@@ -301,9 +297,7 @@ print("Created pipeline without dividends")
 import matplotlib.pyplot as plt
 
 # Default pipeline (with dividends)
-sim_with_div = bam.Simulation.init(
-    n_firms=100, n_households=500, seed=42, logging={"default_level": "ERROR"}
-)
+sim_with_div = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
 borr_with_div = sim_with_div.get_role("Borrower")
 nw_with_div = []
 for _ in range(50):
@@ -316,7 +310,6 @@ sim_no_div = bam.Simulation.init(
     n_households=500,
     seed=42,
     pipeline_path=str(no_div_path),
-    logging={"default_level": "ERROR"},
 )
 borr_no_div = sim_no_div.get_role("Borrower")
 nw_no_div = []
@@ -461,7 +454,6 @@ sim_custom = bam.Simulation.init(
     n_firms=100,
     n_households=500,
     seed=42,
-    logging={"default_level": "ERROR"},
     pipeline_path=str(custom_path),
 )
 
@@ -539,7 +531,6 @@ sim_low_friction = bam.Simulation.init(
     max_H=4,
     max_Z=4,  # More search rounds
     seed=42,
-    logging={"default_level": "ERROR"},
 )
 
 # High friction (few search rounds)
@@ -550,7 +541,6 @@ sim_high_friction = bam.Simulation.init(
     max_H=1,
     max_Z=1,  # Fewer rounds
     seed=42,
-    logging={"default_level": "ERROR"},
 )
 
 # Run both

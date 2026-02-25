@@ -28,9 +28,9 @@ print("Default log level is INFO")
 print("Running a short simulation with default logging...")
 
 sim = bam.Simulation.init(n_firms=50, n_households=250, seed=42)
-sim.run(n_periods=5)
+sim.step()
 
-print(f"Simulation complete. Final unemployment: {sim.ec.unemp_rate_history[-1]:.2%}")
+print(f"Simulation complete (1 period). Period: {sim.t}")
 
 # %%
 # Log Levels Overview
@@ -68,7 +68,7 @@ sim_quiet = bam.Simulation.init(
 )
 
 print("\nRunning with WARNING level (quiet mode)...")
-sim_quiet.run(n_periods=5)
+sim_quiet.step()
 print("Done (you should see fewer log messages)")
 
 # Set to DEBUG for more detail
@@ -80,7 +80,7 @@ sim_debug = bam.Simulation.init(
 )
 
 print("\nRunning with DEBUG level (verbose mode)...")
-sim_debug.run(n_periods=2)
+sim_debug.step()
 print("Done (you should see more log messages)")
 
 # %%
@@ -107,7 +107,7 @@ sim_selective = bam.Simulation.init(
 )
 
 print("\nRunning with selective logging (labor market events only)...")
-sim_selective.run(n_periods=3)
+sim_selective.step()
 
 # %%
 # Using TRACE Level
@@ -130,7 +130,7 @@ sim_trace = bam.Simulation.init(
 )
 
 print("\nRunning with TRACE level for production planning...")
-sim_trace.run(n_periods=1)
+sim_trace.step()
 print("Check the output for very detailed production planning info")
 
 # %%
@@ -210,7 +210,7 @@ sim_focused = bam.Simulation.init(
 )
 
 print("\nRunning with market matching events silenced...")
-sim_focused.run(n_periods=5)
+sim_focused.step()
 print("Done (market matching events suppressed)")
 
 # %%

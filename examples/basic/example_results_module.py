@@ -30,9 +30,7 @@ import bamengine as bam
 
 # Run simulation with data collection
 # We collect Worker employed data without aggregation to calculate unemployment
-sim = bam.Simulation.init(
-    n_firms=100, n_households=500, seed=42, logging={"default_level": "ERROR"}
-)
+sim = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
 results = sim.run(
     n_periods=50,
     collect={
@@ -147,9 +145,7 @@ if len(avg_price) > 0:
     )
 
 # Aggregation on-the-fly (useful when you have full per-agent data)
-full_data_sim = bam.Simulation.init(
-    n_firms=50, n_households=250, seed=42, logging={"default_level": "ERROR"}
-)
+full_data_sim = bam.Simulation.init(n_firms=50, n_households=250, seed=42)
 full_data_results = full_data_sim.run(
     n_periods=20,
     collect={
@@ -246,9 +242,7 @@ plt.show()
 # or a list of specific variable names.
 
 # Collect only specific roles and economy metrics
-custom_results = bam.Simulation.init(
-    n_firms=100, n_households=500, seed=42, logging={"default_level": "ERROR"}
-).run(
+custom_results = bam.Simulation.init(n_firms=100, n_households=500, seed=42).run(
     n_periods=30,
     collect={
         "Producer": True,  # All Producer variables
@@ -268,9 +262,7 @@ print(f"  Roles collected: {list(custom_results.role_data.keys())}")
 # Dict-form ``collect`` returns full per-agent data by default (larger arrays).
 
 # Warning: This collects full arrays - can be memory intensive!
-full_results = bam.Simulation.init(
-    n_firms=50, n_households=250, seed=42, logging={"default_level": "ERROR"}
-).run(
+full_results = bam.Simulation.init(n_firms=50, n_households=250, seed=42).run(
     n_periods=20,
     collect={
         "Producer": ["price", "production"],  # Specific variables only
@@ -299,9 +291,7 @@ try:
     import pandas
 
     # Run a new simulation for DataFrame export
-    df_results = bam.Simulation.init(
-        n_firms=100, n_households=500, seed=42, logging={"default_level": "ERROR"}
-    ).run(
+    df_results = bam.Simulation.init(n_firms=100, n_households=500, seed=42).run(
         n_periods=50,
         collect=True,
     )
@@ -333,9 +323,7 @@ except ImportError:
 try:
     import pandas  # noqa: F401 - check if pandas is installed
 
-    summary_results = bam.Simulation.init(
-        n_firms=100, n_households=500, seed=42, logging={"default_level": "ERROR"}
-    ).run(
+    summary_results = bam.Simulation.init(n_firms=100, n_households=500, seed=42).run(
         n_periods=100,
         collect=True,
     )
@@ -360,9 +348,7 @@ all_unemployment = []
 
 print("Running ensemble of simulations...")
 for i in range(n_runs):
-    run_results = bam.Simulation.init(
-        n_firms=100, n_households=500, seed=42 + i, logging={"default_level": "ERROR"}
-    ).run(
+    run_results = bam.Simulation.init(n_firms=100, n_households=500, seed=42 + i).run(
         n_periods=50,
         collect={
             "Worker": ["employed"],
@@ -411,9 +397,7 @@ if all_unemployment:
 # Unlike roles, relationships are **opt-in only** and NOT included with ``collect=True``.
 
 # Manually add some loans to demonstrate relationship data collection
-rel_sim = bam.Simulation.init(
-    n_firms=50, n_households=250, seed=42, logging={"default_level": "ERROR"}
-)
+rel_sim = bam.Simulation.init(n_firms=50, n_households=250, seed=42)
 loans = rel_sim.get_relationship("LoanBook")
 loans.append_loans_for_lender(
     lender_idx=np.intp(0),
@@ -453,9 +437,7 @@ if "LoanBook" in rel_results.relationship_data:
 # period as variable-length arrays. Useful for analyzing distributions but cannot be
 # exported to DataFrame.
 
-loan_dist_sim = bam.Simulation.init(
-    n_firms=50, n_households=250, seed=42, logging={"default_level": "ERROR"}
-)
+loan_dist_sim = bam.Simulation.init(n_firms=50, n_households=250, seed=42)
 loans = loan_dist_sim.get_relationship("LoanBook")
 # Add loans with varying amounts
 loans.append_loans_for_lender(

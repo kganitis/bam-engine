@@ -13,6 +13,12 @@ from sphinx_gallery.sorting import ExplicitOrder
 # Suppress verbose bamengine simulation logs during doc builds
 logging.getLogger("bamengine").setLevel(logging.ERROR)
 
+
+def _reset_bamengine_logging(gallery_conf, fname):
+    """Re-suppress bamengine logging before each gallery example."""
+    logging.getLogger("bamengine").setLevel(logging.ERROR)
+
+
 # Suppress spurious numpydoc warnings for custom sections already handled by Napoleon
 warnings.filterwarnings(
     "ignore", message=r".*Unknown section.*", module=r"numpydoc\.docscrape"
@@ -181,6 +187,7 @@ sphinx_gallery_conf = {
     "capture_repr": ("_repr_html_", "__repr__"),  # Capture these repr methods
     "nested_sections": True,  # Allow nested sections in galleries
     "expected_failing_examples": [],  # List of examples expected to fail
+    "reset_modules": (_reset_bamengine_logging,),  # Re-suppress logging per example
 }
 
 # Templates path

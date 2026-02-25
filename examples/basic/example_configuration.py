@@ -98,9 +98,7 @@ print(f"  Initial household savings: {bam.ops.mean(con.savings):.1f}")
 import numpy as np
 
 # Baseline scenario
-sim_baseline = bam.Simulation.init(
-    n_firms=100, n_households=500, seed=42, logging={"default_level": "ERROR"}
-)
+sim_baseline = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
 baseline_results = sim_baseline.run(
     n_periods=100,
     collect={
@@ -116,7 +114,6 @@ sim_low_friction_run = bam.Simulation.init(
     max_M=8,  # More job applications (default: 4)
     max_Z=4,  # More shopping rounds (default: 2)
     seed=42,
-    logging={"default_level": "ERROR"},
 )
 lowfric_results = sim_low_friction_run.run(
     n_periods=100,
