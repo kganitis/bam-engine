@@ -390,20 +390,32 @@ def run_morris_screening(
         f"({total_sim_runs} sim runs across {n_seeds} seed(s))"
     )
 
-    # Step 3: Evaluate all configs in parallel
+    # Step 3: Evaluate all configs
     total_elapsed = 0.0
     completed = 0
 
-    with ProcessPoolExecutor(max_workers=n_workers) as executor:
-        futures = {
-            executor.submit(
-                _evaluate_config, cfg, scenario, sim_seeds, n_periods
-            ): _config_key(cfg)
-            for cfg in unique_configs
-        }
+    if n_workers > 1:
+        with ProcessPoolExecutor(max_workers=n_workers) as executor:
+            futures = {
+                executor.submit(
+                    _evaluate_config, cfg, scenario, sim_seeds, n_periods
+                ): _config_key(cfg)
+                for cfg in unique_configs
+            }
 
-        for future in as_completed(futures):
-            cfg, score, elapsed = future.result()
+            for future in as_completed(futures):
+                cfg, score, elapsed = future.result()
+                key = _config_key(cfg)
+                config_scores[key] = score
+                total_elapsed += elapsed
+                completed += 1
+
+                if completed % 20 == 0 or completed == n_unique:
+                    pct = 100.0 * completed / n_unique
+                    print(f"  [{completed}/{n_unique}] ({pct:.0f}%) evaluated")
+    else:
+        for cfg in unique_configs:
+            cfg, score, elapsed = _evaluate_config(cfg, scenario, sim_seeds, n_periods)
             key = _config_key(cfg)
             config_scores[key] = score
             total_elapsed += elapsed

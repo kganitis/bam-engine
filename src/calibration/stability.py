@@ -212,22 +212,39 @@ def run_tiered_stability(
                     f"+{new_seeds_needed} seeds ({existing_n}->{total_seeds})"
                 )
 
-                # Run new seeds in parallel
-                with ProcessPoolExecutor(max_workers=n_workers) as executor:
-                    futures = [
-                        executor.submit(
-                            _evaluate_single_seed,
-                            c.params,
-                            scenario,
-                            seed,
-                            n_periods,
+                # Run new seeds
+                new_scores: list[float] = []
+                new_fails: list[int] = []
+                if n_workers > 1:
+                    with ProcessPoolExecutor(max_workers=n_workers) as executor:
+                        futures = [
+                            executor.submit(
+                                _evaluate_single_seed,
+                                c.params,
+                                scenario,
+                                seed,
+                                n_periods,
+                            )
+                            for seed in new_seed_ids
+                        ]
+                        for i, future in enumerate(as_completed(futures)):
+                            _, _seed, score, n_fail = future.result()
+                            new_scores.append(score)
+                            new_fails.append(n_fail)
+                            done = i + 1
+                            remaining = new_seeds_needed - done
+                            eta = format_eta(remaining, avg_time_per_run, n_workers)
+                            print(
+                                f"    Tier {tier_num}: "
+                                f"Testing {done}/{new_seeds_needed} "
+                                f"({100 * done / new_seeds_needed:.0f}%) "
+                                f"| {remaining} remaining | ETA: {eta}"
+                            )
+                else:
+                    for i, seed in enumerate(new_seed_ids):
+                        _, _seed, score, n_fail = _evaluate_single_seed(
+                            c.params, scenario, seed, n_periods
                         )
-                        for seed in new_seed_ids
-                    ]
-                    new_scores: list[float] = []
-                    new_fails: list[int] = []
-                    for i, future in enumerate(as_completed(futures)):
-                        _, _seed, score, n_fail = future.result()
                         new_scores.append(score)
                         new_fails.append(n_fail)
                         done = i + 1
