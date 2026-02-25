@@ -34,6 +34,11 @@ use ``n_workers=N`` with the CLI or inside a guarded ``__main__`` block.
 # points, producing mu* (importance) and sigma (interaction strength) per
 # parameter.  We use a minimal setup here: 3 trajectories, 1 seed,
 # 50-period simulations.
+#
+# CLI equivalent::
+#
+#     python -m calibration --phase sensitivity --scenario baseline \
+#         --morris-trajectories 3 --sensitivity-seeds 1 --periods 50
 
 from calibration import (
     build_focused_grid,
@@ -65,6 +70,8 @@ sensitivity = morris.to_sensitivity_result()
 # - **FIX**: low-sensitivity parameters, fixed at their best value
 #
 # Value pruning drops grid values that scored poorly in sensitivity.
+# This step is automatic when the CLI runs ``--phase grid`` after
+# sensitivity.
 
 grid, fixed = build_focused_grid(
     sensitivity,
@@ -94,6 +101,13 @@ for name, value in fixed.items():
 # Morris-derived grid, which can have hundreds of combinations.  We
 # pick two parameters that typically matter: ``beta`` (propensity
 # exponent) and ``max_M`` (goods market search breadth).
+#
+# CLI equivalent (using a custom grid file)::
+#
+#     python -m calibration --phase grid --scenario baseline \
+#         --grid custom_grid.yaml --periods 50 --workers 4
+#     python -m calibration --phase stability --scenario baseline \
+#         --stability-tiers "3:2,2:4" --periods 50 --workers 4
 #
 # .. note::
 #
@@ -153,6 +167,11 @@ if results:
 #
 # You can also load a custom grid from a YAML or JSON file,
 # bypassing sensitivity analysis entirely.
+#
+# CLI equivalent::
+#
+#     python -m calibration --phase grid --grid custom_grid.yaml \
+#         --fixed beta=2.0 --fixed max_M=4
 
 import tempfile
 from pathlib import Path
