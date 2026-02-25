@@ -302,7 +302,9 @@ class RnDState:
 
 
 # Create simulation
-demo_sim = bam.Simulation.init(n_firms=50, n_households=250, seed=42)
+demo_sim = bam.Simulation.init(
+    n_firms=50, n_households=250, seed=42, logging={"default_level": "ERROR"}
+)
 
 # use_role() creates the instance with zeroed arrays automatically
 rnd_state = demo_sim.use_role(RnDState)

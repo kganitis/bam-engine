@@ -287,7 +287,9 @@ print(f"  Registered as: {CapitalRequirementShock.name}")
 # Custom events can be executed directly on a simulation.
 
 # Initialize simulation
-sim = bam.Simulation.init(n_firms=50, n_households=250, seed=42)
+sim = bam.Simulation.init(
+    n_firms=50, n_households=250, seed=42, logging={"default_level": "ERROR"}
+)
 
 # Run a few periods to establish state
 sim.run(n_periods=10)
