@@ -127,4 +127,4 @@ class ConsumersDecideBufferStockSpending:
         ops.assign(con.savings, new_savings)
 
         # Zero income for next period
-        con.income.fill(0.0)
+        ops.assign(con.income, 0.0)

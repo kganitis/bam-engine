@@ -12,11 +12,11 @@ The goods market events execute in this order:
 1. ConsumersCalcPropensity - Calculate propensity to consume based on savings
 2. ConsumersDecideIncomeToSpend - Allocate income to spending budget
 3. ConsumersDecideFirmsToVisit - Select firms to visit (sorted by price)
-4. ConsumersShopOneRound - Execute shopping (repeated max_Z times)
+4. ConsumersShopSequential - Execute sequential shopping (each consumer completes all visits)
 5. ConsumersFinalizePurchases - Move unspent budget back to savings
 
-The shopping rounds are repeated max_Z times to allow consumers to visit
-multiple firms and find the best deals.
+Sequential shopping processes consumers one at a time: each consumer
+completes all Z visits before the next consumer starts.
 
 Design Notes
 ------------

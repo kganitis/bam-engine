@@ -11,10 +11,12 @@ The production events execute in this order:
 
 1. FirmsPayWages - Firms deduct wage bill from available funds
 2. WorkersReceiveWage - Workers add wages to income
-3. FirmsCalcBreakevenPrice - Calculate cost-covering price floor
-4. FirmsAdjustPrice - Adjust price based on inventory and market position
-5. FirmsRunProduction - Firms produce goods using labor
-6. WorkersUpdateContracts - Decrement contract duration, handle expiration
+3. FirmsRunProduction - Firms produce goods using labor
+4. WorkersUpdateContracts - Decrement contract duration, handle expiration
+
+Note: FirmsCalcBreakevenPrice and FirmsAdjustPrice are activated via
+``pricing_phase='production'`` config. The default pipeline uses planning-phase
+pricing (FirmsPlanBreakevenPrice/FirmsPlanPrice in planning.py).
 
 Design Notes
 ------------
@@ -210,7 +212,7 @@ class FirmsRunProduction:
     Verify production formula:
 
     >>> import numpy as np
-    >>> expected_output = sim.prod.labor_prod * sim.emp.current_labor
+    >>> expected_output = sim.prod.labor_productivity * sim.emp.current_labor
     >>> np.allclose(sim.prod.production, expected_output)
     True
 

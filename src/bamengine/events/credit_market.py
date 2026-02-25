@@ -571,10 +571,10 @@ class FirmsSendOneLoanApp:
 @event
 class BanksProvideLoans:
     """
-    Banks process loan applications and provide credit based on net worth ranking.
+    Banks process loan applications and provide credit based on fragility ranking.
 
-    Each bank evaluates its application queue, ranking applicants by net worth
-    (descending) to assess default risk. Banks provide loans up to available
+    Each bank evaluates its application queue, ranking applicants by financial
+    fragility (ascending projected_fragility) to assess default risk. Banks provide loans up to available
     credit supply and record them in the LoanBook. Loans accumulate across
     rounds, enabling multi-lender support: a firm can receive loans from
     multiple banks across the max_H credit matching rounds. This event is
@@ -585,7 +585,7 @@ class BanksProvideLoans:
     For each bank k:
 
     1. Pop one batch of applications from bank's application queue
-    2. Sort applicants by net worth (descending - prefer safer borrowers)
+    2. Sort applicants by fragility (ascending - prefer less leveraged borrowers)
     3. For each applicant i in sorted order:
        - Check if bank has credit supply remaining (:math:`C_k > 0`)
        - Check if firm still needs credit (:math:`B_i > 0`)
@@ -653,8 +653,8 @@ class BanksProvideLoans:
     This event is typically repeated max_H times, interleaved with FirmsSendOneLoanApp,
     to simulate sequential matching.
 
-    Banks rank applicants by net worth (descending) as a proxy for creditworthiness.
-    Higher net worth implies lower default risk.
+    Banks rank applicants by financial fragility (ascending projected_fragility).
+    Lower fragility implies lower default risk.
 
     Partial loan fulfillment is possible: if firm requests 100 but bank only has
     50 credit supply, firm receives 50 (partial grant).

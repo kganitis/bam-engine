@@ -623,7 +623,7 @@ class SimulationResults:
     Examples
     --------
     >>> sim = bam.Simulation.init(n_firms=100, seed=42)
-    >>> results = sim.run(n_periods=100)
+    >>> results = sim.run(n_periods=100, collect=True)
     >>> # Get all data as DataFrame
     >>> df = results.to_dataframe()
     >>> # Get specific role data

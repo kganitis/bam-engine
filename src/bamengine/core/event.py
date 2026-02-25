@@ -284,7 +284,7 @@ class Event(ABC):
         ... class StochasticEvent:
         ...     def execute(self, sim):
         ...         shock = sim.config.h_rho
-        ...         random_values = sim.rng.uniform(0, shock, size=sim.config.n_firms)
+        ...         random_values = sim.rng.uniform(0, shock, size=sim.n_firms)
         ...         # Use random_values in calculations
 
         Notes
