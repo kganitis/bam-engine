@@ -135,8 +135,12 @@ def adjust_burn_in(burn_in: int, n_periods: int, *, verbose: bool = False) -> in
     int
         Adjusted burn-in value.
     """
-    if burn_in >= n_periods:
-        burn_in = max(0, n_periods // 2)
+    if burn_in < 1:
+        burn_in = max(1, n_periods // 2)
+        if verbose:
+            print(f"  (burn_in adjusted to {burn_in}: minimum 1 required)")
+    elif burn_in >= n_periods:
+        burn_in = max(1, n_periods // 2)
         if verbose:
             print(f"  (burn_in adjusted to {burn_in} for short simulation)")
     return burn_in

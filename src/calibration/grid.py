@@ -185,6 +185,10 @@ def generate_combinations(
     """
     keys = list(grid.keys())
     fixed = fixed or {}
+    if fixed:
+        overlap = set(keys) & set(fixed.keys())
+        if overlap:
+            raise ValueError(f"Grid and fixed params overlap on: {overlap}")
     for values in product(*grid.values()):
         combo = dict(zip(keys, values, strict=True))
         if fixed:

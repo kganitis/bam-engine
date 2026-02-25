@@ -193,3 +193,10 @@ class TestGenerateCombinations:
         """Property: count always matches actual number of combinations."""
         grid = {"a": [1, 2, 3], "b": ["x", "y"], "c": [True, False]}
         assert count_combinations(grid) == len(list(generate_combinations(grid)))
+
+    def test_overlap_raises(self):
+        """Grid and fixed params must not share keys."""
+        grid = {"a": [1, 2], "b": [3, 4]}
+        fixed = {"b": 5, "c": 6}
+        with pytest.raises(ValueError, match="overlap"):
+            list(generate_combinations(grid, fixed=fixed))
