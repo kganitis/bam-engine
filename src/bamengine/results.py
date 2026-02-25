@@ -281,6 +281,7 @@ class _DataCollector:
         # History-based metrics (take last value from history array)
         history_sources = {
             "avg_price": ec.avg_mkt_price_history,
+            "unemployment_rate": ec.unemp_rate_history,
             "inflation": ec.inflation_history,
         }
 
