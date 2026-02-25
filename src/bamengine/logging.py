@@ -103,6 +103,10 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 
+# Library best practice: prevent "No handlers found" warnings when
+# the application hasn't configured logging for bamengine.
+logging.getLogger("bamengine").addHandler(logging.NullHandler())
+
 
 def getLogger(name: str = "bamengine") -> BamLogger:
     """

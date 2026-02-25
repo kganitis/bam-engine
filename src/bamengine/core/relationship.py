@@ -383,8 +383,19 @@ class Relationship(
         self.source_ids[:n_keep] = self.source_ids[: self.size][keep_mask]
         self.target_ids[:n_keep] = self.target_ids[: self.size][keep_mask]
 
-        # Update any edge-specific component arrays (must be handled by subclass)
-        # Subclasses should override this method to compact their own arrays
+        # Warn if subclass has extra edge arrays but didn't override drop_rows
+        fields = getattr(self, "__dataclass_fields__", {})
+        base_fields = {"source_ids", "target_ids", "size", "capacity"}
+        extra_arrays = [f for f in fields if f not in base_fields]
+        if extra_arrays and type(self).drop_rows is Relationship.drop_rows:
+            import warnings
+
+            warnings.warn(
+                f"{type(self).__name__}.drop_rows() was not overridden but has "
+                f"extra edge arrays {extra_arrays} that were not compacted. "
+                f"Override drop_rows() to compact these arrays.",
+                stacklevel=2,
+            )
 
         # Update size
         self.size = n_keep
