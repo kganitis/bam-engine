@@ -318,7 +318,9 @@ print(f"  After ops.assign: {prices}")
 import bamengine as bam
 
 # Create simulation to get RNG
-sim = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
+sim = bam.Simulation.init(
+    n_firms=100, n_households=500, seed=42, logging={"default_level": "ERROR"}
+)
 
 # Generate uniform random numbers
 shocks = ops.uniform(sim.rng, low=-0.1, high=0.1, size=10)
@@ -327,7 +329,9 @@ print("  uniform(rng, -0.1, 0.1, size=10):")
 print(f"    {shocks.round(4)}")
 
 # Random shocks are reproducible with same seed
-sim2 = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
+sim2 = bam.Simulation.init(
+    n_firms=100, n_households=500, seed=42, logging={"default_level": "ERROR"}
+)
 shocks2 = ops.uniform(sim2.rng, low=-0.1, high=0.1, size=10)
 print(f"  Same seed produces same values: {np.allclose(shocks, shocks2)}")
 
@@ -394,7 +398,9 @@ print("  - add (apply change)")
 print("  - assign (in-place update)")
 
 # Test the event
-sim = bam.Simulation.init(n_firms=50, n_households=250, seed=42)
+sim = bam.Simulation.init(
+    n_firms=50, n_households=250, seed=42, logging={"default_level": "ERROR"}
+)
 sim.run(n_periods=5)  # Establish some state
 
 print(f"\nBefore CostPlusPricing: Mean price = {np.mean(sim.prod.price):.3f}")
@@ -416,7 +422,9 @@ import matplotlib.pyplot as plt
 n_periods = 50
 
 # Standard simulation
-sim_standard = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
+sim_standard = bam.Simulation.init(
+    n_firms=100, n_households=500, seed=42, logging={"default_level": "ERROR"}
+)
 prices_standard = []
 for _ in range(n_periods):
     sim_standard.step()
@@ -433,7 +441,9 @@ class ApplyPriceFloor:
         ops.assign(prod.price, ops.maximum(prod.price, floor))
 
 
-sim_floor = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
+sim_floor = bam.Simulation.init(
+    n_firms=100, n_households=500, seed=42, logging={"default_level": "ERROR"}
+)
 floor_event = ApplyPriceFloor()
 prices_floor = []
 for _ in range(n_periods):

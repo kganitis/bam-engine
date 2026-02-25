@@ -182,7 +182,7 @@ sim = bam.Simulation.init(
     sigma_decay=-1.0,
     # Seed and logging
     seed=0,
-    logging={"default_level": "INFO"},
+    logging={"default_level": "ERROR"},
 )
 
 attach_extensions(sim)

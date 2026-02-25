@@ -18,7 +18,7 @@ If you're new to BAM Engine, start here!
 import bamengine as bam
 
 # Initialize simulation with 100 firms and 500 households
-sim = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
+sim = bam.Simulation.init()
 
 # Run for 50 periods
 sim.run(n_periods=50)
