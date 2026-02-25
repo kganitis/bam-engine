@@ -330,7 +330,7 @@ def select_top_k_indices_sorted(
     """
     # Ensure input is a NumPy array (defensive: accepts list input at runtime).
     if not isinstance(values, np.ndarray):
-        values = np.array(values, dtype=float)
+        values = np.array(values, dtype=float)  # type: ignore[unreachable]
 
     # Ensure values is at least 1D for consistent axis=-1 operations.
     if values.ndim == 0:

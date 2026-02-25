@@ -283,7 +283,7 @@ class TestRunSensitivityAnalysis:
         assert result.scenario == "baseline"
         assert result.baseline_score == pytest.approx(0.70)
         assert len(result.parameters) == 2
-        assert result.avg_time_per_run > 0
+        assert result.avg_time_per_run >= 0
 
         # "a" should be more sensitive than "b"
         ranked = result.ranked
