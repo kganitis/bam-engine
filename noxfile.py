@@ -23,18 +23,18 @@ DEFAULT_PYTHON = "3.12"
 
 @nox.session(python=DEFAULT_PYTHON)
 def lint(session: nox.Session) -> None:
-    """Run linting checks (black, ruff, mypy)."""
+    """Run linting checks (ruff, mypy)."""
     session.install("-e", ".[lint]")
-    session.run("black", "--check", ".")
+    session.run("ruff", "format", "--check", ".")
     session.run("ruff", "check", ".")
     session.run("mypy")
 
 
 @nox.session(python=DEFAULT_PYTHON)
 def format(session: nox.Session) -> None:
-    """Format code with black and ruff."""
+    """Format code with ruff."""
     session.install("-e", ".[lint]")
-    session.run("black", ".")
+    session.run("ruff", "format", ".")
     session.run("ruff", "check", "--fix", ".")
 
 
