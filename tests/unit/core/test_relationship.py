@@ -323,7 +323,8 @@ def test_drop_rows():
 
     # Drop edges at indices 1 and 3
     mask = np.array([False, True, False, True, False])
-    n_dropped = rel.drop_rows(mask)
+    with pytest.warns(UserWarning, match="drop_rows.*was not overridden"):
+        n_dropped = rel.drop_rows(mask)
 
     assert n_dropped == 2
     assert rel.size == 3
@@ -370,7 +371,8 @@ def test_purge_sources():
     )
 
     # Purge edges from sources 0 and 1
-    n_removed = rel.purge_sources(np.array([0, 1]))
+    with pytest.warns(UserWarning, match="drop_rows.*was not overridden"):
+        n_removed = rel.purge_sources(np.array([0, 1]))
 
     assert n_removed == 4  # Edges at indices 0, 1, 2, 4
     assert rel.size == 1
@@ -394,7 +396,8 @@ def test_purge_targets():
     )
 
     # Purge edges to targets 10 and 11
-    n_removed = rel.purge_targets(np.array([10, 11]))
+    with pytest.warns(UserWarning, match="drop_rows.*was not overridden"):
+        n_removed = rel.purge_targets(np.array([10, 11]))
 
     assert n_removed == 4  # Edges at indices 0, 1, 2, 4
     assert rel.size == 1
