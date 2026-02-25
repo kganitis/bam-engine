@@ -74,6 +74,7 @@ def generate_screening_report(
     sensitivity: SensitivityResult,
     scenario: str,
     path: Path,
+    top_n: int = 50,
 ) -> None:
     """Generate markdown report for grid screening phase.
 
@@ -93,6 +94,8 @@ def generate_screening_report(
         Scenario name.
     path : Path
         Output path for the markdown report.
+    top_n : int
+        Number of top configs used for pattern analysis.
     """
     n_combos = 1
     for v in grid.values():
@@ -124,11 +127,11 @@ def generate_screening_report(
 
     # Parameter patterns
     if patterns:
-        lines.extend(["", "## Parameter Patterns (top 50)", ""])
+        lines.extend(["", f"## Parameter Patterns (top {top_n})", ""])
         for param, counts in patterns.items():
             parts = []
             for val, count in list(counts.items())[:4]:
-                pct = 100.0 * count / 50
+                pct = 100.0 * count / top_n
                 parts.append(f"{val}={count} ({pct:.0f}%)")
             lines.append(f"- **{param}:** {' | '.join(parts)}")
 

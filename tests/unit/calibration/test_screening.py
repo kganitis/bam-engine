@@ -22,11 +22,12 @@ class TestScreenSingleSeed:
 
         mock_get_funcs.return_value = (mock_validate, None, None, None)
 
-        result = screen_single_seed({"a": 1}, "baseline", 0, 50)
+        result, elapsed = screen_single_seed({"a": 1}, "baseline", 0, 50)
         assert isinstance(result, CalibrationResult)
         assert result.single_score == pytest.approx(0.75)
         assert result.n_pass == 1
         assert result.n_fail == 0
+        assert elapsed >= 0.0
 
 
 class TestRunScreening:
