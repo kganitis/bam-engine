@@ -102,7 +102,6 @@ numpy : Underlying array library
 
 from __future__ import annotations
 
-import builtins
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
 
@@ -300,13 +299,14 @@ def divide(a: Float, b: float | Float, out: Float | None = None) -> Float:
     -----
     This function is safer than NumPy's divide as it prevents
     division by zero errors by replacing zero denominators with 1e-10.
+    Negative denominators are preserved.
     """
-    # Make denominator safe
+    # Make denominator safe (replace only exact zeros, preserve negatives)
     b_safe: float | Float
     if isinstance(b, np.ndarray):
-        b_safe = np.maximum(b, 1e-10)
+        b_safe = np.where(b == 0.0, 1e-10, b)
     else:
-        b_safe = builtins.max(b, 1e-10)
+        b_safe = 1e-10 if b == 0.0 else b
 
     result: Float
     if out is None:

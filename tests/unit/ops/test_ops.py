@@ -79,6 +79,30 @@ class TestArithmetic:
         assert result is out
         np.testing.assert_array_equal(out, [5.0, 5.0, 6.0])
 
+    def test_divide_negative_denominator(self):
+        result = ops.divide(10.0, np.array([-5.0]))
+        np.testing.assert_array_almost_equal(result, [-2.0])
+
+    def test_divide_negative_denominator_scalar(self):
+        a = np.array([10.0])
+        result = ops.divide(a, -5.0)
+        np.testing.assert_array_almost_equal(result, [-2.0])
+
+    def test_divide_zero_denominator_unchanged(self):
+        a = np.array([10.0, 20.0])
+        b = np.array([0.0, 5.0])
+        result = ops.divide(a, b)
+        assert np.isfinite(result[0])
+        np.testing.assert_array_almost_equal(result[1:], [4.0])
+
+    def test_divide_mixed_negative_and_zero(self):
+        a = np.array([10.0, 10.0, 10.0])
+        b = np.array([-2.0, 0.0, 5.0])
+        result = ops.divide(a, b)
+        np.testing.assert_array_almost_equal(result[0], -5.0)
+        assert np.isfinite(result[1])  # zero -> epsilon
+        np.testing.assert_array_almost_equal(result[2], 2.0)
+
 
 class TestAssignment:
     """Test assignment operations."""
