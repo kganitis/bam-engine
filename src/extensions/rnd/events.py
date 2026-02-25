@@ -81,6 +81,9 @@ class FirmsComputeRnDIntensity:
 
         # Calculate fragility = W/A (wage_bill / net_worth)
         fragility = ops.divide(emp.wage_bill, bor.net_worth)
+        # Guard: firms with non-positive net worth get zero fragility
+        # (ops.divide preserves negative denominators, producing negative ratios)
+        fragility = ops.where(ops.greater(bor.net_worth, 0.0), fragility, 0.0)
 
         # Store fragility
         ops.assign(rnd.fragility, fragility)
@@ -97,6 +100,8 @@ class FirmsComputeRnDIntensity:
         # Calculate mu = sigma * net_profit / (price * production)
         revenue = ops.multiply(prod.price, prod.production)
         mu = ops.divide(ops.multiply(sigma, bor.net_profit), revenue)
+        # Guard: firms with zero production get zero intensity
+        mu = ops.where(ops.greater(prod.production, 0.0), mu, 0.0)
 
         # Clamp mu to non-negative range
         mu = ops.maximum(mu, 0.0)
