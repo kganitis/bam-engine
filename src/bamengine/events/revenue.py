@@ -149,7 +149,8 @@ class FirmsValidateDebtCommitments:
        - Remove loans from LoanBook
        - Net profit: :math:`NP_i = GP_i - \\text{interest\\_paid}`
     3. Else (cannot repay):
-       - For each loan, compute the bank's proportional claim:
+
+       - For each loan, compute the bank's proportional claim
          :math:`\\text{frac} = \\text{principal}_\\text{loan} / \\text{principal}_\\text{total}`
        - Recovery (capped at principal, floored at 0):
          :math:`R = \\text{clip}(\\text{frac} \\times A_i,\\; 0,\\; \\text{principal}_\\text{loan})`

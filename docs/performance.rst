@@ -7,7 +7,7 @@ and power users extending BAM Engine.
 .. note::
 
    For user-facing performance expectations and configuration guidance, see
-   :ref:`user_guide/running_simulations:Performance & Scaling`.
+   :ref:`performance-and-scaling`.
 
 Optimization Philosophy
 -----------------------

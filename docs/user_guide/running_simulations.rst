@@ -36,6 +36,8 @@ Or step through one period at a time:
        # Inspect state after each period
        print(f"Period {period}: unemployment = {sim.ec.unemp_rate_history[-1]:.2%}")
 
+.. _performance-and-scaling:
+
 Performance & Scaling
 ---------------------
 
@@ -76,6 +78,8 @@ Expected runtimes on modern hardware (Apple M4 Pro, Python 3.13):
 
    Actual performance varies by hardware. These benchmarks provide relative guidance
    for choosing configurations.
+
+.. _choosing-agent-counts:
 
 Choosing Agent Counts
 ~~~~~~~~~~~~~~~~~~~~~

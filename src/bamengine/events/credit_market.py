@@ -714,11 +714,14 @@ class FirmsApplyForLoans:
     1. Identify firms with ``credit_demand > 0`` and pending queues
     2. Sort firms by leverage (ascending ``projected_fragility``)
     3. For each firm i (outer loop):
+
        - For each bank in their ranked queue (inner loop, up to max_H):
+
          - Pop next bank from queue
          - If bank has credit supply: grant loan, update state
          - If credit_demand now 0: break (fully funded)
          - If no credit supply: continue to next bank (cascade)
+
        - If all banks exhausted: firm stops with partial/no funding
 
     Examples

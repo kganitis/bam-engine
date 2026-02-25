@@ -127,15 +127,9 @@ Type System
 -----------
 
 Type aliases for defining custom roles without NumPy knowledge.
+See :doc:`types` for details.
 
-.. autosummary::
-   :nosignatures:
-
-   Float
-   Int
-   Bool
-   AgentId
-   Rng
+``Float``, ``Int``, ``Bool``, ``AgentId``, ``Rng``
 
 Configuration
 -------------
