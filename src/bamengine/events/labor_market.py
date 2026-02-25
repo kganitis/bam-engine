@@ -385,9 +385,9 @@ class WorkersDecideFirmsToApply:
 
     1. Sample min(max_M, n_firms) firms randomly from eligible pool
     2. Sort sampled firms by wage offer (descending)
-    3. Apply loyalty rule:
-       - If worker's contract expired (not fired) AND previous employer is hiring:
-         Move previous employer to position 0 (top priority)
+    3. Apply loyalty rule — if worker's contract expired (not fired) AND
+       previous employer is hiring, move previous employer to position 0
+       (top priority)
     4. Store sorted application queue in worker's buffer
     5. Reset contract_expired and fired flags
 

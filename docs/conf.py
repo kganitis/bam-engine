@@ -6,11 +6,17 @@
 import logging
 import os
 import sys
+import warnings
 
 from sphinx_gallery.sorting import ExplicitOrder
 
 # Suppress verbose bamengine simulation logs during doc builds
 logging.getLogger("bamengine").setLevel(logging.ERROR)
+
+# Suppress spurious numpydoc warnings for custom sections already handled by Napoleon
+warnings.filterwarnings(
+    "ignore", message=r".*Unknown section.*", module=r"numpydoc\.docscrape"
+)
 
 # Add src/ to path so Sphinx can import all packages (bamengine, validation, etc.)
 sys.path.insert(0, os.path.abspath("../src"))
@@ -85,7 +91,6 @@ numpydoc_class_members_toctree = False
 autodoc_default_options = {
     "members": True,
     "member-order": "bysource",
-    "special-members": "__init__",
     "undoc-members": True,
     "exclude-members": "__weakref__",
 }
@@ -184,6 +189,12 @@ templates_path = ["_templates"]
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+
+# Suppress harmless Sphinx warnings
+suppress_warnings = [
+    "config.cache",  # unpickleable sphinx_gallery_conf callables
+    "autodoc.import_error",  # FirmsAdjustPrice/FirmsCalcBreakevenPrice moved from planning module
+]
 
 # The master toctree document
 master_doc = "index"

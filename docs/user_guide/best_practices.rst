@@ -44,7 +44,7 @@ Choose agent counts based on your research phase:
 * **Final runs** (500+ firms): Publication-quality results
 
 The model's emergent properties are stable across agent counts, so smaller
-configurations are valid for development. See :ref:`user_guide/running_simulations:Choosing Agent Counts`
+configurations are valid for development. See :ref:`choosing-agent-counts`
 for detailed guidance.
 
 Vectorized Operations
