@@ -170,7 +170,7 @@ COLLECT_CONFIG = {
         "Worker.employed": "firms_run_production",
         "Producer.production": "firms_run_production",
         "Producer.labor_productivity": "firms_apply_productivity_growth",
-        "Producer.price": "firms_adjust_price",
+        "Producer.price": "firms_plan_price",
         "Producer.inventory": "consumers_finalize_purchases",
         "Employer.n_vacancies": "firms_decide_vacancies",
         "Borrower.net_worth": "firms_run_production",
