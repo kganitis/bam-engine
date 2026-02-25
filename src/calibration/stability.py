@@ -184,10 +184,12 @@ def run_tiered_stability(
     list[CalibrationResult]
         Final results sorted by ranking strategy (best first).
     """
-    # Initialize seed_scores from screening (seed 0)
+    # Initialize seed_scores/seed_fails from screening (seed 0)
     for c in candidates:
         if c.seed_scores is None:
             c.seed_scores = [c.single_score]
+        if c.seed_fails is None:
+            c.seed_fails = [c.n_fail]
 
     current = candidates
 

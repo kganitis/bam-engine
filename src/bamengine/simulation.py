@@ -287,8 +287,8 @@ class Simulation:
     >>> sim.step()
     >>> prod = sim.get_role("Producer")
     >>> avg_price = prod.price.mean()
-    >>> print(f"Average price: {avg_price:.2f}")
-    Average price: 1.50
+    >>> avg_price > 0
+    True
 
     Custom pipeline:
 
@@ -504,7 +504,7 @@ class Simulation:
             - n_firms : int (default: 100)
             - n_households : int (default: 500)
             - n_banks : int (default: 10)
-            - seed : int or None (default: None)
+            - seed : int or None (default: 0)
             - pipeline_path : str or None (default: None)
             - logging : dict (default: {"default_level": "INFO"})
             See config/defaults.yml for all parameters.

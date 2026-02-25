@@ -582,8 +582,8 @@ class FirmsHireWorkers:
     3. If worker unemployed:
        - Set worker's employer = firm ID
        - Set worker's wage = firm's wage offer
-       - Generate contract duration: θ + Poisson(λ=10)
-       - Set worker's periods_left = contract duration
+       - Set contract duration: θ
+       - Set worker's periods_left = θ
        - Increment firm's current_labor count
        - Decrement firm's vacancies count
     4. If no vacancies remain, clear firm's application queue
@@ -597,7 +597,7 @@ class FirmsHireWorkers:
 
         \\text{wage}_j \\leftarrow w_i
 
-        \\text{periods\\_left}_j \\leftarrow \\theta + \\text{Poisson}(\\lambda=10)
+        \\text{periods\\_left}_j \\leftarrow \\theta
 
         L_i \\leftarrow L_i + 1
 

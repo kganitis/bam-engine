@@ -42,7 +42,6 @@ Check if logging level enabled:
 See Also
 --------
 Event.get_logger : Get logger for specific event
-bamengine.config.schema.LoggingConfig : Logging configuration schema
 """
 
 import logging

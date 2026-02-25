@@ -1,7 +1,7 @@
 """
 Event classes for BAM Engine simulation.
 
-This package contains 45 event classes organized into 8 modules representing
+This package contains 46 event classes organized into 8 modules representing
 different phases of the BAM economic model. Events are auto-registered via
 __init_subclass__ hook and composed into a Pipeline for execution.
 
@@ -18,7 +18,7 @@ Events are organized by economic phase:
 7. **Bankruptcy** (5 events): Insolvency detection, agent replacement
 8. **Economy Stats** (2 events): Aggregate metrics (prices, unemployment)
 
-Total: 45 events across 8 modules
+Total: 46 events across 8 modules
 
 Event Execution
 ---------------
@@ -44,7 +44,7 @@ Examples
 Access event by name:
 
 >>> import bamengine as bam
->>> sim = be.Simulation.init(seed=42)
+>>> sim = bam.Simulation.init(seed=42)
 >>> event = sim.get_event("firms_decide_desired_production")
 >>> event.execute(sim)
 

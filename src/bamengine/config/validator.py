@@ -837,7 +837,7 @@ class ConfigValidator:
 
         Notes
         -----
-        This validation is called by Pipeline.from_yaml() after path validation.
+        This validation is called by Simulation.init() after path validation.
         It ensures all event names are registered before attempting to load
         the pipeline.
 

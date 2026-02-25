@@ -14,14 +14,14 @@ The default planning events execute in this order:
 3. FirmsDecideVacancies - Determine job openings
 4. FirmsFireExcessWorkers - Lay off workers when labor exceeds desired
 
-Alternative planning-phase pricing events (not in default pipeline):
+Default planning-phase pricing events (after FirmsDecideDesiredProduction):
 
 - FirmsPlanBreakevenPrice - Breakeven using previous-period costs
 - FirmsPlanPrice - Price adjustment with breakeven floor
 
 These are mutually exclusive with the production-phase pricing events
 (FirmsCalcBreakevenPrice, FirmsAdjustPrice) defined in
-bamengine.events.production. Use one pair or the other, not both.
+bamengine.events.production. Activate those via ``pricing_phase='production'``.
 
 Design Notes
 ------------
