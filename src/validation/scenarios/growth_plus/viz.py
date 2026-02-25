@@ -787,11 +787,11 @@ def visualize_financial_dynamics(
             verticalalignment="top",
             bbox=dict(boxstyle="round", facecolor=box_color, alpha=0.7),
         )
+        _shade_beyond_extreme(ax, extreme_min, extreme_max, axis="x")
     ax.set_title("Output Growth Rate Distribution", fontsize=12, fontweight="bold")
     ax.set_xlabel("Output growth rate")
     ax.set_ylabel("Log-rank")
     ax.grid(True, linestyle="--", alpha=0.3)
-    _shade_beyond_extreme(ax, extreme_min, extreme_max, axis="x")
 
     # Figure 3.6b: Net Worth Growth Rate Distribution (Log-Rank Plot)
     ax = axes[0, 1]
@@ -884,13 +884,13 @@ def visualize_financial_dynamics(
             verticalalignment="top",
             bbox=dict(boxstyle="round", facecolor=box_color, alpha=0.7),
         )
+        _shade_beyond_extreme(ax, extreme_min, extreme_max, axis="x")
     ax.set_title(
         "Firms' Asset Growth Rate Distribution", fontsize=12, fontweight="bold"
     )
     ax.set_xlabel("Firms' asset growth rate")
     ax.set_ylabel("Log-rank")
     ax.grid(True, linestyle="--", alpha=0.3)
-    _shade_beyond_extreme(ax, extreme_min, extreme_max, axis="x")
 
     # Figure 3.6c: Real Interest Rate
     ax = axes[1, 0]
