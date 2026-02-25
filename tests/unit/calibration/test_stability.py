@@ -72,12 +72,12 @@ class TestRankCandidates:
         ]
 
     def test_combined_ranking(self):
-        """Combined: mean * (1 - k*std), k=1.0."""
+        """Combined: mean * pass_rate * (1 - k*std), k=1.0."""
         candidates = self._make_candidates()
         ranked = _rank_candidates(candidates, rank_by="combined", k_factor=1.0)
-        # B: 0.80 * 0.95 = 0.760
-        # A: 0.75 * 0.90 = 0.675
-        # C: 0.85 * 0.80 = 0.680
+        # B: 0.80 * 1.0 * 0.95 = 0.760
+        # A: 0.75 * 0.9 * 0.90 = 0.6075
+        # C: 0.85 * 0.5 * 0.80 = 0.340
         assert ranked[0].params["id"] == "B"
 
     def test_stability_ranking(self):
@@ -99,7 +99,7 @@ class TestRankCandidates:
     def test_k_factor_affects_ranking(self):
         """Higher k penalizes variance more."""
         candidates = self._make_candidates()
-        # With k=0 (ignore variance), highest mean wins
+        # With k=0 (ignore variance), mean * pass_rate wins
         ranked_k0 = _rank_candidates(
             [CalibrationResult(**{**vars(c)}) for c in candidates],
             rank_by="combined",
@@ -111,10 +111,10 @@ class TestRankCandidates:
             rank_by="combined",
             k_factor=3.0,
         )
-        # k=0 should rank by mean only (C first)
-        assert ranked_k0[0].params["id"] == "C"
-        # k=3 should penalize C's high std heavily
-        assert ranked_k3[0].params["id"] != "C"
+        # k=0: B wins (0.80*1.0=0.80 > A: 0.75*0.9=0.675 > C: 0.85*0.5=0.425)
+        assert ranked_k0[0].params["id"] == "B"
+        # k=3: C's high std heavily penalized, still last
+        assert ranked_k3[-1].params["id"] == "C"
 
 
 class TestRunTieredStability:
@@ -178,3 +178,32 @@ class TestRunTieredStability:
             n_periods=50,
         )
         assert len(results) <= 3
+
+    @patch("calibration.stability.ProcessPoolExecutor", ThreadPoolExecutor)
+    @patch("calibration.stability.get_validation_func")
+    @patch("calibration.stability.save_checkpoint")
+    @patch("calibration.stability.delete_checkpoint")
+    def test_pass_rate_populated(self, mock_del, mock_save, mock_get_func):
+        """pass_rate and seed_fails are populated after tiered testing."""
+
+        def mock_validate(**kwargs):
+            return _make_score(0.75)
+
+        mock_get_func.return_value = mock_validate
+
+        candidates = [
+            CalibrationResult({"a": i}, 0.5 + i * 0.1, 1, 0, 0) for i in range(3)
+        ]
+
+        results = run_tiered_stability(
+            candidates,
+            "baseline",
+            tiers=[(3, 3)],
+            n_workers=1,
+            n_periods=50,
+        )
+
+        for r in results:
+            assert r.pass_rate is not None
+            assert r.seed_fails is not None
+            assert len(r.seed_fails) == len(r.seed_scores or [])

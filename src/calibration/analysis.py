@@ -47,6 +47,8 @@ class CalibrationResult:
         Full stability test result.
     seed_scores : list[float], optional
         Individual seed scores (for incremental stability).
+    seed_fails : list[int], optional
+        Per-seed fail counts (for incremental stability).
     """
 
     params: dict[str, Any]
@@ -60,6 +62,7 @@ class CalibrationResult:
     combined_score: float | None = None
     stability_result: StabilityResult | None = None
     seed_scores: list[float] | None = None
+    seed_fails: list[int] | None = None
 
 
 @dataclass

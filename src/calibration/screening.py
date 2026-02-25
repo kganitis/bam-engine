@@ -23,7 +23,7 @@ def screen_single_seed(
     scenario: str,
     seed: int,
     n_periods: int,
-) -> CalibrationResult:
+) -> tuple[CalibrationResult, float]:
     """Run single-seed validation for quick screening.
 
     Parameters
@@ -39,18 +39,20 @@ def screen_single_seed(
 
     Returns
     -------
-    CalibrationResult
-        Result with single-seed metrics.
+    tuple[CalibrationResult, float]
+        Result with single-seed metrics and elapsed wall-clock seconds.
     """
+    t0 = time.monotonic()
     validate, _, _, _ = get_validation_funcs(scenario)
     result = validate(seed=seed, n_periods=n_periods, **params)
+    elapsed = time.monotonic() - t0
     return CalibrationResult(
         params=params,
         single_score=result.total_score,
         n_pass=result.n_pass,
         n_warn=result.n_warn,
         n_fail=result.n_fail,
-    )
+    ), elapsed
 
 
 # =============================================================================
@@ -94,6 +96,7 @@ def save_checkpoint(
             "n_warn": r.n_warn,
             "n_fail": r.n_fail,
             "seed_scores": r.seed_scores,
+            "seed_fails": r.seed_fails,
             "mean_score": r.mean_score,
             "std_score": r.std_score,
             "pass_rate": r.pass_rate,
@@ -137,6 +140,7 @@ def load_checkpoint(
             n_warn=d["n_warn"],
             n_fail=d["n_fail"],
             seed_scores=d.get("seed_scores"),
+            seed_fails=d.get("seed_fails"),
             mean_score=d.get("mean_score"),
             std_score=d.get("std_score"),
             pass_rate=d.get("pass_rate"),
@@ -219,9 +223,7 @@ def run_screening(
             for p in remaining_combos
         }
         for future in as_completed(futures):
-            t0 = time.monotonic()
-            result = future.result()
-            elapsed = time.monotonic() - t0
+            result, elapsed = future.result()
             run_times.append(elapsed)
 
             results.append(result)
