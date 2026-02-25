@@ -20,6 +20,10 @@ For the full calibration (all params, 100+ seeds), use the CLI::
     python -m calibration --scenario baseline --workers 10
 
 This example uses tiny settings for a quick demonstration (~30 seconds).
+We use ``n_workers=1`` (serial execution) to avoid multiprocessing,
+which requires ``if __name__ == '__main__'`` guards that are incompatible
+with Sphinx Gallery's cell-based execution.  For real calibration runs,
+use ``n_workers=N`` with the CLI or inside a guarded ``__main__`` block.
 """
 
 # %%
@@ -43,7 +47,7 @@ morris = run_morris_screening(
     n_trajectories=3,
     n_seeds=1,
     n_periods=50,
-    n_workers=4,
+    n_workers=1,
 )
 
 print_morris_report(morris, mu_star_threshold=0.02, sigma_threshold=0.02)
@@ -86,16 +90,26 @@ for name, value in fixed.items():
 # 1. Screen all combinations with a single seed
 # 2. Run tiered stability on top candidates
 #
-# We use tiny tiers here: keep top 3 after 2 seeds, then top 2 after
-# 4 seeds total.
+# Here we use a small custom grid (6 combinations) instead of the full
+# Morris-derived grid, which can have hundreds of combinations.  We
+# pick two parameters that typically matter: ``beta`` (propensity
+# exponent) and ``max_M`` (goods market search breadth).
+#
+# .. note::
+#
+#    With only 50 periods, scores will be low and pass rates zero —
+#    the economy hasn't warmed up yet.  Real calibration uses
+#    ``n_periods=1000`` (see the CLI).
 
 from calibration import run_focused_calibration
 
+demo_grid = {"beta": [1.0, 2.5, 5.0], "max_M": [2, 4]}
+
 results = run_focused_calibration(
-    grid,
-    fixed,
+    demo_grid,
+    fixed_params={},
     scenario="baseline",
-    n_workers=4,
+    n_workers=1,
     n_periods=50,
     stability_tiers=[(3, 2), (2, 4)],
     rank_by="combined",
@@ -107,6 +121,9 @@ results = run_focused_calibration(
 # -------
 #
 # Each result has a ``params`` dict, scores, and stability metrics.
+# With ``n_periods=50`` the pass rate will be 0% and combined scores
+# will be zero — this is expected.  The raw ``mean_score`` still shows
+# relative ranking between configurations.
 
 from calibration import compare_configs, export_best_config
 

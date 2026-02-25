@@ -217,19 +217,42 @@ def run_screening(
     completed = len(results)
     run_times: list[float] = []
 
-    with ProcessPoolExecutor(max_workers=n_workers) as executor:
-        futures = {
-            executor.submit(screen_single_seed, p, scenario, 0, n_periods): p
-            for p in remaining_combos
-        }
-        for future in as_completed(futures):
-            result, elapsed = future.result()
+    if n_workers > 1:
+        with ProcessPoolExecutor(max_workers=n_workers) as executor:
+            futures = {
+                executor.submit(screen_single_seed, p, scenario, 0, n_periods): p
+                for p in remaining_combos
+            }
+            for future in as_completed(futures):
+                result, elapsed = future.result()
+                run_times.append(elapsed)
+
+                results.append(result)
+                completed += 1
+
+                # Compute ETA
+                if avg_time_per_run > 0:
+                    est_time = avg_time_per_run
+                elif len(run_times) >= 5:
+                    est_time = sum(run_times) / len(run_times)
+                else:
+                    est_time = 0.0
+
+                remaining = total - completed
+                eta = format_eta(remaining, est_time, n_workers)
+                print(f"  {format_progress(completed, total, remaining, eta)}")
+
+                # Checkpoint periodically
+                if checkpoint_every > 0 and completed % checkpoint_every == 0:
+                    save_checkpoint(results, scenario, "screening")
+    else:
+        for p in remaining_combos:
+            result, elapsed = screen_single_seed(p, scenario, 0, n_periods)
             run_times.append(elapsed)
 
             results.append(result)
             completed += 1
 
-            # Compute ETA
             if avg_time_per_run > 0:
                 est_time = avg_time_per_run
             elif len(run_times) >= 5:
@@ -241,7 +264,6 @@ def run_screening(
             eta = format_eta(remaining, est_time, n_workers)
             print(f"  {format_progress(completed, total, remaining, eta)}")
 
-            # Checkpoint periodically
             if checkpoint_every > 0 and completed % checkpoint_every == 0:
                 save_checkpoint(results, scenario, "screening")
 
