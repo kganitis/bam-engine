@@ -199,8 +199,8 @@ RND_CONFIG = {
 # and the co-movement structure should be stable.
 
 N_SEEDS = 3
-N_PERIODS = 1000
-BURN_IN = 500
+N_PERIODS = 200
+BURN_IN = 100
 MAX_LAG = 4
 
 COLLECT_CONFIG = {
@@ -609,15 +609,16 @@ ar_off, _ = fit_ar(cycle_off, order=2)
 print(f"  GDP volatility: PA on = {vol_on:.4f}, PA off = {vol_off:.4f}")
 print(f"  AR persistence: PA on phi_1 = {ar_on[1]:.3f}, PA off phi_1 = {ar_off[1]:.3f}")
 
-# Plot GDP cycles overlay
-fig, ax = plt.subplots(1, 1, figsize=(10, 4))
-t = np.arange(len(cycle_on))
-ax.plot(t, cycle_on, "b-", linewidth=1, alpha=0.8, label="PA on (loyalty)")
-ax.plot(t, cycle_off, "r-", linewidth=1, alpha=0.8, label="PA off (random)")
-ax.axhline(0, color="gray", linewidth=0.5)
-ax.set_title("GDP cyclical component: PA on vs PA off", fontsize=12)
+# Plot log GDP time series overlay (post burn-in)
+log_gdp_on = series_on["log_gdp"][bi:]
+log_gdp_off = series_off["log_gdp"][bi:]
+fig, ax = plt.subplots(1, 1, figsize=(12, 5))
+periods = np.arange(len(log_gdp_on))
+ax.plot(periods, log_gdp_on, "b-", linewidth=1, alpha=0.8, label="PA on (loyalty)")
+ax.plot(periods, log_gdp_off, "r-", linewidth=1, alpha=0.8, label="PA off (random)")
+ax.set_title("Log GDP: PA on vs PA off (Section 3.10.2, Figure 3.10)", fontsize=12)
 ax.set_xlabel("Period (after burn-in)")
-ax.set_ylabel("HP-filtered log GDP cycle")
+ax.set_ylabel("Log GDP")
 ax.legend(fontsize=9)
 ax.grid(True, alpha=0.3)
 plt.tight_layout()
