@@ -1,7 +1,5 @@
 """Unit tests for Pipeline class."""
 
-from typing import cast
-
 import numpy as np
 import pytest
 
@@ -454,9 +452,6 @@ def test_pipeline_with_repeats():
     # Both events should be wrapped in RepeatedEvent
     assert isinstance(event1, RepeatedEvent)
     assert isinstance(event2, RepeatedEvent)
-    # Cast to RepeatedEvent to check n_repeats
-    cast(RepeatedEvent, event1)
-    cast(RepeatedEvent, event2)
     # Both should have n_repeats of 5
     assert event1.n_repeats == 5
     assert event2.n_repeats == 5

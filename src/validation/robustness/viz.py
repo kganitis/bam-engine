@@ -262,9 +262,7 @@ def plot_sensitivity_comovements(
         plot_indices = list(range(n_values))
     else:
         # Baseline + first + middle + last
-        plot_indices = sorted(
-            set([0, exp_result.baseline_idx, n_values // 2, n_values - 1])
-        )
+        plot_indices = sorted({0, exp_result.baseline_idx, n_values // 2, n_values - 1})
 
     colors = plt.cm.viridis(np.linspace(0, 1, len(plot_indices)))
     max_lag = (len(next(iter(vrs[0].mean_comovements.values()))) - 1) // 2
