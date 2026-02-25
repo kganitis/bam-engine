@@ -27,11 +27,11 @@ def _evaluate_single_seed(
     scenario: str,
     seed: int,
     n_periods: int,
-) -> tuple[dict[str, Any], int, float]:
-    """Evaluate a single seed for stability testing. Returns (params, seed, score)."""
+) -> tuple[dict[str, Any], int, float, int]:
+    """Evaluate a single seed for stability testing. Returns (params, seed, score, n_fail)."""
     validate = get_validation_func(scenario)
     result = validate(seed=seed, n_periods=n_periods, **params)
-    return dict(params), seed, result.total_score
+    return dict(params), seed, result.total_score, result.n_fail
 
 
 def evaluate_stability(
@@ -133,10 +133,11 @@ def _rank_candidates(
     elif rank_by == "mean":
         candidates.sort(key=lambda r: r.mean_score or 0.0, reverse=True)
     else:
-        # "combined": mean * (1 - k * std)
+        # "combined": mean * pass_rate * (1 - k * std)
         for c in candidates:
             if c.mean_score is not None and c.std_score is not None:
-                c.combined_score = c.mean_score * (1.0 - k_factor * c.std_score)
+                pr = c.pass_rate if c.pass_rate is not None else 1.0
+                c.combined_score = c.mean_score * pr * (1.0 - k_factor * c.std_score)
         candidates.sort(key=lambda r: r.combined_score or 0.0, reverse=True)
 
     return candidates
@@ -221,10 +222,12 @@ def run_tiered_stability(
                         )
                         for seed in new_seed_ids
                     ]
-                    new_scores = []
+                    new_scores: list[float] = []
+                    new_fails: list[int] = []
                     for i, future in enumerate(as_completed(futures)):
-                        _, _seed, score = future.result()
+                        _, _seed, score, n_fail = future.result()
                         new_scores.append(score)
+                        new_fails.append(n_fail)
                         done = i + 1
                         remaining = new_seeds_needed - done
                         eta = format_eta(remaining, avg_time_per_run, n_workers)
@@ -236,13 +239,17 @@ def run_tiered_stability(
                         )
 
                 c.seed_scores = (c.seed_scores or []) + new_scores
+                c.seed_fails = (c.seed_fails or [c.n_fail]) + new_fails
 
             # Update aggregate metrics
             scores = c.seed_scores or []
             if scores:
                 c.mean_score = statistics.mean(scores)
                 c.std_score = statistics.stdev(scores) if len(scores) > 1 else 0.0
-                c.combined_score = c.mean_score * (1.0 - k_factor * c.std_score)
+                n_passed = sum(1 for nf in (c.seed_fails or []) if nf == 0)
+                c.pass_rate = n_passed / len(c.seed_fails) if c.seed_fails else None
+                pr = c.pass_rate if c.pass_rate is not None else 1.0
+                c.combined_score = c.mean_score * pr * (1.0 - k_factor * c.std_score)
 
         # Rank by chosen strategy
         top = _rank_candidates(top, rank_by=rank_by, k_factor=k_factor)
