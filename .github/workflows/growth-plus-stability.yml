@@ -3,8 +3,21 @@ name: Growth+ Stability
 on:
   push:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/validation/**'
+      - 'tests/conftest.py'
+      - 'pyproject.toml'
+      - '.github/workflows/growth-plus-stability.yml'
   pull_request:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/validation/**'
+      - 'tests/conftest.py'
+      - 'pyproject.toml'
+      - '.github/workflows/growth-plus-stability.yml'
+  workflow_dispatch:
 
 jobs:
   stability:
