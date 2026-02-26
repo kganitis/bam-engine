@@ -1,31 +1,33 @@
 User Guide
 ==========
 
-This section provides detailed guidance on using BAM Engine.
+This guide walks you through using BAM Engine — from understanding the underlying
+economic model to writing your own extensions and validating results against the
+reference literature.
 
-.. note::
-
-   This documentation is under construction. See the :doc:`Examples </auto_examples/index>`
-   for usage patterns in the meantime.
+Whether you're new to agent-based modeling or an experienced researcher, the guide
+is organized in progressive order: start with the conceptual foundations, learn the
+core API, then move to advanced customization and validation workflows.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Understanding BAM Engine
+   :caption: Understanding the Model
 
    overview
    bam_model
 
 .. toctree::
    :maxdepth: 2
-   :caption: Using the Framework
+   :caption: Using BAM Engine
 
-   configuration
    running_simulations
+   configuration
    data_collection
+   operations
 
 .. toctree::
    :maxdepth: 2
-   :caption: Extending BAM Engine
+   :caption: Extending the Framework
 
    custom_roles
    custom_events
@@ -34,7 +36,19 @@ This section provides detailed guidance on using BAM Engine.
 
 .. toctree::
    :maxdepth: 2
+   :caption: Model Extensions
+
+   extensions
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Validation & Calibration
+
+   validation
+   calibration
+
+.. toctree::
+   :maxdepth: 2
    :caption: Reference & Tips
 
-   operations
    best_practices
