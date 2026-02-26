@@ -7,13 +7,13 @@ documentation. System functions are organized by economic phase.
 
 Modules
 -------
-:mod:`bamengine.events._internal.planning` : Production targets, planning-phase pricing, labor needs, vacancies (5 functions)
-:mod:`bamengine.events._internal.labor_market` : Wage setting, job applications, hiring, wage bills (7 functions)
-:mod:`bamengine.events._internal.credit_market` : Credit supply/demand, loan matching, layoffs (8 functions)
-:mod:`bamengine.events._internal.production` : Wage payments, breakeven/price, production, contracts (6 functions + 2 stats)
-:mod:`bamengine.events._internal.goods_market` : Consumption decisions, shopping rounds (5 functions)
-:mod:`bamengine.events._internal.revenue` : Revenue collection, debt repayment, dividends (3 functions)
-:mod:`bamengine.events._internal.bankruptcy` : Insolvency detection, agent replacement (5 functions)
+:mod:`~bamengine.events._internal.planning` : Production targets, planning-phase pricing, labor needs, vacancies (5 functions)
+:mod:`~bamengine.events._internal.labor_market` : Wage setting, job applications, hiring, wage bills (7 functions)
+:mod:`~bamengine.events._internal.credit_market` : Credit supply/demand, loan matching, layoffs (8 functions)
+:mod:`~bamengine.events._internal.production` : Wage payments, breakeven/price, production, contracts (6 functions + 2 stats)
+:mod:`~bamengine.events._internal.goods_market` : Consumption decisions, shopping rounds (5 functions)
+:mod:`~bamengine.events._internal.revenue` : Revenue collection, debt repayment, dividends (3 functions)
+:mod:`~bamengine.events._internal.bankruptcy` : Insolvency detection, agent replacement (5 functions)
 
 Design Pattern
 --------------

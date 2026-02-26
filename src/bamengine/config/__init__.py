@@ -75,7 +75,7 @@ See Also
 --------
 :class:`~bamengine.config.schema.Config` : Immutable configuration dataclass
 :class:`~bamengine.config.validator.ConfigValidator` : Centralized validation class
-:meth:`bamengine.Simulation.init` : Initialize simulation with configuration
+:meth:`Simulation.init() <bamengine.Simulation.init>` : Initialize simulation with configuration
 """
 
 from bamengine.config.schema import Config

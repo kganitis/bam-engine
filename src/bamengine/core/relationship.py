@@ -51,7 +51,7 @@ Traditional syntax:
 See Also
 --------
 :class:`~bamengine.core.role.Role` : Base class for component state
-:func:`bamengine.core.decorators.relationship` : Simplified @relationship decorator
+:func:`~bamengine.core.decorators.relationship` : Simplified @relationship decorator
 :class:`~bamengine.relationships.loanbook.LoanBook` : Concrete relationship between Borrower and Lender
 """
 

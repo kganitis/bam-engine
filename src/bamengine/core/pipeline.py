@@ -54,7 +54,7 @@ See Also
 --------
 :class:`~bamengine.core.event.Event` : Base class for all events
 :func:`create_default_pipeline` : Factory for canonical BAM pipeline
-:meth:`bamengine.config.validator.ConfigValidator.validate_pipeline_yaml` : Pipeline validation
+:meth:`ConfigValidator.validate_pipeline_yaml() <bamengine.config.validator.ConfigValidator.validate_pipeline_yaml>` : Pipeline validation
 """
 
 from __future__ import annotations
