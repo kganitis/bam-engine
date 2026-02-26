@@ -26,8 +26,8 @@ roles are discoverable at runtime.
 See Also
 --------
 :class:`~bamengine.core.event.Event` : Base class for events (systems) in BAM-ECS
-:mod:`bamengine.core.registry` : Global role and event lookup system
-:func:`bamengine.core.decorators.role` : Simplified decorator for defining roles
+:mod:`~bamengine.core.registry` : Global role and event lookup system
+:func:`~bamengine.core.decorators.role` : Simplified decorator for defining roles
 """
 
 from __future__ import annotations
@@ -102,8 +102,8 @@ class Role(ABC):
     See Also
     --------
     :class:`~bamengine.core.event.Event` : Base class for events (systems) in BAM-ECS
-    :func:`bamengine.core.decorators.role` : Simplified @role decorator
-    :func:`bamengine.core.registry.get_role` : Retrieve role by name
+    :func:`~bamengine.core.decorators.role` : Simplified @role decorator
+    :func:`~bamengine.core.registry.get_role` : Retrieve role by name
     """
 
     # Class variable to store role name (set automatically by __init_subclass__)

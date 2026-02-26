@@ -48,7 +48,7 @@ Aggregate debt per borrower:
 
 See Also
 --------
-:class:`bamengine.core.relationship.Relationship` : Base class for all relationships
+:class:`~bamengine.core.relationship.Relationship` : Base class for all relationships
 :class:`~bamengine.relationships.loanbook.LoanBook` : Loan relationship implementation
 """
 

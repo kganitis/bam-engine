@@ -88,8 +88,8 @@ class Borrower:
     :class:`~bamengine.roles.employer.Employer` : Labor hiring role for firms
     :class:`~bamengine.roles.lender.Lender` : Credit supply role for banks
     :class:`~bamengine.relationships.loanbook.LoanBook` : Loan relationship between borrowers and lenders
-    :mod:`bamengine.events.credit_market` : Credit market logic
-    :mod:`bamengine.events.revenue` : Revenue collection logic
+    :mod:`~bamengine.events.credit_market` : Credit market logic
+    :mod:`~bamengine.events.revenue` : Revenue collection logic
     """
 
     # Finance

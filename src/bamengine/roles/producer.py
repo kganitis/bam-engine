@@ -89,8 +89,8 @@ class Producer:
     --------
     :class:`~bamengine.roles.employer.Employer` : Labor hiring role for firms
     :class:`~bamengine.roles.borrower.Borrower` : Financial role for firms
-    :mod:`bamengine.events.planning` : Production planning logic
-    :mod:`bamengine.events.production` : Production execution logic
+    :mod:`~bamengine.events.planning` : Production planning logic
+    :mod:`~bamengine.events.production` : Production execution logic
     """
 
     production: Float1D

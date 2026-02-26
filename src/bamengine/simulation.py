@@ -22,10 +22,10 @@ Simulation
 
 See Also
 --------
-:mod:`bamengine.config` : Configuration dataclass and validation
-:mod:`bamengine.core` : Event and Pipeline infrastructure
-:mod:`bamengine.roles` : Agent role components (Producer, Worker, etc.)
-:mod:`bamengine.events` : Event classes wrapping system functions
+:mod:`~bamengine.config` : Configuration dataclass and validation
+:mod:`~bamengine.core` : Event and Pipeline infrastructure
+:mod:`~bamengine.roles` : Agent role components (Producer, Worker, etc.)
+:mod:`~bamengine.events` : Event classes wrapping system functions
 
 Examples
 --------
@@ -591,9 +591,9 @@ class Simulation:
 
         See Also
         --------
-        :class:`bamengine.config.schema.Config` : Configuration dataclass
-        :class:`bamengine.config.validator.ConfigValidator` : Centralized validation logic
-        :class:`bamengine.core.pipeline.Pipeline` : Event pipeline configuration
+        :class:`~bamengine.config.schema.Config` : Configuration dataclass
+        :class:`~bamengine.config.validator.ConfigValidator` : Centralized validation logic
+        :class:`~bamengine.core.pipeline.Pipeline` : Event pipeline configuration
         """
         # 1 + 2 + 3 → one merged dict
         cfg_dict: dict[str, Any] = _package_defaults()

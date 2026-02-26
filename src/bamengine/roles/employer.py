@@ -82,7 +82,7 @@ class Employer:
     :class:`~bamengine.roles.producer.Producer` : Production role for firms
     :class:`~bamengine.roles.borrower.Borrower` : Financial role for firms
     :class:`~bamengine.roles.worker.Worker` : Employment role for households
-    :mod:`bamengine.events.labor_market` : Labor market logic
+    :mod:`~bamengine.events.labor_market` : Labor market logic
     """
 
     desired_labor: Int1D
