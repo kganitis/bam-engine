@@ -85,17 +85,24 @@ class Consumer:
 
     See Also
     --------
-    :class:`~bamengine.roles.Worker` : Employment role for households
-    :class:`~bamengine.roles.Producer` : Production role for firms
-    :mod:`bamengine.events._internal.goods_market` : Goods market logic
+    :class:`~bamengine.roles.worker.Worker` : Employment role for households
+    :class:`~bamengine.roles.producer.Producer` : Production role for firms
+    :mod:`bamengine.events.goods_market` : Goods market logic
     """
 
     income: Float1D
+    """Total income received this period from wages."""
     savings: Float1D
+    """Accumulated savings from previous periods."""
     income_to_spend: Float1D
+    """Portion of income allocated for consumption this period."""
     propensity: Float1D
+    """Propensity to consume (0 to 1)."""
     largest_prod_prev: Idx1D
+    """Firm with highest production in previous period (loyalty target)."""
 
     # Scratch queues
     shop_visits_head: Idx1D
-    shop_visits_targets: Idx2D  # shape (n_households, Z)
+    """Queue head pointer for shop visits."""
+    shop_visits_targets: Idx2D
+    """Queue of firm IDs to visit, shape ``(n_households, max_Z)``."""

@@ -17,17 +17,6 @@ Classes
 - :class:`~relationship.Relationship` — Base class for agent relationships
 - :class:`~Pipeline` — Event execution sequence
 
-Decorators
-----------
-
-.. autosummary::
-   :toctree: ../generated
-   :nosignatures:
-
-   role
-   event
-   relationship
-
 Submodules
 ----------
 

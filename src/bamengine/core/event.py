@@ -25,10 +25,10 @@ events are discoverable at runtime.
 
 See Also
 --------
-:class:`~bamengine.core.Role` : Base class for roles (components) in BAM-ECS
-:class:`~bamengine.core.Pipeline` : Manages event execution order
+:class:`~bamengine.core.role.Role` : Base class for roles (components) in BAM-ECS
+:class:`~bamengine.core.pipeline.Pipeline` : Manages event execution order
 :mod:`bamengine.core.registry` : Global registries for events and roles
-:func:`bamengine.event` : Simplified decorator for defining events
+:func:`bamengine.core.decorators.event` : Simplified decorator for defining events
 """
 
 from __future__ import annotations
@@ -140,11 +140,11 @@ class Event(ABC):
 
     See Also
     --------
-    :class:`~bamengine.core.Role` : Base class for roles (components) in BAM-ECS
-    :class:`~bamengine.core.Pipeline` : Manages event execution order
+    :class:`~bamengine.core.role.Role` : Base class for roles (components) in BAM-ECS
+    :class:`~bamengine.core.pipeline.Pipeline` : Manages event execution order
     :mod:`bamengine.core.registry` : Global registries for events and roles
     :mod:`bamengine.logging` : Logging utilities for BAM-ECS
-    :func:`bamengine.event` : Simplified @event decorator
+    :func:`bamengine.core.decorators.event` : Simplified @event decorator
     """
 
     # Class variable for event name (set by subclass)

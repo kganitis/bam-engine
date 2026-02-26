@@ -91,23 +91,32 @@ class Economy:
 
     See Also
     --------
-    :class:`~bamengine.core.Role` : Base class for per-agent state components
+    :class:`~bamengine.core.role.Role` : Base class for per-agent state components
     :class:`~bamengine.Simulation` : Main simulation facade with ec attribute
     """
 
     # policy / structural scalars
     avg_mkt_price: float
+    """Current average market price across all firms."""
     min_wage: float
+    """Minimum wage floor enforced by policy."""
     min_wage_rev_period: int
+    """Period when the minimum wage was last revised."""
 
     # time-series
-    avg_mkt_price_history: Float1D  # shape  (t+1,)
-    unemp_rate_history: Float1D  # shape  (t+1,) -- raw unemployment rate
-    inflation_history: Float1D  # shape  (t+1,)
+    avg_mkt_price_history: Float1D
+    """Time series of average market prices, shape ``(t+1,)``."""
+    unemp_rate_history: Float1D
+    """Time series of raw unemployment rates, shape ``(t+1,)``."""
+    inflation_history: Float1D
+    """Time series of inflation rates, shape ``(t+1,)``."""
 
     # transient exit lists (flushed each Entry event)
     exiting_firms: Idx1D = field(default_factory=lambda: np.empty(0, np.intp))
+    """Indices of firms exiting this period (flushed each period)."""
     exiting_banks: Idx1D = field(default_factory=lambda: np.empty(0, np.intp))
+    """Indices of banks exiting this period (flushed each period)."""
 
     # Termination flag
     collapsed: bool = False
+    """Whether the simulation has collapsed and should stop."""

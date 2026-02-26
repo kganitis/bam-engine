@@ -146,6 +146,7 @@ Available role shortcuts:
 - ``sim.bor`` - Borrower (firms): net worth, debt, credit demand
 - ``sim.wrk`` - Worker (households): wages, employment status
 - ``sim.con`` - Consumer (households): income, savings
+- ``sim.sh`` - Shareholder (households): dividend tracking
 - ``sim.lend`` - Lender (banks): equity, interest rates, credit supply
 
 Economy-wide metrics are available through ``sim.ec``:

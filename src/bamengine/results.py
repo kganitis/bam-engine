@@ -636,12 +636,17 @@ class SimulationResults:
     """
 
     role_data: dict[str, dict[str, NDArray[Any]]] = field(default_factory=dict)
+    """Per-role time series data keyed by role name then variable name."""
     economy_data: dict[str, NDArray[Any]] = field(default_factory=dict)
+    """Economy-wide metric time series keyed by metric name."""
     relationship_data: dict[str, dict[str, NDArray[Any] | list[NDArray[Any]]]] = field(
         default_factory=dict
     )
+    """Per-relationship time series data keyed by relationship name then field name."""
     config: dict[str, Any] = field(default_factory=dict)
+    """Configuration parameters used for this simulation run."""
     metadata: dict[str, Any] = field(default_factory=dict)
+    """Run metadata including seed, runtime, and period count."""
 
     def to_dataframe(
         self,

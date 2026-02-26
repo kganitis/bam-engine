@@ -67,9 +67,9 @@ Purge loans from bankrupt firms:
 
 See Also
 --------
-:class:`bamengine.core.Relationship` : Base class with query methods
-:class:`~bamengine.roles.Borrower` : Source role (firms)
-:class:`~bamengine.roles.Lender` : Target role (banks)
+:class:`bamengine.core.relationship.Relationship` : Base class with query methods
+:class:`~bamengine.roles.borrower.Borrower` : Source role (firms)
+:class:`~bamengine.roles.lender.Lender` : Target role (banks)
 """
 
 from __future__ import annotations
@@ -198,25 +198,33 @@ class LoanBook:
 
     See Also
     --------
-    :class:`bamengine.core.Relationship` : Base class with query/aggregation
-    :class:`~bamengine.roles.Borrower` : Source role (firms seeking credit)
-    :class:`~bamengine.roles.Lender` : Target role (banks providing credit)
-    :mod:`bamengine.events._internal.credit_market` : Loan creation logic
-    :mod:`bamengine.events._internal.revenue` : Debt repayment logic
+    :class:`bamengine.core.relationship.Relationship` : Base class with query/aggregation
+    :class:`~bamengine.roles.borrower.Borrower` : Source role (firms seeking credit)
+    :class:`~bamengine.roles.lender.Lender` : Target role (banks providing credit)
+    :mod:`bamengine.events.credit_market` : Loan creation logic
+    :mod:`bamengine.events.revenue` : Debt repayment logic
     """
 
     # Edge-specific components (loan data per edge)
     principal: Float1D = field(default_factory=lambda: np.empty(0, np.float64))
+    """Loan principal amounts (original loan amounts at signing)."""
     rate: Float1D = field(default_factory=lambda: np.empty(0, np.float64))
+    """Contractual interest rates for each loan."""
     interest: Float1D = field(default_factory=lambda: np.empty(0, np.float64))
+    """Cached interest amounts (rate * principal)."""
     debt: Float1D = field(default_factory=lambda: np.empty(0, np.float64))
+    """Cached total debt (principal * (1 + rate))."""
 
     # Default values for base class fields (from Relationship)
     # These must come after edge components due to dataclass field ordering
     source_ids: Idx1D = field(default_factory=lambda: np.empty(0, np.int64))
+    """Borrower (firm) IDs for each loan."""
     target_ids: Idx1D = field(default_factory=lambda: np.empty(0, np.int64))
+    """Lender (bank) IDs for each loan."""
     size: int = 0
+    """Number of active loans (valid entries in arrays)."""
     capacity: int = 128
+    """Allocated array size (grows via doubling when exceeded)."""
 
     # Backward compatibility aliases for existing code
     @property

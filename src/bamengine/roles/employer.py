@@ -79,24 +79,33 @@ class Employer:
 
     See Also
     --------
-    :class:`~bamengine.roles.Producer` : Production role for firms
-    :class:`~bamengine.roles.Borrower` : Financial role for firms
-    :class:`~bamengine.roles.Worker` : Employment role for households
-    :mod:`bamengine.events._internal.labor_market` : Labor market logic
+    :class:`~bamengine.roles.producer.Producer` : Production role for firms
+    :class:`~bamengine.roles.borrower.Borrower` : Financial role for firms
+    :class:`~bamengine.roles.worker.Worker` : Employment role for households
+    :mod:`bamengine.events.labor_market` : Labor market logic
     """
 
     desired_labor: Int1D
+    """Target number of workers needed (based on production plans)."""
     current_labor: Int1D
+    """Current number of employed workers."""
     wage_offer: Float1D
+    """Wage offered to potential new workers."""
     wage_bill: Float1D
+    """Total wages paid this period (shared with Borrower)."""
     n_vacancies: Int1D
+    """Number of open positions (desired_labor - current_labor)."""
 
     # Shared view with Borrower role (same array in memory)
     total_funds: Float1D
+    """Available funds for hiring (shared view with Borrower.total_funds)."""
 
     # Scratch queues
     recv_job_apps_head: Idx1D
+    """Queue head pointer for received job applications."""
     recv_job_apps: Idx2D
+    """Queue of worker IDs who applied, shape ``(n_firms, n_households)``."""
 
     # Scratch buffer
     wage_shock: Float1D | None = field(default=None, repr=False)
+    """Scratch buffer for wage shock calculations."""

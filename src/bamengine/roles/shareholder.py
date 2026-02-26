@@ -49,9 +49,10 @@ class Shareholder:
 
     See Also
     --------
-    :class:`~bamengine.roles.Consumer` : Consumption role for households
-    :class:`~bamengine.roles.Worker` : Employment role for households
+    :class:`~bamengine.roles.consumer.Consumer` : Consumption role for households
+    :class:`~bamengine.roles.worker.Worker` : Employment role for households
     :class:`~bamengine.events.revenue.FirmsPayDividends` : Dividend distribution event
     """
 
     dividends: Float1D
+    """Per-period dividend received by each household (overwritten each period)."""

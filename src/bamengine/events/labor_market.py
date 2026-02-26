@@ -705,14 +705,12 @@ class WorkersApplyToFirms:
 
     Algorithm
     ---------
-    1. Identify unemployed workers with pending application queues
-    2. Shuffle worker order randomly (``rng.shuffle``)
-    3. For each worker j (outer loop):
-       - For each firm in their ranked queue (inner loop, up to max_M):
-         - Pop next firm from queue
-         - If firm has vacancies: hire immediately, break
-         - If no vacancies: continue to next firm (cascade)
-       - If all firms exhausted: worker stays unemployed
+    1. Identify unemployed workers with pending application queues.
+    2. Shuffle worker order randomly (``rng.shuffle``).
+    3. For each worker *j*, walk the ranked queue (up to ``max_M`` firms).
+       If a firm has vacancies the worker is hired immediately and stops;
+       otherwise the worker cascades to the next firm.  If the queue is
+       exhausted the worker stays unemployed.
 
     Examples
     --------

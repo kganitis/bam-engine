@@ -34,7 +34,7 @@ Key Concepts
   Households are Worker + Consumer. Banks are Lender.
 
 **Event Pipeline**
-  Each period executes 40+ events in fixed order: Planning → Labor Market →
+  Each period executes 46 events in fixed order: Planning → Labor Market →
   Credit Market → Production → Goods Market → Revenue → Bankruptcy → Entry.
 
 **Vectorized Operations**

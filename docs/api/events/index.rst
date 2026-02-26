@@ -4,20 +4,8 @@ Events
 .. automodule:: bamengine.events
    :no-members:
 
-The ``bamengine.events`` package contains 39 event classes organized into
+The ``bamengine.events`` package contains 46 event classes organized into
 8 modules representing different phases of the BAM economic model.
-
-.. currentmodule:: bamengine
-
-Registry Functions
-------------------
-
-.. autosummary::
-   :toctree: ../generated
-   :nosignatures:
-
-   get_event
-   list_events
 
 Event Modules
 -------------

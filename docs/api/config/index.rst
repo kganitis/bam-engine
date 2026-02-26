@@ -12,12 +12,8 @@ with centralized validation.
 Classes
 -------
 
-.. autosummary::
-   :toctree: ../generated
-   :nosignatures:
-
-   Config
-   ConfigValidator
+- :class:`~schema.Config` — Immutable simulation parameter dataclass
+- :class:`~validator.ConfigValidator` — Centralized configuration validation
 
 Config Submodules
 -----------------
