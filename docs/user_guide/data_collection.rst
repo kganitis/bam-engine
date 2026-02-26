@@ -68,11 +68,38 @@ In dict form, the following keys are recognized:
 * **Role names** (e.g., "Producer", "Worker"): Values are either ``True``
   (all variables) or a list of variable names.
 * **"Economy"**: Treated as a pseudo-role for economy metrics.
-  Available metrics: ``avg_price``, ``unemployment_rate``, ``inflation``.
 * **"aggregate"**: How to aggregate across agents. Options:
   ``None`` (default — full per-agent data), ``"mean"``, ``"median"``,
   ``"sum"``, or ``"std"``. Note: ``collect=True`` and list-form
   ``collect`` always aggregate with ``"mean"``.
+
+Economy Metrics
+---------------
+
+The ``"Economy"`` pseudo-role provides access to aggregate time series tracked
+each period:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Metric
+     - Description
+   * - ``avg_price``
+     - Average market price across firms (production-weighted)
+   * - ``unemployment_rate``
+     - Fraction of households without an employer
+   * - ``inflation``
+     - Year-over-year change in average market price
+
+These are also available directly on the economy object during simulation:
+
+.. code-block:: python
+
+   sim.ec.avg_mkt_price  # Current average price (scalar)
+   sim.ec.avg_mkt_price_history  # Full time series (array)
+   sim.ec.unemp_rate_history  # Full unemployment time series
+   sim.ec.inflation_history  # Full inflation time series
 
 Full Per-Agent Data
 -------------------
@@ -173,4 +200,29 @@ Accessing Results
    prod_df = results.get_role_data("Producer")
    loans_df = results.get_relationship_data("LoanBook")  # if collected
 
-See the :doc:`examples </auto_examples/index>` for more data collection patterns.
+Exporting Data
+--------------
+
+Export collected data to pandas DataFrames or files for external analysis:
+
+.. code-block:: python
+
+   # Export all collected data to a single DataFrame
+   df = results.to_dataframe()
+
+   # Save to various formats (requires pandas)
+   df.to_csv("results.csv")
+   df.to_parquet("results.parquet")
+
+   # Export individual roles
+   prod_df = results.get_role_data("Producer")
+   prod_df.to_csv("producer_data.csv")
+
+.. tip::
+
+   For long simulations or parameter sweeps, saving to Parquet format is
+   recommended — it is compressed, fast to read, and preserves column types.
+
+.. seealso::
+
+   See the :doc:`examples </auto_examples/index>` for more data collection patterns.
