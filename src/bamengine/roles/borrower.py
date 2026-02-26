@@ -84,28 +84,38 @@ class Borrower:
 
     See Also
     --------
-    :class:`~bamengine.roles.Producer` : Production role for firms
-    :class:`~bamengine.roles.Employer` : Labor hiring role for firms
-    :class:`~bamengine.roles.Lender` : Credit supply role for banks
-    :class:`~bamengine.relationships.LoanBook` : Loan relationship between borrowers and lenders
-    :mod:`bamengine.events._internal.credit_market` : Credit market logic
-    :mod:`bamengine.events._internal.revenue` : Revenue collection logic
+    :class:`~bamengine.roles.producer.Producer` : Production role for firms
+    :class:`~bamengine.roles.employer.Employer` : Labor hiring role for firms
+    :class:`~bamengine.roles.lender.Lender` : Credit supply role for banks
+    :class:`~bamengine.relationships.loanbook.LoanBook` : Loan relationship between borrowers and lenders
+    :mod:`bamengine.events.credit_market` : Credit market logic
+    :mod:`bamengine.events.revenue` : Revenue collection logic
     """
 
     # Finance
     net_worth: Float1D
+    """Firm equity (assets minus liabilities)."""
     total_funds: Float1D
+    """Available liquidity (shared view with Employer.total_funds)."""
     wage_bill: Float1D
+    """Total wages to be paid (shared with Employer.wage_bill)."""
 
     # Credit
     credit_demand: Float1D
+    """Amount of credit requested from banks."""
     projected_fragility: Float1D
+    """Financial fragility metric (leverage ratio)."""
 
     # Revenues
     gross_profit: Float1D
+    """Revenue before debt service."""
     net_profit: Float1D
+    """Profit after debt service."""
     retained_profit: Float1D
+    """Profit retained after dividend payout."""
 
     # Scratch queues
     loan_apps_head: Idx1D
+    """Queue head pointer for loan applications."""
     loan_apps_targets: Idx2D
+    """Queue of bank IDs to apply to, shape ``(n_firms, max_H)``."""

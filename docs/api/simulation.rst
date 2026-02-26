@@ -25,7 +25,6 @@ Key Methods
 **Simulation Methods**
 
 .. autosummary::
-   :toctree: generated
    :nosignatures:
 
    Simulation.init
@@ -35,16 +34,18 @@ Key Methods
    Simulation.get_event
    Simulation.get_relationship
    Simulation.use_role
+   Simulation.use_events
+   Simulation.use_config
 
 **Results Methods**
 
 .. autosummary::
-   :toctree: generated
    :nosignatures:
 
    SimulationResults.to_dataframe
    SimulationResults.get_role_data
    SimulationResults.get_array
    SimulationResults.data
+   SimulationResults.get_relationship_data
    SimulationResults.economy_metrics
    SimulationResults.summary

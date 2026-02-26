@@ -17,6 +17,8 @@ Event Classes
    AdjustMinimumWage
    FirmsDecideWageOffer
    WorkersDecideFirmsToApply
+   WorkersApplyToFirms
+   WorkersApplyToBestFirm
    WorkersSendOneRound
    FirmsHireWorkers
    FirmsCalcWageBill

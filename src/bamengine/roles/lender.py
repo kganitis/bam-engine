@@ -81,18 +81,24 @@ class Lender:
 
     See Also
     --------
-    :class:`~bamengine.roles.Borrower` : Credit demand role for firms
-    :class:`~bamengine.relationships.LoanBook` : Loan relationship between borrowers and lenders
-    :mod:`bamengine.events._internal.credit_market` : Credit market logic
+    :class:`~bamengine.roles.borrower.Borrower` : Credit demand role for firms
+    :class:`~bamengine.relationships.loanbook.LoanBook` : Loan relationship between borrowers and lenders
+    :mod:`bamengine.events.credit_market` : Credit market logic
     """
 
     equity_base: Float1D
+    """Bank equity / capital base."""
     credit_supply: Float1D
+    """Maximum credit available to lend (equity_base / v)."""
     interest_rate: Float1D
+    """Interest rate charged on loans."""
 
     # Scratch queues
     recv_loan_apps_head: Idx1D
+    """Queue head pointer for received loan applications."""
     recv_loan_apps: Idx2D
+    """Queue of borrower firm IDs, shape ``(n_banks, n_firms)``."""
 
     # Scratch buffer
     opex_shock: Float1D | None = field(default=None, repr=False)
+    """Scratch buffer for operational expense shock calculations."""

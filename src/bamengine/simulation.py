@@ -20,15 +20,6 @@ Classes
 Simulation
     Main simulation facade for initializing and running BAM simulations.
 
-Functions
----------
-_read_yaml
-    Load configuration from YAML file, dict, or None.
-_package_defaults
-    Load default configuration from bamengine/config/defaults.yml.
-_validate_float1d
-    Validate 1D float array or scalar for initialization.
-
 See Also
 --------
 :mod:`bamengine.config` : Configuration dataclass and validation
@@ -221,7 +212,7 @@ class Simulation:
     ----------
     ec : :class:`~bamengine.Economy`
         Global economy state (prices, wages, histories).
-    config : :class:`~bamengine.config.Config`
+    config : :class:`~bamengine.config.schema.Config`
         Configuration parameters for the simulation.
     rng : :class:`numpy.random.Generator`
         Random number generator for deterministic simulations.
@@ -231,23 +222,23 @@ class Simulation:
         Number of households in the economy.
     n_banks : int
         Number of banks in the economy.
-    prod : :class:`~bamengine.roles.Producer`
+    prod : :class:`~bamengine.roles.producer.Producer`
         Producer role (firm production state).
-    wrk : :class:`~bamengine.roles.Worker`
+    wrk : :class:`~bamengine.roles.worker.Worker`
         Worker role (household employment state).
-    emp : :class:`~bamengine.roles.Employer`
+    emp : :class:`~bamengine.roles.employer.Employer`
         Employer role (firm hiring state).
-    bor : :class:`~bamengine.roles.Borrower`
+    bor : :class:`~bamengine.roles.borrower.Borrower`
         Borrower role (firm financial state).
-    lend : :class:`~bamengine.roles.Lender`
+    lend : :class:`~bamengine.roles.lender.Lender`
         Lender role (bank state).
-    con : :class:`~bamengine.roles.Consumer`
+    con : :class:`~bamengine.roles.consumer.Consumer`
         Consumer role (household consumption state).
-    sh : :class:`~bamengine.roles.Shareholder`
+    sh : :class:`~bamengine.roles.shareholder.Shareholder`
         Shareholder role (household per-period dividend income).
-    pipeline : :class:`~bamengine.core.Pipeline`
+    pipeline : :class:`~bamengine.core.pipeline.Pipeline`
         Event pipeline controlling simulation execution order.
-    lb : :class:`~bamengine.relationships.LoanBook`
+    lb : :class:`~bamengine.relationships.loanbook.LoanBook`
         Loan relationship between borrowers and lenders.
     n_periods : int
         Default run length for run() method.
@@ -309,45 +300,63 @@ class Simulation:
     run : Execute multiple periods
     get_role : Access role instances
     get_event : Access event instances
-    :class:`~bamengine.core.Pipeline` : Event pipeline configuration
+    :class:`~bamengine.core.pipeline.Pipeline` : Event pipeline configuration
     """
 
     # Economy instance
     ec: Economy
+    """Economy-wide state container (prices, wages, histories)."""
 
     # configuration
     config: Config
+    """Immutable configuration parameters for this simulation."""
     rng: Rng
+    """Random number generator for deterministic simulations."""
 
     # population sizes
     n_firms: int
+    """Number of firms in the economy."""
     n_households: int
+    """Number of households in the economy."""
     n_banks: int
+    """Number of banks in the economy."""
 
     # roles
     prod: Producer
+    """Producer role storing firm production state."""
     wrk: Worker
+    """Worker role storing household employment state."""
     emp: Employer
+    """Employer role storing firm hiring state."""
     bor: Borrower
+    """Borrower role storing firm financial state."""
     lend: Lender
+    """Lender role storing bank state."""
     con: Consumer
+    """Consumer role storing household consumption state."""
     sh: Shareholder
+    """Shareholder role tracking per-period dividend income."""
 
     # event pipeline
     pipeline: Pipeline
+    """Event pipeline controlling simulation execution order."""
 
     # relationships
     lb: LoanBook
+    """Loan relationship between borrowers and lenders."""
 
     # periods
-    n_periods: int  # run length
-    t: int  # current period
+    n_periods: int
+    """Default run length for :meth:`run`."""
+    t: int
+    """Current simulation period (starts at 0)."""
 
     # Role instances storage (built-in + custom roles)
     _role_instances: dict[str, Any] = field(default_factory=dict)
 
     # Extension parameters (user-defined kwargs not in core Config)
     extra_params: dict[str, Any] = field(default_factory=dict)
+    """Extension-specific parameters not part of core :class:`Config`."""
 
     # Backward-compatible properties (delegate to config)
     @property
@@ -582,9 +591,9 @@ class Simulation:
 
         See Also
         --------
-        :class:`bamengine.config.Config` : Configuration dataclass
-        :class:`bamengine.config.ConfigValidator` : Centralized validation logic
-        :class:`bamengine.core.Pipeline` : Event pipeline configuration
+        :class:`bamengine.config.schema.Config` : Configuration dataclass
+        :class:`bamengine.config.validator.ConfigValidator` : Centralized validation logic
+        :class:`bamengine.core.pipeline.Pipeline` : Event pipeline configuration
         """
         # 1 + 2 + 3 → one merged dict
         cfg_dict: dict[str, Any] = _package_defaults()
@@ -1366,7 +1375,7 @@ class Simulation:
 
         Returns
         -------
-        :class:`~bamengine.core.Role`
+        :class:`~bamengine.core.role.Role`
             Role instance from simulation.
 
         Raises
@@ -1582,7 +1591,7 @@ class Simulation:
 
         Returns
         -------
-        :class:`~bamengine.core.Event`
+        :class:`~bamengine.core.event.Event`
             Event instance from current pipeline.
 
         Raises
@@ -1637,7 +1646,7 @@ class Simulation:
 
         Returns
         -------
-        :class:`~bamengine.core.Relationship`
+        :class:`~bamengine.core.relationship.Relationship`
             Relationship instance from simulation.
 
         Raises
@@ -1695,7 +1704,7 @@ class Simulation:
 
         Returns
         -------
-        :class:`~bamengine.core.Role` | :class:`~bamengine.core.Event` | :class:`~bamengine.core.Relationship`
+        :class:`~bamengine.core.role.Role` | :class:`~bamengine.core.event.Event` | :class:`~bamengine.core.relationship.Relationship`
             Role, event or relationship instance from simulation.
 
         Raises

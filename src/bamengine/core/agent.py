@@ -32,7 +32,7 @@ Access agent properties:
 
 See Also
 --------
-:class:`~bamengine.core.Role` : Base class for component state
+:class:`~bamengine.core.role.Role` : Base class for component state
 :class:`AgentType` : Enum of agent types
 """
 
@@ -118,7 +118,7 @@ class Agent:
     See Also
     --------
     :class:`AgentType` : Enum of agent types
-    :class:`~bamengine.core.Role` : Base class for component state
+    :class:`~bamengine.core.role.Role` : Base class for component state
     """
 
     id: int

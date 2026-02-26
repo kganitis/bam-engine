@@ -52,9 +52,9 @@ Available roles: Borrower, Consumer, Employer, Lender, Producer, Worker
 
 See Also
 --------
-:class:`~bamengine.core.Role` : Base class with __init_subclass__ registration
-:class:`~bamengine.core.Event` : Base class with __init_subclass__ registration
-:class:`~bamengine.core.Relationship` : Base class with __init_subclass__ registration
+:class:`~bamengine.core.role.Role` : Base class with __init_subclass__ registration
+:class:`~bamengine.core.event.Event` : Base class with __init_subclass__ registration
+:class:`~bamengine.core.relationship.Relationship` : Base class with __init_subclass__ registration
 """
 
 from __future__ import annotations

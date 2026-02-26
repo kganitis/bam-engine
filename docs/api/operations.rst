@@ -74,6 +74,9 @@ BAM Operations
 
    sum
    mean
+   std
+   min
+   max
    any
    all
 

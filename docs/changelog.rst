@@ -40,7 +40,7 @@ Added
       new taxation extension (``extensions/taxation/``).
 
   * **CLI**: ``python -m validation.robustness --help``
-  * **Example**: ``examples/advanced/example_robustness.py``
+  * **Example**: ``examples/extensions/example_robustness.py``
 
 **Packaging**
 

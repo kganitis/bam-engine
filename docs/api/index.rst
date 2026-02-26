@@ -59,14 +59,13 @@ See :doc:`relationships/index` for details.
 Core Infrastructure
 -------------------
 
-Pipeline and agent management infrastructure.
+Pipeline, economy state, and agent management infrastructure.
+Agent identity types (``Agent``, ``AgentType``) are defined in :mod:`bamengine.core.agent`.
 
 .. autosummary::
    :nosignatures:
 
-   ~core.Pipeline
-   Agent
-   AgentType
+   ~core.pipeline.Pipeline
    Economy
 
 Decorators
@@ -77,9 +76,9 @@ Simplified syntax for defining custom components.
 .. autosummary::
    :nosignatures:
 
-   role
-   event
-   relationship
+   ~core.decorators.role
+   ~core.decorators.event
+   ~core.decorators.relationship
 
 Registry Functions
 ------------------
@@ -89,12 +88,12 @@ Functions for retrieving and listing registered components.
 .. autosummary::
    :nosignatures:
 
-   get_role
-   get_event
-   get_relationship
-   list_roles
-   list_events
-   list_relationships
+   ~core.registry.get_role
+   ~core.registry.get_event
+   ~core.registry.get_relationship
+   ~core.registry.list_roles
+   ~core.registry.list_events
+   ~core.registry.list_relationships
 
 Operations Module
 -----------------
@@ -113,11 +112,11 @@ NumPy-free operations for writing custom events. See :mod:`bamengine.ops` for th
 
 **Element-wise**: ``maximum``, ``minimum``, ``clip``
 
-**Aggregation**: ``sum``, ``mean``, ``any``, ``all``
+**Aggregation**: ``sum``, ``mean``, ``std``, ``min``, ``max``, ``any``, ``all``
 
 **Array creation**: ``zeros``, ``ones``, ``full``, ``empty``, ``arange``
 
-**Mathematical**: ``log``
+**Mathematical**: ``log``, ``exp``
 
 **Utilities**: ``unique``, ``bincount``, ``isin``, ``argsort``, ``sort``
 
@@ -139,7 +138,7 @@ Configuration and validation classes.
 .. autosummary::
    :nosignatures:
 
-   ~config.Config
+   ~config.schema.Config
 
 Utilities
 ---------

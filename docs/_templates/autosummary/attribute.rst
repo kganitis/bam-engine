@@ -4,4 +4,3 @@
 .. currentmodule:: {{ module }}
 
 .. autoattribute:: {{ objname }}
-   :no-index:

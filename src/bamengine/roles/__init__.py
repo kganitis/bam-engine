@@ -72,7 +72,7 @@ array([1., 1., 1., 1., 1., 1., 1., 1., 1., 1.])
 
 See Also
 --------
-:class:`bamengine.core.Role` : Base class for all roles
+:class:`bamengine.core.role.Role` : Base class for all roles
 :class:`bamengine.Simulation` : Simulation facade with role instances
 """
 

@@ -17,4 +17,5 @@ Event Classes
    ConsumersDecideIncomeToSpend
    ConsumersDecideFirmsToVisit
    ConsumersShopOneRound
+   ConsumersShopSequential
    ConsumersFinalizePurchases

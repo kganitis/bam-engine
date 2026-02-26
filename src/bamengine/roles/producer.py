@@ -87,23 +87,35 @@ class Producer:
 
     See Also
     --------
-    :class:`~bamengine.roles.Employer` : Labor hiring role for firms
-    :class:`~bamengine.roles.Borrower` : Financial role for firms
-    :mod:`bamengine.events._internal.planning` : Production planning logic
-    :mod:`bamengine.events._internal.production` : Production execution logic
+    :class:`~bamengine.roles.employer.Employer` : Labor hiring role for firms
+    :class:`~bamengine.roles.borrower.Borrower` : Financial role for firms
+    :mod:`bamengine.events.planning` : Production planning logic
+    :mod:`bamengine.events.production` : Production execution logic
     """
 
     production: Float1D
+    """Current period's production level (units of goods produced)."""
     production_prev: Float1D
+    """Previous period's production level, used as planning signal."""
     inventory: Float1D
+    """Unsold goods carried from previous periods."""
     expected_demand: Float1D
+    """Expected demand based on past sales history."""
     desired_production: Float1D
+    """Target production level for next period."""
     labor_productivity: Float1D
+    """Units of output per worker."""
     breakeven_price: Float1D
+    """Minimum price needed to cover wage costs."""
     price: Float1D
+    """Current selling price for goods."""
 
     # Scratch buffers (optional for performance)
     prod_shock: Float1D | None = field(default=None, repr=False)
+    """Scratch buffer for production shock calculations."""
     prod_mask_up: Bool1D | None = field(default=None, repr=False)
+    """Scratch buffer for upward production adjustment mask."""
     prod_mask_dn: Bool1D | None = field(default=None, repr=False)
+    """Scratch buffer for downward production adjustment mask."""
     price_shock: Float1D | None = field(default=None, repr=False)
+    """Scratch buffer for price shock calculations."""

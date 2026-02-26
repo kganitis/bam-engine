@@ -146,49 +146,76 @@ class Config:
 
     # Shock parameters
     h_rho: float
+    """Maximum production-growth shock (0 to 1)."""
     h_xi: float
+    """Maximum wage-growth shock (0 to 1)."""
     h_phi: float
+    """Maximum bank operational costs shock (0 to 1)."""
     h_eta: float
+    """Maximum price-growth shock (0 to 1)."""
 
     # Market queue parameters
     max_M: int
+    """Maximum job applications per unemployed worker."""
     max_H: int
+    """Maximum loan applications per firm."""
     max_Z: int
+    """Maximum firm visits per consumer."""
 
     # Economy-level parameters
     labor_productivity: float
+    """Labor productivity in goods per worker."""
     theta: int
+    """Job contract base duration in periods."""
     beta: float
+    """Propensity to consume exponent."""
     delta: float
+    """Dividend payout ratio (0 to 1)."""
     r_bar: float
+    """Base interest rate (0 to 1)."""
     v: float
-    max_loan_to_net_worth: float = (
-        2.0  # Max loan as multiple of net worth (0 = no limit)
-    )
-    max_leverage: float = 10.0  # Cap for fragility in interest rate calc (0 = no cap)
+    """Bank capital requirement ratio (0 to 1)."""
+    max_loan_to_net_worth: float = 2.0
+    """Maximum loan as multiple of borrower's net worth (0 = no limit)."""
+    max_leverage: float = 10.0
+    """Maximum leverage ratio (fragility cap) for interest rate calculation (0 = no cap)."""
 
     # Optional parameters
     cap_factor: float | None = None
+    """Cap factor for breakeven price calculation (>= 1.0 if set, None = no cap)."""
 
     # Implementation variant parameters
-    matching_method: str = "sequential"  # "sequential" or "simultaneous"
-    job_search_method: str = "all_firms"  # "vacancies_only" or "all_firms"
+    matching_method: str = "sequential"
+    """Labor market matching method: ``"sequential"`` or ``"simultaneous"``."""
+    job_search_method: str = "all_firms"
+    """How unemployed workers sample firms: ``"vacancies_only"`` or ``"all_firms"``."""
 
     # New firm entry parameters
-    new_firm_size_factor: float = 0.5  # Net worth scale factor vs survivor mean
-    new_firm_production_factor: float = 0.5  # Production scale factor vs survivor mean
-    new_firm_wage_factor: float = 0.5  # Wage offer scale factor vs survivor mean
-    new_firm_price_markup: float = 1.15  # Price = avg_mkt_price * markup
+    new_firm_size_factor: float = 0.5
+    """Scale factor for new firm net worth vs survivor mean."""
+    new_firm_production_factor: float = 0.5
+    """Scale factor for new firm production vs survivor mean."""
+    new_firm_wage_factor: float = 0.5
+    """Scale factor for new firm wage offer vs survivor mean."""
+    new_firm_price_markup: float = 1.15
+    """Price markup for new firms vs average market price."""
 
     # Pricing phase
-    pricing_phase: str = "planning"  # "planning" or "production"
+    pricing_phase: str = "planning"
+    """Pricing phase: ``"planning"`` or ``"production"``."""
 
     # Consumer matching strategy
-    consumer_matching: str = "loyalty"  # "loyalty" or "random"
+    consumer_matching: str = "loyalty"
+    """Consumer matching strategy: ``"loyalty"`` or ``"random"``."""
 
     # === DEPRECATED (may be removed in future) ===
-    price_cut_allow_increase: bool = True  # DEPRECATED
-    inflation_method: str = "yoy"  # DEPRECATED — Inflation calculation method
-    labor_matching: str = "interleaved"  # DEPRECATED — Always interleaved
-    credit_matching: str = "interleaved"  # DEPRECATED — Always interleaved
-    min_wage_ratchet: bool = False  # DEPRECATED — Minimum wage ratchet
+    price_cut_allow_increase: bool = True
+    """Whether to allow price increase when cutting due to breakeven floor. *Deprecated.*"""
+    inflation_method: str = "yoy"
+    """Inflation calculation method: ``"yoy"`` or ``"annualized"``. *Deprecated.*"""
+    labor_matching: str = "interleaved"
+    """Labor market matching mode (always interleaved). *Deprecated.*"""
+    credit_matching: str = "interleaved"
+    """Credit market matching mode (always interleaved). *Deprecated.*"""
+    min_wage_ratchet: bool = False
+    """Whether minimum wage can only increase. *Deprecated.*"""

@@ -86,21 +86,29 @@ class Worker:
 
     See Also
     --------
-    :class:`~bamengine.roles.Consumer` : Consumption role for households
-    :class:`~bamengine.roles.Employer` : Labor hiring role for firms
-    :mod:`bamengine.events._internal.labor_market` : Labor market logic
+    :class:`~bamengine.roles.consumer.Consumer` : Consumption role for households
+    :class:`~bamengine.roles.employer.Employer` : Labor hiring role for firms
+    :mod:`bamengine.events.labor_market` : Labor market logic
     """
 
     employer: Idx1D
+    """Current employer firm ID (-1 if unemployed)."""
     employer_prev: Idx1D
+    """Previous employer firm ID (for tracking job switches)."""
     wage: Float1D
+    """Current wage earned from employment."""
     periods_left: Int1D
+    """Periods remaining in current employment contract."""
     contract_expired: Bool1D
+    """Whether the current contract has expired this period."""
     fired: Bool1D
+    """Whether the worker was fired this period."""
 
     # Scratch queues
     job_apps_head: Idx1D
+    """Queue head pointer for job applications."""
     job_apps_targets: Idx2D
+    """Queue of firm IDs to apply to, shape ``(n_households, max_M)``."""
 
     @property
     def employed(self) -> Bool1D:

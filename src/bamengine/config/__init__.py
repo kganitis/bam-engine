@@ -73,8 +73,8 @@ ValueError: Config parameter 'h_rho' must be <= 1.0, got 1.5
 
 See Also
 --------
-:class:`~bamengine.config.Config` : Immutable configuration dataclass
-:class:`~bamengine.config.ConfigValidator` : Centralized validation class
+:class:`~bamengine.config.schema.Config` : Immutable configuration dataclass
+:class:`~bamengine.config.validator.ConfigValidator` : Centralized validation class
 :meth:`bamengine.Simulation.init` : Initialize simulation with configuration
 """
 

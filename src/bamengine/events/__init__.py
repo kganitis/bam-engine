@@ -54,8 +54,8 @@ Execute full pipeline:
 
 See Also
 --------
-:class:`bamengine.core.Event` : Event base class
-:class:`bamengine.core.Pipeline` : Pipeline composition
+:class:`bamengine.core.event.Event` : Event base class
+:class:`bamengine.core.pipeline.Pipeline` : Pipeline composition
 :mod:`bamengine.events._internal` : System function implementations
 """
 

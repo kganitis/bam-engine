@@ -65,9 +65,9 @@ Traditional syntax (still works):
 
 See Also
 --------
-:class:`~bamengine.core.Role` : Base class for roles (components)
-:class:`~bamengine.core.Event` : Base class for events (systems)
-:class:`~bamengine.core.Relationship` : Base class for relationships
+:class:`~bamengine.core.role.Role` : Base class for roles (components)
+:class:`~bamengine.core.event.Event` : Base class for events (systems)
+:class:`~bamengine.core.relationship.Relationship` : Base class for relationships
 """
 
 from __future__ import annotations
@@ -270,7 +270,7 @@ def event(
 
     See Also
     --------
-    :class:`~bamengine.core.Pipeline` : Pipeline that applies hooks
+    :class:`~bamengine.core.pipeline.Pipeline` : Pipeline that applies hooks
     :meth:`~bamengine.simulation.Simulation.use_events` : Apply hooks to simulation
     """
     # Import here to avoid circular imports

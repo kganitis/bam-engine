@@ -18,3 +18,4 @@ Event Classes
    FirmsPlanPrice
    FirmsDecideDesiredLabor
    FirmsDecideVacancies
+   FirmsFireExcessWorkers
