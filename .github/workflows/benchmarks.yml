@@ -63,7 +63,7 @@ jobs:
             # Benchmark all release tags for historical data
             for tag in $(git tag --sort=version:refname); do
               echo "Benchmarking $tag..."
-              asv run "$tag^!" || true
+              asv run --quick "$tag^!" || true
             done
             # Also benchmark HEAD
             asv run --quick HEAD^!
