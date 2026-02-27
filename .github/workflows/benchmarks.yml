@@ -12,7 +12,7 @@ on:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -27,6 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: main
           fetch-depth: 0  # Full history for ASV
 
       - name: Set up Python
@@ -48,14 +49,6 @@ jobs:
         working-directory: asv_benchmarks
         run: asv machine --yes
 
-      - name: Restore cached results
-        uses: actions/cache/restore@v4
-        with:
-          path: asv_benchmarks/.asv/results
-          key: asv-results-${{ github.run_id }}
-          restore-keys: |
-            asv-results-
-
       - name: Run benchmarks
         working-directory: asv_benchmarks
         run: |
@@ -65,18 +58,20 @@ jobs:
               echo "Benchmarking $tag..."
               asv run --quick "$tag^!" || true
             done
-            # Also benchmark HEAD
-            asv run --quick HEAD^!
+          elif [ "${{ github.event_name }}" = "release" ]; then
+            # Benchmark the release tag
+            asv run --quick "${{ github.event.release.tag_name }}^!"
           else
-            # Run benchmarks for the current commit only
+            # Manual dispatch without tags: benchmark HEAD
             asv run --quick HEAD^!
           fi
 
-      - name: Save results to cache
-        uses: actions/cache/save@v4
-        with:
-          path: asv_benchmarks/.asv/results
-          key: asv-results-${{ github.run_id }}
+      - name: Commit benchmark results
+        run: |
+          git add asv_benchmarks/.asv/results/
+          git diff --staged --quiet || \
+            git commit -m "ci(benchmarks): update ASV results [skip ci]"
+          git push origin main
 
       - name: Generate HTML report
         working-directory: asv_benchmarks

@@ -31,7 +31,8 @@ coverage.json
 *.svg
 benchmarks/*.prof
 benchmarks/*.svg
-asv_benchmarks/.asv/
+asv_benchmarks/.asv/*
+!asv_benchmarks/.asv/results/
 asv_benchmarks/env/
 asv_benchmarks/__pycache__/
 
