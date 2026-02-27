@@ -1,13 +1,8 @@
 name: Benchmarks
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'src/**'
-      - 'asv_benchmarks/**'
-      - 'pyproject.toml'
-      - '.github/workflows/benchmarks.yml'
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       benchmark_tags:
@@ -24,7 +19,7 @@ permissions:
 # Allow only one concurrent deployment
 concurrency:
   group: "pages"
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   benchmark:
@@ -53,6 +48,14 @@ jobs:
         working-directory: asv_benchmarks
         run: asv machine --yes
 
+      - name: Restore cached results
+        uses: actions/cache/restore@v4
+        with:
+          path: asv_benchmarks/.asv/results
+          key: asv-results-${{ github.run_id }}
+          restore-keys: |
+            asv-results-
+
       - name: Run benchmarks
         working-directory: asv_benchmarks
         run: |
@@ -68,6 +71,12 @@ jobs:
             # Run benchmarks for the current commit only
             asv run --quick HEAD^!
           fi
+
+      - name: Save results to cache
+        uses: actions/cache/save@v4
+        with:
+          path: asv_benchmarks/.asv/results
+          key: asv-results-${{ github.run_id }}
 
       - name: Generate HTML report
         working-directory: asv_benchmarks
