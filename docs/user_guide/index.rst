@@ -51,4 +51,5 @@ core API, then move to advanced customization and validation workflows.
    :maxdepth: 2
    :caption: Reference & Tips
 
+   implementation_decisions
    best_practices
