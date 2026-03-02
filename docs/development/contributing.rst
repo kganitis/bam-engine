@@ -69,7 +69,7 @@ Release Checklist
 -----------------
 
 1. Update version in ``src/bamengine/__init__.py``
-2. Update ``CHANGELOG.rst``
+2. Update ``release_history.rst``
 3. Run full test suite: ``pytest``
 4. Run code quality checks: ``ruff format . && ruff check --fix . && mypy``
 5. Build docs: ``cd docs && sphinx-build -b html . _build/html``

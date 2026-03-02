@@ -1,5 +1,5 @@
-Changelog
-=========
+Release History
+===============
 
 All notable changes to BAM Engine are documented here.
 
@@ -9,6 +9,16 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 .. note::
 
    Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.
+
+[Unreleased]
+------------
+
+Changed
+~~~~~~~
+
+* Renamed Changelog to Release History.
+* Added Glossary, Roadmap, About, and Related Projects documentation pages.
+* Reorganized documentation table of contents with new section groupings.
 
 [0.4.0] - 2026-02-25
 --------------------

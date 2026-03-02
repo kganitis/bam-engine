@@ -58,9 +58,9 @@ df = results.to_dataframe()
 
 BAM Engine uses an ECS (Entity-Component-System) architecture: agents are lightweight entities with immutable IDs, state lives in Role components stored as NumPy arrays, and behavior is defined by Event systems executed via a YAML-configurable pipeline. This design separates data from logic, enabling high performance through vectorized operations while maintaining extensibility for custom roles, events, and relationships.
 
-## Changelog
+## Release History
 
-See the [changelog](https://bam-engine.readthedocs.io/en/latest/changelog.html) for a history of notable changes to bam-engine.
+See the [release history](https://bam-engine.readthedocs.io/en/latest/release_history.html) for a history of notable changes to bam-engine.
 
 ## Development
 

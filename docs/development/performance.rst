@@ -97,7 +97,7 @@ IPython %prun
 
 For quick profiling in interactive sessions:
 
-.. code-block:: ipython
+.. code-block:: python
 
    import bamengine as bam
    sim = bam.Simulation.init(seed=42)
@@ -119,7 +119,7 @@ For detailed line-by-line analysis, use ``line_profiler``:
 
 In IPython/Jupyter:
 
-.. code-block:: ipython
+.. code-block:: python
 
    %load_ext line_profiler
 
@@ -141,7 +141,7 @@ Track memory usage with ``memory_profiler``:
 
 In IPython/Jupyter:
 
-.. code-block:: ipython
+.. code-block:: python
 
    %load_ext memory_profiler
 

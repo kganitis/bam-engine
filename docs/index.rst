@@ -85,10 +85,24 @@ Contents
 
 .. toctree::
    :maxdepth: 1
+   :caption: Release History
+
+   release_history
+
+.. toctree::
+   :maxdepth: 1
    :caption: Development
 
    development/index
-   changelog
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Project
+
+   related_projects
+   roadmap
+   glossary
+   about
 
 Indices and tables
 ==================

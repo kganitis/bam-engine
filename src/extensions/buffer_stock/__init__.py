@@ -55,13 +55,13 @@ clipped at 0 minimum to prevent negative consumption.
 
 **Unemployed households** — Three-case MPC logic:
 
-=============  =====================  ==========================  ==================
-Case           Condition              MPC formula                 Consumption source
-=============  =====================  ==========================  ==================
-Normal         W > 0 and W_prev > 0   Eq. 3.20 (g clamped -0.99) Income (c * W)
-Fresh start    W > 0 and W_prev <= 0  c = 1 - h + S/W            Income (c * W)
-Unemployed     W <= 0                 c = 1/h                    Savings (c * S)
-=============  =====================  ==========================  ==================
+=============  =====================  ===========================  ==================
+Case           Condition              MPC formula                  Consumption source
+=============  =====================  ===========================  ==================
+Normal         W > 0 and W_prev > 0   Eq. 3.20 (g clamped -0.99)   Income (c * W)
+Fresh start    W > 0 and W_prev <= 0  c = 1 - h + S/W              Income (c * W)
+Unemployed     W <= 0                 c = 1/h                      Savings (c * S)
+=============  =====================  ===========================  ==================
 
 At the target buffer ``S = h·W``, first-period unemployment spending equals
 ``(1/h)·h·W = W`` — the last employed income (consumption smoothing). The

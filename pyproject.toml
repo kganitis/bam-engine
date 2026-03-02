@@ -137,7 +137,7 @@ docs = [
 homepage = "https://bam-engine.readthedocs.io/"
 source = "https://github.com/kganitis/bam-engine"
 tracker = "https://github.com/kganitis/bam-engine/issues"
-changelog = "https://bam-engine.readthedocs.io/en/latest/changelog.html"
+changelog = "https://bam-engine.readthedocs.io/en/latest/release_history.html"
 
 # Package Configuration
 
