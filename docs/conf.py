@@ -132,31 +132,40 @@ intersphinx_mapping = {
 
 
 # Custom sorting for examples within each subsection
-class BasicExampleOrder:
-    """Custom ordering for basic examples."""
+class ExampleOrder:
+    """Custom ordering for examples, dispatched by subdirectory."""
 
-    # Explicit order for basic examples
-    order = [
-        "example_hello_world.py",
-        "example_configuration.py",
-        "example_yaml_configuration.py",
-        "example_logging.py",
-        "example_ops_module.py",
-        "example_typing_module.py",
-        "example_results_module.py",
-        "example_baseline_scenario.py",
-    ]
+    ORDERS = {
+        "basic": [
+            "example_hello_world.py",
+            "example_configuration.py",
+            "example_yaml_configuration.py",
+            "example_logging.py",
+            "example_ops_module.py",
+            "example_typing_module.py",
+            "example_results_module.py",
+            "example_baseline_scenario.py",
+        ],
+        "advanced": [
+            "example_custom_roles.py",
+            "example_custom_events.py",
+            "example_custom_relationships.py",
+            "example_custom_pipeline.py",
+        ],
+        "extensions": [
+            "example_growth_plus.py",
+            "example_buffer_stock.py",
+            "example_robustness.py",
+        ],
+    }
 
     def __init__(self, src_dir):
-        self.src_dir = src_dir
+        self.order = self.ORDERS.get(os.path.basename(os.path.normpath(src_dir)), [])
 
     def __call__(self, filename):
-        # Get just the filename from the path
-        basename = os.path.basename(filename)
         try:
-            return self.order.index(basename)
+            return self.order.index(os.path.basename(filename))
         except ValueError:
-            # Fall back to end of list for unlisted files
             return len(self.order) + 1000
 
 
@@ -183,7 +192,7 @@ sphinx_gallery_conf = {
         ]
     ),
     # Order examples within each subsection
-    "within_subsection_order": BasicExampleOrder,
+    "within_subsection_order": ExampleOrder,
     "capture_repr": ("_repr_html_", "__repr__"),  # Capture these repr methods
     "nested_sections": True,  # Allow nested sections in galleries
     "expected_failing_examples": [],  # List of examples expected to fail

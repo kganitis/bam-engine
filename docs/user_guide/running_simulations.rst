@@ -250,4 +250,4 @@ This makes BAM Engine efficient for both small prototypes and large-scale studie
    - :doc:`configuration` for the full parameter reference
    - :doc:`data_collection` for collecting and exporting simulation data
    - :doc:`/quickstart` for a minimal working example
-   - :doc:`/performance` for profiling and optimization guidance
+   - :doc:`/development/performance` for profiling and optimization guidance

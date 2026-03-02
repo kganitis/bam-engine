@@ -55,23 +55,39 @@ Contents
 
 .. toctree::
    :maxdepth: 2
+   :caption: API
+
+   api/index
+
+.. toctree::
+   :maxdepth: 2
    :caption: Examples
 
    auto_examples/index
 
 .. toctree::
    :maxdepth: 2
-   :caption: API
+   :caption: Extensions
 
-   api/index
+   extensions/index
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Validation
+
+   validation/index
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Calibration
+
+   calibration/index
 
 .. toctree::
    :maxdepth: 1
    :caption: Development
 
-   development
-   calibration
-   performance
+   development/index
    changelog
 
 Indices and tables

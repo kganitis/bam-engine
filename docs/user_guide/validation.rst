@@ -113,59 +113,41 @@ deviations that would only warn for a weight-0.5 metric.
 Robustness Analysis
 -------------------
 
-The robustness package tests whether results hold across multiple random seeds
-and parameter variations:
-
-**Internal validity** — Multi-seed stability:
-
-.. code-block:: python
-
-   from validation.robustness import run_internal_validity
-
-   result = run_internal_validity(n_seeds=20, n_periods=1000)
-   # Tests: co-movement structure, AR fit, firm size distribution
-
-**Sensitivity analysis** — Parameter sweeps:
-
-.. code-block:: python
-
-   from validation.robustness import run_sensitivity_analysis
-
-   sa = run_sensitivity_analysis(experiments=["credit_market", "contract_length"])
-
-**CLI interface:**
+The robustness package tests whether results hold across multiple random seeds,
+parameter variations, and structural mechanism changes (Section 3.10):
 
 .. code-block:: bash
 
    # Full robustness analysis
    python -m validation.robustness
 
-   # Internal validity only
+   # Individual parts
    python -m validation.robustness --internal-only
-
-   # Sensitivity analysis only
    python -m validation.robustness --sensitivity-only
-
-   # Structural experiments (matching variants)
    python -m validation.robustness --structural-only
+
+.. seealso::
+
+   :doc:`/validation/robustness/index` for complete robustness analysis
+   documentation including internal validity, sensitivity analysis, and
+   structural experiments.
 
 
 Parameter Calibration
 ---------------------
 
 The calibration package finds parameters that maximize validation scores
-through a multi-phase pipeline:
-
-1. **Morris screening** — Identify which parameters matter most
-2. **Grid search** — Search the reduced parameter space
-3. **Stability testing** — Verify results hold across many seeds
+through a multi-phase pipeline: Morris screening → grid search → stability
+testing.
 
 .. code-block:: bash
 
-   # Run the default calibration pipeline
    python -m calibration --scenario baseline --workers 10
 
-See :doc:`calibration` for the full tutorial.
+.. seealso::
+
+   - :doc:`calibration` for the user guide calibration tutorial
+   - :doc:`/calibration/index` for the full calibration reference
 
 
 Visualization
@@ -186,12 +168,11 @@ Visualization
    python diagnostics/baseline_diagnostics.py
    python diagnostics/growth_plus_diagnostics.py
 
-These generate 13-15 figures covering GDP, unemployment, inflation, firm
-distributions, credit market dynamics, and more.
-
 
 .. seealso::
 
-   - :doc:`calibration` for the full calibration tutorial
+   - :doc:`/validation/index` for the full validation reference
+   - :doc:`/validation/scoring` for the scoring system details
+   - :doc:`calibration` for the calibration tutorial
    - :doc:`extensions` for setting up model extensions before validation
    - :doc:`configuration` for parameter definitions

@@ -282,3 +282,4 @@ to a dedicated output directory that can be regenerated from the configs.
    - :doc:`operations` for the ops module reference
    - :doc:`extensions` for built-in extension usage
    - :doc:`configuration` for all configuration options
+   - :doc:`/development/performance` for detailed profiling and benchmarking
