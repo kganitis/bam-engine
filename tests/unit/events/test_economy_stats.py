@@ -22,13 +22,6 @@ def test_update_avg_mkt_price_executes():
     event.execute(sim)  # Should not crash
 
 
-def test_calc_unemployment_rate_executes():
-    """CalcUnemploymentRate executes without error."""
-    sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = get_event("calc_unemployment_rate")()
-    event.execute(sim)  # Should not crash
-
-
 # ============================================================================
 # Event Chain Test
 # ============================================================================
@@ -41,7 +34,6 @@ def test_economy_stats_event_chain():
     # Execute in sequence
     events = [
         "update_avg_mkt_price",
-        "calc_unemployment_rate",
     ]
 
     for e in events:

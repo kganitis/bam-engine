@@ -303,8 +303,8 @@ class TestPipelineYamlValidation:
         yaml_content = """
 events:
   - firms_decide_desired_production
-  - firms_calc_breakeven_price
-  - firms_adjust_price
+  - firms_plan_breakeven_price
+  - firms_plan_price
 """
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
             f.write(yaml_content)
@@ -373,7 +373,7 @@ events:
         yaml_content = """
 events:
   - firms_decide_desired_production
-  - consumers_shop_one_round x {max_Z}
+  - consumers_shop_sequential x {max_Z}
 """
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
             f.write(yaml_content)
@@ -506,8 +506,8 @@ class TestIntegrationWithSimulation:
         yaml_content = """
 events:
   - firms_decide_desired_production
-  - firms_calc_breakeven_price
-  - firms_adjust_price
+  - firms_plan_breakeven_price
+  - firms_plan_price
 """
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
             f.write(yaml_content)
@@ -544,12 +544,6 @@ class TestUncoveredTypeValidation:
         with pytest.raises(ValueError, match="cap_factor.*must be float or None"):
             ConfigValidator._validate_types(cfg)
 
-    def test_bool_param_rejects_string(self):
-        """Boolean parameters should reject string 'true' values."""
-        cfg = {"min_wage_ratchet": "true"}
-        with pytest.raises(ValueError, match="must be bool"):
-            ConfigValidator._validate_types(cfg)
-
     def test_string_enum_param_rejects_int(self):
         """String enum parameters should reject int values."""
         cfg = {"job_search_method": 123}
@@ -563,27 +557,6 @@ class TestUncoveredTypeValidation:
             ValueError, match="seed.*must be int or np.random.Generator"
         ):
             ConfigValidator._validate_types(cfg)
-
-
-class TestPricingPhaseValidation:
-    """Tests for pricing_phase parameter validation."""
-
-    def test_pricing_phase_valid_values(self):
-        """Both 'planning' and 'production' should be accepted."""
-        ConfigValidator._validate_types({"pricing_phase": "planning"})
-        ConfigValidator._validate_ranges({"pricing_phase": "planning"})
-        ConfigValidator._validate_types({"pricing_phase": "production"})
-        ConfigValidator._validate_ranges({"pricing_phase": "production"})
-
-    def test_pricing_phase_invalid_value(self):
-        """Invalid pricing_phase string should raise ValueError."""
-        with pytest.raises(ValueError, match="must be one of"):
-            ConfigValidator._validate_ranges({"pricing_phase": "invalid"})
-
-    def test_pricing_phase_type_error(self):
-        """Non-string pricing_phase should raise ValueError."""
-        with pytest.raises(ValueError, match="must be str"):
-            ConfigValidator._validate_types({"pricing_phase": 123})
 
 
 class TestUncoveredRangeValidation:

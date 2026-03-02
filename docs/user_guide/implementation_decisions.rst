@@ -33,17 +33,15 @@ not specify which costs or denominator to use for the breakeven floor.
 
 - *Production-phase breakeven* using current-period costs and actual output
   (``labor_productivity × current_labor``) --- requires markets to have already cleared,
-  so inapplicable at planning time.
+  so inapplicable at planning time. This alternative was implemented and tested but has
+  been removed from the codebase.
 
 **Reasoning:** At planning time, wage bill and interest payments are inherently stale
 (previous period's values), and ``desired_production`` is the only available output
 estimate. This is more stable than actual labor (which can be zero for firms that
-failed to hire). Two mutually exclusive event pairs implement the two phases
-(:class:`~bamengine.events.planning.FirmsPlanBreakevenPrice` /
-:class:`~bamengine.events.planning.FirmsPlanPrice` vs
-:class:`~bamengine.events.production.FirmsCalcBreakevenPrice` /
-:class:`~bamengine.events.production.FirmsAdjustPrice`),
-enforced by a guard in ``Pipeline.__post_init__``.
+failed to hire). Implemented by
+:class:`~bamengine.events.planning.FirmsPlanBreakevenPrice` /
+:class:`~bamengine.events.planning.FirmsPlanPrice`.
 
 
 .. _decision-price-cut-floor:
@@ -60,13 +58,13 @@ price.
 
 **Alternatives considered:**
 
-- *Cap the floor at old price* so a "cut" never results in an increase
-  (``price_cut_allow_increase=false``) --- tested during Kalecki trap analysis;
-  sell-through gain outweighed markup loss with no benefit for credit market activation.
+- *Cap the floor at old price* so a "cut" never results in an increase --- tested during
+  Kalecki trap analysis; sell-through gain outweighed markup loss with no benefit for
+  credit market activation. This alternative has been removed from the codebase.
 
-**Reasoning:** Keeping ``true`` (the default) is simpler and avoids masking real cost
-pressures. When breakeven exceeds the old price, the firm genuinely cannot afford to
-sell cheaper --- forcing a cap would hide that signal.
+**Reasoning:** Allowing the increase is simpler and avoids masking real cost pressures.
+When breakeven exceeds the old price, the firm genuinely cannot afford to sell cheaper
+--- forcing a cap would hide that signal.
 
 
 .. _decision-avg-price:
@@ -108,7 +106,8 @@ distinguishing interleaved from cascade approaches.
 **Alternatives considered:**
 
 - *Cascade matching* --- each agent walks their entire ranked queue in a single pass
-  (one event per market). Implemented and retained in the codebase but deprecated.
+  (one event per market). This alternative was implemented and tested but has been
+  removed from the codebase.
 
 **Reasoning:** Both approaches were implemented and tested. Interleaved better
 distributes opportunities across agents --- no single agent exhausts all options
@@ -129,7 +128,8 @@ order (FIFO from the application queue).
 
 - *Simultaneous* --- all workers apply at once, firms select randomly from crowded
   queues (creates natural unemployment through coordination failure). Tested but
-  produced artificial unemployment at high-wage firms due to crowding.
+  produced artificial unemployment at high-wage firms due to crowding. This alternative
+  has been removed from the codebase.
 
 **Reasoning:** Sequential processing is cleaner: queue arrival order matters, with
 random shuffling each round for fairness. No crowding artifacts.
@@ -171,7 +171,8 @@ complete all visits at once.
 **Alternatives considered:**
 
 - *Round-robin* --- all consumers visit one firm each, then all visit another, for
-  ``Z`` rounds. The ``ConsumersShopOneRound`` event class still exists in the codebase.
+  ``Z`` rounds. This alternative was implemented and tested but has been removed from
+  the codebase.
 
 **Reasoning:** Sequential creates more realistic market inefficiencies --- earlier
 consumers (random order) have better access to inventory. This is closer to a real
@@ -196,7 +197,7 @@ but the implementation allows decreases.
 
 - *Upward-only ratchet:* ``min_wage *= max(1, 1 + inflation)`` --- wage never decreases.
   Tested but caused permanent ratcheting during inflationary episodes, creating a
-  price-wage spiral floor.
+  price-wage spiral floor. This alternative has been removed from the codebase.
 
 **Reasoning:** Bidirectional adjustment prevents the minimum wage from permanently
 ratcheting up. During deflation, wage decreases help firms maintain competitiveness.
@@ -310,12 +311,12 @@ method.
 **Alternatives considered:**
 
 - *Annualized quarterly:* ``(1 + quarterly_rate)^4 − 1`` --- requires only 2 periods
-  of history but amplifies short-term fluctuations.
+  of history but amplifies short-term fluctuations. This alternative has been removed
+  from the codebase.
 
 **Reasoning:** Year-over-year is the standard macroeconomic measure, preferred by
 statistical agencies for exactly this reason: it smooths seasonal and short-run noise.
-Requires 5 periods of price history (returns 0 until then). Both methods were
-implemented; YoY was chosen as the default.
+Requires 5 periods of price history (returns 0 until then).
 
 
 Revenue & Dividends
@@ -475,7 +476,7 @@ reflects its intended economic meaning at the right moment. Scenario-specific
      - ``firms_run_production``
      - Immediately after production occurs.
    * - ``Producer.price``
-     - ``firms_adjust_price``
+     - ``firms_plan_price``
      - The price consumers will see in the goods market.
    * - ``Producer.inventory``
      - ``consumers_finalize_purchases``

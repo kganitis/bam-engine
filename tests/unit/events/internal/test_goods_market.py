@@ -15,7 +15,7 @@ from bamengine.events._internal.goods_market import (
     consumers_decide_firms_to_visit,
     consumers_decide_income_to_spend,
     consumers_finalize_purchases,
-    consumers_shop_one_round,
+    consumers_shop_sequential,
 )
 from bamengine.roles import Consumer, Producer
 from tests.helpers.factories import mock_consumer, mock_producer
@@ -160,18 +160,16 @@ def test_one_round_basic_purchase() -> None:
     consumers_decide_income_to_spend(con)
     consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=rng)
 
-    h = 0  # focus on household-0
-    con.income_to_spend[h] = 10.0  # give it enough budget to spend
-    head_before = int(con.shop_visits_head[h])
-    wealth_before = con.income_to_spend[h] + con.savings[h]
+    # Give all consumers enough budget to spend
+    con.income_to_spend[:] = 10.0
+    wealth_before = con.income_to_spend.sum() + con.savings.sum()
     inv_before = prod.inventory.copy()
 
-    consumers_shop_one_round(con, prod)
+    consumers_shop_sequential(con, prod, max_Z=1, rng=rng)
 
-    # exactly one slot consumed
-    assert con.shop_visits_head[h] == head_before + 1
-    # money conservation for that household
-    spent = wealth_before - (con.income_to_spend[h] + con.savings[h])
+    # money conservation across all households
+    wealth_after = con.income_to_spend.sum() + con.savings.sum()
+    spent = wealth_before - wealth_after
     assert spent >= 0.0
     # inventory decreased by the purchased quantity
     assert np.any(prod.inventory < inv_before)
@@ -179,39 +177,27 @@ def test_one_round_basic_purchase() -> None:
 
 def test_one_round_skip_sold_out() -> None:
     """
-    When the first target is sold out, the function must advance the pointer
-    by one and not crash.
+    When all targets are sold out, consumers don't spend any budget.
     """
     con, prod, rng, Z = _mini_state()
 
-    # Ensure consumer 0 has budget
+    # Ensure consumers have budget
     consumers_calc_propensity(con, avg_sav=1.0, beta=0.9)
     consumers_decide_income_to_spend(con)
 
-    # Build queues (initialization), then force a sold-out firm at slot 0 for consumer 0
+    # Build queues, then deplete all inventory
     consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=rng)
-    sold_out_firm = 0
-    prod.inventory[sold_out_firm] = 0.0
+    prod.inventory[:] = 0.0
 
-    # Explicitly set consumer 0's next target to the sold-out firm (row=0, col=0)
-    con.shop_visits_targets[0, :] = -1
-    con.shop_visits_targets[0, 0] = sold_out_firm
-    con.shop_visits_head[0] = 0  # points to (row 0, col 0)
+    budget_before = con.income_to_spend.copy()
 
-    head_before = int(con.shop_visits_head[0])
-    budget_before = float(con.income_to_spend[0])
+    consumers_shop_sequential(con, prod, max_Z=1, rng=make_rng(7))
 
-    consumers_shop_one_round(con, prod, rng=make_rng(7))
+    # No purchases happened (budget unchanged)
+    np.testing.assert_allclose(con.income_to_spend, budget_before)
 
-    # Pointer advanced exactly one and the slot was cleared
-    assert con.shop_visits_head[0] == head_before + 1
-    assert con.shop_visits_targets[0, 0] == -1
-
-    # No purchase happened for consumer 0 (budget unchanged)
-    assert np.isclose(con.income_to_spend[0], budget_before)
-
-    # Sanity: firm remains sold out
-    assert prod.inventory[sold_out_firm] == 0.0
+    # All firms remain sold out
+    assert np.all(prod.inventory == 0.0)
 
 
 def test_one_round_queue_exhaustion_clears_head() -> None:
@@ -226,7 +212,7 @@ def test_one_round_queue_exhaustion_clears_head() -> None:
         shop_visits_targets=np.array([[-1]], dtype=np.intp),
     )
     prod = mock_producer(n=1, inventory=np.array([10.0]), price=np.array([1.0]))
-    consumers_shop_one_round(con, prod)
+    consumers_shop_sequential(con, prod, max_Z=1, rng=make_rng(0))
     assert con.shop_visits_head[0] == -1
 
 
@@ -251,7 +237,7 @@ def test_visit_one_round_skips_household_with_no_head() -> None:
     )
 
     inv_before = prod.inventory.copy()
-    consumers_shop_one_round(con, prod)
+    consumers_shop_sequential(con, prod, max_Z=1, rng=make_rng(0))
 
     # nothing purchased, inventory unchanged, income untouched
     np.testing.assert_allclose(prod.inventory, inv_before)
@@ -290,7 +276,7 @@ def test_visit_invariants(n_hh: int, n_firms: int, Z: int) -> None:
     consumers_calc_propensity(con, avg_sav=con.savings.mean() + 1e-9, beta=0.9)
     consumers_decide_income_to_spend(con)
     consumers_decide_firms_to_visit(con, prod, max_Z=Z, rng=rng)
-    consumers_shop_one_round(con, prod)
+    consumers_shop_sequential(con, prod, max_Z=1, rng=make_rng(456))
 
     # invariants
     # visit head stays within [-1 … n_hh*Z]
@@ -368,7 +354,7 @@ def test_one_round_no_inventory_skips_shopping() -> None:
     budget_before = con.income_to_spend.copy()
 
     # No shopping should occur
-    consumers_shop_one_round(con, prod, rng=rng)
+    consumers_shop_sequential(con, prod, max_Z=1, rng=rng)
 
     # Budget unchanged (no purchases possible)
     # Note: Pointers may advance as consumers try to visit sold-out firms

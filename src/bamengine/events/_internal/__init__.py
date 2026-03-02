@@ -49,7 +49,6 @@ from .goods_market import (
     consumers_decide_firms_to_visit,
     consumers_decide_income_to_spend,
     consumers_finalize_purchases,
-    consumers_shop_one_round,
 )
 from .labor_market import (
     adjust_minimum_wage,
@@ -68,8 +67,6 @@ from .planning import (
     firms_plan_price,
 )
 from .production import (
-    firms_adjust_price,
-    firms_calc_breakeven_price,
     firms_pay_wages,
     firms_run_production,
     update_avg_mkt_price,
@@ -107,8 +104,6 @@ __all__: list[str] = [
     "firms_prepare_loan_applications",
     "firms_send_one_loan_app",
     # production
-    "firms_calc_breakeven_price",
-    "firms_adjust_price",
     "firms_pay_wages",
     "firms_run_production",
     "update_avg_mkt_price",
@@ -119,7 +114,6 @@ __all__: list[str] = [
     "consumers_decide_firms_to_visit",
     "consumers_decide_income_to_spend",
     "consumers_finalize_purchases",
-    "consumers_shop_one_round",
     # revenue
     "firms_collect_revenue",
     "firms_pay_dividends",

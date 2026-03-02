@@ -191,20 +191,8 @@ class FirmsPlanBreakevenPrice:
 
     Must run AFTER firms_decide_desired_production (needs desired_production).
 
-    These planning-phase pricing events are **mutually exclusive** with the
-    production-phase pair (FirmsCalcBreakevenPrice / FirmsAdjustPrice).
-    Use one pair or the other, not both. When using planning-phase pricing,
-    remove the production-phase events from the pipeline.
-
-    Not included in the default pipeline. Users can insert it into the
-    planning phase via a custom pipeline YAML or programmatically:
-
-        sim.pipeline.insert_after("firms_decide_desired_production",
-                                  "firms_plan_breakeven_price")
-
     See Also
     --------
-    FirmsCalcBreakevenPrice : Production-phase alternative (uses projected production)
     FirmsPlanPrice : Planning-phase price adjustment using this breakeven
     bamengine.events._internal.planning.firms_plan_breakeven_price : Implementation
     """
@@ -229,17 +217,8 @@ class FirmsPlanPrice:
     FirmsAdjustPrice, but runs during the planning phase using the
     breakeven computed from previous period's costs.
 
-    These planning-phase pricing events are mutually exclusive with the
-    production-phase pair (FirmsCalcBreakevenPrice / FirmsAdjustPrice).
-    Use one pair or the other, not both.
-
-    Not included in the default pipeline. Insert alongside
-    FirmsPlanBreakevenPrice as a replacement for the production-phase
-    pricing events.
-
     See Also
     --------
-    FirmsAdjustPrice : Production-phase alternative
     FirmsPlanBreakevenPrice : Planning-phase breakeven calculation
     bamengine.events._internal.planning.firms_plan_price : Implementation
     """
@@ -251,7 +230,6 @@ class FirmsPlanPrice:
             sim.prod,
             p_avg=sim.ec.avg_mkt_price,
             h_eta=sim.config.h_eta,
-            price_cut_allow_increase=sim.config.price_cut_allow_increase,
             rng=sim.rng,
         )
 

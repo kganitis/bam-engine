@@ -9,10 +9,9 @@ def test_create_default_pipeline():
     max_M, max_H, max_Z = 5, 3, 2
     pipeline = create_default_pipeline(max_M=max_M, max_H=max_H, max_Z=max_Z)
 
-    # Default is interleaved matching for both labor and credit.
-    # Base cascade pipeline = 37 events, then swap:
-    #   -2 cascade events + 2*max_M labor rounds + 2*max_H credit rounds
-    expected = 37 - 2 + 2 * max_M + 2 * max_H
+    # Default pipeline uses interleaved matching for both labor and credit.
+    # Base pipeline = 35 events + 2*max_M labor rounds + 2*max_H credit rounds
+    expected = 35 + 2 * max_M + 2 * max_H
     assert len(pipeline) == expected
 
 
@@ -31,10 +30,6 @@ def test_default_pipeline_interleaved_matching_events():
     assert event_names.count("firms_send_one_loan_app") == max_H
     assert event_names.count("banks_provide_loans") == max_H
 
-    # Cascade events should NOT appear in default pipeline
-    assert event_names.count("workers_apply_to_firms") == 0
-    assert event_names.count("firms_apply_for_loans") == 0
-
     # consumers_shop_sequential is still a single event
     assert event_names.count("consumers_shop_sequential") == 1
 
@@ -46,7 +41,7 @@ def test_default_pipeline_order_matches_simulation():
     # First event should be planning
     assert pipeline.events[0].name == "firms_decide_desired_production"
 
-    # Last event should be spawn_replacement_banks (calc_unemployment_rate deprecated)
+    # Last event should be spawn_replacement_banks
     assert pipeline.events[-1].name == "spawn_replacement_banks"
 
 
@@ -121,5 +116,5 @@ def test_default_pipeline_length_depends_on_market_params():
 
     # Different max_M/max_H → different lengths
     assert len(p1) != len(p2)
-    assert len(p1) == 37 - 2 + 2 * 2 + 2 * 2  # 43
-    assert len(p2) == 37 - 2 + 2 * 5 + 2 * 4  # 53
+    assert len(p1) == 35 + 2 * 2 + 2 * 2  # 43
+    assert len(p2) == 35 + 2 * 5 + 2 * 4  # 53

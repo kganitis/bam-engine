@@ -524,23 +524,3 @@ def test_plan_price_noop_when_masks_empty() -> None:
     firms_plan_price(prod, p_avg=2.0, h_eta=0.1, rng=rng)
 
     np.testing.assert_array_equal(prod.price, old)
-
-
-def test_plan_price_cut_no_increase_allowed() -> None:
-    """
-    When price_cut_allow_increase=False, prices should not increase
-    even when breakeven floor is above old price.
-    """
-    rng = make_rng(1)
-    prod = mock_producer(n=2)
-    prod.inventory[:] = np.array([5.0, 5.0])
-    prod.price[:] = np.array([2.0, 1.0])
-    prod.breakeven_price[:] = np.array([1.5, 1.2])
-
-    old = prod.price.copy()
-    firms_plan_price(
-        prod, p_avg=1.0, h_eta=0.1, rng=rng, price_cut_allow_increase=False
-    )
-
-    assert prod.price[0] <= old[0]
-    assert prod.price[1] <= old[1]

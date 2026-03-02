@@ -1,7 +1,7 @@
 """
 Event classes for BAM Engine simulation.
 
-This package contains 46 event classes organized into 8 modules representing
+This package contains 39 event classes organized into 8 modules representing
 different phases of the BAM economic model. Events are auto-registered via
 __init_subclass__ hook and composed into a Pipeline for execution.
 
@@ -9,16 +9,16 @@ Event Organization
 ------------------
 Events are organized by economic phase:
 
-1. **Planning** (6 events): Firms plan production targets, alternative early pricing
-2. **Labor Market** (9 events): Wage setting, job applications, hiring
-3. **Credit Market** (9 events): Credit supply/demand, loan applications, provision
-4. **Production** (6 events): Wage payments, breakeven/price, production, contracts
-5. **Goods Market** (6 events): Consumption decisions, shopping
+1. **Planning** (6 events): Firms plan production targets, breakeven price, price adjustment
+2. **Labor Market** (7 events): Wage setting, job applications, hiring
+3. **Credit Market** (7 events): Credit supply/demand, loan applications, provision
+4. **Production** (4 events): Wage payments, production, contracts
+5. **Goods Market** (5 events): Consumption decisions, shopping
 6. **Revenue** (3 events): Revenue collection, debt repayment, dividends
 7. **Bankruptcy** (5 events): Insolvency detection, agent replacement
-8. **Economy Stats** (2 events): Aggregate metrics (prices, unemployment)
+8. **Economy Stats** (1 event): Aggregate metrics (prices)
 
-Total: 46 events across 8 modules
+Total: 39 events across 8 modules (1 stat event is not in default pipeline)
 
 Event Execution
 ---------------
@@ -36,8 +36,8 @@ Key Design Patterns
 Event Naming Convention
 -----------------------
 - Agent action: FirmsDecideWageOffer, WorkersReceiveWage
-- State update: UpdateAvgMktPrice, CalcUnemploymentRate
-- Process round: WorkersSendOneRound, ConsumersShopOneRound
+- State update: UpdateAvgMktPrice, CalcInflationRate
+- Process round: WorkersSendOneRound, ConsumersShopSequential
 
 Examples
 --------
@@ -71,20 +71,18 @@ from bamengine.events.credit_market import (
     BanksDecideCreditSupply,
     BanksDecideInterestRate,
     BanksProvideLoans,
-    FirmsApplyForLoans,
     FirmsCalcFinancialFragility,
     FirmsDecideCreditDemand,
     FirmsFireWorkers,
     FirmsPrepareLoanApplications,
     FirmsSendOneLoanApp,
 )
-from bamengine.events.economy_stats import CalcUnemploymentRate, UpdateAvgMktPrice
+from bamengine.events.economy_stats import UpdateAvgMktPrice
 from bamengine.events.goods_market import (
     ConsumersCalcPropensity,
     ConsumersDecideFirmsToVisit,
     ConsumersDecideIncomeToSpend,
     ConsumersFinalizePurchases,
-    ConsumersShopOneRound,
     ConsumersShopSequential,
 )
 from bamengine.events.labor_market import (
@@ -93,8 +91,6 @@ from bamengine.events.labor_market import (
     FirmsCalcWageBill,
     FirmsDecideWageOffer,
     FirmsHireWorkers,
-    WorkersApplyToBestFirm,
-    WorkersApplyToFirms,
     WorkersDecideFirmsToApply,
     WorkersSendOneRound,
 )
@@ -107,8 +103,6 @@ from bamengine.events.planning import (
     FirmsPlanPrice,
 )
 from bamengine.events.production import (
-    FirmsAdjustPrice,
-    FirmsCalcBreakevenPrice,
     FirmsPayWages,
     FirmsRunProduction,
     WorkersReceiveWage,
@@ -128,38 +122,32 @@ __all__ = [
     "FirmsDecideDesiredLabor",
     "FirmsDecideVacancies",
     "FirmsFireExcessWorkers",
-    # Labor market events (9)
+    # Labor market events (7)
     "CalcInflationRate",
     "AdjustMinimumWage",
     "FirmsDecideWageOffer",
     "WorkersDecideFirmsToApply",
-    "WorkersApplyToFirms",
-    "WorkersApplyToBestFirm",
     "WorkersSendOneRound",
     "FirmsHireWorkers",
     "FirmsCalcWageBill",
-    # Credit market events (9)
+    # Credit market events (7)
     "BanksDecideCreditSupply",
     "BanksDecideInterestRate",
     "FirmsDecideCreditDemand",
     "FirmsCalcFinancialFragility",
     "FirmsPrepareLoanApplications",
-    "FirmsApplyForLoans",
     "FirmsSendOneLoanApp",
     "BanksProvideLoans",
     "FirmsFireWorkers",
-    # Production events (6)
+    # Production events (4)
     "FirmsPayWages",
     "WorkersReceiveWage",
-    "FirmsCalcBreakevenPrice",
-    "FirmsAdjustPrice",
     "FirmsRunProduction",
     "WorkersUpdateContracts",
-    # Goods market events (6)
+    # Goods market events (5)
     "ConsumersCalcPropensity",
     "ConsumersDecideIncomeToSpend",
     "ConsumersDecideFirmsToVisit",
-    "ConsumersShopOneRound",
     "ConsumersShopSequential",
     "ConsumersFinalizePurchases",
     # Revenue events (3)
@@ -172,7 +160,6 @@ __all__ = [
     "MarkBankruptBanks",
     "SpawnReplacementFirms",
     "SpawnReplacementBanks",
-    # Economy stats events (2)
+    # Economy stats events (1)
     "UpdateAvgMktPrice",
-    "CalcUnemploymentRate",
 ]

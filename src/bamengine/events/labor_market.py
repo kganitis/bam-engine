@@ -75,48 +75,19 @@ class CalcInflationRate:
 
     The inflation rate measures the change in the average market price level.
     This is used by AdjustMinimumWage to index the minimum wage to inflation.
-    The calculation method is configurable via ``inflation_method`` parameter.
-
-    Methods
-    -------
-    ``"yoy"`` (year-over-year, default)
-        Compares current price to price 4 periods ago. Requires at least 5
-        periods of price history. This is the traditional annual inflation
-        calculation.
-
-    ``"annualized"`` (annualized quarterly rate)
-        Computes quarterly rate and annualizes it: :math:`(1 + q)^4 - 1`.
-        Requires only 2 periods of history. More responsive to recent price
-        changes but can be more volatile.
+    Uses year-over-year comparison (4-period lookback).
 
     Algorithm
     ---------
-    For ``method="yoy"``:
-
     1. Check if price history has at least 5 periods (:math:`t \\geq 4`)
     2. If insufficient history, set :math:`\\pi_t = 0` and skip
     3. Otherwise, calculate: :math:`\\pi_t = (\\bar{P}_t - \\bar{P}_{t-4}) / \\bar{P}_{t-4}`
     4. Append :math:`\\pi_t` to inflation history
 
-    For ``method="annualized"``:
-
-    1. Check if price history has at least 2 periods
-    2. If insufficient history, set :math:`\\pi_t = 0` and skip
-    3. Calculate quarterly rate: :math:`q_t = (\\bar{P}_t - \\bar{P}_{t-1}) / \\bar{P}_{t-1}`
-    4. Annualize: :math:`\\pi_t = (1 + q_t)^4 - 1`
-    5. Append :math:`\\pi_t` to inflation history
-
     Mathematical Notation
     ---------------------
-    Year-over-year:
-
     .. math::
         \\pi_t = \\frac{\\bar{P}_t - \\bar{P}_{t-4}}{\\bar{P}_{t-4}}
-
-    Annualized:
-
-    .. math::
-        \\pi_t = \\left(1 + \\frac{\\bar{P}_t - \\bar{P}_{t-1}}{\\bar{P}_{t-1}}\\right)^4 - 1
 
     where:
 
@@ -140,7 +111,7 @@ class CalcInflationRate:
     >>> sim.ec.inflation_history[-1]  # doctest: +SKIP
     0.023
 
-    Inflation requires 5 periods of history for YoY method:
+    Inflation requires 5 periods of history:
 
     >>> sim = be.Simulation.init(n_firms=10, seed=42)
     >>> event = sim.get_event("calc_inflation_rate")
@@ -148,23 +119,12 @@ class CalcInflationRate:
     >>> sim.ec.inflation_history[-1]
     0.0
 
-    Using annualized method (only needs 2 periods):
-
-    >>> sim = be.Simulation.init(n_firms=100, seed=42, inflation_method="annualized")
-    >>> sim.step()  # First period
-    >>> sim.step()  # Second period - now can calculate
-    >>> # Annualized inflation available after 2 periods
-    >>> len(sim.ec.inflation_history) >= 2
-    True
-
     Notes
     -----
     This event must execute before AdjustMinimumWage in each period.
 
-    For the year-over-year method, during the first 4 periods (t < 4), inflation
-    is set to 0.0 since there is insufficient history.
-
-    For the annualized method, only the first period (t = 0) has zero inflation.
+    During the first 4 periods (t < 4), inflation is set to 0.0 since
+    there is insufficient history.
 
     The inflation rate is stored in Economy.inflation_history for later use by
     minimum wage adjustment.
@@ -179,7 +139,7 @@ class CalcInflationRate:
     def execute(self, sim: Simulation) -> None:
         from bamengine.events._internal.labor_market import calc_inflation_rate
 
-        calc_inflation_rate(sim.ec, method=sim.config.inflation_method)
+        calc_inflation_rate(sim.ec)
 
 
 @event
@@ -197,19 +157,11 @@ class AdjustMinimumWage:
     2. Check if sufficient price history exists: :math:`t > \\text{min\\_wage\\_rev\\_period}`
     3. If both conditions met:
        - Retrieve most recent inflation rate: :math:`\\pi_t = \\text{inflation\\_history}[-1]`
-       - If ``min_wage_ratchet=True``: :math:`\\hat{w}_t = \\hat{w}_{t-1} \\times \\max(1, 1 + \\pi_t)`
-       - If ``min_wage_ratchet=False``: :math:`\\hat{w}_t = \\hat{w}_{t-1} \\times (1 + \\pi_t)`
+       - Update: :math:`\\hat{w}_t = \\hat{w}_{t-1} \\times (1 + \\pi_t)`
     4. Otherwise, skip revision (:math:`\\hat{w}_t = \\hat{w}_{t-1}`)
 
     Mathematical Notation
     ---------------------
-    With ratchet (``min_wage_ratchet=True``, book Section 3.4):
-
-    .. math::
-        \\hat{w}_t = \\hat{w}_{t-1} \\times \\max(1, 1 + \\pi_t)
-
-    Without ratchet (``min_wage_ratchet=False``, default):
-
     .. math::
         \\hat{w}_t = \\hat{w}_{t-1} \\times (1 + \\pi_t)
 
@@ -253,10 +205,7 @@ class AdjustMinimumWage:
     The revision only occurs on specific periods determined by min_wage_rev_period
     (e.g., if min_wage_rev_period=4, revisions occur at t=4, 8, 12, ...).
 
-    Behavior during deflation depends on the ``min_wage_ratchet`` config parameter.
-    With ratchet enabled, the minimum wage stays unchanged (upward-only revision,
-    following the book's specification in Section 3.4). Without ratchet (default),
-    the minimum wage can decrease during deflation.
+    The minimum wage is bidirectional: it can decrease during deflation.
 
     See Also
     --------
@@ -269,7 +218,7 @@ class AdjustMinimumWage:
     def execute(self, sim: Simulation) -> None:
         from bamengine.events._internal.labor_market import adjust_minimum_wage
 
-        adjust_minimum_wage(sim.ec, sim.wrk, ratchet=sim.config.min_wage_ratchet)
+        adjust_minimum_wage(sim.ec, sim.wrk)
 
 
 @event
@@ -558,9 +507,7 @@ class WorkersSendOneRound:
     def execute(self, sim: Simulation) -> None:
         from bamengine.events._internal.labor_market import workers_send_one_round
 
-        workers_send_one_round(
-            sim.wrk, sim.emp, rng=sim.rng, matching_method=sim.config.matching_method
-        )
+        workers_send_one_round(sim.wrk, sim.emp, rng=sim.rng)
 
 
 @event
@@ -670,115 +617,6 @@ class FirmsHireWorkers:
         from bamengine.events._internal.labor_market import firms_hire_workers
 
         firms_hire_workers(
-            wrk=sim.wrk,
-            emp=sim.emp,
-            theta=sim.config.theta,
-            matching_method=sim.config.matching_method,
-            rng=sim.rng,
-        )
-
-
-@event
-class WorkersApplyToFirms:
-    """
-    Workers apply to firms via cascade matching.
-
-    .. deprecated::
-       Cascade labor matching is deprecated. Use interleaved matching
-       (default) instead.
-
-    Each unemployed worker walks their ranked application queue from best to
-    worst wage offer.  At each firm the worker checks for vacancies:
-
-    * **Vacancy available** — the worker is hired immediately and stops.
-    * **No vacancy** — the worker cascades to the next firm in their queue.
-    * **Queue exhausted** — the worker stays unemployed for this period.
-
-    Because hiring happens immediately during the cascade, vacancies deplete
-    in real-time as earlier workers (in random processing order) are placed.
-    Workers processed later encounter fewer openings, which produces an
-    irreducible floor of frictional unemployment — matching the book's
-    description of sequential matching (Section 3.4).
-
-    This is a **single event** that replaces the interleaved
-    ``WorkersSendOneRound <-> FirmsHireWorkers x {max_M}`` pattern.
-
-    Algorithm
-    ---------
-    1. Identify unemployed workers with pending application queues.
-    2. Shuffle worker order randomly (``rng.shuffle``).
-    3. For each worker *j*, walk the ranked queue (up to ``max_M`` firms).
-       If a firm has vacancies the worker is hired immediately and stops;
-       otherwise the worker cascades to the next firm.  If the queue is
-       exhausted the worker stays unemployed.
-
-    Examples
-    --------
-    >>> import bamengine as be
-    >>> sim = be.Simulation.init(n_firms=100, n_households=500, seed=42)
-    >>> sim.get_event("workers_decide_firms_to_apply")().execute(sim)
-    >>> sim.get_event("workers_apply_to_firms")().execute(sim)
-
-    See Also
-    --------
-    WorkersDecideFirmsToApply : Builds the ranked application queues
-    WorkersApplyToBestFirm : Alternative single-best matching
-    WorkersSendOneRound : Legacy round-robin matching (kept for backward compat)
-    """
-
-    def execute(self, sim: Simulation) -> None:
-        from bamengine.events._internal.labor_market import workers_apply_to_firms
-
-        workers_apply_to_firms(
-            wrk=sim.wrk,
-            emp=sim.emp,
-            theta=sim.config.theta,
-            rng=sim.rng,
-        )
-
-
-@event
-class WorkersApplyToBestFirm:
-    """
-    Workers apply only to their best-wage firm (no cascade, no retry).
-
-    .. deprecated::
-       Cascade labor matching is deprecated. Use interleaved matching
-       (default) instead.
-
-    This is the literal interpretation of book Section 3.4: the worker
-    "chooses to enter a settlement stage **only** with the firm offering the
-    highest wage."  If that firm has no vacancies the worker stays unemployed.
-
-    More restrictive than cascade matching — produces higher frictional
-    unemployment.
-
-    Algorithm
-    ---------
-    1. Identify unemployed workers with pending application queues
-    2. Shuffle worker order randomly
-    3. For each worker j:
-       - Pop the first (best-wage) firm from their queue
-       - If firm has vacancies: hire immediately
-       - If no vacancies: worker stays unemployed
-
-    Examples
-    --------
-    >>> import bamengine as be
-    >>> sim = be.Simulation.init(n_firms=100, n_households=500, seed=42)
-    >>> sim.get_event("workers_decide_firms_to_apply")().execute(sim)
-    >>> sim.get_event("workers_apply_to_best_firm")().execute(sim)
-
-    See Also
-    --------
-    WorkersApplyToFirms : Cascade matching (default)
-    WorkersSendOneRound : Legacy round-robin matching
-    """
-
-    def execute(self, sim: Simulation) -> None:
-        from bamengine.events._internal.labor_market import workers_apply_to_best_firm
-
-        workers_apply_to_best_firm(
             wrk=sim.wrk,
             emp=sim.emp,
             theta=sim.config.theta,

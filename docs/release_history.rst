@@ -13,6 +13,21 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 [Unreleased]
 ------------
 
+Removed
+~~~~~~~
+
+* **Deprecated config parameters**: ``price_cut_allow_increase``, ``inflation_method``,
+  ``labor_matching``, ``credit_matching``, ``min_wage_ratchet``, ``pricing_phase``,
+  ``matching_method``. Behavior is now hardcoded to the previously active defaults.
+* **Deprecated event classes**: ``WorkersApplyToFirms``, ``WorkersApplyToBestFirm``,
+  ``FirmsApplyForLoans``, ``CalcUnemploymentRate``, ``ConsumersShopOneRound``,
+  ``FirmsCalcBreakevenPrice``, ``FirmsAdjustPrice``. Event count reduced from 46 to 39.
+* **Deprecated internal functions**: cascade matching (labor and credit), simultaneous
+  matching, annualized inflation, ratchet minimum wage, production-phase pricing,
+  round-robin shopping.
+* Pipeline factory no longer performs runtime event swaps; ``default_pipeline.yml``
+  now directly specifies interleaved matching syntax.
+
 Changed
 ~~~~~~~
 

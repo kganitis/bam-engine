@@ -69,8 +69,7 @@ Economic Concepts
 
    breakeven price
       The minimum price at which a firm covers its costs. Calculated as
-      ``wage_bill / expected_output`` (planning phase) or
-      ``wage_bill / (labor_productivity * labor)`` (production phase).
+      ``wage_bill / expected_output`` during the planning phase.
 
    financial fragility
       A measure of a firm's leverage, defined as the ratio of debt to net
@@ -132,9 +131,8 @@ Economic Concepts
       :term:`labor market` and :term:`goods market`.
 
    matching
-      The process of pairing agents in a market. BAM Engine supports
-      interleaved matching (agents processed one at a time across multiple
-      rounds) and cascade matching (all agents processed per round).
+      The process of pairing agents in a market. BAM Engine uses interleaved
+      matching where agents are processed one at a time across multiple rounds.
 
    vacancy
       An open position posted by a firm seeking to hire workers. The number

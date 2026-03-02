@@ -22,15 +22,6 @@ def test_calc_inflation_rate_executes():
     event.execute(sim)  # Should not crash
 
 
-def test_calc_inflation_rate_with_annualized_method():
-    """CalcInflationRate executes with annualized method."""
-    sim = Simulation.init(
-        n_firms=10, n_households=50, seed=42, inflation_method="annualized"
-    )
-    event = get_event("calc_inflation_rate")()
-    event.execute(sim)  # Should not crash
-
-
 def test_adjust_minimum_wage_executes():
     """AdjustMinimumWage executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
@@ -73,29 +64,13 @@ def test_firms_calc_wage_bill_executes():
     event.execute(sim)  # Should not crash
 
 
-def test_workers_apply_to_firms_executes():
-    """WorkersApplyToFirms executes without error."""
-    sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    get_event("workers_decide_firms_to_apply")().execute(sim)
-    event = get_event("workers_apply_to_firms")()
-    event.execute(sim)  # Should not crash
-
-
-def test_workers_apply_to_best_firm_executes():
-    """WorkersApplyToBestFirm executes without error."""
-    sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    get_event("workers_decide_firms_to_apply")().execute(sim)
-    event = get_event("workers_apply_to_best_firm")()
-    event.execute(sim)  # Should not crash
-
-
 # ============================================================================
 # Event Chain Test
 # ============================================================================
 
 
 def test_labor_market_event_chain_executes():
-    """Labor market events can execute in sequence (legacy interleaved)."""
+    """Labor market events can execute in sequence (interleaved)."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
 
     # Execute in sequence
@@ -106,23 +81,6 @@ def test_labor_market_event_chain_executes():
         "workers_decide_firms_to_apply",
         "workers_send_one_round",
         "firms_hire_workers",
-        "firms_calc_wage_bill",
-    ]
-
-    for e in events:
-        get_event(e)().execute(sim)  # Should not crash
-
-
-def test_labor_market_cascade_chain_executes():
-    """Labor market events with cascade matching can execute in sequence."""
-    sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-
-    events = [
-        "calc_inflation_rate",
-        "adjust_minimum_wage",
-        "firms_decide_wage_offer",
-        "workers_decide_firms_to_apply",
-        "workers_apply_to_firms",
         "firms_calc_wage_bill",
     ]
 

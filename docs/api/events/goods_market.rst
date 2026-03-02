@@ -16,6 +16,5 @@ Event Classes
    ConsumersCalcPropensity
    ConsumersDecideIncomeToSpend
    ConsumersDecideFirmsToVisit
-   ConsumersShopOneRound
    ConsumersShopSequential
    ConsumersFinalizePurchases

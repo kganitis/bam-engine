@@ -64,13 +64,6 @@ class TestScenarioGrids:
     def test_no_deprecated_params_in_grid(self):
         """Verify no deprecated/removed params in any grid."""
         deprecated = {
-            "price_cut_allow_increase",
-            "inflation_method",
-            "labor_matching",
-            "credit_matching",
-            "min_wage_ratchet",
-            "pricing_phase",
-            "matching_method",
             "contract_poisson_mean",
             "loan_priority_method",
             "firing_method",

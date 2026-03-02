@@ -36,13 +36,6 @@ def test_consumers_decide_firms_to_visit_executes():
     event.execute(sim)  # Should not crash
 
 
-def test_consumers_shop_one_round_executes():
-    """ConsumersShopOneRound executes without error."""
-    sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = get_event("consumers_shop_one_round")()
-    event.execute(sim)  # Should not crash
-
-
 def test_consumers_finalize_purchases_executes():
     """ConsumersFinalizePurchases executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)

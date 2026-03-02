@@ -605,17 +605,8 @@ class Simulation:
 
         ConfigValidator.validate_config(cfg_dict)
 
-        # Validate pipeline-altering params vs pipeline_path conflict
-        pricing_phase = cfg_dict.get("pricing_phase", "planning")
-        pipeline_path = cfg_dict.get("pipeline_path")
-
-        if pipeline_path is not None and pricing_phase != "planning":
-            raise ValueError(
-                f"pricing_phase='{pricing_phase}' cannot be used with a custom "
-                "pipeline_path. Customize the pipeline YAML directly instead."
-            )
-
         # Validate pipeline path if specified
+        pipeline_path = cfg_dict.get("pipeline_path")
         if pipeline_path is not None:
             ConfigValidator.validate_pipeline_path(pipeline_path)
             # Validate pipeline YAML with available parameters
@@ -931,15 +922,6 @@ class Simulation:
             cap_factor=p.get("cap_factor"),
             # Implementation variants
             job_search_method=p["job_search_method"],
-            pricing_phase=p.get("pricing_phase", "planning"),
-            # Deprecated params (retained for backward compatibility)
-            price_cut_allow_increase=p["price_cut_allow_increase"],
-            inflation_method=p["inflation_method"],
-            labor_matching=p["labor_matching"],
-            credit_matching=p["credit_matching"],
-            min_wage_ratchet=p["min_wage_ratchet"],
-            # Silently disabled params (not in defaults.yml)
-            matching_method=p.get("matching_method", "sequential"),
             consumer_matching=p["consumer_matching"],
             # New firm entry parameters
             new_firm_size_factor=p["new_firm_size_factor"],
@@ -989,7 +971,6 @@ class Simulation:
                 max_M=p["max_M"],
                 max_H=p["max_H"],
                 max_Z=p["max_Z"],
-                pricing_phase=p.get("pricing_phase", "planning"),
             )
 
         # Configure logging (if specified)

@@ -115,8 +115,8 @@ def test_custom_pipeline_path():
     pipeline_yaml = """
 events:
   - firms_decide_desired_production
-  - firms_calc_breakeven_price
-  - firms_adjust_price
+  - firms_plan_breakeven_price
+  - firms_plan_price
 """
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
@@ -134,8 +134,8 @@ events:
         # Should have custom pipeline with 3 events
         assert len(sim.pipeline) == 3
         assert sim.pipeline.events[0].name == "firms_decide_desired_production"
-        assert sim.pipeline.events[1].name == "firms_calc_breakeven_price"
-        assert sim.pipeline.events[2].name == "firms_adjust_price"
+        assert sim.pipeline.events[1].name == "firms_plan_breakeven_price"
+        assert sim.pipeline.events[2].name == "firms_plan_price"
     finally:
         Path(pipeline_path).unlink()
 
@@ -145,7 +145,7 @@ def test_default_pipeline_when_no_custom_path():
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
 
     # Interleaved matching (default): pipeline length depends on max_M and max_H
-    # 37 base events + (max_M-1)*2 extra labor rounds + (max_H-1)*2 extra credit rounds
+    # 35 base events + 2*max_M labor rounds + 2*max_H credit rounds
     assert len(sim.pipeline) == 47
 
     # Check first and last events
@@ -209,7 +209,7 @@ n_households: 50
 logging:
   default_level: DEBUG
   events:
-    consumers_shop_one_round: WARNING
+    consumers_shop_sequential: WARNING
 """
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
@@ -223,7 +223,7 @@ logging:
         logger = logging.getLogger("bamengine")
         assert logger.level == logging.DEBUG
 
-        shop_logger = logging.getLogger("bamengine.events.consumers_shop_one_round")
+        shop_logger = logging.getLogger("bamengine.events.consumers_shop_sequential")
         assert shop_logger.level == logging.WARNING
     finally:
         Path(yaml_path).unlink()
@@ -319,106 +319,6 @@ def test_config_dict_passed_directly():
     assert sim.n_firms == 75
     assert sim.n_households == 400
     assert sim.config.h_rho == 0.15
-
-
-def test_pricing_phase_conflicts_with_pipeline_path():
-    """Setting pricing_phase != 'planning' with pipeline_path should raise."""
-
-    pipeline_yaml = """
-events:
-  - firms_decide_desired_production
-  - firms_calc_breakeven_price
-  - firms_adjust_price
-"""
-
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
-        f.write(pipeline_yaml)
-        pipeline_path = f.name
-
-    try:
-        with pytest.raises(
-            ValueError, match="cannot be used with a custom pipeline_path"
-        ):
-            Simulation.init(
-                n_firms=10,
-                n_households=50,
-                pipeline_path=pipeline_path,
-                pricing_phase="production",
-                seed=42,
-            )
-    finally:
-        Path(pipeline_path).unlink()
-
-
-def test_pricing_phase_planning_with_pipeline_path_is_ok():
-    """pricing_phase='planning' (default) with pipeline_path should be fine."""
-
-    pipeline_yaml = """
-events:
-  - firms_decide_desired_production
-  - firms_calc_breakeven_price
-  - firms_adjust_price
-"""
-
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
-        f.write(pipeline_yaml)
-        pipeline_path = f.name
-
-    try:
-        sim = Simulation.init(
-            n_firms=10,
-            n_households=50,
-            pipeline_path=pipeline_path,
-            pricing_phase="planning",
-            seed=42,
-        )
-        assert len(sim.pipeline) == 3
-    finally:
-        Path(pipeline_path).unlink()
-
-
-def test_min_wage_ratchet_with_pipeline_path_is_ok():
-    """min_wage_ratchet with pipeline_path should be fine (doesn't affect pipeline)."""
-
-    pipeline_yaml = """
-events:
-  - firms_decide_desired_production
-  - firms_calc_breakeven_price
-  - firms_adjust_price
-"""
-
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
-        f.write(pipeline_yaml)
-        pipeline_path = f.name
-
-    try:
-        sim = Simulation.init(
-            n_firms=10,
-            n_households=50,
-            pipeline_path=pipeline_path,
-            min_wage_ratchet=True,
-            seed=42,
-        )
-        assert sim.config.min_wage_ratchet is True
-    finally:
-        Path(pipeline_path).unlink()
-
-
-def test_implementation_variant_config_defaults():
-    """New implementation variant params have correct defaults."""
-    sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    assert sim.config.min_wage_ratchet is False
-
-
-def test_implementation_variant_config_override():
-    """Implementation variant params can be overridden via kwargs."""
-    sim = Simulation.init(
-        n_firms=10,
-        n_households=50,
-        min_wage_ratchet=True,
-        seed=42,
-    )
-    assert sim.config.min_wage_ratchet is True
 
 
 def test_config_yaml_non_mapping_root():

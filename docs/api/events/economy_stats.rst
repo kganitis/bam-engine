@@ -14,4 +14,3 @@ Event Classes
    :nosignatures:
 
    UpdateAvgMktPrice
-   CalcUnemploymentRate

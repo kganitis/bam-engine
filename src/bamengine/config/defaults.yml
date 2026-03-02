@@ -134,13 +134,3 @@ job_search_method: all_firms         # How workers sample firms for job applicat
 consumer_matching: loyalty           # Consumer firm selection strategy
                                      # "loyalty" = preferential attachment (largest prev producer)
                                      # "random" = pure random selection (no loyalty)
-
-# === DEPRECATED (may be removed in future) ===================================
-# These parameters are retained for backward compatibility but their values
-# should not be changed. The defaults below are the only supported values.
-
-price_cut_allow_increase: true       # DEPRECATED — Allow price increase when cutting
-inflation_method: yoy                # DEPRECATED — Inflation calculation method
-labor_matching: interleaved          # DEPRECATED — Always interleaved (cascade removed)
-credit_matching: interleaved         # DEPRECATED — Always interleaved (cascade removed)
-min_wage_ratchet: false              # DEPRECATED — Minimum wage ratchet

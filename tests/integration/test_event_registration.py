@@ -51,8 +51,6 @@ def test_all_production_events_registered():
 
     assert "firms_pay_wages" in events
     assert "workers_receive_wage" in events
-    assert "firms_calc_breakeven_price" in events
-    assert "firms_adjust_price" in events
     assert "firms_run_production" in events
     assert "workers_update_contracts" in events
 
@@ -64,7 +62,7 @@ def test_all_goods_market_events_registered():
     assert "consumers_calc_propensity" in events
     assert "consumers_decide_income_to_spend" in events
     assert "consumers_decide_firms_to_visit" in events
-    assert "consumers_shop_one_round" in events
+    assert "consumers_shop_sequential" in events
     assert "consumers_finalize_purchases" in events
 
 
@@ -93,7 +91,6 @@ def test_all_economy_stats_events_registered():
     events = list_events()
 
     assert "update_avg_mkt_price" in events
-    assert "calc_unemployment_rate" in events
 
 
 def test_no_duplicate_event_names():

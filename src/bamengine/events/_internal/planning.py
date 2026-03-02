@@ -199,14 +199,12 @@ def firms_plan_price(
     *,
     p_avg: float,
     h_eta: float,
-    price_cut_allow_increase: bool = True,
     rng: Rng = make_rng(),
 ) -> None:
     """
     Planning-phase price adjustment based on inventory and market position.
 
-    Identical logic to production-phase firms_adjust_price but intended to
-    run during the planning phase using breakeven computed from previous
+    Runs during the planning phase using breakeven computed from previous
     period's costs.
 
     See Also
@@ -288,11 +286,7 @@ def firms_plan_price(
     if n_dn > 0:
         np.multiply(prod.price, 1.0 - shock, out=prod.price, where=mask_dn)
 
-        if price_cut_allow_increase:
-            np.maximum(prod.price, prod.breakeven_price, out=prod.price, where=mask_dn)
-        else:
-            floor_price = np.minimum(old_prices_for_log, prod.breakeven_price)
-            np.maximum(prod.price, floor_price, out=prod.price, where=mask_dn)
+        np.maximum(prod.price, prod.breakeven_price, out=prod.price, where=mask_dn)
 
         if info_enabled:
             price_changes = prod.price[mask_dn] - old_prices_for_log[mask_dn]

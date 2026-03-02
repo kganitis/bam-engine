@@ -200,22 +200,8 @@ class Pipeline:
     )
 
     def __post_init__(self) -> None:
-        """Build internal event mapping, validate mutual exclusions, and initialize callbacks."""
+        """Build internal event mapping and initialize callbacks."""
         self._event_map = {event.name: event for event in self.events}
-
-        # Check for mutually exclusive pricing events
-        _PLANNING_PRICING = {"firms_plan_breakeven_price", "firms_plan_price"}
-        _PRODUCTION_PRICING = {"firms_calc_breakeven_price", "firms_adjust_price"}
-        present = set(self._event_map)
-        has_planning = bool(present & _PLANNING_PRICING)
-        has_production = bool(present & _PRODUCTION_PRICING)
-        if has_planning and has_production:
-            raise ValueError(
-                "Pipeline contains both planning-phase and production-phase "
-                "pricing events. These are mutually exclusive. Use "
-                "pricing_phase='planning' or pricing_phase='production' "
-                "in config, not both."
-            )
 
         # Ensure _after_event_callbacks is a defaultdict (in case of copy/pickle)
         if not isinstance(self._after_event_callbacks, defaultdict):  # pragma: no cover
@@ -673,16 +659,14 @@ def create_default_pipeline(
     max_M: int,
     max_H: int,
     max_Z: int,
-    pricing_phase: str = "planning",
 ) -> Pipeline:
     """
     Create default BAM simulation event pipeline.
 
     Loads the pipeline from config/default_pipeline.yml and substitutes
-    market round parameters (max_M, max_H, max_Z). Applies event swaps
-    based on implementation variant parameters.
+    market round parameters (max_M, max_H, max_Z).
 
-    The pipeline always uses interleaved matching for both labor and credit
+    The pipeline uses interleaved matching for both labor and credit
     markets: ``workers_send_one_round`` / ``firms_hire_workers`` repeated
     ``max_M`` times, and ``firms_send_one_loan_app`` / ``banks_provide_loans``
     repeated ``max_H`` times.
@@ -695,11 +679,6 @@ def create_default_pipeline(
         Number of loan application rounds.
     max_Z : int
         Number of shopping rounds.
-    pricing_phase : str, optional
-        When breakeven price and price adjustment occur.
-        ``"planning"`` (default) uses previous period's costs / desired
-        production. ``"production"`` uses current period's costs / projected
-        production (after labor/credit markets).
 
     Returns
     -------
@@ -735,29 +714,5 @@ def create_default_pipeline(
 
         yaml_path = Path(bamengine.__file__).parent / "config" / "default_pipeline.yml"
         pipeline = Pipeline.from_yaml(yaml_path, max_M=max_M, max_H=max_H, max_Z=max_Z)
-
-    # Swap pricing events if production-phase pricing is requested
-    if pricing_phase == "production":
-        pipeline.remove("firms_plan_breakeven_price")
-        pipeline.remove("firms_plan_price")
-        pipeline.insert_after(
-            "workers_receive_wage",
-            ["firms_calc_breakeven_price", "firms_adjust_price"],
-        )
-
-    # Swap cascade events for interleaved matching (always active)
-    pipeline.remove("workers_apply_to_firms")
-    legacy_labor: list[Event | str] = [
-        "workers_send_one_round",
-        "firms_hire_workers",
-    ] * max_M
-    pipeline.insert_after("workers_decide_firms_to_apply", legacy_labor)
-
-    pipeline.remove("firms_apply_for_loans")
-    legacy_credit: list[Event | str] = [
-        "firms_send_one_loan_app",
-        "banks_provide_loans",
-    ] * max_H
-    pipeline.insert_after("firms_prepare_loan_applications", legacy_credit)
 
     return pipeline

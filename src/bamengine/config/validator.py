@@ -326,28 +326,9 @@ class ConfigValidator:
                     f"got {type(val).__name__}"
                 )
 
-        # Check boolean implementation variant parameters
-        bool_params = [
-            "price_cut_allow_increase",
-            "min_wage_ratchet",
-        ]
-        for key in bool_params:
-            if key not in cfg:
-                continue
-            val = cfg[key]
-            if not isinstance(val, bool):
-                raise ValueError(
-                    f"Config parameter '{key}' must be bool, got {type(val).__name__}"
-                )
-
         # Check string enum implementation variant parameters
         str_enum_params = [
-            "matching_method",
             "job_search_method",
-            "inflation_method",
-            "pricing_phase",
-            "labor_matching",
-            "credit_matching",
             "consumer_matching",
         ]
         for key in str_enum_params:
@@ -475,12 +456,7 @@ class ConfigValidator:
 
         # Valid values for string enum parameters
         valid_enums = {
-            "matching_method": {"sequential", "simultaneous"},
             "job_search_method": {"vacancies_only", "all_firms"},
-            "inflation_method": {"yoy", "annualized"},
-            "pricing_phase": {"planning", "production"},
-            "labor_matching": {"cascade", "interleaved"},
-            "credit_matching": {"cascade", "interleaved"},
             "consumer_matching": {"loyalty", "random"},
         }
 

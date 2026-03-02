@@ -24,7 +24,7 @@ from bamengine.utils import select_top_k_indices_sorted
 log = logging.getLogger(__name__)
 
 
-def calc_inflation_rate(ec: Economy, *, method: str = "yoy") -> None:
+def calc_inflation_rate(ec: Economy) -> None:
     """
     Calculate inflation rate and append to history.
 
@@ -32,9 +32,6 @@ def calc_inflation_rate(ec: Economy, *, method: str = "yoy") -> None:
     ----------
     ec : Economy
         Economy object containing price history and inflation history.
-    method : str, optional
-        Calculation method: "yoy" (year-over-year) or "annualized".
-        Default is "yoy".
 
     See Also
     --------
@@ -42,82 +39,45 @@ def calc_inflation_rate(ec: Economy, *, method: str = "yoy") -> None:
     """
     info_enabled = log.isEnabledFor(logging.INFO)
     if info_enabled:
-        log.info(f"--- Calculating Inflation Rate (method={method}) ---")
+        log.info("--- Calculating Inflation Rate ---")
     hist = ec.avg_mkt_price_history
 
-    if method == "annualized":
-        # Annualized method: (1 + quarterly_rate)^4 - 1
-        # Needs at least 2 periods of history
-        if hist.size < 2:
-            if info_enabled:
-                log.info(
-                    "  Not enough history to calculate inflation (<2 periods). "
-                    "Setting to 0.0."
-                )
-            ec.inflation_history = np.append(ec.inflation_history, 0.0)
-            return
-
-        p_now = hist[-1]
-        p_prev = hist[-2]  # Price from previous period
-
-        if p_prev <= 0:
-            log.warning(
-                "  Cannot calculate inflation, previous price level was zero or negative. "
-                "Setting to 0.0."
-            )
-            inflation = 0.0
-        else:
-            quarterly_rate = (p_now - p_prev) / p_prev
-            inflation = (1.0 + quarterly_rate) ** 4 - 1.0
-
-        ec.inflation_history = np.append(ec.inflation_history, inflation)
+    # Year-over-year method: compare P_t to P_{t-4}
+    # Needs at least 5 periods of history
+    if hist.size <= 4:
         if info_enabled:
             log.info(
-                f"  Annualized inflation calculated for period t={hist.size - 1}: {inflation:+.3%}"
+                "  Not enough history to calculate annual inflation (<5 periods). "
+                "Setting to 0.0."
             )
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug(
-                f"    Calculation: (1 + (p_now={p_now:.3f} - p_prev={p_prev:.3f}) / p_prev)^4 - 1"
-            )
+        ec.inflation_history = np.append(ec.inflation_history, 0.0)
+        return
+
+    p_now = hist[-1]
+    p_prev = hist[-5]  # Price from 4 periods ago (e.g., if t=5, compare p_5 and p_1)
+
+    if p_prev <= 0:
+        log.warning(
+            "  Cannot calculate inflation, previous price level was zero or negative. "
+            "Setting to 0.0."
+        )
+        inflation = 0.0
     else:
-        # Year-over-year method (default): compare P_t to P_{t-4}
-        # Needs at least 5 periods of history
-        if hist.size <= 4:
-            if info_enabled:
-                log.info(
-                    "  Not enough history to calculate annual inflation (<5 periods). "
-                    "Setting to 0.0."
-                )
-            ec.inflation_history = np.append(ec.inflation_history, 0.0)
-            return
+        inflation = (p_now - p_prev) / p_prev
 
-        p_now = hist[-1]
-        p_prev = hist[
-            -5
-        ]  # Price from 4 periods ago (e.g., if t=5, compare p_5 and p_1)
-
-        if p_prev <= 0:
-            log.warning(
-                "  Cannot calculate inflation, previous price level was zero or negative. "
-                "Setting to 0.0."
-            )
-            inflation = 0.0
-        else:
-            inflation = (p_now - p_prev) / p_prev
-
-        ec.inflation_history = np.append(ec.inflation_history, inflation)
-        if info_enabled:
-            log.info(
-                f"  Annual inflation calculated for period t={hist.size - 1}: {inflation:+.3%}"
-            )
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug(f"    Calculation: (p_now={p_now:.3f} / p_t-4={p_prev:.3f}) - 1")
+    ec.inflation_history = np.append(ec.inflation_history, inflation)
+    if info_enabled:
+        log.info(
+            f"  Annual inflation calculated for period t={hist.size - 1}: {inflation:+.3%}"
+        )
+    if log.isEnabledFor(logging.DEBUG):
+        log.debug(f"    Calculation: (p_now={p_now:.3f} / p_t-4={p_prev:.3f}) - 1")
 
     if info_enabled:
         log.info("--- Inflation Calculation complete ---")
 
 
-def adjust_minimum_wage(ec: Economy, wrk: Worker, *, ratchet: bool = False) -> None:
+def adjust_minimum_wage(ec: Economy, wrk: Worker) -> None:
     """
     Periodically index minimum wage to inflation.
 
@@ -127,9 +87,6 @@ def adjust_minimum_wage(ec: Economy, wrk: Worker, *, ratchet: bool = False) -> N
         Economy state with min_wage and price history.
     wrk : Worker
         Worker state (wages updated if below new minimum).
-    ratchet : bool, optional
-        If True, minimum wage never decreases (``max(1, 1 + inflation)``).
-        If False (default), wage tracks inflation both up and down.
 
     See Also
     --------
@@ -152,10 +109,7 @@ def adjust_minimum_wage(ec: Economy, wrk: Worker, *, ratchet: bool = False) -> N
 
     inflation = float(ec.inflation_history[-1])
     old_min_wage = ec.min_wage
-    if ratchet:
-        ec.min_wage = float(ec.min_wage) * max(1.0, 1.0 + inflation)
-    else:
-        ec.min_wage = float(ec.min_wage) * (1.0 + inflation)
+    ec.min_wage = float(ec.min_wage) * (1.0 + inflation)
     if info_enabled:
         log.info(
             f"  Minimum wage revision: "
@@ -414,8 +368,6 @@ def workers_send_one_round(
     wrk: Worker,
     emp: Employer,
     rng: Rng = make_rng(),
-    *,
-    matching_method: str = "sequential",
 ) -> None:
     """
     Process one round of job applications from workers to firms.
@@ -424,10 +376,7 @@ def workers_send_one_round(
     --------
     bamengine.events.labor_market.WorkersSendOneRound : Full documentation
     """
-    if matching_method == "simultaneous":  # DEPRECATED-PATH
-        _workers_send_one_round_simultaneous(wrk, emp, rng)
-    else:
-        _workers_send_one_round_sequential(wrk, emp, rng)
+    _workers_send_one_round_sequential(wrk, emp, rng)
 
 
 def _workers_send_one_round_sequential(wrk: Worker, emp: Employer, rng: Rng) -> None:
@@ -557,167 +506,6 @@ def _workers_send_one_round_sequential(wrk: Worker, emp: Employer, rng: Rng) -> 
         log.info("--- Application Sending Round complete ---")
 
 
-def _workers_send_one_round_simultaneous(wrk: Worker, emp: Employer, rng: Rng) -> None:
-    """
-    Simultaneous matching: all workers apply at once, creating crowding.
-
-    This matching method creates coordination failure by having all workers
-    simultaneously choose their best remaining firm. Multiple workers "crowd"
-    at popular (high-wage) firms, and firms randomly select from applicants.
-    This creates natural unemployment even when vacancies exceed jobseekers.
-
-    Algorithm
-    ---------
-    1. ALL unemployed workers simultaneously pick their current best target
-    2. Workers "crowd" at popular firms (coordination failure)
-    3. Each firm's queue receives all simultaneous applicants
-    4. Firms will later hire a random subset up to vacancy limit
-    5. Unhired workers have their target marked as visited for next round
-    """
-    info_enabled = log.isEnabledFor(logging.INFO)
-    if info_enabled:
-        log.info("--- Workers Sending One Round of Applications (Simultaneous) ---")
-    stride = wrk.job_apps_targets.shape[1]
-    unemp_ids = np.where(wrk.employed == 0)[0]
-    active_applicants_mask = wrk.job_apps_head[unemp_ids] >= 0
-    unemp_ids_applying = unemp_ids[active_applicants_mask]
-
-    if unemp_ids_applying.size == 0:
-        if info_enabled:
-            log.info("  No workers with pending applications found. Skipping round.")
-            log.info("--- Application Sending Round complete ---")
-        return  # DEPRECATED-PATH
-
-    if info_enabled:
-        log.info(
-            f"  Processing {unemp_ids_applying.size} workers simultaneously "
-            f"(Stride={stride})."
-        )
-
-    # Counters for logging
-    apps_sent_successfully = 0
-    apps_dropped_no_vacancy = 0
-    workers_exhausted_list = 0
-
-    # Cache log level check outside the loops
-    debug_enabled = log.isEnabledFor(logging.DEBUG)
-
-    # Phase 1: ALL workers simultaneously pick their best remaining target
-    # Build a mapping of firm -> list of applicants
-    firm_applicants: dict[int, list[int]] = {}
-
-    for j in unemp_ids_applying:
-        head = wrk.job_apps_head[j]
-        if head < 0:  # pragma: no cover
-            continue
-
-        row_from_head, col = divmod(head, stride)
-
-        # Check if worker exhausted their list
-        if head >= (j + 1) * stride:
-            if debug_enabled:
-                log.debug(
-                    f"    Worker {j} exhausted all {stride} application slots. "
-                    f"Setting head to -1."
-                )
-            wrk.job_apps_head[j] = -1
-            workers_exhausted_list += 1
-            continue
-
-        firm_id = wrk.job_apps_targets[row_from_head, col]
-        if firm_id < 0:  # DEPRECATED-PATH
-            if debug_enabled:
-                log.debug(
-                    f"    Worker {j} encountered sentinel (-1) at col {col}. "
-                    f"End of list. Setting head to -1."
-                )
-            wrk.job_apps_head[j] = -1
-            workers_exhausted_list += 1
-            continue
-
-        # Check for vacancy at target firm
-        if emp.n_vacancies[firm_id] <= 0:
-            if debug_enabled:
-                log.debug(
-                    f"  Firm {firm_id} has no vacancies. "
-                    f"Worker {j} application dropped, advances to next target."
-                )
-            apps_dropped_no_vacancy += 1
-            # Advance to next target for next round
-            wrk.job_apps_head[j] = head + 1
-            wrk.job_apps_targets[row_from_head, col] = -1
-            continue
-
-        # Worker applies to this firm (simultaneously with all other workers)
-        if firm_id not in firm_applicants:
-            firm_applicants[firm_id] = []
-        firm_applicants[firm_id].append(j)
-
-        if debug_enabled:
-            log.debug(f"    Worker {j} targeting firm {firm_id} (app #{col + 1}).")
-
-    # Phase 2: Queue all simultaneous applications at each firm
-    for firm_id, applicants in firm_applicants.items():
-        n_applicants = len(applicants)
-
-        if debug_enabled:
-            log.debug(
-                f"  Firm {firm_id}: {n_applicants} workers crowding "
-                f"(vacancies: {emp.n_vacancies[firm_id]})"
-            )
-
-        # Add all applicants to firm's queue (up to queue capacity)
-        for worker_id in applicants:
-            ptr = emp.recv_job_apps_head[firm_id] + 1
-            if ptr >= emp.recv_job_apps.shape[1]:
-                if debug_enabled:
-                    log.debug(
-                        f"    Firm {firm_id} queue full. "
-                        f"Worker {worker_id} application dropped."
-                    )
-                continue
-
-            emp.recv_job_apps_head[firm_id] = ptr
-            emp.recv_job_apps[firm_id, ptr] = worker_id
-            apps_sent_successfully += 1
-
-            if debug_enabled:
-                log.debug(
-                    f"    Worker {worker_id} application queued "
-                    f"at firm {firm_id} slot {ptr}."
-                )
-
-        # Advance head pointer for ALL applicants (they all "visited" this firm)
-        for worker_id in applicants:
-            head = wrk.job_apps_head[worker_id]
-            row_from_head, col = divmod(head, stride)
-            wrk.job_apps_head[worker_id] = head + 1
-            wrk.job_apps_targets[row_from_head, col] = -1
-
-    # Log crowding statistics
-    if info_enabled and firm_applicants:
-        crowding_counts = [len(apps) for apps in firm_applicants.values()]
-        max_crowding = max(crowding_counts)
-        avg_crowding = sum(crowding_counts) / len(crowding_counts)
-        firms_with_crowding = sum(1 for c in crowding_counts if c > 1)
-
-        log.info(
-            f"  Crowding stats: {len(firm_applicants)} firms received applications, "
-            f"avg {avg_crowding:.1f} workers/firm, max {max_crowding}, "
-            f"{firms_with_crowding} firms with >1 applicant"
-        )
-
-    # Summary log
-    if info_enabled:
-        log.info(
-            f"  Round Summary: "
-            f"{apps_sent_successfully} applications queued simultaneously, "
-            f"{apps_dropped_no_vacancy} dropped (no vacancy), "
-            f"{workers_exhausted_list} workers exhausted their list."
-        )
-        log.info("--- Application Sending Round complete ---")
-
-
 def _check_labor_consistency(tag: str, i: int, wrk: Worker, emp: Employer) -> bool:
     """
     Compare firm‐side bookkeeping (`emp.current_labor[i]`)
@@ -816,7 +604,6 @@ def firms_hire_workers(
     emp: Employer,
     *,
     theta: int,
-    matching_method: str = "sequential",
     rng: Rng = make_rng(),
 ) -> None:
     """
@@ -828,7 +615,7 @@ def firms_hire_workers(
     """
     info_enabled = log.isEnabledFor(logging.INFO)
     if info_enabled:
-        log.info(f"--- Firms Hiring Workers ({matching_method}) ---")
+        log.info("--- Firms Hiring Workers ---")
     hiring_ids = np.where(emp.n_vacancies > 0)[0]
     total_vacancies = emp.n_vacancies.sum()
     if info_enabled:
@@ -893,21 +680,8 @@ def firms_hire_workers(
                 )
             total_rejected_this_round += num_rejected
 
-        # Selection method depends on matching_method
-        if matching_method == "simultaneous":  # DEPRECATED-PATH
-            # Random selection: shuffles queue and takes first num_to_hire
-            # This creates coordination failure - workers who "crowded" at
-            # the firm may be randomly rejected even if they arrived "first"
-            rng.shuffle(queue)
-            final_hires = queue[:num_to_hire]
-            if debug_enabled and num_rejected > 0:
-                log.debug(
-                    f"    Firm {i} randomly selected {num_to_hire} from "
-                    f"{queue.size} applicants (simultaneous mode)"
-                )
-        else:
-            # FIFO selection: takes first num_to_hire from queue order
-            final_hires = queue[:num_to_hire]
+        # FIFO selection: takes first num_to_hire from queue order
+        final_hires = queue[:num_to_hire]
 
         # extra validation, should never trigger
         if final_hires.size == 0:  # pragma: no cover
@@ -1012,203 +786,6 @@ def _hire_workers(
     # firm-side updates
     emp.current_labor[firm_idx] += worker_ids.size
     emp.n_vacancies[firm_idx] -= worker_ids.size
-
-
-def workers_apply_to_firms(
-    wrk: Worker,
-    emp: Employer,
-    *,
-    theta: int,
-    rng: Rng = make_rng(),
-) -> None:
-    """Cascade matching: each worker walks their ranked queue until hired.
-
-    Workers are processed in random order. For each worker, the algorithm
-    pops firms from the application queue one at a time:
-
-    * If the firm has vacancies the worker is hired immediately and moves on.
-    * If the firm has no vacancies the worker cascades to the next firm.
-    * If all queued firms are exhausted the worker stays unemployed.
-
-    Because hiring is immediate, vacancies deplete in real-time as earlier
-    workers are placed. Late workers encounter reduced supply, producing
-    an irreducible floor of frictional unemployment — matching the book's
-    cascade semantics (Section 3.4).
-
-    See Also
-    --------
-    bamengine.events.labor_market.WorkersApplyToFirms : Full documentation
-    """
-    info_enabled = log.isEnabledFor(logging.INFO)
-    if info_enabled:
-        log.info("--- Workers Apply to Firms (Cascade) ---")
-
-    stride = wrk.job_apps_targets.shape[1]
-    unemp_ids = np.where(wrk.employed == 0)[0]
-    active_mask = wrk.job_apps_head[unemp_ids] >= 0
-    applicants = unemp_ids[active_mask]
-
-    if applicants.size == 0:
-        if info_enabled:
-            log.info("  No workers with pending applications. Skipping.")
-            log.info("--- Workers Apply to Firms (Cascade) complete ---")
-        return
-
-    rng.shuffle(applicants)
-
-    if info_enabled:
-        total_vacancies = int(emp.n_vacancies.sum())
-        log.info(
-            f"  {applicants.size} workers searching across {total_vacancies} vacancies."
-        )
-
-    total_hires = 0
-    total_cascades = 0
-    total_exhausted = 0
-    debug_enabled = log.isEnabledFor(logging.DEBUG)
-
-    for j in applicants:
-        head = wrk.job_apps_head[j]
-        if head < 0:  # pragma: no cover
-            continue
-
-        hired = False
-        while head < (j + 1) * stride:
-            row, col = divmod(head, stride)
-            firm_id = wrk.job_apps_targets[row, col]
-
-            if firm_id < 0:  # DEPRECATED-PATH
-                # End of queue
-                break
-
-            # Clear visited slot
-            wrk.job_apps_targets[row, col] = -1
-            head += 1
-
-            if emp.n_vacancies[firm_id] > 0:
-                # Hire immediately
-                worker_arr = np.array([j], dtype=np.intp)
-                _hire_workers(
-                    wrk,
-                    emp,
-                    firm_id,
-                    worker_arr,
-                    theta=theta,
-                    rng=rng,
-                )
-                total_hires += 1
-                hired = True
-                if debug_enabled:
-                    log.debug(
-                        f"    Worker {j} hired by firm {firm_id} "
-                        f"(vacancy now {emp.n_vacancies[firm_id]})"
-                    )
-                break
-            else:
-                total_cascades += 1
-                if debug_enabled:
-                    log.debug(f"    Worker {j}: firm {firm_id} full, cascading.")
-
-        if not hired:
-            wrk.job_apps_head[j] = -1
-            total_exhausted += 1
-
-    if info_enabled:
-        log.info(
-            f"  Cascade results: {total_hires} hired, "
-            f"{total_exhausted} exhausted queue, "
-            f"{total_cascades} cascade skips."
-        )
-        log.info("--- Workers Apply to Firms (Cascade) complete ---")
-
-
-def workers_apply_to_best_firm(
-    wrk: Worker,
-    emp: Employer,
-    *,
-    theta: int,
-    rng: Rng = make_rng(),
-) -> None:
-    """Single-best matching: each worker applies only to their top-choice firm.
-
-    This is the literal interpretation of book Section 3.4 where the worker
-    "chooses to enter a settlement stage **only** with the firm offering the
-    highest wage." If that firm has no vacancies the worker stays unemployed
-    — no cascade, no retry.
-
-    See Also
-    --------
-    bamengine.events.labor_market.WorkersApplyToBestFirm : Full documentation
-    """
-    info_enabled = log.isEnabledFor(logging.INFO)
-    if info_enabled:
-        log.info("--- Workers Apply to Best Firm (Single-Best) ---")
-
-    stride = wrk.job_apps_targets.shape[1]
-    unemp_ids = np.where(wrk.employed == 0)[0]
-    active_mask = wrk.job_apps_head[unemp_ids] >= 0
-    applicants = unemp_ids[active_mask]
-
-    if applicants.size == 0:
-        if info_enabled:
-            log.info("  No workers with pending applications. Skipping.")
-            log.info("--- Workers Apply to Best Firm (Single-Best) complete ---")
-        return  # DEPRECATED-PATH
-
-    rng.shuffle(applicants)
-
-    if info_enabled:
-        log.info(f"  {applicants.size} workers each apply to their best firm.")
-
-    total_hires = 0
-    total_rejected = 0
-    debug_enabled = log.isEnabledFor(logging.DEBUG)
-
-    for j in applicants:
-        head = wrk.job_apps_head[j]
-        if head < 0:  # pragma: no cover
-            continue
-
-        row, col = divmod(head, stride)
-
-        if head >= (j + 1) * stride:  # DEPRECATED-PATH
-            wrk.job_apps_head[j] = -1
-            continue
-
-        firm_id = wrk.job_apps_targets[row, col]
-        # Clear visited slot
-        wrk.job_apps_targets[row, col] = -1
-        wrk.job_apps_head[j] = -1  # Only one attempt
-
-        if firm_id < 0:  # DEPRECATED-PATH
-            continue
-
-        if emp.n_vacancies[firm_id] > 0:
-            worker_arr = np.array([j], dtype=np.intp)
-            _hire_workers(
-                wrk,
-                emp,
-                firm_id,
-                worker_arr,
-                theta=theta,
-                rng=rng,
-            )
-            total_hires += 1
-            if debug_enabled:
-                log.debug(f"    Worker {j} hired by best firm {firm_id}.")
-        else:
-            total_rejected += 1
-            if debug_enabled:
-                log.debug(
-                    f"    Worker {j}: best firm {firm_id} full, stays unemployed."
-                )
-
-    if info_enabled:
-        log.info(
-            f"  Single-best results: {total_hires} hired, "
-            f"{total_rejected} rejected (no vacancy at best firm)."
-        )
-        log.info("--- Workers Apply to Best Firm (Single-Best) complete ---")
 
 
 def firms_calc_wage_bill(emp: Employer, wrk: Worker) -> None:

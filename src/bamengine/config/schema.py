@@ -70,19 +70,11 @@ class Config:
     cap_factor : float or None, optional
         Cap factor for breakeven price calculation (>= 1.0 if specified).
         If None, no cap is applied.
-    matching_method : str, optional
-        How workers and firms are matched in labor market:
-        "sequential" = workers shuffled, apply one at a time (efficient)
-        "simultaneous" = all workers apply at once, creating crowding at
-        high-wage firms (creates natural unemployment). Default: "sequential".
     job_search_method : str, optional
         How unemployed workers sample firms for job applications:
         "vacancies_only" = sample only from firms with open vacancies
         "all_firms" = sample from ALL firms (applications to non-hiring firms
         are wasted) (default). Default: "all_firms".
-    price_cut_allow_increase : bool, optional
-        Whether to allow price increase when trying to cut due to
-        breakeven floor. Default: True.
     new_firm_size_factor : float, optional
         Scale factor for new firm net worth vs survivor mean. Default: 0.5.
     new_firm_production_factor : float, optional
@@ -185,8 +177,6 @@ class Config:
     """Cap factor for breakeven price calculation (>= 1.0 if set, None = no cap)."""
 
     # Implementation variant parameters
-    matching_method: str = "sequential"
-    """Labor market matching method: ``"sequential"`` or ``"simultaneous"``."""
     job_search_method: str = "all_firms"
     """How unemployed workers sample firms: ``"vacancies_only"`` or ``"all_firms"``."""
 
@@ -200,22 +190,6 @@ class Config:
     new_firm_price_markup: float = 1.15
     """Price markup for new firms vs average market price."""
 
-    # Pricing phase
-    pricing_phase: str = "planning"
-    """Pricing phase: ``"planning"`` or ``"production"``."""
-
     # Consumer matching strategy
     consumer_matching: str = "loyalty"
     """Consumer matching strategy: ``"loyalty"`` or ``"random"``."""
-
-    # === DEPRECATED (may be removed in future) ===
-    price_cut_allow_increase: bool = True
-    """Whether to allow price increase when cutting due to breakeven floor. *Deprecated.*"""
-    inflation_method: str = "yoy"
-    """Inflation calculation method: ``"yoy"`` or ``"annualized"``. *Deprecated.*"""
-    labor_matching: str = "interleaved"
-    """Labor market matching mode (always interleaved). *Deprecated.*"""
-    credit_matching: str = "interleaved"
-    """Credit market matching mode (always interleaved). *Deprecated.*"""
-    min_wage_ratchet: bool = False
-    """Whether minimum wage can only increase. *Deprecated.*"""

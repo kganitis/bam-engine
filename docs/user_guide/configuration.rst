@@ -325,7 +325,7 @@ YAML logging configuration:
      default_level: WARNING
      log_file: output/simulation.log
      events:
-       firms_adjust_price: TRACE
+       firms_plan_price: TRACE
        firms_hire_workers: DEBUG
 
 

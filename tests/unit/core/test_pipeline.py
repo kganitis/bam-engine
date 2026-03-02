@@ -4,8 +4,11 @@ import numpy as np
 import pytest
 
 from bamengine.core.pipeline import Pipeline
-from bamengine.events.planning import FirmsDecideDesiredProduction
-from bamengine.events.production import FirmsAdjustPrice, FirmsCalcBreakevenPrice
+from bamengine.events.planning import (
+    FirmsDecideDesiredProduction,
+    FirmsPlanBreakevenPrice,
+    FirmsPlanPrice,
+)
 
 
 def test_pipeline_from_event_list_basic():
@@ -13,8 +16,8 @@ def test_pipeline_from_event_list_basic():
     pipeline = Pipeline.from_event_list(
         [
             "firms_decide_desired_production",
-            "firms_calc_breakeven_price",
-            "firms_adjust_price",
+            "firms_plan_breakeven_price",
+            "firms_plan_price",
         ]
     )
 
@@ -26,16 +29,16 @@ def test_pipeline_preserves_order():
     """Pipeline preserves the exact order of events provided."""
     pipeline = Pipeline.from_event_list(
         [
-            "firms_adjust_price",  # Out of logical order - but preserved
+            "firms_plan_price",  # Out of logical order - but preserved
             "firms_decide_desired_production",
-            "firms_calc_breakeven_price",
+            "firms_plan_breakeven_price",
         ]
     )
 
     # Order should be preserved exactly as given
-    assert pipeline.events[0].name == "firms_adjust_price"
+    assert pipeline.events[0].name == "firms_plan_price"
     assert pipeline.events[1].name == "firms_decide_desired_production"
-    assert pipeline.events[2].name == "firms_calc_breakeven_price"
+    assert pipeline.events[2].name == "firms_plan_breakeven_price"
 
 
 def test_pipeline_insert_after():
@@ -43,14 +46,14 @@ def test_pipeline_insert_after():
     pipeline = Pipeline.from_event_list(
         [
             "firms_decide_desired_production",
-            "firms_adjust_price",
+            "firms_plan_price",
         ]
     )
 
-    pipeline.insert_after("firms_decide_desired_production", FirmsCalcBreakevenPrice)
+    pipeline.insert_after("firms_decide_desired_production", FirmsPlanBreakevenPrice)
 
     assert len(pipeline) == 3
-    assert pipeline.events[1].name == "firms_calc_breakeven_price"
+    assert pipeline.events[1].name == "firms_plan_breakeven_price"
 
 
 def test_pipeline_insert_after_by_name():
@@ -58,16 +61,16 @@ def test_pipeline_insert_after_by_name():
     pipeline = Pipeline.from_event_list(
         [
             "firms_decide_desired_production",
-            "firms_adjust_price",
+            "firms_plan_price",
         ]
     )
 
     pipeline.insert_after(
-        "firms_decide_desired_production", "firms_calc_breakeven_price"
+        "firms_decide_desired_production", "firms_plan_breakeven_price"
     )
 
     assert len(pipeline) == 3
-    assert pipeline.events[1].name == "firms_calc_breakeven_price"
+    assert pipeline.events[1].name == "firms_plan_breakeven_price"
 
 
 def test_pipeline_insert_after_not_found():
@@ -75,7 +78,7 @@ def test_pipeline_insert_after_not_found():
     pipeline = Pipeline.from_event_list(["firms_decide_desired_production"])
 
     with pytest.raises(ValueError, match="not found in pipeline"):
-        pipeline.insert_after("nonexistent_event", FirmsAdjustPrice)
+        pipeline.insert_after("nonexistent_event", FirmsPlanPrice)
 
 
 def test_pipeline_insert_after_list():
@@ -83,7 +86,7 @@ def test_pipeline_insert_after_list():
     pipeline = Pipeline.from_event_list(
         [
             "firms_decide_desired_production",
-            "firms_adjust_price",
+            "firms_plan_price",
         ]
     )
 
@@ -91,7 +94,7 @@ def test_pipeline_insert_after_list():
     pipeline.insert_after(
         "firms_decide_desired_production",
         [
-            "firms_calc_breakeven_price",
+            "firms_plan_breakeven_price",
             "update_avg_mkt_price",
         ],
     )
@@ -99,9 +102,9 @@ def test_pipeline_insert_after_list():
     assert len(pipeline) == 4
     # Events should be inserted in order
     assert pipeline.events[0].name == "firms_decide_desired_production"
-    assert pipeline.events[1].name == "firms_calc_breakeven_price"
+    assert pipeline.events[1].name == "firms_plan_breakeven_price"
     assert pipeline.events[2].name == "update_avg_mkt_price"
-    assert pipeline.events[3].name == "firms_adjust_price"
+    assert pipeline.events[3].name == "firms_plan_price"
 
 
 def test_pipeline_insert_after_list_preserves_order():
@@ -116,15 +119,15 @@ def test_pipeline_insert_after_list_preserves_order():
     pipeline.insert_after(
         "firms_decide_desired_production",
         [
-            "firms_calc_breakeven_price",
-            "firms_adjust_price",
+            "firms_plan_breakeven_price",
+            "firms_plan_price",
             "update_avg_mkt_price",
         ],
     )
 
     # All events should be in the exact order specified
-    assert pipeline.events[1].name == "firms_calc_breakeven_price"
-    assert pipeline.events[2].name == "firms_adjust_price"
+    assert pipeline.events[1].name == "firms_plan_breakeven_price"
+    assert pipeline.events[2].name == "firms_plan_price"
     assert pipeline.events[3].name == "update_avg_mkt_price"
 
 
@@ -133,7 +136,7 @@ def test_pipeline_insert_after_empty_list():
     pipeline = Pipeline.from_event_list(
         [
             "firms_decide_desired_production",
-            "firms_adjust_price",
+            "firms_plan_price",
         ]
     )
 
@@ -143,7 +146,7 @@ def test_pipeline_insert_after_empty_list():
     # Pipeline should be unchanged
     assert len(pipeline) == 2
     assert pipeline.events[0].name == "firms_decide_desired_production"
-    assert pipeline.events[1].name == "firms_adjust_price"
+    assert pipeline.events[1].name == "firms_plan_price"
 
 
 def test_pipeline_insert_after_single_event_still_works():
@@ -151,17 +154,17 @@ def test_pipeline_insert_after_single_event_still_works():
     pipeline = Pipeline.from_event_list(
         [
             "firms_decide_desired_production",
-            "firms_adjust_price",
+            "firms_plan_price",
         ]
     )
 
     # Single event, not a list
     pipeline.insert_after(
-        "firms_decide_desired_production", "firms_calc_breakeven_price"
+        "firms_decide_desired_production", "firms_plan_breakeven_price"
     )
 
     assert len(pipeline) == 3
-    assert pipeline.events[1].name == "firms_calc_breakeven_price"
+    assert pipeline.events[1].name == "firms_plan_breakeven_price"
 
 
 def test_pipeline_insert_before():
@@ -169,16 +172,16 @@ def test_pipeline_insert_before():
     pipeline = Pipeline.from_event_list(
         [
             "firms_decide_desired_production",
-            "firms_adjust_price",
+            "firms_plan_price",
         ],
     )
 
-    pipeline.insert_before("firms_adjust_price", FirmsCalcBreakevenPrice)
+    pipeline.insert_before("firms_plan_price", FirmsPlanBreakevenPrice)
 
     assert len(pipeline) == 3
     assert pipeline.events[0].name == "firms_decide_desired_production"
-    assert pipeline.events[1].name == "firms_calc_breakeven_price"
-    assert pipeline.events[2].name == "firms_adjust_price"
+    assert pipeline.events[1].name == "firms_plan_breakeven_price"
+    assert pipeline.events[2].name == "firms_plan_price"
 
 
 def test_pipeline_insert_before_by_name():
@@ -186,14 +189,14 @@ def test_pipeline_insert_before_by_name():
     pipeline = Pipeline.from_event_list(
         [
             "firms_decide_desired_production",
-            "firms_adjust_price",
+            "firms_plan_price",
         ],
     )
 
-    pipeline.insert_before("firms_adjust_price", "firms_calc_breakeven_price")
+    pipeline.insert_before("firms_plan_price", "firms_plan_breakeven_price")
 
     assert len(pipeline) == 3
-    assert pipeline.events[1].name == "firms_calc_breakeven_price"
+    assert pipeline.events[1].name == "firms_plan_breakeven_price"
 
 
 def test_pipeline_insert_before_not_found():
@@ -203,7 +206,7 @@ def test_pipeline_insert_before_not_found():
     )
 
     with pytest.raises(ValueError, match="not found in pipeline"):
-        pipeline.insert_before("nonexistent_event", FirmsAdjustPrice)
+        pipeline.insert_before("nonexistent_event", FirmsPlanPrice)
 
 
 def test_pipeline_insert_before_list():
@@ -211,15 +214,15 @@ def test_pipeline_insert_before_list():
     pipeline = Pipeline.from_event_list(
         [
             "firms_decide_desired_production",
-            "firms_adjust_price",
+            "firms_plan_price",
         ],
     )
 
     # Insert a list of events before firms_adjust_price
     pipeline.insert_before(
-        "firms_adjust_price",
+        "firms_plan_price",
         [
-            "firms_calc_breakeven_price",
+            "firms_plan_breakeven_price",
             "update_avg_mkt_price",
         ],
     )
@@ -227,9 +230,9 @@ def test_pipeline_insert_before_list():
     assert len(pipeline) == 4
     # Events should be inserted in order before the target
     assert pipeline.events[0].name == "firms_decide_desired_production"
-    assert pipeline.events[1].name == "firms_calc_breakeven_price"
+    assert pipeline.events[1].name == "firms_plan_breakeven_price"
     assert pipeline.events[2].name == "update_avg_mkt_price"
-    assert pipeline.events[3].name == "firms_adjust_price"
+    assert pipeline.events[3].name == "firms_plan_price"
 
 
 def test_pipeline_insert_before_at_start():
@@ -237,18 +240,18 @@ def test_pipeline_insert_before_at_start():
     pipeline = Pipeline.from_event_list(
         [
             "firms_decide_desired_production",
-            "firms_adjust_price",
+            "firms_plan_price",
         ],
     )
 
     pipeline.insert_before(
-        "firms_decide_desired_production", "firms_calc_breakeven_price"
+        "firms_decide_desired_production", "firms_plan_breakeven_price"
     )
 
     assert len(pipeline) == 3
-    assert pipeline.events[0].name == "firms_calc_breakeven_price"
+    assert pipeline.events[0].name == "firms_plan_breakeven_price"
     assert pipeline.events[1].name == "firms_decide_desired_production"
-    assert pipeline.events[2].name == "firms_adjust_price"
+    assert pipeline.events[2].name == "firms_plan_price"
 
 
 def test_pipeline_remove():
@@ -256,15 +259,15 @@ def test_pipeline_remove():
     pipeline = Pipeline.from_event_list(
         [
             "firms_decide_desired_production",
-            "firms_calc_breakeven_price",
-            "firms_adjust_price",
+            "firms_plan_breakeven_price",
+            "firms_plan_price",
         ]
     )
 
-    pipeline.remove("firms_calc_breakeven_price")
+    pipeline.remove("firms_plan_breakeven_price")
 
     assert len(pipeline) == 2
-    assert "firms_calc_breakeven_price" not in [e.name for e in pipeline.events]
+    assert "firms_plan_breakeven_price" not in [e.name for e in pipeline.events]
 
 
 def test_pipeline_remove_not_found():
@@ -280,14 +283,14 @@ def test_pipeline_replace():
     pipeline = Pipeline.from_event_list(
         [
             "firms_decide_desired_production",
-            "firms_calc_breakeven_price",
+            "firms_plan_breakeven_price",
         ]
     )
 
-    pipeline.replace("firms_calc_breakeven_price", FirmsAdjustPrice)
+    pipeline.replace("firms_plan_breakeven_price", FirmsPlanPrice)
 
     assert len(pipeline) == 2
-    assert pipeline.events[1].name == "firms_adjust_price"
+    assert pipeline.events[1].name == "firms_plan_price"
 
 
 def test_pipeline_replace_by_name():
@@ -295,14 +298,14 @@ def test_pipeline_replace_by_name():
     pipeline = Pipeline.from_event_list(
         [
             "firms_decide_desired_production",
-            "firms_calc_breakeven_price",
+            "firms_plan_breakeven_price",
         ]
     )
 
-    pipeline.replace("firms_calc_breakeven_price", "firms_adjust_price")
+    pipeline.replace("firms_plan_breakeven_price", "firms_plan_price")
 
     assert len(pipeline) == 2
-    assert pipeline.events[1].name == "firms_adjust_price"
+    assert pipeline.events[1].name == "firms_plan_price"
 
 
 def test_pipeline_replace_not_found():
@@ -310,7 +313,7 @@ def test_pipeline_replace_not_found():
     pipeline = Pipeline.from_event_list(["firms_decide_desired_production"])
 
     with pytest.raises(ValueError, match="not found in pipeline"):
-        pipeline.replace("nonexistent_event", FirmsAdjustPrice)
+        pipeline.replace("nonexistent_event", FirmsPlanPrice)
 
 
 def test_pipeline_execute():
@@ -340,7 +343,7 @@ def test_pipeline_repr():
     pipeline = Pipeline.from_event_list(
         [
             "firms_decide_desired_production",
-            "firms_calc_breakeven_price",
+            "firms_plan_breakeven_price",
         ]
     )
 
@@ -352,8 +355,8 @@ def test_pipeline_len():
     pipeline = Pipeline.from_event_list(
         [
             "firms_decide_desired_production",
-            "firms_calc_breakeven_price",
-            "firms_adjust_price",
+            "firms_plan_breakeven_price",
+            "firms_plan_price",
         ]
     )
 
@@ -365,10 +368,10 @@ def test_pipeline_event_map_updated_on_insert():
     pipeline = Pipeline.from_event_list(["firms_decide_desired_production"])
 
     pipeline.insert_after(
-        "firms_decide_desired_production", "firms_calc_breakeven_price"
+        "firms_decide_desired_production", "firms_plan_breakeven_price"
     )
 
-    assert "firms_calc_breakeven_price" in pipeline._event_map
+    assert "firms_plan_breakeven_price" in pipeline._event_map
 
 
 def test_pipeline_event_map_updated_on_remove():
@@ -376,13 +379,13 @@ def test_pipeline_event_map_updated_on_remove():
     pipeline = Pipeline.from_event_list(
         [
             "firms_decide_desired_production",
-            "firms_calc_breakeven_price",
+            "firms_plan_breakeven_price",
         ]
     )
 
-    pipeline.remove("firms_calc_breakeven_price")
+    pipeline.remove("firms_plan_breakeven_price")
 
-    assert "firms_calc_breakeven_price" not in pipeline._event_map
+    assert "firms_plan_breakeven_price" not in pipeline._event_map
 
 
 def test_pipeline_event_map_updated_on_replace():
@@ -390,14 +393,14 @@ def test_pipeline_event_map_updated_on_replace():
     pipeline = Pipeline.from_event_list(
         [
             "firms_decide_desired_production",
-            "firms_calc_breakeven_price",
+            "firms_plan_breakeven_price",
         ]
     )
 
-    pipeline.replace("firms_calc_breakeven_price", "firms_adjust_price")
+    pipeline.replace("firms_plan_breakeven_price", "firms_plan_price")
 
-    assert "firms_calc_breakeven_price" not in pipeline._event_map
-    assert "firms_adjust_price" in pipeline._event_map
+    assert "firms_plan_breakeven_price" not in pipeline._event_map
+    assert "firms_plan_price" in pipeline._event_map
 
 
 def test_repeated_event_executes_multiple_times():
@@ -491,7 +494,7 @@ def test_pipeline_register_after_event_callback():
     pipeline = Pipeline.from_event_list(
         [
             "firms_decide_desired_production",
-            "firms_calc_breakeven_price",
+            "firms_plan_breakeven_price",
         ]
     )
 
@@ -569,86 +572,3 @@ def test_pipeline_callbacks_fire_during_execute():
 
     # Clean up
     sim.pipeline.clear_callbacks()
-
-
-# ============================================================================
-# Mutual Exclusion Guard Tests
-# ============================================================================
-
-
-def test_mutual_exclusion_guard_rejects_both_pricing_pairs():
-    """Pipeline with both planning and production pricing events should raise."""
-    with pytest.raises(ValueError, match="mutually exclusive"):
-        Pipeline.from_event_list(
-            [
-                "firms_plan_breakeven_price",
-                "firms_plan_price",
-                "firms_calc_breakeven_price",
-                "firms_adjust_price",
-            ]
-        )
-
-
-def test_mutual_exclusion_guard_allows_planning_only():
-    """Pipeline with only planning pricing events should be OK."""
-    pipeline = Pipeline.from_event_list(
-        [
-            "firms_decide_desired_production",
-            "firms_plan_breakeven_price",
-            "firms_plan_price",
-        ]
-    )
-    assert len(pipeline) == 3
-
-
-def test_mutual_exclusion_guard_allows_production_only():
-    """Pipeline with only production pricing events should be OK."""
-    pipeline = Pipeline.from_event_list(
-        [
-            "firms_decide_desired_production",
-            "firms_calc_breakeven_price",
-            "firms_adjust_price",
-        ]
-    )
-    assert len(pipeline) == 3
-
-
-# ============================================================================
-# create_default_pipeline pricing_phase Tests
-# ============================================================================
-
-
-def test_create_default_pipeline_planning_phase():
-    """Default pipeline should have planning events, no production events."""
-    from bamengine.core.pipeline import create_default_pipeline
-
-    pipeline = create_default_pipeline(max_M=4, max_H=2, max_Z=2)
-    event_names = [e.name for e in pipeline.events]
-
-    assert "firms_plan_breakeven_price" in event_names
-    assert "firms_plan_price" in event_names
-    assert "firms_calc_breakeven_price" not in event_names
-    assert "firms_adjust_price" not in event_names
-
-
-def test_create_default_pipeline_production_phase():
-    """Production pipeline should have production events at correct position."""
-    from bamengine.core.pipeline import create_default_pipeline
-
-    pipeline = create_default_pipeline(
-        max_M=4, max_H=2, max_Z=2, pricing_phase="production"
-    )
-    event_names = [e.name for e in pipeline.events]
-
-    # Should have production events, not planning events
-    assert "firms_calc_breakeven_price" in event_names
-    assert "firms_adjust_price" in event_names
-    assert "firms_plan_breakeven_price" not in event_names
-    assert "firms_plan_price" not in event_names
-
-    # Production events should be after workers_receive_wage
-    wrw_idx = event_names.index("workers_receive_wage")
-    bep_idx = event_names.index("firms_calc_breakeven_price")
-    adj_idx = event_names.index("firms_adjust_price")
-    assert bep_idx == wrw_idx + 1
-    assert adj_idx == wrw_idx + 2

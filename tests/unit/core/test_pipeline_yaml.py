@@ -16,11 +16,11 @@ def test_parse_event_spec_single_event():
 
 def test_parse_event_spec_repeated_event():
     """Parse repeated event specification (event x N)."""
-    result = Pipeline._parse_event_spec("consumers_shop_one_round x 3")
+    result = Pipeline._parse_event_spec("workers_send_one_round x 3")
     assert result == [
-        "consumers_shop_one_round",
-        "consumers_shop_one_round",
-        "consumers_shop_one_round",
+        "workers_send_one_round",
+        "workers_send_one_round",
+        "workers_send_one_round",
     ]
 
 
@@ -56,8 +56,8 @@ def test_from_yaml_basic():
     yaml_content = """
 events:
   - firms_decide_desired_production
-  - firms_calc_breakeven_price
-  - firms_adjust_price
+  - firms_plan_breakeven_price
+  - firms_plan_price
 """
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
@@ -68,8 +68,8 @@ events:
         pipeline = Pipeline.from_yaml(yaml_path)
         assert len(pipeline) == 3
         assert pipeline.events[0].name == "firms_decide_desired_production"
-        assert pipeline.events[1].name == "firms_calc_breakeven_price"
-        assert pipeline.events[2].name == "firms_adjust_price"
+        assert pipeline.events[1].name == "firms_plan_breakeven_price"
+        assert pipeline.events[2].name == "firms_plan_price"
     finally:
         Path(yaml_path).unlink()
 
@@ -82,7 +82,7 @@ def test_from_yaml_with_parameters():
 events:
   - firms_decide_desired_production
   - workers_send_one_round x {max_M}
-  - consumers_shop_one_round x {max_Z}
+  - firms_hire_workers x {max_H}
 """
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
@@ -90,13 +90,13 @@ events:
         yaml_path = f.name
 
     try:
-        pipeline = Pipeline.from_yaml(yaml_path, max_M=3, max_Z=2)
+        pipeline = Pipeline.from_yaml(yaml_path, max_M=3, max_H=2)
         event_names = [e.name for e in pipeline.events]
 
         # Should have 1 + 3 + 2 = 6 events
         assert len(pipeline) == 6
         assert event_names.count("workers_send_one_round") == 3
-        assert event_names.count("consumers_shop_one_round") == 2
+        assert event_names.count("firms_hire_workers") == 2
     finally:
         Path(yaml_path).unlink()
 
@@ -173,10 +173,10 @@ def test_user_custom_pipeline_example():
 events:
   # Custom simplified pipeline (for testing/research)
   - firms_decide_desired_production
-  - firms_adjust_price
+  - firms_plan_price
   - workers_send_one_round <-> firms_hire_workers x 2
   - firms_run_production
-  - consumers_shop_one_round x 2
+  - consumers_shop_sequential
   - firms_collect_revenue
 """
 
@@ -188,8 +188,8 @@ events:
         pipeline = Pipeline.from_yaml(yaml_path)
 
         # Should create simplified pipeline
-        # 1 + 1 + (2*2) + 1 + 2 + 1 = 10 events
-        assert len(pipeline) == 10
+        # 1 + 1 + (2*2) + 1 + 1 + 1 = 9 events
+        assert len(pipeline) == 9
         event_names = [e.name for e in pipeline.events]
         assert event_names[0] == "firms_decide_desired_production"
         assert event_names[-1] == "firms_collect_revenue"
