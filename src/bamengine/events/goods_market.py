@@ -230,7 +230,7 @@ class ConsumersDecideFirmsToVisit:
     4. Setting loyalty to the LARGEST producer in the consideration set
 
     This implements the book's preferential attachment (PA) mechanism matching
-    the NetLogo reference implementation. The key insight is that loyalty is
+    the reference implementation. The key insight is that loyalty is
     updated BEFORE shopping based on the consideration set, not during shopping
     based on purchases. This allows the "rich get richer" dynamics to emerge.
 
@@ -373,14 +373,14 @@ class ConsumersShopSequential:
     this event processes consumers one at a time. Each consumer completes all
     their Z shopping visits before the next consumer starts.
 
-    This matches NetLogo and ABCredit behavior and makes the goods market
+    This matches the reference implementation and makes the goods market
     less efficient: early consumers can deplete inventory from multiple firms,
     leaving late consumers with wasted visits on sold-out firms. This results
     in more unsold inventory overall, which affects production decisions.
 
     Algorithm
     ---------
-    1. Randomize consumer order (like NetLogo's `ask workers`)
+    1. Randomize consumer order
     2. For each consumer j with budget:
        - Visit up to max_Z firms sequentially
        - At each firm: purchase if inventory available, else wasted visit

@@ -107,7 +107,7 @@ def test_pick_firms_loyalty_included() -> None:
 
 
 def test_pick_firms_selects_even_with_zero_inventory() -> None:
-    """Consumers select firms regardless of inventory (matching NetLogo behavior).
+    """Consumers select firms regardless of inventory (matching the reference implementation).
 
     Consumers discover firms are sold out during shopping, not during selection.
     This makes the goods market less efficient but matches the reference model.
@@ -126,7 +126,7 @@ def test_pick_firms_selects_even_with_zero_inventory() -> None:
 
 def test_loyalty_firm_competes_on_price() -> None:
     """
-    Loyalty firm competes on price (matching NetLogo behavior).
+    Loyalty firm competes on price (matching the reference implementation).
 
     When the loyalty firm has a higher price than another sampled firm,
     the cheaper firm should be visited first. Loyalty only guarantees

@@ -484,8 +484,8 @@ def consumers_shop_sequential(
 
     Unlike round-robin shopping (consumers_shop_one_round), this function
     processes consumers one at a time. Each consumer completes all their
-    shopping visits before the next consumer starts. This matches NetLogo
-    and ABCredit behavior and makes the goods market less efficient:
+    shopping visits before the next consumer starts. This matches the
+    reference implementation and makes the goods market less efficient:
     early consumers can deplete inventory, leaving late consumers with
     wasted visits on sold-out firms.
 
@@ -524,7 +524,7 @@ def consumers_shop_sequential(
         log.info(f"  Total available inventory: {total_inventory_before:,.2f}")
         log.info(f"  Max visits per consumer: {max_Z}")
 
-    # Randomize consumer order (like NetLogo's ask workers)
+    # Randomize consumer order
     rng.shuffle(buyers)
     if info_enabled:
         log.info("  Consumer order randomized for fairness.")
@@ -560,7 +560,7 @@ def consumers_shop_sequential(
                 consumers_exhausted_queue += 1
                 break  # End of queue
 
-            # Advance pointer regardless of purchase success (like NetLogo)
+            # Advance pointer regardless of purchase success
             con.shop_visits_head[h] = ptr + 1
             con.shop_visits_targets[row, col] = -1
 
