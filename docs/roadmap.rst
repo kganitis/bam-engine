@@ -1,10 +1,10 @@
 Roadmap
 =======
 
-BAM Engine is under active development as part of MSc thesis research at the
-University of Piraeus. This roadmap outlines known limitations and strategic
-goals for the project. No timelines are attached --- priorities may shift as
-research progresses.
+Originally developed as part of MSc thesis research at the University of
+Piraeus, BAM Engine is now a personal project under independent development.
+This roadmap outlines known limitations and strategic goals for the project.
+No timelines are attached --- priorities may shift as development progresses.
 
 For bug reports and feature requests, see the
 `issue tracker <https://github.com/kganitis/bam-engine/issues>`_.
@@ -48,22 +48,42 @@ Strategic Goals
    achieve a closer match to the simulation results in the reference book
    (Delli Gatti et al., 2011).
 
-**API & Usability**
-   Simplify the user-facing API, reduce exposure of ECS internals, and make
-   it easier to capture, export, and analyze a wider variety of simulation
-   metrics.
+**Architecture & API**
+   Make the framework more powerful and easier to extend:
 
-**Code Quality & Performance**
-   Reduce cyclomatic complexity, improve test coverage and type strictness,
-   and explore JIT compilation (Numba) for critical code paths. Refactor
-   complex event systems toward single-responsibility design.
+   - **Role-based agent identity**
+
+     Today, agents exist only as implicit array indices inside roles,
+     and each role is hardcoded to a single agent type (firms, households, or banks).
+     The goal is to make agents first-class entities that own their roles,
+     so the engine discovers participants by querying for roles
+     ("which agents have the Borrower role?") rather than by type.
+     This would allow the same role to be shared across different agent types
+     and new agent kinds to be introduced without changing the core.
+
+   - **Economy as self-contained context**
+
+     Currently, events receive the entire Simulation object and reach through it
+     to access roles, configuration, and economy state. Extracting the economy into
+     a standalone context that events receive directly would decouple the model
+     definition from the simulation driver, and open the door to running multiple
+     economies within a single simulation (e.g., multi-country simulations).
+
+   - **Multi-point data collection**
+
+     The data collector currently captures each metric once per step
+     (at the end or after a single designated event). Supporting capture
+     at multiple points within the same step would let users observe how
+     variables evolve across events within a period.
+
+   - **Easier extensibility**
+
+     Adding new roles and events is straightforward, but extending or customizing
+     existing ones (e.g., adding fields to a built-in role) requires workarounds.
+     The registration system should support extending existing components without
+     breaking discovery.
 
 **Research Extensions**
-   Implement remaining scenarios from the reference book, including DSGE
-   methodology comparison (Section 3.9.3). Explore variants from the broader
-   CATS family: CC-MABM (credit and capital) and R-MABM (capital and credit
-   with R implementation).
-
-**Ecosystem & Community**
-   Submit to the `CoMSES Model Library <https://www.comses.net/codebases/>`_,
-   continue documentation refinement, and finalize project branding.
+   Add extensions from the broader CATS family: CC-MABM, a capital and credit extension
+   implemented in Julia, and R-MABM, a reinforcement-learning extension of CC-MABM in
+   Python and Julia. See :doc:`related_projects` for full details on these projects.
