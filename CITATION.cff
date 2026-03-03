@@ -4,7 +4,7 @@
 
 cff-version: 1.2.0
 message: 'If you use this software, please cite it along with the original BAM model (Delli Gatti et al., 2011).'
-title: "BAM Engine: Modular Python Framework for the Agent-based BAM Model"
+title: "BAM Engine: A Modular Python Framework for the BAM Agent-Based Macroeconomic Model"
 type: software
 authors:
   - family-names: Ganitis
@@ -19,30 +19,26 @@ license: MIT
 doi: "10.5281/zenodo.17610305"
 
 abstract: |
-  BAM Engine is a high-performance Python implementation of the BAM (Bottom-Up
-  Adaptive Macroeconomics) model, an agent-based macroeconomic simulation framework
-  from the CATS (Complex Adaptive Trivial Systems) family. It was first presented
-  in "Macroeconomics from the Bottom-up" by Delli Gatti et al. (2011). The model
-  simulates interactions between three types of agents (households, firms, and banks)
-  across three markets (labor, credit, and consumption goods). BAM Engine uses
-  vectorized operations for performance and follows an Entity-Component-System
-  (ECS) architecture for modularity and extensibility. It is designed for economics
-  researchers studying macroeconomic dynamics, financial stability, and policy
-  interventions in heterogeneous agent economies.
+  BAM Engine is a high-performance Python framework that implements the BAM
+  (Bottom-Up Adaptive Macroeconomics) agent-based model from "Macroeconomics
+  from the Bottom-up" (Delli Gatti et al., 2011). The model simulates
+  interactions between households, firms, and banks across labor, credit, and
+  consumption goods markets. The framework features an Entity-Component-System
+  (ECS) architecture with vectorized operations for performance and a modular
+  extension system. It includes built-in validation and calibration tools to
+  support reproducible computational economics research.
 
 keywords:
   - agent-based modeling
   - macroeconomics
   - computational economics
+  - agent-based computational economics
   - complex adaptive systems
-  - emergent behavior
   - heterogeneous agents
+  - emergent behavior
   - BAM model
   - CATS models
-  - Python
-  - NumPy
-  - ECS
-  - entity component system
+  - bottom-up macroeconomics
 
 contact:
   - family-names: Ganitis

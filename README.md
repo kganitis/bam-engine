@@ -1,3 +1,31 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/_static/logo-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/_static/logo.svg">
+    <img alt="BAM Engine" src="docs/_static/logo.svg" width="280">
+  </picture>
+</p>
+
+<p align="center">
+  <strong>A Modular Python Framework for the BAM Agent-Based Macroeconomic Model</strong>
+</p>
+
+<p align="center">
+  A Python implementation of the BAM (Bottom-Up Adaptive Macroeconomics) model
+  from <a href="https://doi.org/10.1007/978-88-470-1971-3"><em>Macroeconomics from the Bottom-up</em></a>
+  (Delli Gatti et al., 2011). Simulate households, firms, and banks
+  interacting across labor, credit, and goods markets, where macroeconomic
+  dynamics emerge from individual agent decisions.
+</p>
+
+<p align="center">
+  <a href="https://bam-engine.readthedocs.io"><strong>Documentation</strong></a>
+  &bull;
+  <a href="https://bam-engine.readthedocs.io/en/latest/quickstart.html"><strong>Getting Started</strong></a>
+  &bull;
+  <a href="https://bam-engine.readthedocs.io/en/latest/auto_examples/index.html"><strong>Examples</strong></a>
+</p>
+
 [![Python](https://img.shields.io/pypi/pyversions/bamengine.svg)](https://pypi.org/project/bamengine/)
 [![PyPI version](https://img.shields.io/pypi/v/bamengine.svg?color=blue)](https://pypi.org/project/bamengine/)
 [![DOI](https://zenodo.org/badge/972128676.svg)](https://doi.org/10.5281/zenodo.17610305)
@@ -12,28 +40,9 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Type Checked](https://img.shields.io/badge/type%20checked-mypy-black)](http://mypy-lang.org/)
 
-# BAM Engine
-
-**Modular Python Framework for the Agent-based BAM Model**
-
-BAM Engine is a high-performance Python implementation of the BAM model from *Macroeconomics from the Bottom-up* (Delli Gatti et al., 2011, Chapter 3). Developed as part of MSc thesis research at the University of Piraeus, it provides a modular, extensible agent-based macroeconomic simulation framework built on ECS (Entity-Component-System) architecture with fully vectorized NumPy operations.
-
-Documentation: [https://bam-engine.readthedocs.io](https://bam-engine.readthedocs.io)
-
 > **Note**: This release is feature-complete for the core BAM model but APIs may change in future releases before v1.0.0.
 
-## Features
-
-- **Complete BAM Model Implementation**: Full BAM model with firms, households, and banks interacting across labor, credit, and goods markets
-- **Emergent Macroeconomic Dynamics**: Reproduces all simulation results from the reference BAM model, including business cycles, unemployment dynamics, and inflation patterns
-- **Research-Ready Output**: Collect time series data and export to pandas DataFrames for econometric analysis
-- **Reproducible Simulations**: Deterministic execution with seed control for exact replication of results
-- **YAML Configuration**: Modify model parameters without touching code
-- **Extensible**: Add custom agent variables and economic events
-
 ## Quick Start
-
-### Installation
 
 ```bash
 pip install bamengine
@@ -41,59 +50,61 @@ pip install bamengine
 
 **Requirements**: Python 3.11+. NumPy and PyYAML are installed automatically.
 
-### Basic Usage
-
 ```python
 import bamengine as bam
 
 # Initialize and run simulation
 sim = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
-results = sim.run(n_periods=100)
+results = sim.run(n_periods=100, collect=True)
 
 # Export to pandas DataFrame
 df = results.to_dataframe()
 ```
 
+See the [Getting Started guide](https://bam-engine.readthedocs.io/en/latest/quickstart.html) for a complete walkthrough.
+
+## Features
+
+- **Complete BAM Model:** Full Chapter 3 implementation: firms, households, and banks interacting across labor, credit, and goods markets
+- **ECS Architecture:** Entity-Component-System design separates data (Roles) from behavior (Events) for clean extensibility
+- **Vectorized Performance:** All agent operations use NumPy arrays; no Python loops over agents
+- **Built-in Extensions:** R&D / Growth+, buffer-stock consumption, and taxation modules
+- **Validation Framework:** Three scenario validators with scoring and robustness analysis
+- **Calibration Pipeline:** Morris screening, grid search, and tiered stability testing
+- **Easy Configuration:** All parameters configurable without code changes via YAML files
+
 ## Architecture
 
-BAM Engine uses an ECS (Entity-Component-System) architecture: agents are lightweight entities with immutable IDs, state lives in Role components stored as NumPy arrays, and behavior is defined by Event systems executed via a YAML-configurable pipeline. This design separates data from logic, enabling high performance through vectorized operations while maintaining extensibility for custom roles, events, and relationships.
+BAM Engine uses an ECS (Entity-Component-System) architecture: agents are lightweight entities, state lives in Role components stored as NumPy arrays, and behavior is defined by Event systems executed via a YAML-configurable pipeline. Custom roles, events, and relationships can be added without modifying core code.
 
-## Release History
+See the [User Guide](https://bam-engine.readthedocs.io/en/latest/user_guide/index.html) for a full walkthrough of the model and its architecture.
 
-See the [release history](https://bam-engine.readthedocs.io/en/latest/release_history.html) for a history of notable changes to bam-engine.
+## Documentation
+
+Full documentation is available at [bam-engine.readthedocs.io](https://bam-engine.readthedocs.io).
+
+| Section                                                                           | Description                                                                   |
+| --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| [Getting Started](https://bam-engine.readthedocs.io/en/latest/quickstart.html)    | Installation, first simulation, data collection                               |
+| [User Guide](https://bam-engine.readthedocs.io/en/latest/user_guide/index.html)   | Model overview, configuration, custom roles/events, pipelines, best practices |
+| [API Reference](https://bam-engine.readthedocs.io/en/latest/api/index.html)       | Complete reference for all components and operations                          |
+| [Examples](https://bam-engine.readthedocs.io/en/latest/auto_examples/index.html)  | 16 runnable examples: basic, advanced, and extensions                         |
+| [Extensions](https://bam-engine.readthedocs.io/en/latest/extensions/index.html)   | R&D / Growth+, buffer-stock consumption, taxation                             |
+| [Validation](https://bam-engine.readthedocs.io/en/latest/validation/index.html)   | Scenario validation, scoring, robustness analysis                             |
+| [Calibration](https://bam-engine.readthedocs.io/en/latest/calibration/index.html) | Morris screening, grid search, stability testing                              |
 
 ## Development
 
-### Important Links
-
-- Official source code repo: [https://github.com/kganitis/bam-engine](https://github.com/kganitis/bam-engine)
-- Download releases: [https://pypi.org/project/bamengine/](https://pypi.org/project/bamengine/)
-- Issue Tracker: [https://github.com/kganitis/bam-engine/issues](https://github.com/kganitis/bam-engine/issues)
-
-### Source code
-
-You can check the latest sources with the command:
-
 ```bash
 git clone https://github.com/kganitis/bam-engine.git
-```
-
-### Contributing
-
-This project was developed as part of the final thesis for MSc in Informatics at the University of Piraeus, Greece. External contributions are not accepted during thesis work.
-
-For bug reports and feature requests, please open an issue on the [issue tracker](https://github.com/kganitis/bam-engine/issues).
-
-### Testing
-
-After installation, you can launch the test suite:
-
-```bash
 pip install -e ".[dev]"
 pytest
+ruff format . && ruff check --fix . && mypy
 ```
 
-See the [development guide](docs/development.rst) for more commands including linting, type checking, and benchmarking.
+This project was developed as part of MSc thesis research at the University of Piraeus, Greece. External contributions are not currently accepted during thesis work. For bug reports and feature requests, please open an issue on the [issue tracker](https://github.com/kganitis/bam-engine/issues).
+
+See the [Development Guide](https://bam-engine.readthedocs.io/en/latest/development/index.html) for more on testing, linting, benchmarking, and contributing.
 
 ## Citation
 

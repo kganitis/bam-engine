@@ -31,7 +31,7 @@ sys.path.insert(0, os.path.abspath("../src"))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "BAM Engine"
-copyright = "2026, Kostas Ganitis"
+copyright = "2026, Konstantinos Ganitis"
 author = "Kostas Ganitis"
 
 # The version info for the project you're documenting
@@ -50,6 +50,7 @@ extensions = [
     "sphinx.ext.viewcode",  # Add links to highlighted source code
     "sphinx.ext.intersphinx",  # Link to other project's documentation
     "sphinx.ext.mathjax",  # Render math via MathJax
+    "sphinx_design",  # Card grids and responsive layouts
     "sphinx_gallery.gen_gallery",  # Generate example gallery
     "numpydoc",  # Enhanced NumPy docstring support
 ]
@@ -220,9 +221,15 @@ master_doc = "index"
 
 html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
+html_favicon = "_static/favicon.svg"
 
 # Theme options for PyData Sphinx Theme
 html_theme_options = {
+    "logo": {
+        "image_light": "_static/logo.svg",
+        "image_dark": "_static/logo-dark.svg",
+        "alt_text": "BAM Engine",
+    },
     "github_url": "https://github.com/kganitis/bam-engine",
     "show_prev_next": True,
     "navigation_with_keys": True,

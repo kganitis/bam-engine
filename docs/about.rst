@@ -26,11 +26,11 @@ Academic Context
    :stub-columns: 1
 
    * - Thesis title
-     - [THESIS_TITLE]
+     - Design and Implementation of a Modular Python Framework for Agent-Based Macroeconomic Simulations
    * - Author
-     - Kostas Ganitis
+     - Konstantinos Ganitis
    * - Supervisor
-     - [SUPERVISOR_NAME]
+     - Dionysios Sotiropoulos
    * - Department
      - Department of Informatics, University of Piraeus, Greece
    * - Degree
@@ -48,8 +48,8 @@ original BAM model.
 .. code-block:: bibtex
 
    @software{ganitis2026bamengine,
-     title     = {{BAM Engine}: Modular Python Framework for the Agent-based
-                  {BAM} Model},
+     title     = {{BAM Engine}: A Modular Python Framework for the {BAM}
+                  Agent-Based Macroeconomic Model},
      author    = {Ganitis, Konstantinos},
      year      = {2026},
      url       = {https://github.com/kganitis/bam-engine},
@@ -74,8 +74,8 @@ original BAM model.
 
 **Plain text:**
 
-   Ganitis, K. (2026). *BAM Engine: Modular Python Framework for the Agent-based
-   BAM Model* [Computer software]. https://doi.org/10.5281/zenodo.17610305
+   Ganitis, K. (2026). *BAM Engine: A Modular Python Framework for the BAM
+   Agent-Based Macroeconomic Model* [Computer software]. https://doi.org/10.5281/zenodo.17610305
 
 .. image:: https://zenodo.org/badge/972128676.svg
    :target: https://doi.org/10.5281/zenodo.17610305

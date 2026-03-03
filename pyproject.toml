@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "bamengine"
 dynamic = ["version"]
-description = "High-performance agent-based framework for the BAM macroeconomic model"
+description = "A modular Python framework for the BAM agent-based macroeconomic model"
 readme = "README.md"
 authors = [
     {name = "Kostas Ganitis", email = "ganitiskostas@gmail.com"}
@@ -26,15 +26,15 @@ license = "MIT"
 license-files = ["LICENSE"]
 keywords = [
     "agent-based-modeling",
+    "abm",
     "macroeconomics",
     "economic-simulation",
     "computational-economics",
     "complex-adaptive-systems",
     "heterogeneous-agents",
     "entity-component-system",
-    "simulation",
-    "scientific-computing",
     "bam-model",
+    "cats-model",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -94,6 +94,7 @@ lint = [
 docs = [
     "bamengine[pandas,extensions,calibration,viz]",
     "sphinx>=7.0",
+    "sphinx-design>=0.5",
     "sphinx-gallery>=0.15.0",
     "pydata-sphinx-theme>=0.15.0",
     "matplotlib>=3.8",
@@ -125,6 +126,7 @@ lint = [
 ]
 docs = [
     "sphinx>=7.0",
+    "sphinx-design>=0.5",
     "sphinx-gallery>=0.15.0",
     "pydata-sphinx-theme>=0.15.0",
     "matplotlib>=3.8",

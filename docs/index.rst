@@ -1,52 +1,116 @@
+:html_theme.sidebar_secondary.remove:
+
 .. BAM Engine documentation master file
 
-BAM Engine Documentation
-=========================
+==========
+BAM Engine
+==========
 
-BAM Engine is a high-performance Python implementation of the BAM (Bottom-Up Adaptive Macroeconomics)
-agent-based model, part of the CATS (Complex Adaptive Trivial Systems) family of macroeconomic models.
+**Agent-based macroeconomic simulation in Python**
 
-The model simulates three types of agents (households, firms, banks) interacting in three markets
-(labor, credit, consumption goods) using a modern Entity-Component-System (ECS) architecture.
+A Python implementation of the BAM (Bottom-Up Adaptive Macroeconomics) model
+by Delli Gatti et al. (2011). Simulate households, firms, and banks
+interacting across labor, credit, and goods markets — macroeconomic dynamics
+emerge from individual agent decisions.
 
-Quick Start
------------
-
-Install BAM Engine:
+For researchers, students, and practitioners in computational economics.
 
 .. code-block:: bash
 
    pip install bamengine
 
-Run a basic simulation:
+.. grid:: 1 2 2 2
+   :gutter: 3
 
-.. code-block:: python
+   .. grid-item-card:: Getting Started
+      :link: quickstart
+      :link-type: doc
+      :class-card: sd-shadow-sm
 
-   import bamengine as bam
+      Install the package, run your first simulation, and
+      explore the results in under five minutes.
 
-   # Initialize simulation
-   sim = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
+   .. grid-item-card:: User Guide
+      :link: user_guide/index
+      :link-type: doc
+      :class-card: sd-shadow-sm
 
-   # Run for 100 periods
-   results = sim.run(n_periods=100)
+      Learn how the BAM model's agents, markets, and simulation
+      pipeline work, and how to configure and extend them.
 
-   # Export results to DataFrame
-   df = results.to_dataframe()
+   .. grid-item-card:: API Reference
+      :link: api/index
+      :link-type: doc
+      :class-card: sd-shadow-sm
 
-Features
---------
+      Complete reference for all components, events,
+      operations, and configuration options.
 
-- **High Performance**: Fully vectorized NumPy operations, 4-9x faster than reference implementations
-- **Modular Design**: ECS architecture allows easy extension with custom roles, events, and relationships
-- **Type Safe**: Comprehensive type hints with py.typed marker
-- **Well Tested**: 99%+ test coverage with unit, integration, property-based, and performance tests
-- **User Friendly**: Simple API with pandas integration for data analysis
+   .. grid-item-card:: Examples
+      :link: auto_examples/index
+      :link-type: doc
+      :class-card: sd-shadow-sm
 
-Contents
---------
+      Runnable examples covering basic usage, advanced
+      customization, and model extensions.
+
+.. grid:: 1 1 3 3
+   :gutter: 3
+
+   .. grid-item-card:: Extensions
+      :link: extensions/index
+      :link-type: doc
+      :class-card: sd-shadow-sm
+
+      Extend the base model with R&D / Growth+,
+      buffer-stock consumption, and taxation.
+
+   .. grid-item-card:: Validation
+      :link: validation/index
+      :link-type: doc
+      :class-card: sd-shadow-sm
+
+      Reproduce the book's scenarios and verify model
+      behavior with robustness and sensitivity analysis.
+
+   .. grid-item-card:: Calibration
+      :link: calibration/index
+      :link-type: doc
+      :class-card: sd-shadow-sm
+
+      Find optimal parameters through screening,
+      grid search, and stability testing.
+
+.. grid:: 2 3 3 6
+   :gutter: 2
+
+   .. grid-item::
+
+      :doc:`release_history`
+
+   .. grid-item::
+
+      :doc:`development/index`
+
+   .. grid-item::
+
+      :doc:`roadmap`
+
+   .. grid-item::
+
+      :doc:`glossary`
+
+   .. grid-item::
+
+      :doc:`about`
+
+   .. grid-item::
+
+      :doc:`related_projects`
 
 .. toctree::
    :maxdepth: 2
+   :hidden:
    :caption: User Guide
 
    installation
@@ -55,58 +119,59 @@ Contents
 
 .. toctree::
    :maxdepth: 2
+   :hidden:
    :caption: API
 
    api/index
 
 .. toctree::
    :maxdepth: 2
+   :hidden:
    :caption: Examples
 
    auto_examples/index
 
 .. toctree::
    :maxdepth: 2
+   :hidden:
    :caption: Extensions
 
    extensions/index
 
 .. toctree::
    :maxdepth: 2
+   :hidden:
    :caption: Validation
 
    validation/index
 
 .. toctree::
    :maxdepth: 2
+   :hidden:
    :caption: Calibration
 
    calibration/index
 
 .. toctree::
    :maxdepth: 1
+   :hidden:
    :caption: Release History
 
    release_history
 
 .. toctree::
    :maxdepth: 1
+   :hidden:
    :caption: Development
 
    development/index
 
 .. toctree::
    :maxdepth: 1
+   :hidden:
    :caption: Project
 
    related_projects
    roadmap
    glossary
    about
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
