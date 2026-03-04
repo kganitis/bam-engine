@@ -71,6 +71,7 @@ jobs:
           git add asv_benchmarks/.asv/results/
           git diff --staged --quiet || \
             git commit -m "ci(benchmarks): update ASV results [skip ci]"
+          git pull --rebase origin main
           git push origin main
 
       - name: Generate HTML report
