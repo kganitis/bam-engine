@@ -362,6 +362,10 @@ nw_prev_valid = nw_prev[valid_firms]
 nw_final_valid = nw_final[valid_firms]
 networth_growth_rates = (nw_final_valid - nw_prev_valid) / nw_prev_valid
 
+# Exclude re-entries (bankruptcy respawns cause |growth| >> 100%)
+reentry_mask = np.abs(networth_growth_rates) <= 1.0
+networth_growth_rates = networth_growth_rates[reentry_mask]
+
 print(f"\nKey metrics (after {burn_in}-period burn-in):")
 print(f"  Unemployment: {np.mean(unemployment[burn_in:]) * 100:.1f}%")
 print(f"  Inflation: {np.mean(inflation[burn_in:]) * 100:.1f}%")
