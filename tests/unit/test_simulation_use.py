@@ -151,6 +151,17 @@ class TestSimulationUse:
         # Should not raise; simulation still works
         sim.step()
 
+    def test_use_applies_relationships(self) -> None:
+        """sim.use() iterates over ext.relationships and calls use_relationship()."""
+        ext = Extension(
+            roles={},
+            events=[],
+            relationships=[object],
+            config_dict={},
+        )
+        sim = Simulation.init(seed=42)
+        sim.use(ext)  # Should not raise; use_relationship is a no-op
+
 
 class TestUseRelationship:
     """Test sim.use_relationship() placeholder."""

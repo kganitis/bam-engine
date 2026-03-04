@@ -666,31 +666,6 @@ def banks_provide_loans(
         log.info("--- Banks Providing Loans complete ---")
 
 
-def _provide_loan(
-    bor: Borrower,
-    lend: Lender,
-    lb: LoanBook,
-    firm_idx: int,
-    bank_idx: int,
-    amount: float,
-    rate: float,
-) -> None:
-    """Record a single loan and update borrower/lender state.
-
-    Shared helper used by both ``banks_provide_loans`` and
-    ``firms_apply_for_loans``.
-    """
-    lb.append_loans_for_lender(
-        np.intp(bank_idx),
-        np.array([firm_idx], dtype=np.intp),
-        np.array([amount]),
-        np.array([rate]),
-    )
-    bor.total_funds[firm_idx] += amount
-    bor.credit_demand[firm_idx] -= amount
-    lend.credit_supply[bank_idx] -= amount
-
-
 def firms_fire_workers(
     emp: Employer,
     wrk: Worker,

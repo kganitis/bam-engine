@@ -1603,7 +1603,7 @@ class Simulation:
             ):
                 return inner_args[0], 0
 
-        return np.float64, 0
+        return np.float64, 0  # pragma: no cover - default fallback
 
     def get_event(self, name: str) -> Any:
         """
