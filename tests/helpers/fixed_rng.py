@@ -66,6 +66,23 @@ class FixedRNG:
         out = self._next_ints(n).astype(dtype, copy=False)
         return out.reshape(size)
 
+    def random(
+        self,
+        size: int | tuple[int, ...] | None = None,
+    ) -> NDArray[np.float64] | np.float64:
+        """Deterministic stand-in for `Generator.random`."""
+        if size is None:
+            n = 1
+        elif isinstance(size, tuple):
+            n = int(np.prod(size))
+        else:
+            n = int(size)
+        raw = self._next_ints(n)
+        out = np.abs(raw % 997) / 997.0
+        if size is not None:
+            return out.reshape(size)
+        return float(out[0])
+
     def choice(
         self,
         a: Sequence[int] | _IntArray,

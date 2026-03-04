@@ -10,6 +10,17 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 
    Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.
 
+[Unreleased]
+------------
+
+Performance
+~~~~~~~~~~~
+
+* Vectorized ``workers_decide_firms_to_apply`` — replaced three Python for-loops
+  (per-worker ``rng.choice()``, per-loyal-worker move-to-front, per-worker buffer
+  write) with batch NumPy operations (random priorities + ``argpartition``, vectorized
+  loyalty shift, slice assignment). ~3.5x faster event execution.
+
 [0.5.0] - 2026-03-04
 ------------
 

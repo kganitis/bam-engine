@@ -19,7 +19,6 @@ from bamengine import Rng, logging, make_rng
 from bamengine.economy import Economy
 from bamengine.roles import Employer, Worker
 from bamengine.typing import Idx1D, Int1D
-from bamengine.utils import select_top_k_indices_sorted
 
 log = logging.getLogger(__name__)
 
@@ -256,98 +255,97 @@ def workers_decide_firms_to_apply(
         wrk.job_apps_targets[unemp, :].fill(-1)
         return
 
-    # sample M random hiring firms per worker (with replacement)
-    M_eff = min(max_M, hiring.size)
+    # --- Vectorized sampling using random priorities + argpartition ---
+    n_unemp = unemp.size
+    n_hiring = hiring.size
+    M_eff = min(max_M, n_hiring)
     if info_enabled:
         log.info(f"  Effective applications per worker (M_eff): {M_eff}")
-    sample = np.empty((unemp.size, M_eff), dtype=np.int64)
-    trace_enabled = log.isEnabledFor(logging.TRACE)
-    for row, j in enumerate(unemp):
-        sample[row] = rng.choice(hiring, size=M_eff, replace=False)
-        if trace_enabled:
-            log.trace(
-                f"  Worker {j}: initial sample={sample[row]}, "
-                f"previous: {wrk.employer_prev[j]}, "
-                f"contract_expired: {wrk.contract_expired[j]}, "
-                f"fired: {wrk.fired[j]}"
-            )
+
+    # Generate random priorities for all (worker, firm) pairs
+    priorities = rng.random((n_unemp, n_hiring))
+
+    # Select top M_eff firms per worker using argpartition (O(n) per row)
+    if M_eff < n_hiring:
+        top_k_local = np.argpartition(-priorities, kth=M_eff - 1, axis=1)[:, :M_eff]
+    else:
+        top_k_local = np.broadcast_to(np.arange(n_hiring), (n_unemp, n_hiring)).copy()
+
+    # Map local indices to firm IDs
+    sample = hiring[top_k_local]
+
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"  Initial random firm sample (first 10 workers, if any):\n{sample[:10]}"
         )
 
-    # wage-descending partial sort
-    topk = select_top_k_indices_sorted(emp.wage_offer[sample], k=M_eff, descending=True)
-    sorted_sample = np.take_along_axis(sample, topk, axis=1)
+    # Sort selected firms by wage (descending) using argsort
+    wages = emp.wage_offer[sample]
+    wage_order = np.argsort(-wages, axis=1)
+    sorted_sample = np.take_along_axis(sample, wage_order, axis=1)
+
     if log.isEnabledFor(logging.DEBUG):
         log.debug(
             f"  Sorted firm sample by wage (first 10 workers, if any):\n"
             f"{sorted_sample[:10]}"
         )
 
-    # loyalty rule
+    # Loyalty rule: prev employer goes to position 0 for eligible workers
     loyal_mask = (
         (wrk.contract_expired[unemp] == 1)
         & (wrk.fired[unemp] == 0)
         & np.isin(wrk.employer_prev[unemp], hiring)
     )
-    num_loyal_workers = np.sum(loyal_mask)
+    loyal_idx = np.where(loyal_mask)[0]
+    num_loyal_workers = loyal_idx.size
     if info_enabled:
         log.info(f"  Applying loyalty rule for {num_loyal_workers} worker(s).")
 
-    if loyal_mask.any():
-        loyal_row_indices = np.where(loyal_mask)[0]
+    if loyal_idx.size > 0:
+        prev_firm_ids = wrk.employer_prev[unemp[loyal_idx]]
+        match = sorted_sample[loyal_idx] == prev_firm_ids[:, None]
+        has_prev = match.any(axis=1)
 
-        for row in loyal_row_indices:
-            actual_worker_id = unemp[row]
-            prev_employer_id = wrk.employer_prev[actual_worker_id]
-            application_row = sorted_sample[row]
-            num_applications = application_row.shape[0]
+        # Case 1: prev employer already in sample — move to front
+        in_rows = loyal_idx[has_prev]
+        if in_rows.size > 0:
+            in_cols = np.argmax(match[has_prev], axis=1)
+            for pos_val in range(1, M_eff):
+                at_pos = in_cols == pos_val
+                if at_pos.any():
+                    rows = in_rows[at_pos]
+                    saved = sorted_sample[rows, pos_val].copy()
+                    sorted_sample[rows, 1 : pos_val + 1] = sorted_sample[
+                        rows, 0:pos_val
+                    ]
+                    sorted_sample[rows, 0] = saved
 
-            if trace_enabled:
-                log.trace(
-                    f"      Adjusting for loyalty: "
-                    f"Worker ID {actual_worker_id} (row {row}), "
-                    f"Prev Emp: {prev_employer_id}"
-                )
-                log.trace(f"      Application row BEFORE: {application_row.copy()}")
+        # Case 2: prev employer NOT in sample — drop last, insert at front
+        out_rows = loyal_idx[~has_prev]
+        if out_rows.size > 0:
+            out_prev = prev_firm_ids[~has_prev]
+            if M_eff > 1:
+                sorted_sample[out_rows, 1:M_eff] = sorted_sample[
+                    out_rows, 0 : M_eff - 1
+                ]
+            sorted_sample[out_rows, 0] = out_prev
 
-            try:
-                current_pos_of_prev_emp = (
-                    np.where(application_row == prev_employer_id)
-                )[0][0]
-                if current_pos_of_prev_emp != 0:
-                    employer_to_move = application_row[current_pos_of_prev_emp]
-                    for j in range(current_pos_of_prev_emp, 0, -1):
-                        application_row[j] = application_row[j - 1]
-                    application_row[0] = employer_to_move
-                # No log needed for 'else' case as it's a no-op.
-            except IndexError:
-                if num_applications > 0:
-                    if num_applications > 1:
-                        application_row[1:num_applications] = application_row[
-                            0 : num_applications - 1
-                        ]
-                    application_row[0] = prev_employer_id
-
-            if trace_enabled:
-                log.trace(f"      Application row AFTER:  {application_row}")
-
-        if log.isEnabledFor(logging.DEBUG) and loyal_mask.any():
+        if log.isEnabledFor(logging.DEBUG):
             log.debug(
                 f"    Sorted sample AFTER post-sort loyalty adjustment "
                 f"(first 10 rows if any loyal):\n{sorted_sample[:10]}"
             )
 
-    # write buffers
+    # Write buffers (vectorized)
     stride = max_M
-    for k, j in enumerate(unemp):
-        wrk.job_apps_targets[j, :M_eff] = sorted_sample[k]
-        if M_eff < max_M:
-            wrk.job_apps_targets[j, M_eff:max_M] = -1
-        wrk.job_apps_head[j] = j * stride
+    wrk.job_apps_targets[unemp, :M_eff] = sorted_sample
+    if M_eff < max_M:
+        wrk.job_apps_targets[unemp, M_eff:max_M] = -1
+    wrk.job_apps_head[unemp] = unemp * stride
 
-        if k < 10 and log.isEnabledFor(logging.DEBUG):  # first 10 workers
+    if log.isEnabledFor(logging.DEBUG):
+        for k in range(min(10, n_unemp)):
+            j = unemp[k]
             log.debug(
                 f"    Worker {j}: targets={wrk.job_apps_targets[j]}, "
                 f"head_ptr={wrk.job_apps_head[j]}"
