@@ -10,7 +10,7 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 
    Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.
 
-[Unreleased]
+[0.5.0] - 2026-03-04
 ------------
 
 Added
@@ -28,6 +28,13 @@ Added
   ``BUFFER_STOCK_COLLECT`` — suggested data-collection configs for
   ``sim.run(collect=...)``.
 
+**Documentation**
+
+* Extended User Guide to guide user through simulations, configuration,
+  custom data collection, custom roles/events/relationships, pipelines,
+  operations, extensions, validation, calibration, and best practices.
+* New pages: Related Projects, Roadmap, Glossary, About.
+
 Removed
 ~~~~~~~
 
@@ -40,6 +47,12 @@ Removed
 * **Deprecated internal functions**: cascade matching (labor and credit), simultaneous
   matching, annualized inflation, ratchet minimum wage, production-phase pricing,
   round-robin shopping.
+
+Fixed
+~~~~~
+
+* Calibration modules now fall back to serial execution when ``n_workers=1``,
+  fixing a ``ProcessPoolExecutor`` spawn crash on macOS.
 
 [0.4.0] - 2026-02-25
 --------------------

@@ -28,7 +28,6 @@ coverage.json
 
 # Benchmarking outputs
 *.prof
-*.svg
 benchmarks/*.prof
 benchmarks/*.svg
 asv_benchmarks/.asv/*
