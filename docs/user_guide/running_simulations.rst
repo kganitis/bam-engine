@@ -41,7 +41,18 @@ Run multiple periods with :meth:`~bamengine.Simulation.run`:
    # Run and collect data for analysis
    results = sim.run(n_periods=100, collect=True)
 
-See :doc:`data_collection` for details on the ``collect`` parameter.
+Extensions can be activated before running:
+
+.. code-block:: python
+
+   from extensions.rnd import RND
+
+   sim = bam.Simulation.init(seed=42)
+   sim.use(RND)
+   results = sim.run(n_periods=1000, collect=True)
+
+See :doc:`extensions` for the full extension pattern, and
+:doc:`data_collection` for details on the ``collect`` parameter.
 
 
 Single-Step Execution

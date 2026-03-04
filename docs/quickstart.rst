@@ -167,5 +167,6 @@ configuring parameters, and accessing agent state. There is much more to
 ``BAM Engine``!
 
 - :doc:`User Guide </user_guide/index>` - Detailed documentation on all features
+- :doc:`Extensions </extensions/index>` - R&D, buffer-stock, and taxation extensions
 - :doc:`Examples </auto_examples/index>` - Worked examples demonstrating various use cases
 - :doc:`API Reference </api/index>` - Complete API documentation

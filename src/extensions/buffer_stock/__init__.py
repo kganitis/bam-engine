@@ -6,6 +6,14 @@ based on buffer-stock saving theory.
 
 Usage::
 
+    from extensions.buffer_stock import BUFFER_STOCK
+
+    sim = bam.Simulation.init(**config)
+    sim.use(BUFFER_STOCK)
+    results = sim.run()
+
+Or manually::
+
     from extensions.buffer_stock import (
         BufferStock,
         BUFFER_STOCK_EVENTS,
@@ -90,6 +98,9 @@ log-likelihood.
 
 from __future__ import annotations
 
+from typing import Any
+
+from bamengine import Extension
 from extensions.buffer_stock.events import (
     ConsumersCalcBufferStockPropensity,
     ConsumersDecideBufferStockSpending,
@@ -105,10 +116,43 @@ BUFFER_STOCK_CONFIG = {
     "buffer_stock_h": 2.0,
 }
 
+BUFFER_STOCK = Extension(
+    roles={BufferStock: "households"},
+    events=BUFFER_STOCK_EVENTS,
+    relationships=[],
+    config_dict=BUFFER_STOCK_CONFIG,
+)
+
+BUFFER_STOCK_COLLECT: dict[str, Any] = {
+    "Producer": ["production"],
+    "Worker": ["wage", "employed"],
+    "Employer": ["n_vacancies"],
+    "Borrower": ["net_worth"],
+    "Consumer": ["savings"],
+    "BufferStock": ["propensity"],
+    "Shareholder": ["dividends"],
+    "LoanBook": ["principal", "rate"],
+    "Economy": True,
+    "capture_timing": {
+        "Worker.wage": "firms_run_production",
+        "Worker.employed": "firms_run_production",
+        "Producer.production": "firms_run_production",
+        "Employer.n_vacancies": "firms_decide_vacancies",
+        "Borrower.net_worth": "firms_run_production",
+        "Consumer.savings": None,  # end of period
+        "BufferStock.propensity": "consumers_calc_buffer_stock_propensity",
+        "Shareholder.dividends": "consumers_calc_buffer_stock_propensity",
+        "LoanBook.principal": "banks_provide_loans",
+        "LoanBook.rate": "banks_provide_loans",
+    },
+}
+
 __all__ = [
     "BufferStock",
+    "BUFFER_STOCK",
     "BUFFER_STOCK_EVENTS",
     "BUFFER_STOCK_CONFIG",
+    "BUFFER_STOCK_COLLECT",
     "ConsumersCalcBufferStockPropensity",
     "ConsumersDecideBufferStockSpending",
 ]

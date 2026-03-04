@@ -15,23 +15,19 @@ Quick Start
 .. code-block:: python
 
    import bamengine as bam
-   from extensions.buffer_stock import (
-       BufferStock,
-       BUFFER_STOCK_EVENTS,
-       BUFFER_STOCK_CONFIG,
-   )
+   from extensions.buffer_stock import BUFFER_STOCK
 
    sim = bam.Simulation.init(seed=42)
-   sim.use_role(BufferStock, n_agents=sim.n_households)
-   sim.use_events(*BUFFER_STOCK_EVENTS)
-   sim.use_config(BUFFER_STOCK_CONFIG)
+   sim.use(BUFFER_STOCK)
 
    results = sim.run(n_periods=1000, collect=True)
 
 .. note::
 
-   The BufferStock role is registered at the **household level** since it tracks
-   per-household state. Pass ``n_agents=sim.n_households`` to ``use_role()``.
+   The BufferStock role is registered at the **household level** (it tracks
+   per-household state). The :class:`~bamengine.Extension` bundle handles the
+   agent count automatically; when using the manual pattern, pass
+   ``n_agents=sim.n_households`` to ``use_role()``.
 
 
 Role Fields

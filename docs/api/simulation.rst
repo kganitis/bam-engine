@@ -33,7 +33,9 @@ Key Methods
    Simulation.get_role
    Simulation.get_event
    Simulation.get_relationship
+   Simulation.use
    Simulation.use_role
+   Simulation.use_relationship
    Simulation.use_events
    Simulation.use_config
 

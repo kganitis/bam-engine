@@ -171,7 +171,7 @@ __version__: str = "0.4.0"
 # ============================================================================
 # Standard library imports
 # ============================================================================
-from typing import TypeAlias
+from typing import Any, TypeAlias
 
 import numpy as np
 
@@ -242,8 +242,25 @@ from .core import (  # noqa: E402 (circular‑safe)
     role,
 )
 from .economy import Economy  # noqa: E402 (circular‑safe)
+from .extension import Extension  # noqa: E402 (circular‑safe)
 from .results import SimulationResults  # noqa: E402 (circular‑safe)
 from .simulation import Simulation  # noqa: E402  (circular‑safe)
+
+# ============================================================================
+# Collect configurations for data collection
+# ============================================================================
+BASELINE_COLLECT: dict[str, Any] = {
+    "Producer": ["production", "labor_productivity"],
+    "Worker": ["wage", "employed"],
+    "Employer": ["n_vacancies"],
+    "Economy": True,
+    "capture_timing": {
+        "Worker.wage": "workers_receive_wage",
+        "Worker.employed": "firms_run_production",
+        "Producer.production": "firms_run_production",
+        "Employer.n_vacancies": "firms_decide_vacancies",
+    },
+}
 
 # ============================================================================
 # Public API exports
@@ -251,6 +268,7 @@ from .simulation import Simulation  # noqa: E402  (circular‑safe)
 __all__ = [
     "Simulation",
     "SimulationResults",
+    "Extension",
     "__version__",
     # Core ECS components
     "Agent",
@@ -274,6 +292,8 @@ __all__ = [
     "Bool",
     "AgentId",
     "Rng",
+    # Collect configurations
+    "BASELINE_COLLECT",
     # Utilities
     "make_rng",
     "ops",

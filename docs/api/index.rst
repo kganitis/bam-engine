@@ -31,6 +31,7 @@ Main classes for running simulations and collecting results.
 
    Simulation
    SimulationResults
+   ~extension.Extension
 
 ECS Base Classes
 ----------------

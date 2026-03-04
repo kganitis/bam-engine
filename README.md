@@ -59,6 +59,13 @@ results = sim.run(n_periods=100, collect=True)
 
 # Export to pandas DataFrame
 df = results.to_dataframe()
+
+# Add extensions with one call
+from extensions.rnd import RND
+
+sim = bam.Simulation.init(seed=42)
+sim.use(RND)
+results = sim.run(n_periods=1000, collect=True)
 ```
 
 See the [Getting Started guide](https://bam-engine.readthedocs.io/en/latest/quickstart.html) for a complete walkthrough.

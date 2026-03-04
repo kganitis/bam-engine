@@ -621,3 +621,18 @@ ax.grid(True, linestyle="--", alpha=0.3)
 
 plt.tight_layout()
 plt.show()
+
+# %%
+# Alternative: Extension Bundle
+# ------------------------------
+#
+# The above example defines all R&D components inline for educational purposes.
+# For convenience, the pre-built ``RND`` bundle activates everything in one call:
+#
+# .. code-block:: python
+#
+#     from extensions.rnd import RND, RND_COLLECT
+#
+#     sim = bam.Simulation.init(seed=0)
+#     sim.use(RND)
+#     results = sim.run(collect=RND_COLLECT)

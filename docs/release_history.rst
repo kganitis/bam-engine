@@ -13,6 +13,21 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 [Unreleased]
 ------------
 
+Added
+~~~~~
+
+**Extension Bundles**
+
+* :class:`~bamengine.Extension` dataclass — bundles roles, events, relationships,
+  and config into a single object.
+* :meth:`~bamengine.Simulation.use` — one-call extension activation
+  (replaces the manual ``use_role``/``use_events``/``use_config`` pattern).
+* Pre-built bundles: ``RND``, ``BUFFER_STOCK``, ``TAXATION`` in their
+  respective ``extensions.*`` packages.
+* Collect-config dicts: ``BASELINE_COLLECT``, ``RND_COLLECT``,
+  ``BUFFER_STOCK_COLLECT`` — suggested data-collection configs for
+  ``sim.run(collect=...)``.
+
 Removed
 ~~~~~~~
 
@@ -21,19 +36,10 @@ Removed
   ``matching_method``. Behavior is now hardcoded to the previously active defaults.
 * **Deprecated event classes**: ``WorkersApplyToFirms``, ``WorkersApplyToBestFirm``,
   ``FirmsApplyForLoans``, ``CalcUnemploymentRate``, ``ConsumersShopOneRound``,
-  ``FirmsCalcBreakevenPrice``, ``FirmsAdjustPrice``. Event count reduced from 46 to 39.
+  ``FirmsCalcBreakevenPrice``, ``FirmsAdjustPrice``.
 * **Deprecated internal functions**: cascade matching (labor and credit), simultaneous
   matching, annualized inflation, ratchet minimum wage, production-phase pricing,
   round-robin shopping.
-* Pipeline factory no longer performs runtime event swaps; ``default_pipeline.yml``
-  now directly specifies interleaved matching syntax.
-
-Changed
-~~~~~~~
-
-* Renamed Changelog to Release History.
-* Added Glossary, Roadmap, About, and Related Projects documentation pages.
-* Reorganized documentation table of contents with new section groupings.
 
 [0.4.0] - 2026-02-25
 --------------------

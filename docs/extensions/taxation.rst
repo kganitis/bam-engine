@@ -14,10 +14,10 @@ Quick Start
 .. code-block:: python
 
    import bamengine as bam
-   from extensions.taxation import FirmsTaxProfits, TAXATION_CONFIG
+   from extensions.taxation import TAXATION
 
    sim = bam.Simulation.init(seed=42, profit_tax_rate=0.20)
-   sim.use_events(FirmsTaxProfits)
+   sim.use(TAXATION)
 
    results = sim.run(n_periods=1000, collect=True)
 

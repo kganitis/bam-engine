@@ -10,35 +10,36 @@ activate them explicitly after simulation initialization.
 The Extension Pattern
 ---------------------
 
-Every extension exports three components:
-
-1. **Role class(es)** — New agent state variables
-2. **Event list** (``*_EVENTS``) — New behavioral rules with pipeline hooks
-3. **Config dictionary** (``*_CONFIG``) — Default parameter values
-
-Activation always follows the same three steps:
+Every extension provides a pre-built :class:`~bamengine.Extension` bundle that
+activates all components in a single call:
 
 .. code-block:: python
 
    import bamengine as bam
+   from extensions.rnd import RND
+
+   sim = bam.Simulation.init(seed=42)
+   sim.use(RND)  # registers role, events, and config
+
+For finer control, each extension also exports individual components — a role
+class, an event list (``*_EVENTS``), and a config dictionary (``*_CONFIG``) —
+that can be activated manually:
+
+.. code-block:: python
+
    from extensions.rnd import RnD, RND_EVENTS, RND_CONFIG
 
    sim = bam.Simulation.init(seed=42)
-
-   # Step 1: Register the role
    sim.use_role(RnD)
-
-   # Step 2: Apply event hooks to the pipeline
    sim.use_events(*RND_EVENTS)
-
-   # Step 3: Set default extension parameters
    sim.use_config(RND_CONFIG)
 
 .. warning::
 
-   All three steps are required. Forgetting ``use_events()`` means the extension
-   events will never execute. Forgetting ``use_config()`` means extension
-   parameters will be missing at runtime.
+   When using the manual pattern, all three steps are required. Forgetting
+   ``use_events()`` means the extension events will never execute. Forgetting
+   ``use_config()`` means extension parameters will be missing at runtime.
+   Using ``sim.use()`` avoids this problem.
 
 
 Built-in Extensions
@@ -76,29 +77,14 @@ before taxation (since R&D deducts from net profit before tax):
 .. code-block:: python
 
    import bamengine as bam
-   from extensions.rnd import RnD, RND_EVENTS, RND_CONFIG
-   from extensions.buffer_stock import (
-       BufferStock,
-       BUFFER_STOCK_EVENTS,
-       BUFFER_STOCK_CONFIG,
-   )
-   from extensions.taxation import FirmsTaxProfits, TAXATION_CONFIG
+   from extensions.rnd import RND
+   from extensions.buffer_stock import BUFFER_STOCK
+   from extensions.taxation import TAXATION
 
    sim = bam.Simulation.init(seed=42)
-
-   # R&D extension (firm-level)
-   sim.use_role(RnD)
-   sim.use_events(*RND_EVENTS)
-   sim.use_config(RND_CONFIG)
-
-   # Buffer-stock extension (household-level)
-   sim.use_role(BufferStock, n_agents=sim.n_households)
-   sim.use_events(*BUFFER_STOCK_EVENTS)
-   sim.use_config(BUFFER_STOCK_CONFIG)
-
-   # Taxation extension (no role needed)
-   sim.use_events(FirmsTaxProfits)
-   sim.use_config(TAXATION_CONFIG)
+   sim.use(RND)
+   sim.use(BUFFER_STOCK)
+   sim.use(TAXATION)
 
    results = sim.run(n_periods=1000, collect=True)
 
@@ -133,20 +119,27 @@ Follow the same pattern as the built-in extensions:
               ext = sim.get_role("MyExtension")
               ops.assign(ext.custom_field, ...)
 
-3. **Package exports** for clean activation:
+3. **Bundle into an Extension** for one-call activation:
 
    .. code-block:: python
 
+      from bamengine import Extension
+
       MY_EVENTS = [MyCustomEvent]
       MY_CONFIG = {"my_param": 0.5}
+
+      MY_EXT = Extension(
+          roles={MyExtension: "firms"},
+          events=MY_EVENTS,
+          relationships=[],
+          config_dict=MY_CONFIG,
+      )
 
 4. **Activate** in user code:
 
    .. code-block:: python
 
-      sim.use_role(MyExtension)
-      sim.use_events(*MY_EVENTS)
-      sim.use_config(MY_CONFIG)
+      sim.use(MY_EXT)
 
 See :doc:`custom_roles`, :doc:`custom_events`, and :doc:`configuration` for
 detailed syntax.

@@ -70,6 +70,7 @@ import numpy as np
 import yaml
 
 if TYPE_CHECKING:  # pragma: no cover
+    from bamengine.extension import Extension
     from bamengine.results import SimulationResults, _DataCollector
 
 import bamengine.events  # noqa: F401 - needed to register events
@@ -1399,6 +1400,49 @@ class Simulation:
                 f"Available instances: {available}. "
                 f"Registered roles: {registered}"
             ) from None
+
+    def use(self, ext: Extension) -> None:
+        """Apply an extension bundle to the simulation.
+
+        Convenience method that activates all roles, events, relationships,
+        and default configuration from an :class:`~bamengine.extension.Extension`
+        in a single call.
+
+        Parameters
+        ----------
+        ext : Extension
+            Extension bundle to apply.
+
+        Examples
+        --------
+        >>> from extensions.rnd import RND
+        >>> sim = bam.Simulation.init(seed=42)
+        >>> sim.use(RND)
+        """
+        agent_counts = {
+            "firms": self.n_firms,
+            "households": self.n_households,
+            "banks": self.n_banks,
+        }
+        for role_cls, agent_type in ext.roles.items():
+            n = agent_counts[agent_type]
+            self.use_role(role_cls, n_agents=n)
+        for rel_cls in ext.relationships:
+            self.use_relationship(rel_cls)
+        self.use_events(*ext.events)
+        self.use_config(ext.config_dict)
+
+    def use_relationship(self, rel_cls: type) -> None:
+        """Register a custom relationship class.
+
+        .. note::
+           Placeholder for future use. Currently a no-op.
+
+        Parameters
+        ----------
+        rel_cls : type
+            Relationship class to register.
+        """
 
     def use_role(self, role_cls: type, *, n_agents: int | None = None) -> Any:
         """

@@ -7,6 +7,14 @@ firm entry mechanism artificially drives recovery.
 
 Usage::
 
+    from extensions.taxation import TAXATION
+
+    sim = bam.Simulation.init(**config)
+    sim.use(TAXATION)
+    results = sim.run()
+
+Or manually::
+
     from extensions.taxation import FirmsTaxProfits, TAXATION_EVENTS, TAXATION_CONFIG
 
     sim = bam.Simulation.init(**config)
@@ -17,6 +25,7 @@ Usage::
 
 from __future__ import annotations
 
+from bamengine import Extension
 from extensions.taxation.events import FirmsTaxProfits
 
 TAXATION_EVENTS = [FirmsTaxProfits]
@@ -25,8 +34,16 @@ TAXATION_CONFIG = {
     "profit_tax_rate": 0.0,  # Default no-tax; overridden per experiment
 }
 
+TAXATION = Extension(
+    roles={},
+    events=TAXATION_EVENTS,
+    relationships=[],
+    config_dict=TAXATION_CONFIG,
+)
+
 __all__ = [
     "FirmsTaxProfits",
+    "TAXATION",
     "TAXATION_EVENTS",
     "TAXATION_CONFIG",
 ]

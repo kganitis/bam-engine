@@ -15,12 +15,10 @@ Quick Start
 .. code-block:: python
 
    import bamengine as bam
-   from extensions.rnd import RnD, RND_EVENTS, RND_CONFIG
+   from extensions.rnd import RND
 
    sim = bam.Simulation.init(seed=42)
-   sim.use_role(RnD)
-   sim.use_events(*RND_EVENTS)
-   sim.use_config(RND_CONFIG)
+   sim.use(RND)
 
    results = sim.run(n_periods=1000, collect=True)
 

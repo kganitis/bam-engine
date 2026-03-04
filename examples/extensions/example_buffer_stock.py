@@ -272,3 +272,21 @@ ax.grid(True, linestyle="--", alpha=0.3)
 
 plt.tight_layout()
 plt.show()
+
+# %%
+# Alternative: Extension Bundle
+# ------------------------------
+#
+# The above example defines all buffer-stock components inline for educational
+# purposes. For convenience, the pre-built ``BUFFER_STOCK`` bundle activates
+# everything in one call:
+#
+# .. code-block:: python
+#
+#     from extensions.rnd import RND
+#     from extensions.buffer_stock import BUFFER_STOCK, BUFFER_STOCK_COLLECT
+#
+#     sim = bam.Simulation.init(seed=0)
+#     sim.use(RND)
+#     sim.use(BUFFER_STOCK)
+#     results = sim.run(collect=BUFFER_STOCK_COLLECT)

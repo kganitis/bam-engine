@@ -2,38 +2,26 @@ Model Extensions
 ================
 
 BAM Engine includes three built-in extensions that add economic mechanisms
-beyond the baseline BAM model. Extensions follow a consistent three-step
-activation pattern.
+beyond the baseline BAM model.
 
 Quick Start
 -----------
 
-Every extension exports three components — a role class, an event list, and
-a config dictionary:
+Each extension provides an :class:`~bamengine.Extension` bundle that activates
+all its components in a single call:
 
 .. code-block:: python
 
    import bamengine as bam
-   from extensions.rnd import RnD, RND_EVENTS, RND_CONFIG
+   from extensions.rnd import RND
 
    sim = bam.Simulation.init(seed=42)
-
-   # Step 1: Register the role
-   sim.use_role(RnD)
-
-   # Step 2: Apply event hooks to the pipeline
-   sim.use_events(*RND_EVENTS)
-
-   # Step 3: Set default extension parameters
-   sim.use_config(RND_CONFIG)
+   sim.use(RND)
 
    results = sim.run(n_periods=1000, collect=True)
 
-.. warning::
-
-   All three steps are required. Forgetting ``use_events()`` means the extension
-   events will never execute. Forgetting ``use_config()`` means extension
-   parameters will be missing at runtime.
+Individual components (roles, events, config) are also available for manual
+activation — see :doc:`/user_guide/extensions` for the manual pattern.
 
 
 Available Extensions
