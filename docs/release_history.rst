@@ -10,7 +10,7 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 
    Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.
 
-[Unreleased]
+[0.5.1] - 2026-03-04
 ------------
 
 Performance
