@@ -1,8 +1,8 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/_static/logo-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="docs/_static/logo.svg">
-    <img alt="BAM Engine" src="docs/_static/logo.svg" width="280">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/kganitis/bam-engine/main/docs/_static/logo-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/kganitis/bam-engine/main/docs/_static/logo.svg">
+    <img alt="BAM Engine" src="https://raw.githubusercontent.com/kganitis/bam-engine/main/docs/_static/logo.svg" width="280">
   </picture>
 </p>
 
