@@ -705,3 +705,27 @@ class FirmsCalcWageBill:
         from bamengine.events._internal.labor_market import firms_calc_wage_bill
 
         firms_calc_wage_bill(sim.emp, sim.wrk)
+
+
+@event
+class LaborMarketRoundVec:
+    """One vectorized round of labor market matching.
+
+    Replaces the interleaved ``WorkersSendOneRound <-> FirmsHireWorkers``
+    pair with a single batch-matching event.  All unemployed applicants
+    simultaneously send their next application, conflicts are resolved
+    randomly (up to ``n_vacancies`` per firm), and accepted workers are
+    batch-hired.
+
+    This event is called ``max_M`` times in the vectorized pipeline.
+
+    See Also
+    --------
+    bamengine.events._internal.vectorized_markets.labor_market_round_vec :
+        Implementation
+    """
+
+    def execute(self, sim: Simulation) -> None:
+        from bamengine.events._internal.vectorized_markets import labor_market_round_vec
+
+        labor_market_round_vec(sim.emp, sim.wrk, theta=sim.config.theta, rng=sim.rng)

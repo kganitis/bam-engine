@@ -240,34 +240,38 @@ def spawn_replacement_firms(
             f"mean_net={mean_net:.2f}, mean_prod={mean_prod:.2f}, mean_wage={mean_wage:.2f}"
         )
 
-    # initialize new firms
-    for i in exiting_indices:
-        # Reset Borrower component
-        bor.net_worth[i] = mean_net * new_firm_size_factor
-        bor.total_funds[i] = bor.net_worth[i]
-        bor.gross_profit[i] = 0.0
-        bor.net_profit[i] = 0.0
-        bor.retained_profit[i] = 0.0
-        bor.credit_demand[i] = 0.0
-        bor.projected_fragility[i] = 0.0
+    # Vectorized initialization of replacement firms
+    idx = exiting_indices
 
-        # Reset Producer component
-        prod.production_prev[i] = mean_prod * new_firm_production_factor
-        prod.production[i] = prod.production_prev[i]
-        prod.inventory[i] = 0.0
-        prod.expected_demand[i] = 0.0
-        prod.desired_production[i] = 0.0
-        prod.price[i] = ec.avg_mkt_price * new_firm_price_markup
+    # Borrower component
+    nw_val = mean_net * new_firm_size_factor
+    bor.net_worth[idx] = nw_val
+    bor.total_funds[idx] = nw_val
+    bor.gross_profit[idx] = 0.0
+    bor.net_profit[idx] = 0.0
+    bor.retained_profit[idx] = 0.0
+    bor.credit_demand[idx] = 0.0
+    bor.projected_fragility[idx] = 0.0
 
-        # Reset Employer component
-        emp.current_labor[i] = 0
-        emp.desired_labor[i] = 0
-        emp.wage_offer[i] = max(mean_wage * new_firm_wage_factor, ec.min_wage)
-        emp.n_vacancies[i] = 0
-        emp.total_funds[i] = bor.total_funds[i]
-        emp.wage_bill[i] = 0.0
+    # Producer component
+    prod_val = mean_prod * new_firm_production_factor
+    prod.production_prev[idx] = prod_val
+    prod.production[idx] = prod_val
+    prod.inventory[idx] = 0.0
+    prod.expected_demand[idx] = 0.0
+    prod.desired_production[idx] = 0.0
+    prod.price[idx] = ec.avg_mkt_price * new_firm_price_markup
 
-        if log.isEnabledFor(logging.DEBUG):
+    # Employer component
+    emp.current_labor[idx] = 0
+    emp.desired_labor[idx] = 0
+    emp.wage_offer[idx] = max(mean_wage * new_firm_wage_factor, ec.min_wage)
+    emp.n_vacancies[idx] = 0
+    emp.total_funds[idx] = nw_val
+    emp.wage_bill[idx] = 0.0
+
+    if log.isEnabledFor(logging.DEBUG):
+        for i in idx:
             log.debug(
                 f"    Initialized new firm at index {i} "
                 f"with net worth {bor.net_worth[i]:.2f}."
@@ -313,19 +317,17 @@ def spawn_replacement_banks(
         ec.collapsed = True
         return
 
-    # initialize new banks
-    debug_enabled = log.isEnabledFor(logging.DEBUG)
-    for k in exiting_indices:
-        src = int(rng.choice(alive))
-        if debug_enabled:
-            log.debug(f"  Cloning healthy bank {src} to replace bankrupt bank {k}.")
-        lend.equity_base[k] = lend.equity_base[src]
+    # Vectorized initialization of replacement banks
+    src_indices = rng.choice(alive, size=num_exiting, replace=True)
+    lend.equity_base[exiting_indices] = lend.equity_base[src_indices]
+    lend.credit_supply[exiting_indices] = 0.0
+    lend.interest_rate[exiting_indices] = 0.0
+    lend.recv_loan_apps_head[exiting_indices] = -1
+    lend.recv_loan_apps[exiting_indices, :] = -1
 
-        # Reset state for the new bank
-        lend.credit_supply[k] = 0.0
-        lend.interest_rate[k] = 0.0
-        lend.recv_loan_apps_head[k] = -1
-        lend.recv_loan_apps[k, :] = -1
+    if log.isEnabledFor(logging.DEBUG):
+        for k, src in zip(exiting_indices, src_indices, strict=True):
+            log.debug(f"  Cloning healthy bank {src} to replace bankrupt bank {k}.")
 
     if info_enabled:
         log.info("--- Bank Spawning complete ---")

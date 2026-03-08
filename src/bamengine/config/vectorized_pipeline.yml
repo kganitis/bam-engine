@@ -1,0 +1,105 @@
+# ==============================================================================
+# BAM Engine Vectorized Event Pipeline
+# ==============================================================================
+#
+# This pipeline replaces the three sequential market-matching loops with
+# vectorized batch-matching events.  All other events (planning, production,
+# revenue, bankruptcy, entry) are identical to default_pipeline.yml.
+#
+# DIFFERENCES FROM DEFAULT PIPELINE
+# ----------------------------------
+# 1. Labor market: interleaved send/hire → labor_market_round_vec x {max_M}
+# 2. Credit market: interleaved send/provide → credit_market_round_vec x {max_H}
+#    + firms_fire_workers → firms_fire_workers_vec
+# 3. Goods market: consumers_shop_sequential → goods_market_round_vec (single call)
+#
+# USAGE
+# -----
+#   sim = bam.Simulation.init(
+#       pipeline_path="src/bamengine/config/vectorized_pipeline.yml"
+#   )
+#
+# SEMANTIC DIFFERENCES
+# --------------------
+# - Labor/Credit: Batch-send with random conflict resolution replaces
+#   sequential first-come-first-served.  Different micro-level outcomes,
+#   same macro-level validation targets.
+# - Goods: Batch-sequential processing (~10 batches, each completing all
+#   Z visits) replaces sequential consumer-by-consumer shopping.
+#
+# See Also
+# --------
+# - config/default_pipeline.yml : Original sequential pipeline (default)
+# - bamengine.events._internal.vectorized_markets : Vectorized implementations
+#
+# ==============================================================================
+
+events:
+  # ────────────────────────────────────────────────────────────────────────────
+  # PHASE 1: PLANNING (6 events) — identical to default
+  # ────────────────────────────────────────────────────────────────────────────
+  - firms_decide_desired_production
+  - firms_plan_breakeven_price
+  - firms_plan_price
+  - firms_decide_desired_labor
+  - firms_decide_vacancies
+  - firms_fire_excess_workers
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # PHASE 2: LABOR MARKET — vectorized matching
+  # ────────────────────────────────────────────────────────────────────────────
+  - calc_inflation_rate
+  - adjust_minimum_wage
+  - firms_decide_wage_offer
+  - workers_decide_firms_to_apply
+  - labor_market_round_vec x {max_M}
+  - firms_calc_wage_bill
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # PHASE 3: CREDIT MARKET — vectorized matching + vectorized firing
+  # ────────────────────────────────────────────────────────────────────────────
+  - banks_decide_credit_supply
+  - banks_decide_interest_rate
+  - firms_decide_credit_demand
+  - firms_calc_financial_fragility
+  - firms_prepare_loan_applications
+  - credit_market_round_vec x {max_H}
+  - firms_fire_workers_vec
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # PHASE 4: PRODUCTION (5 events) — identical to default
+  # ────────────────────────────────────────────────────────────────────────────
+  - firms_pay_wages
+  - workers_receive_wage
+  - firms_run_production
+  - update_avg_mkt_price
+  - workers_update_contracts
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # PHASE 5: GOODS MARKET — vectorized matching
+  # ────────────────────────────────────────────────────────────────────────────
+  - consumers_calc_propensity
+  - consumers_decide_income_to_spend
+  - consumers_decide_firms_to_visit
+  - goods_market_round_vec
+  - consumers_finalize_purchases
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # PHASE 6: REVENUE (3 events) — identical to default
+  # ────────────────────────────────────────────────────────────────────────────
+  - firms_collect_revenue
+  - firms_validate_debt_commitments
+  - firms_pay_dividends
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # PHASE 7: BANKRUPTCY (3 events) — identical to default
+  # ────────────────────────────────────────────────────────────────────────────
+  - firms_update_net_worth
+  - mark_bankrupt_firms
+  - mark_bankrupt_banks
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # PHASE 8: ENTRY (2 events) — identical to default
+  # ────────────────────────────────────────────────────────────────────────────
+  - spawn_replacement_firms
+  - spawn_replacement_banks

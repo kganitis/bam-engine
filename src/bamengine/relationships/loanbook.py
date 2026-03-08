@@ -579,6 +579,41 @@ class LoanBook:
         self.debt[start:stop] = amount * (1.0 + rate)
         self.size = stop
 
+    def append_loans_batch(
+        self,
+        lender_indices: Idx1D,
+        borrower_indices: Idx1D,
+        amount: Float1D,
+        rate: Float1D,
+    ) -> None:
+        """Append loans from multiple lenders in a single batch.
+
+        Unlike :meth:`append_loans_for_lender` which takes a scalar lender,
+        this method takes an array of lender IDs — one per loan.  Used by the
+        vectorized credit market to write all loans from one round at once.
+
+        Parameters
+        ----------
+        lender_indices : Idx1D
+            Lender (bank) ID for each loan.
+        borrower_indices : Idx1D
+            Borrower (firm) ID for each loan.
+        amount : Float1D
+            Principal amounts.
+        rate : Float1D
+            Interest rates.
+        """
+        self._ensure_capacity(amount.size)
+        start, stop = self.size, self.size + amount.size
+
+        self.source_ids[start:stop] = borrower_indices
+        self.target_ids[start:stop] = lender_indices
+        self.principal[start:stop] = amount
+        self.rate[start:stop] = rate
+        self.interest[start:stop] = amount * rate
+        self.debt[start:stop] = amount * (1.0 + rate)
+        self.size = stop
+
     def drop_rows(self, rows_mask: Bool1D) -> int:
         """
         Remove loans matching a boolean mask and compact arrays in-place.

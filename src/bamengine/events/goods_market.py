@@ -409,3 +409,28 @@ class ConsumersFinalizePurchases:
         from bamengine.events._internal.goods_market import consumers_finalize_purchases
 
         consumers_finalize_purchases(sim.con)
+
+
+@event
+class GoodsMarketRoundVec:
+    """Vectorized goods market matching via batch-sequential processing.
+
+    Replaces the sequential ``ConsumersShopSequential`` with batch-sequential
+    processing: consumers are shuffled and divided into ~10 batches, each
+    completing all Z visits before the next batch starts.  This preserves
+    the sequential depletion dynamics while using vectorized NumPy operations
+    within each batch.
+
+    This event is called once in the vectorized pipeline (it handles all
+    Z rounds internally).
+
+    See Also
+    --------
+    bamengine.events._internal.vectorized_markets.goods_market_round_vec :
+        Implementation
+    """
+
+    def execute(self, sim: Simulation) -> None:
+        from bamengine.events._internal.vectorized_markets import goods_market_round_vec
+
+        goods_market_round_vec(sim.con, sim.prod, max_Z=sim.config.max_Z, rng=sim.rng)

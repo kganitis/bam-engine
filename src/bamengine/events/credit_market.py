@@ -780,3 +780,57 @@ class FirmsFireWorkers:
             sim.wrk,
             rng=sim.rng,
         )
+
+
+@event
+class CreditMarketRoundVec:
+    """One vectorized round of credit market matching.
+
+    Replaces the interleaved ``FirmsSendOneLoanApp <-> BanksProvideLoans``
+    pair with a single batch-matching event.  All borrowers simultaneously
+    send their next application, applicants are grouped by bank, ranked by
+    ascending fragility, and loans provisioned using grouped cumsum to track
+    supply exhaustion.
+
+    This event is called ``max_H`` times in the vectorized pipeline.
+
+    See Also
+    --------
+    bamengine.events._internal.vectorized_markets.credit_market_round_vec :
+        Implementation
+    """
+
+    def execute(self, sim: Simulation) -> None:
+        from bamengine.events._internal.vectorized_markets import (
+            credit_market_round_vec,
+        )
+
+        credit_market_round_vec(
+            sim.bor,
+            sim.lend,
+            sim.lb,
+            r_bar=sim.r_bar,
+            max_leverage=sim.config.max_leverage,
+            max_loan_to_net_worth=sim.config.max_loan_to_net_worth,
+            rng=sim.rng,
+        )
+
+
+@event
+class FirmsFireWorkersVec:
+    """Vectorized firing of workers when credit is insufficient.
+
+    Replaces the sequential ``FirmsFireWorkers`` with a batch version
+    that groups workers by employer, selects victims randomly, and
+    batch-updates all state.
+
+    See Also
+    --------
+    bamengine.events._internal.vectorized_markets.firms_fire_workers_vec :
+        Implementation
+    """
+
+    def execute(self, sim: Simulation) -> None:
+        from bamengine.events._internal.vectorized_markets import firms_fire_workers_vec
+
+        firms_fire_workers_vec(sim.emp, sim.wrk, rng=sim.rng)

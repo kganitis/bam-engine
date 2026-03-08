@@ -421,78 +421,72 @@ def firms_fire_excess_workers(
 
     total_workers_fired_this_step = 0
 
-    for i in firing_ids:
+    # Vectorized firing: group workers by employer, select N random victims
+    employed_mask = wrk.employed == 1
+    all_employed = np.where(employed_mask)[0]
+    if all_employed.size == 0:
+        if info_enabled:
+            log.info("  No employed workers in the economy. Skipping.")
+            log.info("--- Firms Firing Excess Workers complete ---")
+        return
+
+    employers_of_employed = wrk.employer[all_employed]
+
+    # Sort workers by employer to group them
+    sort_order = np.argsort(employers_of_employed, kind="stable")
+    sorted_workers = all_employed[sort_order]
+    sorted_employers = employers_of_employed[sort_order]
+
+    # Find group boundaries per firm using searchsorted
+    boundaries_lo = np.searchsorted(sorted_employers, firing_ids, side="left")
+    boundaries_hi = np.searchsorted(sorted_employers, firing_ids, side="right")
+
+    # Collect all victims across all firing firms
+    all_victims = []
+    all_victim_employers = []
+    debug_enabled = log.isEnabledFor(logging.DEBUG)
+
+    for idx in range(firing_ids.size):
+        i = firing_ids[idx]
+        lo, hi = boundaries_lo[idx], boundaries_hi[idx]
+        group = sorted_workers[lo:hi]
         n_to_fire = excess[i]
-        if log.isEnabledFor(logging.DEBUG):
+
+        if debug_enabled:
             log.debug(
-                f"  Processing firm {i} (current_labor: {emp.current_labor[i]}, "
-                f"desired_labor: {emp.desired_labor[i]}, excess: {n_to_fire})"
+                f"  Firm {i}: current_labor={emp.current_labor[i]}, "
+                f"desired_labor={emp.desired_labor[i]}, "
+                f"actual_workers={group.size}, excess={n_to_fire}"
             )
 
-        # Validate workforce consistency
-        workforce = np.where((wrk.employed == 1) & (wrk.employer == i))[0]
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug(
-                f"    Firm {i} workforce validation: "
-                f"real={workforce.size}, recorded={emp.current_labor[i]}"
-            )
-
-        if workforce.size != emp.current_labor[i]:
-            log.critical(
-                f"    Firm {i}: Real workforce ({workforce.size}) INCONSISTENT "
-                f"with bookkeeping ({emp.current_labor[i]})."
-            )
-
-        if workforce.size == 0:  # pragma: no cover
-            if log.isEnabledFor(logging.DEBUG):
-                log.debug(f"    Firm {i}: No workers to fire. Skipping.")
+        if group.size == 0:  # pragma: no cover
             continue
 
-        # Determine workers to fire
-        worker_wages = wrk.wage[workforce]
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug(
-                f"    Firm {i} worker wages: {worker_wages} "
-                f"(total: {worker_wages.sum():.2f})"
-            )
+        # Random selection of victims
+        shuffled = rng.permutation(group.size)
+        n_fire = min(n_to_fire, group.size)
+        victims = group[shuffled[:n_fire]]
 
-        # Random firing
-        shuffled_indices = rng.permutation(workforce.size)
-        victims_indices = shuffled_indices[:n_to_fire]
-        victims = workforce[victims_indices]
+        if victims.size > 0:
+            all_victims.append(victims)
+            all_victim_employers.append(np.full(victims.size, i, dtype=np.intp))
+            total_workers_fired_this_step += victims.size
 
-        fired_wages = wrk.wage[victims]
-        total_fired_wage = fired_wages.sum()
+    if all_victims:
+        victims = np.concatenate(all_victims)
+        victim_employers = np.concatenate(all_victim_employers)
 
-        # Extra validation, should never trigger
-        if victims.size == 0:  # pragma: no cover
-            continue
-
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug(
-                f"    Firm {i} is firing {victims.size} worker(s): "
-                f"{victims.tolist()} (total wage savings: {total_fired_wage:.2f})"
-            )
-        total_workers_fired_this_step += victims.size
-
-        # Worker-side updates
-        log.debug(f"      Updating state for {victims.size} fired workers.")
+        # Batch worker-side updates
         wrk.employer[victims] = -1
-        wrk.employer_prev[victims] = i
+        wrk.employer_prev[victims] = victim_employers
         wrk.wage[victims] = 0.0
         wrk.periods_left[victims] = 0
         wrk.contract_expired[victims] = 0
         wrk.fired[victims] = 1
 
-        # Firm-side updates
-        emp.current_labor[i] -= victims.size
-
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug(
-                f"      Firm {i} state updated: "
-                f"current_labor={emp.current_labor[i]}, "
-                f"desired_labor={emp.desired_labor[i]}"
-            )
+        # Batch firm-side updates using bincount
+        fire_counts = np.bincount(victim_employers, minlength=emp.current_labor.size)
+        emp.current_labor -= fire_counts.astype(emp.current_labor.dtype)
 
     if info_enabled:
         log.info(

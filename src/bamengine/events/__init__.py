@@ -71,9 +71,11 @@ from bamengine.events.credit_market import (
     BanksDecideCreditSupply,
     BanksDecideInterestRate,
     BanksProvideLoans,
+    CreditMarketRoundVec,
     FirmsCalcFinancialFragility,
     FirmsDecideCreditDemand,
     FirmsFireWorkers,
+    FirmsFireWorkersVec,
     FirmsPrepareLoanApplications,
     FirmsSendOneLoanApp,
 )
@@ -84,6 +86,7 @@ from bamengine.events.goods_market import (
     ConsumersDecideIncomeToSpend,
     ConsumersFinalizePurchases,
     ConsumersShopSequential,
+    GoodsMarketRoundVec,
 )
 from bamengine.events.labor_market import (
     AdjustMinimumWage,
@@ -91,6 +94,7 @@ from bamengine.events.labor_market import (
     FirmsCalcWageBill,
     FirmsDecideWageOffer,
     FirmsHireWorkers,
+    LaborMarketRoundVec,
     WorkersDecideFirmsToApply,
     WorkersSendOneRound,
 )
@@ -122,7 +126,7 @@ __all__ = [
     "FirmsDecideDesiredLabor",
     "FirmsDecideVacancies",
     "FirmsFireExcessWorkers",
-    # Labor market events (7)
+    # Labor market events (7 + 1 vectorized)
     "CalcInflationRate",
     "AdjustMinimumWage",
     "FirmsDecideWageOffer",
@@ -130,7 +134,8 @@ __all__ = [
     "WorkersSendOneRound",
     "FirmsHireWorkers",
     "FirmsCalcWageBill",
-    # Credit market events (7)
+    "LaborMarketRoundVec",
+    # Credit market events (7 + 2 vectorized)
     "BanksDecideCreditSupply",
     "BanksDecideInterestRate",
     "FirmsDecideCreditDemand",
@@ -139,6 +144,8 @@ __all__ = [
     "FirmsSendOneLoanApp",
     "BanksProvideLoans",
     "FirmsFireWorkers",
+    "CreditMarketRoundVec",
+    "FirmsFireWorkersVec",
     # Production events (4)
     "FirmsPayWages",
     "WorkersReceiveWage",
@@ -150,6 +157,7 @@ __all__ = [
     "ConsumersDecideFirmsToVisit",
     "ConsumersShopSequential",
     "ConsumersFinalizePurchases",
+    "GoodsMarketRoundVec",
     # Revenue events (3)
     "FirmsCollectRevenue",
     "FirmsValidateDebtCommitments",

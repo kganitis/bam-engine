@@ -245,10 +245,9 @@ def consumers_decide_firms_to_visit(
     price_order = np.argsort(prices_selected, axis=1)
     sorted_firms = np.take_along_axis(top_k_indices, price_order, axis=1)
 
-    # Write sorted firms to shop_visits_targets for each active consumer
-    for i, h in enumerate(budget_indices):
-        con.shop_visits_targets[h, :effective_Z] = sorted_firms[i]
-        con.shop_visits_head[h] = h * stride
+    # Vectorized buffer write — fancy indexing replaces per-consumer loop
+    con.shop_visits_targets[budget_indices, :effective_Z] = sorted_firms
+    con.shop_visits_head[budget_indices] = budget_indices * stride
 
     # Update loyalty to largest producer in consideration set (vectorized)
     if consumer_matching == "loyalty":

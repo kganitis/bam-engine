@@ -269,13 +269,13 @@ def firms_prepare_loan_applications(
     bor.loan_apps_head.fill(-1)
     stride = max_H
 
-    for i, f_id in enumerate(borrowers):
-        bor.loan_apps_targets[f_id, :H_eff] = sorted_sample[i]
-        if H_eff < max_H:
-            bor.loan_apps_targets[f_id, H_eff:max_H] = -1
-        bor.loan_apps_head[f_id] = f_id * stride
+    # Vectorized buffer write — fancy indexing replaces per-borrower loop
+    bor.loan_apps_targets[borrowers, :H_eff] = sorted_sample
+    bor.loan_apps_head[borrowers] = borrowers * stride
 
-        if log.isEnabledFor(logging.TRACE) and i < 10:
+    if log.isEnabledFor(logging.TRACE):
+        for i in range(min(10, borrowers.size)):
+            f_id = borrowers[i]
             log.trace(
                 f"    Borrower {f_id}: targets={bor.loan_apps_targets[f_id]}, "
                 f"head_ptr={bor.loan_apps_head[f_id]}"
