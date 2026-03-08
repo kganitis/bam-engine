@@ -5,8 +5,8 @@ These helpers underpin the vectorized market events, replacing Python
 for-loops with pure NumPy operations.  They are used by
 ``vectorized_markets.py`` but kept separate for testability.
 
-Three core primitives
----------------------
+Core primitives
+---------------
 1. **grouped_cumsum** — per-group prefix sums via the subtract-offset trick.
 2. **resolve_conflicts** — batch conflict resolution: when multiple senders
    target the same receiver, randomly accept up to *capacity* per target.

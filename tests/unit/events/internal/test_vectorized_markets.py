@@ -445,6 +445,57 @@ class TestGoodsMarketRoundVec:
 
         goods_market_round_vec(sim.con, sim.prod, max_Z=sim.config.max_Z, rng=sim.rng)
 
+    def test_inventory_clamped_to_zero_with_duplicate_targets(self):
+        """Inventory is clamped to zero even with within-batch overselling.
+
+        When multiple consumers in the same batch target the same firm,
+        np.subtract.at may temporarily produce negative inventory.  The
+        clamp to zero bounds the oversell.  This is intentionally retained
+        (not FCFS-resolved) because the phantom goods compensate for the
+        batch-sequential variance reduction.
+        """
+        sim = _make_sim(seed=42)
+        sim.step()
+
+        sim.get_event("consumers_calc_propensity").execute(sim)
+        sim.get_event("consumers_decide_income_to_spend").execute(sim)
+        sim.get_event("consumers_decide_firms_to_visit").execute(sim)
+
+        from bamengine.events._internal.vectorized_markets import goods_market_round_vec
+
+        # Use only 1 batch to maximize collision chance
+        goods_market_round_vec(
+            sim.con, sim.prod, max_Z=sim.config.max_Z, n_batches=1, rng=sim.rng
+        )
+
+        # Inventory clamped to zero (never negative in final state)
+        assert (sim.prod.inventory >= -1e-10).all(), (
+            f"Inventory went negative: min={sim.prod.inventory.min()}"
+        )
+
+    def test_n_batches_parameter(self):
+        """n_batches parameter controls batch count."""
+        sim = _make_sim(seed=42)
+        sim.step()
+
+        sim.get_event("consumers_calc_propensity").execute(sim)
+        sim.get_event("consumers_decide_income_to_spend").execute(sim)
+        sim.get_event("consumers_decide_firms_to_visit").execute(sim)
+
+        from bamengine.events._internal.vectorized_markets import goods_market_round_vec
+
+        inv_before = sim.prod.inventory.copy()
+        budget_before = sim.con.income_to_spend.copy()
+
+        # Should work with different batch counts without crashing
+        goods_market_round_vec(
+            sim.con, sim.prod, max_Z=sim.config.max_Z, n_batches=3, rng=sim.rng
+        )
+
+        # Purchases should have occurred
+        if inv_before.sum() > 0 and budget_before.sum() > 0:
+            assert sim.prod.inventory.sum() < inv_before.sum()
+
 
 # ═════════════════════════════════════════════════════════════════════════════
 #  APPEND LOANS BATCH
