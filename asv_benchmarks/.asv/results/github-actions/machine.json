@@ -1,7 +1,7 @@
 {
     "arch": "x86_64",
     "cpu": "AMD EPYC 7763 64-Core Processor",
-    "machine": "runnervmnay03",
+    "machine": "github-actions",
     "num_cpu": "4",
     "os": "Linux 6.14.0-1017-azure",
     "ram": "16378480",

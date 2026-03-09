@@ -47,7 +47,7 @@ jobs:
 
       - name: Setup ASV machine
         working-directory: asv_benchmarks
-        run: asv machine --yes
+        run: asv machine --machine github-actions --yes
 
       - name: Run benchmarks
         working-directory: asv_benchmarks
@@ -56,14 +56,14 @@ jobs:
             # Benchmark all release tags for historical data
             for tag in $(git tag --sort=version:refname); do
               echo "Benchmarking $tag..."
-              asv run --quick "$tag^!" || true
+              asv run --machine github-actions --quick "$tag^!" || true
             done
           elif [ "${{ github.event_name }}" = "release" ]; then
             # Benchmark the release tag
-            asv run --quick "${{ github.event.release.tag_name }}^!"
+            asv run --machine github-actions --quick "${{ github.event.release.tag_name }}^!"
           else
             # Manual dispatch without tags: benchmark HEAD
-            asv run --quick HEAD^!
+            asv run --machine github-actions --quick HEAD^!
           fi
 
       - name: Commit benchmark results
