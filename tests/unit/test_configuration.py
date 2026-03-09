@@ -144,9 +144,9 @@ def test_default_pipeline_when_no_custom_path():
     """Default pipeline is used when pipeline_path is None."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
 
-    # Interleaved matching (default): pipeline length depends on max_M and max_H
-    # 35 base events + 2*max_M labor rounds + 2*max_H credit rounds
-    assert len(sim.pipeline) == 47
+    # Default pipeline length depends on max_M and max_H
+    # 35 base events + max_M labor rounds + max_H credit rounds
+    assert len(sim.pipeline) == 41
 
     # Check first and last events
     assert sim.pipeline.events[0].name == "firms_decide_desired_production"
@@ -177,8 +177,8 @@ def test_logging_per_event_overrides():
     log_config = {
         "default_level": "INFO",
         "events": {
-            "workers_send_one_round": "DEBUG",
-            "firms_hire_workers": "WARNING",
+            "labor_market_round": "DEBUG",
+            "credit_market_round": "WARNING",
         },
     }
 
@@ -194,11 +194,11 @@ def test_logging_per_event_overrides():
     assert logger.level == logging.INFO
 
     # Check per-event overrides
-    worker_logger = logging.getLogger("bamengine.events.workers_send_one_round")
-    assert worker_logger.level == logging.DEBUG
+    labor_logger = logging.getLogger("bamengine.events.labor_market_round")
+    assert labor_logger.level == logging.DEBUG
 
-    hire_logger = logging.getLogger("bamengine.events.firms_hire_workers")
-    assert hire_logger.level == logging.WARNING
+    credit_logger = logging.getLogger("bamengine.events.credit_market_round")
+    assert credit_logger.level == logging.WARNING
 
 
 def test_logging_from_yaml():
@@ -209,7 +209,7 @@ n_households: 50
 logging:
   default_level: DEBUG
   events:
-    consumers_shop_sequential: WARNING
+    goods_market_round: WARNING
 """
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
@@ -223,8 +223,8 @@ logging:
         logger = logging.getLogger("bamengine")
         assert logger.level == logging.DEBUG
 
-        shop_logger = logging.getLogger("bamengine.events.consumers_shop_sequential")
-        assert shop_logger.level == logging.WARNING
+        goods_logger = logging.getLogger("bamengine.events.goods_market_round")
+        assert goods_logger.level == logging.WARNING
     finally:
         Path(yaml_path).unlink()
 

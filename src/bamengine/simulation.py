@@ -570,7 +570,7 @@ class Simulation:
         ...     "default_level": "DEBUG",
         ...     "events": {
         ...         "firms_adjust_price": "INFO",
-        ...         "workers_send_one_round": "WARNING",
+        ...         "labor_market_round": "WARNING",
         ...     },
         ... }
         >>> sim = bam.Simulation.init(logging=log_config, seed=42)

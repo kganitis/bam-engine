@@ -102,7 +102,7 @@ class TestLoggingConfiguration:
             "default_level": "INFO",
             "events": {
                 "firms_adjust_price": "DEBUG",
-                "workers_send_one_round": "WARNING",
+                "labor_market_round": "WARNING",
             },
         }
         Simulation.init(
@@ -113,16 +113,16 @@ class TestLoggingConfiguration:
         pricing_logger = logging.getLogger("bamengine.events.firms_adjust_price")
         assert pricing_logger.level == logging.DEBUG
 
-        worker_logger = logging.getLogger("bamengine.events.workers_send_one_round")
-        assert worker_logger.level == logging.WARNING
+        labor_logger = logging.getLogger("bamengine.events.labor_market_round")
+        assert labor_logger.level == logging.WARNING
 
     def test_per_event_trace_level(self):
         """Can set TRACE level for specific events."""
         log_config = {
             "default_level": "INFO",
             "events": {
-                "workers_send_one_round": "TRACE",
-                "firms_hire_workers": "TRACE",
+                "labor_market_round": "TRACE",
+                "credit_market_round": "TRACE",
             },
         }
         Simulation.init(
@@ -130,11 +130,11 @@ class TestLoggingConfiguration:
         )
 
         # Check event-specific loggers have TRACE level
-        worker_logger = logging.getLogger("bamengine.events.workers_send_one_round")
-        assert worker_logger.level == TRACE
+        labor_logger = logging.getLogger("bamengine.events.labor_market_round")
+        assert labor_logger.level == TRACE
 
-        hiring_logger = logging.getLogger("bamengine.events.firms_hire_workers")
-        assert hiring_logger.level == TRACE
+        credit_logger = logging.getLogger("bamengine.events.credit_market_round")
+        assert credit_logger.level == TRACE
 
     def test_logging_from_yaml_config(self):
         """Can configure logging via YAML file."""
@@ -146,7 +146,7 @@ class TestLoggingConfiguration:
               default_level: DEBUG
               events:
                 firms_adjust_price: WARNING
-                workers_send_one_round: DEBUG
+                labor_market_round: DEBUG
             """
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
             f.write(yaml_content)
@@ -164,8 +164,8 @@ class TestLoggingConfiguration:
             pricing_logger = logging.getLogger("bamengine.events.firms_adjust_price")
             assert pricing_logger.level == logging.WARNING
 
-            worker_logger = logging.getLogger("bamengine.events.workers_send_one_round")
-            assert worker_logger.level == logging.DEBUG
+            labor_logger = logging.getLogger("bamengine.events.labor_market_round")
+            assert labor_logger.level == logging.DEBUG
         finally:
             Path(yaml_path).unlink()
 
@@ -239,8 +239,8 @@ class TestEventGetLogger:
             "default_level": "INFO",
             "events": {
                 "firms_run_production": "DEBUG",
-                "workers_send_one_round": "WARNING",
-                "firms_send_one_loan_app": "ERROR",
+                "labor_market_round": "WARNING",
+                "credit_market_round": "ERROR",
             },
         }
         sim = Simulation.init(
@@ -248,14 +248,14 @@ class TestEventGetLogger:
         )
 
         # Check each event has correct level
-        pricing_event = sim.get_event("firms_run_production")
-        assert pricing_event.get_logger().level == logging.DEBUG
+        production_event = sim.get_event("firms_run_production")
+        assert production_event.get_logger().level == logging.DEBUG
 
-        worker_event = sim.get_event("workers_send_one_round")
-        assert worker_event.get_logger().level == logging.WARNING
+        labor_event = sim.get_event("labor_market_round")
+        assert labor_event.get_logger().level == logging.WARNING
 
-        hiring_event = sim.get_event("firms_send_one_loan_app")
-        assert hiring_event.get_logger().level == logging.ERROR
+        credit_event = sim.get_event("credit_market_round")
+        assert credit_event.get_logger().level == logging.ERROR
 
 
 class TestIsEnabledForGuards:

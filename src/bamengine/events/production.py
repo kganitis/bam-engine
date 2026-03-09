@@ -325,7 +325,7 @@ class WorkersUpdateContracts:
 
     See Also
     --------
-    FirmsHireWorkers : Sets initial contract duration
+    LaborMarketRound : Sets initial contract duration
     WorkersDecideFirmsToApply : Uses contract_expired flag for loyalty
     Worker : Employment state with contract fields
     Employer : Labor force state with current_labor

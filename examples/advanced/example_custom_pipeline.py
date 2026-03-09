@@ -11,7 +11,7 @@ You'll learn to:
 
 - Understand the default pipeline structure
 - Create custom pipeline YAML files
-- Use special syntax (repetition, interleaving)
+- Use special syntax (repetition)
 - Add custom events to the pipeline
 - Load and execute custom pipelines
 """
@@ -42,9 +42,8 @@ sim = bam.Simulation.init(n_firms=50, n_households=250, seed=42)
 
 print("Default pipeline has events like:")
 print("  - firms_decide_desired_production")
-print("  - workers_send_one_round (repeated max_M times)")
-print("  - firms_hire_workers (interleaved with above)")
-print("  - consumers_shop_sequential")
+print("  - labor_market_round (repeated max_M times)")
+print("  - goods_market_round")
 
 # %%
 # Pipeline YAML Syntax
@@ -57,10 +56,7 @@ print("  - consumers_shop_sequential")
 # **Repeated event**: ``- event_name x N``
 #   Executes event N times
 #
-# **Interleaved events**: ``- event1 <-> event2 x N``
-#   Alternates between events: [event1, event2, event1, event2, ...]
-#
-# **Parameter substitution**: ``{max_M}``, ``{max_H}``, ``{max_Z}``
+# **Parameter substitution**: ``{max_M}``, ``{max_H}``
 #   Replaced with config values at load time
 
 # Example pipeline YAML structure
@@ -71,11 +67,11 @@ events:
   - firms_plan_breakeven_price
   - firms_plan_price
 
-  # Sequential shopping (each consumer visits max_Z firms)
-  - consumers_shop_sequential
+  # Batch shopping (handles all Z visits internally)
+  - goods_market_round
 
-  # Interleaved events (job search/hiring)
-  - workers_send_one_round <-> firms_hire_workers x {max_M}
+  # Repeated batch matching (max_M rounds of labor market)
+  - labor_market_round x {max_M}
 """
 
 print("\nExample pipeline YAML:")
@@ -168,7 +164,7 @@ events:
   - adjust_minimum_wage
   - firms_decide_wage_offer
   - workers_decide_firms_to_apply
-  - workers_send_one_round <-> firms_hire_workers x {max_M}
+  - labor_market_round x {max_M}
   - firms_calc_wage_bill
 
   # Credit market
@@ -177,7 +173,7 @@ events:
   - firms_decide_credit_demand
   - firms_calc_financial_fragility
   - firms_prepare_loan_applications
-  - firms_send_one_loan_app <-> banks_provide_loans x {max_H}
+  - credit_market_round x {max_H}
   - firms_fire_workers
 
   # Production
@@ -191,7 +187,7 @@ events:
   - consumers_calc_propensity
   - consumers_decide_income_to_spend
   - consumers_decide_firms_to_visit
-  - consumers_shop_sequential
+  - goods_market_round
   - consumers_finalize_purchases
 
   # Revenue (custom event replaces dividends)
@@ -320,7 +316,7 @@ events:
   - adjust_minimum_wage
   - firms_decide_wage_offer
   - workers_decide_firms_to_apply
-  - workers_send_one_round <-> firms_hire_workers x {max_M}
+  - labor_market_round x {max_M}
   - firms_calc_wage_bill
 
   # Credit market
@@ -329,7 +325,7 @@ events:
   - firms_decide_credit_demand
   - firms_calc_financial_fragility
   - firms_prepare_loan_applications
-  - firms_send_one_loan_app <-> banks_provide_loans x {max_H}
+  - credit_market_round x {max_H}
   - firms_fire_workers
 
   # Production
@@ -346,7 +342,7 @@ events:
   - consumers_calc_propensity
   - consumers_decide_income_to_spend
   - consumers_decide_firms_to_visit
-  - consumers_shop_sequential
+  - goods_market_round
   - consumers_finalize_purchases
 
   # Revenue
@@ -388,52 +384,49 @@ unemployment_custom = 1 - bam.ops.mean(wrk_custom.employed.astype(float))
 print(f"Final unemployment: {unemployment_custom:.2%}")
 
 # %%
-# Interleaved Events Explained
-# ----------------------------
+# Batch Market Events
+# -------------------
 #
-# The ``<->`` syntax interleaves two events for multi-round matching.
-# This is used for market mechanisms with sequential rounds.
+# Market matching uses batch events that handle both sides of the market
+# (applications and matching) in a single vectorized step per round.
+# The ``x N`` repetition syntax runs multiple rounds.
 
-interleave_explanation = """
-Interleave syntax: event1 <-> event2 x N
+batch_explanation = """
+Repetition syntax: event_name x N
 
-For N=4, this expands to:
-  1. event1 (round 0)
-  2. event2 (round 0)
-  3. event1 (round 1)
-  4. event2 (round 1)
-  5. event1 (round 2)
-  6. event2 (round 2)
-  7. event1 (round 3)
-  8. event2 (round 3)
+For N=4, the event executes 4 times:
+  1. event_name (round 0)
+  2. event_name (round 1)
+  3. event_name (round 2)
+  4. event_name (round 3)
 
 Used in BAM for:
-  - Labor market: workers_send_one_round <-> firms_hire_workers
-  - Credit market: firms_send_one_loan_app <-> banks_provide_loans
+  - Labor market: labor_market_round x {max_M}
+  - Credit market: credit_market_round x {max_H}
+  - Goods market: goods_market_round (single event, handles all Z visits internally)
 """
-print(interleave_explanation)
+print(batch_explanation)
 
 # %%
 # Parameter Substitution
 # ----------------------
 #
-# Use ``{param}`` in pipeline YAML to substitute config values.
+# Use ``{param_name}`` in pipeline YAML to substitute config values.
 
 param_example = """
 # Available parameters:
-#   {max_M} - Job applications per worker per period
-#   {max_H} - Loan applications per firm per period
-#   {max_Z} - Shopping rounds per household per period
+#   {max_M} - Labor market matching rounds per period
+#   {max_H} - Credit market matching rounds per period
 
 events:
-  # 4 rounds of job search/hiring
-  - workers_send_one_round <-> firms_hire_workers x {max_M}
+  # 4 rounds of labor market matching
+  - labor_market_round x {max_M}
 
-  # 2 rounds of loan application
-  - firms_send_one_loan_app <-> banks_provide_loans x {max_H}
+  # 2 rounds of credit market matching
+  - credit_market_round x {max_H}
 
-  # Sequential shopping (each consumer visits max_Z firms)
-  - consumers_shop_sequential
+  # Batch-sequential shopping (handles all Z visits internally)
+  - goods_market_round
 
 # The actual values come from:
 #   - defaults.yml (max_M: 4, max_H: 2, max_Z: 2)
@@ -516,8 +509,8 @@ print("\nTemp files cleaned up.")
 #
 # - Pipelines define event execution order
 # - Use YAML format with ``events:`` list
-# - Special syntax: ``x N`` for repetition, ``<->`` for interleaving
-# - Parameter substitution: ``{max_M}``, ``{max_H}``, ``{max_Z}``
+# - Special syntax: ``x N`` for repetition
+# - Parameter substitution: ``{max_M}``, ``{max_H}``
 # - Remove events by commenting/deleting from YAML
 # - Add custom events by defining with ``@event`` and including in YAML
 # - Load via ``pipeline_path`` parameter in ``Simulation.init()``

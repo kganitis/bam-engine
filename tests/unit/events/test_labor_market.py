@@ -43,17 +43,10 @@ def test_workers_decide_firms_to_apply_executes():
     event.execute(sim)  # Should not crash
 
 
-def test_workers_send_one_round_executes():
-    """WorkersSendOneRound executes without error."""
+def test_labor_market_round_executes():
+    """LaborMarketRound executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = get_event("workers_send_one_round")()
-    event.execute(sim)  # Should not crash
-
-
-def test_firms_hire_workers_executes():
-    """FirmsHireWorkers executes without error."""
-    sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = get_event("firms_hire_workers")()
+    event = get_event("labor_market_round")()
     event.execute(sim)  # Should not crash
 
 
@@ -70,7 +63,7 @@ def test_firms_calc_wage_bill_executes():
 
 
 def test_labor_market_event_chain_executes():
-    """Labor market events can execute in sequence (interleaved)."""
+    """Labor market events can execute in sequence."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
 
     # Execute in sequence
@@ -79,8 +72,7 @@ def test_labor_market_event_chain_executes():
         "adjust_minimum_wage",
         "firms_decide_wage_offer",
         "workers_decide_firms_to_apply",
-        "workers_send_one_round",
-        "firms_hire_workers",
+        "labor_market_round",
         "firms_calc_wage_bill",
     ]
 

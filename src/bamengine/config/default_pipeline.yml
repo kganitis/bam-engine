@@ -10,7 +10,7 @@
 # ---------------
 # Events execute in EXPLICIT ORDER (no dependency-based topological sorting).
 # The order below matches the original BAM model specification and has been
-# validated against legacy implementation via golden master testing.
+# validated against the reference implementation.
 #
 # SPECIAL SYNTAX
 # --------------
@@ -20,20 +20,13 @@
 #
 # 2. Repeated event:
 #      - event_name x N
-#    Executes event N times (e.g., "consumers_shop_one_round x {max_Z}")
-#
-# 3. Interleaved events:
-#      - event1 <-> event2 x N
-#    Alternates between event1 and event2, N times total.
-#    Example: "workers_send_one_round <-> firms_hire_workers x {max_M}"
-#    Expands to: [send, hire, send, hire, ..., send, hire] (max_M pairs)
+#    Executes event N times (e.g., "labor_market_round x {max_M}")
 #
 # PARAMETER SUBSTITUTION
 # ----------------------
 # The following parameters are substituted at pipeline load time:
 #   - {max_M} : Number of labor market matching rounds (default: 4)
 #   - {max_H} : Number of credit market matching rounds (default: 2)
-#   - {max_Z} : Number of goods market shopping rounds (default: 2)
 #
 # These values come from the simulation configuration (config/defaults.yml or overrides).
 #
@@ -55,19 +48,18 @@
 # The pipeline is organized into 8 sequential phases matching the BAM model:
 #
 #   1. Planning: Production targets, labor needs, vacancies, excess labor firing
-#   2. Labor Market: Wage setting, job search, hiring (max_M rounds)
-#   3. Credit Market: Loan supply/demand, matching (max_H rounds), firing
+#   2. Labor Market: Wage setting, job search, batch matching (max_M rounds)
+#   3. Credit Market: Loan supply/demand, batch matching (max_H rounds), firing
 #   4. Production: Wage payments, production execution, contract updates
-#   5. Goods Market: Consumption decisions, shopping (max_Z rounds)
+#   5. Goods Market: Consumption decisions, batch-sequential shopping
 #   6. Revenue: Revenue collection, debt repayment, dividends
 #   7. Bankruptcy: Insolvency detection, firm/bank exit
-#   8. Entry: Replacement firm/bank spawning, statistics
+#   8. Entry: Replacement firm/bank spawning
 #
 # See Also
 # --------
 # - bamengine.core.pipeline.Pipeline : Pipeline parser and executor
 # - bamengine.events : All event class definitions
-# - tests/integration/test_pipeline_golden_master.py : Pipeline validation tests
 #
 # ==============================================================================
 
@@ -85,30 +77,30 @@ events:
   - firms_fire_excess_workers          # Fire workers when desired_labor < current_labor
 
   # ────────────────────────────────────────────────────────────────────────────
-  # PHASE 2: LABOR MARKET (4 + interleaved matching = 6 events)
+  # PHASE 2: LABOR MARKET (4 setup + max_M rounds + wage bill)
   # ────────────────────────────────────────────────────────────────────────────
   # Minimum wage adjustment, firms set wages, unemployed workers search for jobs,
-  # interleaved matching (max_M rounds of send-hire), then wage bill calculation.
+  # batch matching (max_M rounds), then wage bill calculation.
 
-  - calc_inflation_rate                 # Calculate inflation rate
+  - calc_inflation_rate                # Calculate inflation rate
   - adjust_minimum_wage                # Adjust min wage based on inflation
   - firms_decide_wage_offer            # Firms set wage offers for vacancies
   - workers_decide_firms_to_apply      # Unemployed workers select firms to apply to
-  - workers_send_one_round <-> firms_hire_workers x {max_M}
+  - labor_market_round x {max_M}       # Batch labor market matching
   - firms_calc_wage_bill               # Calculate total wage obligations
 
   # ────────────────────────────────────────────────────────────────────────────
-  # PHASE 3: CREDIT MARKET (5 + interleaved matching = 7 events)
+  # PHASE 3: CREDIT MARKET (5 setup + max_H rounds + firing)
   # ────────────────────────────────────────────────────────────────────────────
-  # Banks decide credit supply, firms calculate credit needs, interleaved
-  # matching (max_H rounds of apply-provide), then fire workers if credit insufficient.
+  # Banks decide credit supply, firms calculate credit needs, batch matching
+  # (max_H rounds), then fire workers if credit insufficient.
 
   - banks_decide_credit_supply         # Banks determine lending capacity
   - banks_decide_interest_rate         # Banks set interest rates
   - firms_decide_credit_demand         # Firms calculate financing needs
   - firms_calc_financial_fragility     # Calculate firm financial fragility metrics
   - firms_prepare_loan_applications    # Firms prepare ranked bank applications
-  - firms_send_one_loan_app <-> banks_provide_loans x {max_H}
+  - credit_market_round x {max_H}      # Batch credit market matching
   - firms_fire_workers                 # Lay off workers if credit insufficient
 
   # ────────────────────────────────────────────────────────────────────────────
@@ -126,12 +118,12 @@ events:
   # PHASE 5: GOODS MARKET (5 events)
   # ────────────────────────────────────────────────────────────────────────────
   # Households decide spending based on income/savings, select firms to visit,
-  # shop sequentially (each consumer completes max_Z visits), then save unspent income.
+  # batch-sequential shopping, then save unspent income.
 
   - consumers_calc_propensity          # Calculate consumption propensity from savings
   - consumers_decide_income_to_spend   # Allocate income for consumption
   - consumers_decide_firms_to_visit    # Select firms to shop at (price-sorted)
-  - consumers_shop_sequential          # Sequential shopping (each consumer completes Z visits before next)
+  - goods_market_round                 # Batch-sequential shopping (handles all Z visits)
   - consumers_finalize_purchases       # Update savings with unspent income
 
   # ────────────────────────────────────────────────────────────────────────────

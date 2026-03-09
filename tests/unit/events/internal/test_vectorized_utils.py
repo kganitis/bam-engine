@@ -4,11 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from bamengine.events._internal.vectorized_utils import (
-    grouped_cumsum,
-    pro_rata_ration,
-    resolve_conflicts,
-)
+from bamengine.utils import grouped_cumsum, resolve_conflicts
 
 # ── grouped_cumsum ────────────────────────────────────────────────────────────
 
@@ -167,89 +163,3 @@ class TestResolveConflicts:
         # Exactly 1 from target 0 (indices 0-2) and 1 from target 1 (indices 3-4)
         assert accepted[:3].sum() == 1
         assert accepted[3:].sum() == 1
-
-
-# ── pro_rata_ration ───────────────────────────────────────────────────────────
-
-
-class TestProRataRation:
-    """Tests for pro_rata_ration."""
-
-    def test_no_rationing_needed(self):
-        """Demand <= supply — everyone gets what they want."""
-        qty = np.array([2.0, 3.0])
-        supply = np.array([10.0])
-        targets = np.array([0, 0])
-        result = pro_rata_ration(qty, supply, targets, 1)
-        np.testing.assert_array_almost_equal(result, qty)
-
-    def test_exact_match(self):
-        """Demand exactly equals supply."""
-        qty = np.array([5.0, 5.0])
-        supply = np.array([10.0])
-        targets = np.array([0, 0])
-        result = pro_rata_ration(qty, supply, targets, 1)
-        np.testing.assert_array_almost_equal(result, qty)
-
-    def test_proportional_scaling(self):
-        """Demand exceeds supply — scaled proportionally."""
-        qty = np.array([6.0, 4.0])  # total=10
-        supply = np.array([5.0])  # half of demand
-        targets = np.array([0, 0])
-        result = pro_rata_ration(qty, supply, targets, 1)
-        # ratio = 5/10 = 0.5
-        expected = np.array([3.0, 2.0])
-        np.testing.assert_array_almost_equal(result, expected)
-
-    def test_multiple_targets(self):
-        """Different rationing per target."""
-        qty = np.array([10.0, 10.0, 5.0])
-        supply = np.array([10.0, 100.0])  # target 0: rationed, target 1: not
-        targets = np.array([0, 0, 1])
-        result = pro_rata_ration(qty, supply, targets, 2)
-        # Target 0: demand=20, supply=10 → ratio=0.5
-        # Target 1: demand=5, supply=100 → ratio=1.0
-        expected = np.array([5.0, 5.0, 5.0])
-        np.testing.assert_array_almost_equal(result, expected)
-
-    def test_empty_input(self):
-        qty = np.array([], dtype=np.float64)
-        supply = np.array([10.0])
-        targets = np.array([], dtype=np.intp)
-        result = pro_rata_ration(qty, supply, targets, 1)
-        assert result.size == 0
-
-    def test_zero_supply(self):
-        """Zero supply — no one gets anything."""
-        qty = np.array([5.0, 3.0])
-        supply = np.array([0.0])
-        targets = np.array([0, 0])
-        result = pro_rata_ration(qty, supply, targets, 1)
-        np.testing.assert_array_almost_equal(result, np.array([0.0, 0.0]))
-
-    def test_single_buyer(self):
-        """Single buyer gets min(wanted, supply)."""
-        qty = np.array([100.0])
-        supply = np.array([50.0])
-        targets = np.array([0])
-        result = pro_rata_ration(qty, supply, targets, 1)
-        np.testing.assert_array_almost_equal(result, np.array([50.0]))
-
-    def test_target_with_no_buyers(self):
-        """Target with no buyers — should not affect other targets."""
-        qty = np.array([5.0])
-        supply = np.array([10.0, 100.0])  # target 1 has no buyers
-        targets = np.array([0])
-        result = pro_rata_ration(qty, supply, targets, 2)
-        np.testing.assert_array_almost_equal(result, np.array([5.0]))
-
-    def test_many_buyers_heavy_rationing(self):
-        """Many buyers, very limited supply."""
-        qty = np.full(100, 10.0)  # 100 buyers each wanting 10
-        supply = np.array([50.0])  # only 50 available
-        targets = np.zeros(100, dtype=np.intp)
-        result = pro_rata_ration(qty, supply, targets, 1)
-        # ratio = 50/1000 = 0.05
-        expected = np.full(100, 0.5)
-        np.testing.assert_array_almost_equal(result, expected)
-        assert abs(result.sum() - 50.0) < 1e-10  # total allocation = supply

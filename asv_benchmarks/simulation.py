@@ -95,8 +95,7 @@ class MemorySuite:
 class CriticalEventSuite:
     """Benchmark critical path events (goods/labor/credit markets).
 
-    These events account for ~58% of total simulation time and are the
-    primary bottlenecks identified in profiling (see docs/performance.rst).
+    These events are the primary bottlenecks identified in profiling.
     """
 
     timeout = 60
@@ -113,37 +112,32 @@ class CriticalEventSuite:
         # Run a few periods to reach steady state
         self.sim.run(10)
 
-    # Goods market events (~48% of runtime)
+    # Goods market events
     def time_consumers_decide_firms_to_visit(self):
         """Benchmark firm selection for shopping."""
         event = self.sim.get_event("consumers_decide_firms_to_visit")
         event.execute(self.sim)
 
-    def time_consumers_shop_sequential(self):
-        """Benchmark sequential shopping (all rounds)."""
-        event = self.sim.get_event("consumers_shop_sequential")
+    def time_goods_market_round(self):
+        """Benchmark goods market matching (one round)."""
+        event = self.sim.get_event("goods_market_round")
         event.execute(self.sim)
 
-    # Labor market events (~5%)
+    # Labor market events
     def time_workers_decide_firms_to_apply(self):
         """Benchmark firm selection for job applications."""
         event = self.sim.get_event("workers_decide_firms_to_apply")
         event.execute(self.sim)
 
-    def time_firms_hire_workers(self):
-        """Benchmark worker hiring process."""
-        event = self.sim.get_event("firms_hire_workers")
+    def time_labor_market_round(self):
+        """Benchmark labor market matching (one round)."""
+        event = self.sim.get_event("labor_market_round")
         event.execute(self.sim)
 
-    # Credit market events (~5%)
-    def time_firms_send_one_loan_app(self):
-        """Benchmark loan application submission."""
-        event = self.sim.get_event("firms_send_one_loan_app")
-        event.execute(self.sim)
-
-    def time_banks_provide_loans(self):
-        """Benchmark loan provision by banks."""
-        event = self.sim.get_event("banks_provide_loans")
+    # Credit market events
+    def time_credit_market_round(self):
+        """Benchmark credit market matching (one round)."""
+        event = self.sim.get_event("credit_market_round")
         event.execute(self.sim)
 
 

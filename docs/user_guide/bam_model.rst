@@ -243,11 +243,12 @@ whose contracts expired in the previous period send their first application to
 their former employer, then :math:`M - 1` to randomly selected firms. Fully
 unemployed workers apply to :math:`M` random firms.
 
-**Matching.** Labor market matching is **decentralized and interleaved**: in each
-of :math:`M` rounds, all workers simultaneously send one application, then all
-firms simultaneously hire from their application queues. Workers apply to their
-highest-wage firm first, so matching favors high-wage firms — a form of
-**preferential attachment**.
+**Matching.** Labor market matching is **decentralized and batch-processed**: in
+each of :math:`M` rounds, all applications are processed simultaneously using
+vectorized operations. When multiple workers target the same firm, a conflict
+resolution step randomly selects winners based on available vacancies. Workers
+apply to their highest-wage firm first, so matching favors high-wage firms — a
+form of **preferential attachment**.
 
 **Contracts.** Hired workers sign contracts of length :math:`\theta` periods
 (default: 8). During the contract, the worker's wage is fixed at the firm's
@@ -302,10 +303,11 @@ net worth. Banks process applications in **ascending fragility order** — the
 least leveraged firms get served first.
 
 **Matching.** Credit market matching mirrors the labor market: :math:`H`
-interleaved rounds where firms send one application per round and banks process
-queues. Each firm contacts :math:`H` banks sorted by interest rate (lowest
-first). Individual loans are capped at ``max_loan_to_net_worth`` times the
-borrower's net worth (default: 2).
+batch matching rounds where all applications are processed simultaneously with
+conflict resolution. Each firm contacts :math:`H` banks sorted by interest rate
+(lowest first). Applications are processed in ascending fragility order using
+``grouped_cumsum`` to exhaust bank supply. Individual loans are capped at
+``max_loan_to_net_worth`` times the borrower's net worth (default: 2).
 
 **Post-credit firing.** After credit matching, firms that still cannot cover
 their full wage bill fire workers until the wage bill fits within available funds
@@ -475,11 +477,11 @@ All three markets use **decentralized matching** with search frictions — a key
 departure from Walrasian general equilibrium models where a central auctioneer
 clears markets instantaneously.
 
-**Interleaved rounds.** Matching proceeds in multiple rounds. In each round,
-seekers (workers, firms, or consumers) send one application/visit, then
-providers (firms, banks, or firms) process their queues. This interleaving
-means early matches reduce available capacity for later rounds, creating
-realistic market frictions.
+**Batch matching rounds.** Matching proceeds in multiple rounds. In each round,
+all applications are processed simultaneously using vectorized operations with
+conflict resolution. When multiple seekers target the same provider, a random
+selection determines winners. Early rounds reduce available capacity for later
+rounds, creating realistic market frictions.
 
 **Preferential attachment.** In the labor and goods markets, agents have a
 tendency to return to previous partners: workers whose contracts expired apply

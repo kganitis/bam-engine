@@ -15,9 +15,8 @@ from bamengine.events._internal.labor_market import (
     adjust_minimum_wage,
     calc_inflation_rate,
     firms_decide_wage_offer,
-    firms_hire_workers,
+    labor_market_round,
     workers_decide_firms_to_apply,
-    workers_send_one_round,
 )
 from bamengine.simulation import Simulation
 
@@ -60,8 +59,7 @@ def test_event_labor_market(tiny_sched: Simulation) -> None:
     workers_decide_firms_to_apply(sch.wrk, sch.emp, max_M=sch.max_M, rng=sch.rng)
 
     for _ in range(sch.max_M):
-        workers_send_one_round(sch.wrk, sch.emp)
-        firms_hire_workers(sch.wrk, sch.emp, theta=sch.theta)
+        labor_market_round(sch.emp, sch.wrk, theta=sch.theta, rng=sch.rng)
 
     # invariants
     m = sch.ec.min_wage_rev_period
@@ -96,17 +94,16 @@ def test_labor_market_post_state_consistency(tiny_sched: Simulation) -> None:
     firms_decide_wage_offer(sch.emp, w_min=sch.ec.min_wage, h_xi=sch.h_xi, rng=sch.rng)
     workers_decide_firms_to_apply(sch.wrk, sch.emp, max_M=sch.max_M, rng=sch.rng)
     for _ in range(sch.max_M):
-        workers_send_one_round(sch.wrk, sch.emp)
-        firms_hire_workers(sch.wrk, sch.emp, theta=sch.theta)
+        labor_market_round(sch.emp, sch.wrk, theta=sch.theta, rng=sch.rng)
 
-    # worker ↔ firm labor counts are consistent
+    # worker <-> firm labor counts are consistent
     counts = np.bincount(
         sch.wrk.employer[sch.wrk.employed == 1],
         minlength=sch.emp.current_labor.size,
     )
     np.testing.assert_array_equal(counts, sch.emp.current_labor)
 
-    # employed workers paid the posted (≥ floor) wage
+    # employed workers paid the posted (>= floor) wage
     employed_idx = np.where(sch.wrk.employed == 1)[0]
     worker_wages = sch.wrk.wage[employed_idx]
     firm_wages = sch.emp.wage_offer[sch.wrk.employer[employed_idx]]
@@ -145,7 +142,7 @@ def test_job_search_method_all_firms() -> None:
     assert (sim.emp.n_vacancies >= 0).all()
     assert np.all(sim.wrk.job_apps_head[sim.wrk.employed == 1] == -1)
 
-    # Worker ↔ firm labor counts are consistent
+    # Worker <-> firm labor counts are consistent
     counts = np.bincount(
         sim.wrk.employer[sim.wrk.employed == 1],
         minlength=sim.emp.current_labor.size,
@@ -174,7 +171,7 @@ def test_job_search_method_vacancies_only() -> None:
     assert (sim.emp.n_vacancies >= 0).all()
     assert np.all(sim.wrk.job_apps_head[sim.wrk.employed == 1] == -1)
 
-    # Worker ↔ firm labor counts are consistent
+    # Worker <-> firm labor counts are consistent
     counts = np.bincount(
         sim.wrk.employer[sim.wrk.employed == 1],
         minlength=sim.emp.current_labor.size,

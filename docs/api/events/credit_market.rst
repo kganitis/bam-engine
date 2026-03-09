@@ -18,6 +18,5 @@ Event Classes
    FirmsDecideCreditDemand
    FirmsCalcFinancialFragility
    FirmsPrepareLoanApplications
-   FirmsSendOneLoanApp
-   BanksProvideLoans
+   CreditMarketRound
    FirmsFireWorkers

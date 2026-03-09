@@ -3,7 +3,7 @@ Goods market events for consumption decisions and shopping.
 
 This module defines the goods market phase events that execute after production.
 Households calculate consumption propensity, allocate income to spending,
-select firms to visit, and purchase goods through sequential shopping rounds.
+select firms to visit, and purchase goods through batch-sequential shopping.
 
 Event Sequence
 --------------
@@ -12,11 +12,8 @@ The goods market events execute in this order:
 1. ConsumersCalcPropensity - Calculate propensity to consume based on savings
 2. ConsumersDecideIncomeToSpend - Allocate income to spending budget
 3. ConsumersDecideFirmsToVisit - Select firms to visit (sorted by price)
-4. ConsumersShopSequential - Execute sequential shopping (each consumer completes all visits)
+4. GoodsMarketRound - Batch-sequential shopping (handles all Z rounds internally)
 5. ConsumersFinalizePurchases - Move unspent budget back to savings
-
-Sequential shopping processes consumers one at a time: each consumer
-completes all Z visits before the next consumer starts.
 
 Design Notes
 ------------
@@ -24,7 +21,9 @@ Design Notes
 - Propensity to consume: c = 1 / (1 + tanh(SA/SA_avg)^β)
 - Loyalty rule: consumers visit previous largest producer first (if inventory available)
 - Remaining Z-1 firms selected randomly (preferential attachment mechanism)
-- Shopping order randomized each round for fairness
+- Batch-sequential processing: consumers are shuffled and divided into batches,
+  each completing all Z visits before the next batch starts, preserving sequential
+  depletion dynamics while using vectorized NumPy operations within each batch
 
 Examples
 --------
@@ -206,7 +205,7 @@ class ConsumersDecideIncomeToSpend:
     See Also
     --------
     ConsumersCalcPropensity : Calculates propensity used for allocation
-    ConsumersShopOneRound : Uses income_to_spend as shopping budget
+    GoodsMarketRound : Uses income_to_spend as shopping budget
     bamengine.events._internal.goods_market.consumers_decide_income_to_spend : Implementation
     """
 
@@ -277,7 +276,7 @@ class ConsumersDecideFirmsToVisit:
 
     See Also
     --------
-    ConsumersShopOneRound : Processes shopping queue
+    GoodsMarketRound : Processes shopping queue
     bamengine.events._internal.goods_market.consumers_decide_firms_to_visit : Implementation
     """
 
@@ -292,58 +291,6 @@ class ConsumersDecideFirmsToVisit:
             max_Z=sim.config.max_Z,
             rng=sim.rng,
             consumer_matching=sim.config.consumer_matching,
-        )
-
-
-@event
-class ConsumersShopSequential:
-    """
-    Execute sequential shopping where each consumer completes all visits.
-
-    This event processes consumers one at a time. Each consumer completes all
-    their Z shopping visits before the next consumer starts.
-
-    This matches the reference implementation and makes the goods market
-    less efficient: early consumers can deplete inventory from multiple firms,
-    leaving late consumers with wasted visits on sold-out firms. This results
-    in more unsold inventory overall, which affects production decisions.
-
-    Algorithm
-    ---------
-    1. Randomize consumer order
-    2. For each consumer j with budget:
-       - Visit up to max_Z firms sequentially
-       - At each firm: purchase if inventory available, else wasted visit
-       - Continue until budget exhausted or all Z visits complete
-    3. Move to next consumer
-
-    Examples
-    --------
-    >>> import bamengine as be
-    >>> sim = be.Simulation.init(n_firms=100, n_households=500, seed=42)
-    >>> # Prepare shopping
-    >>> sim.get_event("consumers_decide_firms_to_visit")().execute(sim)
-    >>> # Execute sequential shopping (replaces max_Z rounds of shop_one_round)
-    >>> event = sim.get_event("consumers_shop_sequential")
-    >>> event.execute(sim)
-
-    Notes
-    -----
-    Early consumers can deplete inventory from multiple firms before later
-    consumers get a chance to shop, creating wasted visits.
-
-    See Also
-    --------
-    ConsumersDecideFirmsToVisit : Prepares shopping queues
-    bamengine.events._internal.goods_market.consumers_shop_sequential : Implementation
-    """
-
-    def execute(self, sim: Simulation) -> None:
-        """Execute sequential shopping where each consumer completes all visits."""
-        from bamengine.events._internal.goods_market import consumers_shop_sequential
-
-        consumers_shop_sequential(
-            sim.con, sim.prod, max_Z=sim.config.max_Z, rng=sim.rng
         )
 
 
@@ -371,7 +318,7 @@ class ConsumersFinalizePurchases:
     >>> import bamengine as be
     >>> sim = be.Simulation.init(n_households=500, seed=42)
     >>> # Shop first
-    >>> sim.get_event("consumers_shop_sequential")().execute(sim)
+    >>> sim.get_event("goods_market_round")().execute(sim)
     >>> # Track unspent
     >>> unspent = sim.con.income_to_spend.copy()
     >>> initial_savings = sim.con.savings.copy()
@@ -392,7 +339,7 @@ class ConsumersFinalizePurchases:
 
     Notes
     -----
-    This event must execute after all ConsumersShopOneRound rounds complete.
+    This event must execute after GoodsMarketRound completes.
 
     Wealth conservation: unspent budget → savings (no money vanishes).
 
@@ -400,7 +347,7 @@ class ConsumersFinalizePurchases:
 
     See Also
     --------
-    ConsumersShopOneRound : Spends budget during shopping
+    GoodsMarketRound : Spends budget during shopping
     ConsumersDecideIncomeToSpend : Initially allocates budget from wealth
     bamengine.events._internal.goods_market.consumers_finalize_purchases : Implementation
     """
@@ -412,28 +359,27 @@ class ConsumersFinalizePurchases:
 
 
 @event
-class GoodsMarketRoundVec:
-    """Vectorized goods market matching via batch-sequential processing.
+class GoodsMarketRound:
+    """Batch-sequential goods market matching.
 
-    Replaces the sequential ``ConsumersShopSequential`` with batch-sequential
-    processing: consumers are shuffled and divided into batches, each
-    completing all Z visits before the next batch starts.  This preserves
-    the sequential depletion dynamics while using vectorized NumPy operations
-    within each batch.
+    Consumers are shuffled and divided into batches, each completing all Z
+    visits before the next batch starts.  This preserves the sequential
+    depletion dynamics while using vectorized NumPy operations within each
+    batch.
 
-    This event is called once in the vectorized pipeline (it handles all
-    Z rounds internally).
+    This event is called once in the pipeline (it handles all Z rounds
+    internally).
 
     See Also
     --------
-    bamengine.events._internal.vectorized_markets.goods_market_round_vec :
+    bamengine.events._internal.goods_market.goods_market_round :
         Implementation
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.events._internal.vectorized_markets import goods_market_round_vec
+        from bamengine.events._internal.goods_market import goods_market_round
 
-        goods_market_round_vec(
+        goods_market_round(
             sim.con,
             sim.prod,
             max_Z=sim.config.max_Z,

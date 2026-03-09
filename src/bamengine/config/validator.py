@@ -611,7 +611,7 @@ class ConfigValidator:
         >>> log_cfg = {
         ...     "default_level": "DEBUG",
         ...     "log_file": "simulation.log",
-        ...     "events": {"workers_send_one_round": "WARNING"},
+        ...     "events": {"labor_market_round": "WARNING"},
         ... }
         >>> ConfigValidator._validate_logging(log_cfg)
 
@@ -786,7 +786,7 @@ class ConfigValidator:
         >>> yaml_content = '''
         ... events:
         ...   - firms_decide_desired_production
-        ...   - workers_send_one_round x 4
+        ...   - labor_market_round x 4
         ... '''
         >>> with tempfile.NamedTemporaryFile(
         ...     mode="w", suffix=".yml", delete=False

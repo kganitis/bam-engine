@@ -20,7 +20,6 @@ Pipeline YAML Format
 events:
   - event_name                    # Single execution
   - event_name x N                # Repeat N times
-  - event1 <-> event2 x N         # Interleave N times
 
 Parameter substitution:
   - event_{i}                     # Substitute {i} with parameter value
@@ -45,7 +44,7 @@ Modify an existing pipeline:
 >>> pipeline.insert_after("firms_adjust_price", "my_custom_pricing")
 >>>
 >>> # Remove an event
->>> pipeline.remove("workers_send_one_round_0")
+>>> pipeline.remove("labor_market_round")
 >>>
 >>> # Replace an event with custom implementation
 >>> pipeline.replace("firms_decide_desired_production", "my_production_rule")
@@ -97,7 +96,7 @@ class RepeatedEvent:
 
     >>> from bamengine.core.registry import get_event
     >>> sim = Simulation.init(n_firms=100, seed=42)
-    >>> event_cls = get_event("workers_send_one_round")
+    >>> event_cls = get_event("labor_market_round")
     >>> event = event_cls()
     >>> repeated = RepeatedEvent(event, n_repeats=5)
     >>> repeated.execute(sim)  # Executes 5 times
@@ -166,7 +165,7 @@ class Pipeline:
     ...     [
     ...         "firms_decide_desired_production",
     ...         "firms_adjust_price",
-    ...         "workers_send_one_round_0",
+    ...         "labor_market_round_0",
     ...     ]
     ... )
     >>> pipeline.execute(sim)
@@ -178,7 +177,7 @@ class Pipeline:
     Modify pipeline after creation:
 
     >>> pipeline.insert_after("firms_adjust_price", "my_custom_event")
-    >>> pipeline.remove("workers_send_one_round_0")
+    >>> pipeline.remove("labor_market_round")
     >>> pipeline.replace("firms_decide_desired_production", "my_production_rule")
 
     Notes
@@ -277,7 +276,6 @@ class Pipeline:
         specifications. Supports special syntax:
         - 'event_name' - single event
         - 'event_name x N' - repeat event N times
-        - 'event1 <-> event2 x N' - interleave two events N times
 
         Parameters can be substituted using {param_name} syntax.
 
@@ -332,26 +330,10 @@ class Pipeline:
         Supports:
         - 'event_name' -> ['event_name']
         - 'event_name x 3' -> ['event_name', 'event_name', 'event_name']
-        - 'event1 <-> event2 x 3' -> ['event1', 'event2',
-                                      'event1', 'event2',
-                                      'event1', 'event2']
         """
         spec = spec.strip()
 
-        # Pattern 1: Interleaved events (event1 <-> event2 x N)
-        interleaved_pattern = r"^(.+?)\s*<->\s*(.+?)\s+x\s+(\d+)$"
-        match = re.match(interleaved_pattern, spec)
-        if match:
-            event1 = match.group(1).strip()
-            event2 = match.group(2).strip()
-            count = int(match.group(3))
-            result = []
-            for _ in range(count):
-                result.append(event1)
-                result.append(event2)
-            return result
-
-        # Pattern 2: Repeated event (event_name x N)
+        # Pattern 1: Repeated event (event_name x N)
         repeated_pattern = r"^(.+?)\s+x\s+(\d+)$"
         match = re.match(repeated_pattern, spec)
         if match:
@@ -359,7 +341,7 @@ class Pipeline:
             count = int(match.group(2))
             return [event_name] * count
 
-        # Pattern 3: Single event (event_name)
+        # Pattern 2: Single event (event_name)
         return [spec]
 
     def execute(self, sim: Simulation) -> None:
@@ -666,19 +648,19 @@ def create_default_pipeline(
     Loads the pipeline from config/default_pipeline.yml and substitutes
     market round parameters (max_M, max_H, max_Z).
 
-    The pipeline uses interleaved matching for both labor and credit
-    markets: ``workers_send_one_round`` / ``firms_hire_workers`` repeated
-    ``max_M`` times, and ``firms_send_one_loan_app`` / ``banks_provide_loans``
-    repeated ``max_H`` times.
+    The pipeline uses batch matching for labor and credit markets:
+    ``labor_market_round`` repeated ``max_M`` times and
+    ``credit_market_round`` repeated ``max_H`` times. The goods market
+    uses ``goods_market_round`` which handles all visits internally.
 
     Parameters
     ----------
     max_M : int
-        Number of job application rounds.
+        Number of labor market matching rounds.
     max_H : int
-        Number of loan application rounds.
+        Number of credit market matching rounds.
     max_Z : int
-        Number of shopping rounds.
+        Number of goods market shopping visits (passed to goods_market_round).
 
     Returns
     -------
@@ -690,9 +672,6 @@ def create_default_pipeline(
     This function creates the "canonical" BAM pipeline. Users can modify
     it using insert_after(), remove(), replace() methods, or create their
     own pipeline from a custom YAML file using Pipeline.from_yaml().
-
-    Market rounds are explicitly interleaved: send-hire-send-hire pattern
-    for labor market, same for credit market and goods market.
     """
     # Locate the default pipeline YAML file
     try:

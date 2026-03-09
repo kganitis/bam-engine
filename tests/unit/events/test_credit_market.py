@@ -50,19 +50,12 @@ def test_firms_prepare_loan_applications_executes():
     event.execute(sim)  # Should not crash
 
 
-def test_firms_send_one_loan_app_executes():
-    """FirmsSendOneLoanApp executes without error."""
+def test_credit_market_round_executes():
+    """CreditMarketRound executes without error."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    event = get_event("firms_send_one_loan_app")()
-    event.execute(sim)  # Should not crash
-
-
-def test_banks_provide_loans_executes():
-    """BanksProvideLoans executes without error."""
-    sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-    # opex_shock must be set before banks_provide_loans (pipeline guarantees this)
+    # opex_shock must be set before credit_market_round (pipeline guarantees this)
     get_event("banks_decide_interest_rate")().execute(sim)
-    event = get_event("banks_provide_loans")()
+    event = get_event("credit_market_round")()
     event.execute(sim)  # Should not crash
 
 
@@ -79,7 +72,7 @@ def test_firms_fire_workers_executes():
 
 
 def test_credit_market_event_chain():
-    """Credit market events can execute in sequence (interleaved)."""
+    """Credit market events can execute in sequence."""
     sim = Simulation.init(n_firms=10, n_households=50, seed=42)
 
     # Execute in sequence
@@ -89,8 +82,7 @@ def test_credit_market_event_chain():
         "firms_decide_credit_demand",
         "firms_calc_financial_fragility",
         "firms_prepare_loan_applications",
-        "firms_send_one_loan_app",
-        "banks_provide_loans",
+        "credit_market_round",
         "firms_fire_workers",
     ]
 

@@ -3,7 +3,7 @@ Credit market events for credit supply, demand, and loan provision.
 
 This module defines the credit market phase events that execute after labor
 market events. Banks decide credit supply and interest rates, firms determine
-credit needs, and loans are matched through a sequential application process.
+credit needs, and loans are matched through a batch application process.
 Firms that fail to secure sufficient credit fire workers to match available funds.
 
 Event Sequence
@@ -15,20 +15,19 @@ The credit market events execute in this order:
 3. FirmsDecideCreditDemand - Firms calculate funding shortfall
 4. FirmsCalcFinancialFragility - Firms calculate leverage and fragility
 5. FirmsPrepareLoanApplications - Firms select banks to apply to (sorted by rate)
-6. FirmsSendOneLoanApp ↔ BanksProvideLoans - Interleaved application/provision rounds (max_H times)
-7. FirmsFireWorkers - Firms with insufficient funds lay off workers
-
-The send/provide rounds are interleaved to simulate sequential matching: firms
-send one application, banks evaluate and provide loans, then the next round
-begins. This repeats max_H times to process all applications.
+6. CreditMarketRound - Batch credit market matching (max_H times)
+7. FirmsFireWorkers - Batch firing when credit insufficient
 
 Design Notes
 ------------
 - Events operate on borrower, lender, and loanbook (Borrower, Lender, LoanBook)
 - Banks rank loan applicants by net worth (descending) for default risk assessment
-- Firms fire most expensive workers first to minimize layoffs
+- Firms fire randomly selected workers to minimize layoffs
 - Credit supply constrained by bank equity and capital requirement (v parameter)
 - Interest rates: :math:`r = \\bar{r} \\times (1 + \\varepsilon)`, where :math:`\\varepsilon \\sim U(0, h_\\phi)`
+- Batch matching: all borrowers simultaneously send their next application, applicants
+  are grouped by bank, ranked by ascending fragility, and loans provisioned using
+  grouped cumsum to track supply exhaustion
 
 Examples
 --------
@@ -140,7 +139,7 @@ class BanksDecideCreditSupply:
 
     See Also
     --------
-    BanksProvideLoans : Uses credit_supply to provision loans
+    CreditMarketRound : Uses credit_supply to provision loans
     Lender : Bank state with equity_base and credit_supply
     bamengine.events._internal.credit_market.banks_decide_credit_supply : Implementation
     """
@@ -217,7 +216,7 @@ class BanksDecideInterestRate:
     See Also
     --------
     FirmsPrepareLoanApplications : Firms sort banks by interest rate
-    BanksProvideLoans : Uses interest_rate for new loans
+    CreditMarketRound : Uses interest_rate for new loans
     bamengine.events._internal.credit_market.banks_decide_interest_rate : Implementation
     """
 
@@ -391,7 +390,7 @@ class FirmsCalcFinancialFragility:
     See Also
     --------
     FirmsDecideCreditDemand : Calculates credit_demand used in leverage
-    BanksProvideLoans : Banks evaluate creditworthiness (by net worth)
+    CreditMarketRound : Banks evaluate creditworthiness (by net worth)
     Borrower : Financial state with credit_demand, net_worth
     bamengine.events._internal.credit_market.firms_calc_financial_fragility : Implementation
     """
@@ -492,7 +491,7 @@ class FirmsPrepareLoanApplications:
     See Also
     --------
     BanksDecideInterestRate : Sets rates used for sorting
-    FirmsSendOneLoanApp : Processes applications from queue
+    CreditMarketRound : Processes applications from queue
     Borrower : Financial state with loan application queue
     bamengine.events._internal.credit_market.firms_prepare_loan_applications : Implementation
     """
@@ -512,325 +511,49 @@ class FirmsPrepareLoanApplications:
 
 
 @event
-class FirmsSendOneLoanApp:
-    """
-    Firms send one round of loan applications to banks.
+class CreditMarketRound:
+    """One round of batch credit market matching.
 
-    Each firm with credit demand sends one application from their queue to the
-    corresponding bank. This event is repeated max_H times in the pipeline,
-    interleaved with BanksProvideLoans, to process all applications sequentially.
+    All borrowers simultaneously send their next application, applicants are
+    grouped by bank, ranked by ascending fragility, and loans provisioned
+    using grouped cumsum to track supply exhaustion.
 
-    Algorithm
-    ---------
-    For each firm i with credit demand (:math:`B_i > 0`):
-
-    1. Check if firm has applications remaining in queue (head pointer >= 0)
-    2. Pop next target bank from firm's application queue
-    3. Append firm ID to bank's application queue
-    4. Advance firm's queue pointer
-
-    Examples
-    --------
-    Execute this event (typically in loop with BanksProvideLoans):
-
-    >>> import bamengine as be
-    >>> sim = be.Simulation.init(n_firms=100, n_banks=10, seed=42)
-    >>> # First prepare applications
-    >>> sim.get_event("firms_prepare_loan_applications")().execute(sim)
-    >>> # Process one round
-    >>> event = sim.get_event("firms_send_one_loan_app")
-    >>> event.execute(sim)
-
-    Process all application rounds:
-
-    >>> max_H = sim.config.max_H
-    >>> for _ in range(max_H):
-    ...     sim.get_event("firms_send_one_loan_app")().execute(sim)
-    ...     sim.get_event("banks_provide_loans")().execute(sim)
-
-    Notes
-    -----
-    This event must execute after FirmsPrepareLoanApplications (need application queues).
-
-    This event is typically repeated max_H times, interleaved with BanksProvideLoans,
-    to simulate sequential matching.
+    This event is called ``max_H`` times in the pipeline.
 
     See Also
     --------
-    FirmsPrepareLoanApplications : Prepares application queues
-    BanksProvideLoans : Processes applications and provides loans
-    bamengine.events._internal.credit_market.firms_send_one_loan_app : Implementation
+    bamengine.events._internal.credit_market.credit_market_round :
+        Implementation
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.events._internal.credit_market import firms_send_one_loan_app
+        from bamengine.events._internal.credit_market import credit_market_round
 
-        firms_send_one_loan_app(sim.bor, sim.lend, rng=sim.rng)
-
-
-@event
-class BanksProvideLoans:
-    """
-    Banks process loan applications and provide credit based on fragility ranking.
-
-    Each bank evaluates its application queue, ranking applicants by financial
-    fragility (ascending projected_fragility) to assess default risk. Banks provide loans up to available
-    credit supply and record them in the LoanBook. Loans accumulate across
-    rounds, enabling multi-lender support: a firm can receive loans from
-    multiple banks across the max_H credit matching rounds. This event is
-    repeated max_H times, interleaved with FirmsSendOneLoanApp.
-
-    Algorithm
-    ---------
-    For each bank k:
-
-    1. Pop one batch of applications from bank's application queue
-    2. Sort applicants by fragility (ascending - prefer less leveraged borrowers)
-    3. For each applicant i in sorted order:
-       - Check if bank has credit supply remaining (:math:`C_k > 0`)
-       - Check if firm still needs credit (:math:`B_i > 0`)
-       - Grant loan amount: :math:`L = \\min(C_k, B_i)`
-       - Update firm's total_funds: :math:`A_i \\leftarrow A_i + L`
-       - Update firm's credit_demand: :math:`B_i \\leftarrow B_i - L`
-       - Update bank's credit_supply: :math:`C_k \\leftarrow C_k - L`
-       - Add loan to LoanBook with principal=L, rate=:math:`r_k`
-    4. Clear bank's application queue if credit supply exhausted
-
-    Mathematical Notation
-    ---------------------
-    For bank k processing application from firm i:
-
-    .. math::
-        L = \\min(C_k, B_i)
-
-        A_i \\leftarrow A_i + L
-
-        B_i \\leftarrow B_i - L
-
-        C_k \\leftarrow C_k - L
-
-    Loan recorded as: (borrower=i, lender=k, principal=L,
-    rate=r̄·(1 + φ_k·μ(l_i)), interest=L×rate, debt=L×(1+rate))
-    where φ_k is the per-bank opex shock from BanksDecideInterestRate.
-
-    Examples
-    --------
-    Execute this event (typically in loop with FirmsSendOneLoanApp):
-
-    >>> import bamengine as be
-    >>> sim = be.Simulation.init(n_firms=100, n_banks=10, seed=42)
-    >>> # Prepare and send applications
-    >>> sim.get_event("firms_prepare_loan_applications")().execute(sim)
-    >>> sim.get_event("firms_send_one_loan_app")().execute(sim)
-    >>> # Process loans
-    >>> event = sim.get_event("banks_provide_loans")
-    >>> event.execute(sim)
-
-    Check loan book after provision:
-
-    >>> sim.lb.size  # doctest: +SKIP
-    15
-    >>> sim.lb.principal[: sim.lb.size].sum()  # doctest: +SKIP
-    425.0
-
-    Verify loan book arithmetic:
-
-    >>> import numpy as np
-    >>> loans = sim.lb
-    >>> p = loans.principal[: loans.size]
-    >>> r = loans.rate[: loans.size]
-    >>> interest = loans.interest[: loans.size]
-    >>> debt = loans.debt[: loans.size]
-    >>> np.allclose(interest, p * r)
-    True
-    >>> np.allclose(debt, p * (1 + r))
-    True
-
-    Notes
-    -----
-    This event must execute after FirmsSendOneLoanApp (need applications to process).
-
-    This event is typically repeated max_H times, interleaved with FirmsSendOneLoanApp,
-    to simulate sequential matching.
-
-    Banks rank applicants by financial fragility (ascending projected_fragility).
-    Lower fragility implies lower default risk.
-
-    Partial loan fulfillment is possible: if firm requests 100 but bank only has
-    50 credit supply, firm receives 50 (partial grant).
-
-    See Also
-    --------
-    FirmsSendOneLoanApp : Sends applications to banks
-    LoanBook : Stores loan relationships
-    Lender : Bank state with credit_supply
-    Borrower : Firm state with credit_demand, total_funds
-    bamengine.events._internal.credit_market.banks_provide_loans : Implementation
-    """
-
-    def execute(self, sim: Simulation) -> None:
-        from bamengine.events._internal.credit_market import banks_provide_loans
-
-        banks_provide_loans(
+        credit_market_round(
             sim.bor,
-            sim.lb,
             sim.lend,
+            sim.lb,
             r_bar=sim.r_bar,
-            max_loan_to_net_worth=sim.config.max_loan_to_net_worth,
             max_leverage=sim.config.max_leverage,
+            max_loan_to_net_worth=sim.config.max_loan_to_net_worth,
+            rng=sim.rng,
         )
 
 
 @event
 class FirmsFireWorkers:
-    """
-    Firms with insufficient funds after credit provision fire workers.
+    """Batch firing of workers when credit is insufficient.
 
-    Firms that failed to secure enough credit to cover their wage bill must lay
-    off workers to match their available funds. Workers are selected randomly
-    for firing.
-
-    Algorithm
-    ---------
-    For each firm i with :math:`W_i > A_i` (wage bill exceeds available funds):
-
-    1. Calculate unfunded amount: :math:`U_i = W_i - A_i`
-    2. Randomly shuffle employee list
-    3. Fire workers from the shuffled list until unfunded amount <= 0:
-       - Set worker's employer = -1 (unemployed)
-       - Set worker's wage = 0
-       - Set worker's fired flag = True
-       - Decrement firm's current_labor
-       - Reduce firm's wage_bill by worker's wage
-       - Reduce unfunded amount: :math:`U_i \\leftarrow U_i - w_j`
-    4. Update firm's wage_bill to match new labor force
-
-    Mathematical Notation
-    ---------------------
-    For firm i with :math:`W_i > A_i`:
-
-    .. math::
-        U_i = W_i - A_i
-
-    Fire randomly selected workers j until:
-
-    .. math::
-        \\sum_{j \\in \\text{fired}} w_j \\geq U_i
-
-    Update state:
-
-    .. math::
-        L_i \\leftarrow L_i - |\\text{fired}|
-
-        W_i \\leftarrow \\sum_{j \\in \\text{remaining}} w_j
-
-    Examples
-    --------
-    Execute this event:
-
-    >>> import bamengine as be
-    >>> sim = be.Simulation.init(n_firms=100, n_households=500, seed=42)
-    >>> # Simulate firms with insufficient credit
-    >>> event = sim.get_event("firms_fire_workers")
-    >>> event.execute(sim)
-
-    Check fired workers:
-
-    >>> import numpy as np
-    >>> fired_mask = sim.wrk.fired
-    >>> fired_mask.sum()  # doctest: +SKIP
-    8
-
-    Verify fired workers are unemployed:
-
-    >>> (sim.wrk.employer[fired_mask] == -1).all()
-    True
-
-    Check firms that fired workers:
-
-    >>> # Firms that fired should now have wage_bill <= total_funds
-    >>> firms_that_fired = np.unique(sim.wrk.employer_prev[fired_mask])
-    >>> firms_that_fired = firms_that_fired[firms_that_fired >= 0]
-    >>> for firm_id in firms_that_fired:
-    ...     assert sim.emp.wage_bill[firm_id] <= sim.bor.total_funds[firm_id]
-
-    Notes
-    -----
-    This event must execute after all BanksProvideLoans rounds complete.
-
-    Fired workers have their `fired` flag set to True, which affects their job
-    search behavior in the next period (loyalty rule does not apply).
-
-    The wage_bill is recalculated after firing to reflect the new labor force.
+    Groups workers by employer, selects victims randomly, and
+    batch-updates all state.
 
     See Also
     --------
-    BanksProvideLoans : Provides credit to firms
-    FirmsCalcWageBill : Recalculates wage_bill after firing
-    Worker : Employment state with fired flag
-    Employer : Labor force state with current_labor, wage_bill
-    bamengine.events._internal.credit_market.firms_fire_workers : Implementation
+    bamengine.events._internal.credit_market.firms_fire_workers :
+        Implementation
     """
 
     def execute(self, sim: Simulation) -> None:
         from bamengine.events._internal.credit_market import firms_fire_workers
 
-        firms_fire_workers(
-            sim.emp,
-            sim.wrk,
-            rng=sim.rng,
-        )
-
-
-@event
-class CreditMarketRoundVec:
-    """One vectorized round of credit market matching.
-
-    Replaces the interleaved ``FirmsSendOneLoanApp <-> BanksProvideLoans``
-    pair with a single batch-matching event.  All borrowers simultaneously
-    send their next application, applicants are grouped by bank, ranked by
-    ascending fragility, and loans provisioned using grouped cumsum to track
-    supply exhaustion.
-
-    This event is called ``max_H`` times in the vectorized pipeline.
-
-    See Also
-    --------
-    bamengine.events._internal.vectorized_markets.credit_market_round_vec :
-        Implementation
-    """
-
-    def execute(self, sim: Simulation) -> None:
-        from bamengine.events._internal.vectorized_markets import (
-            credit_market_round_vec,
-        )
-
-        credit_market_round_vec(
-            sim.bor,
-            sim.lend,
-            sim.lb,
-            r_bar=sim.r_bar,
-            max_leverage=sim.config.max_leverage,
-            max_loan_to_net_worth=sim.config.max_loan_to_net_worth,
-            rng=sim.rng,
-        )
-
-
-@event
-class FirmsFireWorkersVec:
-    """Vectorized firing of workers when credit is insufficient.
-
-    Replaces the sequential ``FirmsFireWorkers`` with a batch version
-    that groups workers by employer, selects victims randomly, and
-    batch-updates all state.
-
-    See Also
-    --------
-    bamengine.events._internal.vectorized_markets.firms_fire_workers_vec :
-        Implementation
-    """
-
-    def execute(self, sim: Simulation) -> None:
-        from bamengine.events._internal.vectorized_markets import firms_fire_workers_vec
-
-        firms_fire_workers_vec(sim.emp, sim.wrk, rng=sim.rng)
+        firms_fire_workers(sim.emp, sim.wrk, rng=sim.rng)

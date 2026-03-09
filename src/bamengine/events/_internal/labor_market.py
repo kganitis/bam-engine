@@ -11,14 +11,12 @@ bamengine.events.labor_market : Event classes (primary documentation source)
 
 from __future__ import annotations
 
-from typing import cast
-
 import numpy as np
 
 from bamengine import Rng, logging, make_rng
 from bamengine.economy import Economy
 from bamengine.roles import Employer, Worker
-from bamengine.typing import Idx1D, Int1D
+from bamengine.utils import resolve_conflicts
 
 log = logging.getLogger(__name__)
 
@@ -362,430 +360,6 @@ def workers_decide_firms_to_apply(
         log.info("--- Workers Deciding Firms to Apply complete ---")
 
 
-def workers_send_one_round(
-    wrk: Worker,
-    emp: Employer,
-    rng: Rng = make_rng(),
-) -> None:
-    """
-    Process one round of job applications from workers to firms.
-
-    See Also
-    --------
-    bamengine.events.labor_market.WorkersSendOneRound : Full documentation
-    """
-    _workers_send_one_round_sequential(wrk, emp, rng)
-
-
-def _workers_send_one_round_sequential(wrk: Worker, emp: Employer, rng: Rng) -> None:
-    """
-    Sequential matching: workers shuffled, apply one at a time.
-
-    This is the traditional efficient matching where workers are processed
-    in random order and each application is handled immediately.
-    """
-    info_enabled = log.isEnabledFor(logging.INFO)
-    if info_enabled:
-        log.info("--- Workers Sending One Round of Applications (Sequential) ---")
-    stride = wrk.job_apps_targets.shape[1]
-    unemp_ids = np.where(wrk.employed == 0)[0]
-    active_applicants_mask = wrk.job_apps_head[unemp_ids] >= 0
-    unemp_ids_applying = unemp_ids[active_applicants_mask]
-
-    if unemp_ids_applying.size == 0:
-        if info_enabled:
-            log.info("  No workers with pending applications found. Skipping round.")
-            log.info("--- Application Sending Round complete ---")
-        return
-
-    if info_enabled:
-        log.info(
-            f"  Processing {unemp_ids_applying.size} workers with pending applications "
-            f"(Stride={stride})."
-        )
-
-    rng.shuffle(unemp_ids_applying)  # order randomly chosen at each time step
-
-    # Counters for logging
-    apps_sent_successfully = 0
-    apps_dropped_queue_full = 0
-    apps_dropped_no_vacancy = 0
-
-    # Cache log level check outside the loop
-    debug_enabled = log.isEnabledFor(logging.DEBUG)
-
-    for j in unemp_ids_applying:
-        head = wrk.job_apps_head[j]
-        if head < 0:  # TODO branch is uncovered by unit tests
-            log.warning(f"  Worker {j} in applying list but head is {head}. Skipping.")
-            continue
-
-        row_from_head, col = divmod(head, stride)
-        if row_from_head != j:
-            log.error(
-                f"  CRITICAL MISMATCH for worker {j}: "
-                f"head={head} decoded to row {row_from_head}."
-            )
-
-        if head >= (j + 1) * stride:  # TODO branch is uncovered by unit tests
-            # Normal exit condition for a worker who finished their list.
-            if debug_enabled:
-                log.debug(
-                    f"    Worker {j} exhausted all {stride} application slots. "
-                    f"Setting head to -1."
-                )
-            wrk.job_apps_head[j] = -1
-            continue
-
-        firm_id = wrk.job_apps_targets[row_from_head, col]
-        if firm_id < 0:
-            if debug_enabled:
-                log.debug(
-                    f"    Worker {j} encountered sentinel (-1) at col {col}. "
-                    f"End of list. Setting head to -1."
-                )
-            wrk.job_apps_head[j] = -1
-            continue
-
-        if debug_enabled:
-            log.debug(f"    Worker {j} applying to firm {firm_id} (app #{col + 1}).")
-
-        # Check for vacancy before checking queue space
-        if emp.n_vacancies[firm_id] <= 0:
-            if debug_enabled:
-                log.debug(
-                    f"  Firm {firm_id} has no more open vacancies. "
-                    f"Worker {j} application dropped."
-                )
-            apps_dropped_no_vacancy += 1
-            wrk.job_apps_head[j] = head + 1
-            wrk.job_apps_targets[row_from_head, col] = -1
-            continue
-
-        # Check firm's application queue available space
-        ptr = emp.recv_job_apps_head[firm_id] + 1
-        if ptr >= emp.recv_job_apps.shape[1]:
-            if debug_enabled:
-                log.debug(
-                    f"    Firm {firm_id} application queue full. "
-                    f"Worker {j} application dropped."
-                )
-            apps_dropped_queue_full += 1
-            wrk.job_apps_head[j] = head + 1
-            wrk.job_apps_targets[row_from_head, col] = -1
-            continue
-
-        # Application is successful
-        emp.recv_job_apps_head[firm_id] = ptr
-        emp.recv_job_apps[firm_id, ptr] = j
-        apps_sent_successfully += 1
-        if debug_enabled:
-            log.debug(
-                f"    Worker {j} application queued at firm {firm_id} slot {ptr}."
-            )
-
-        wrk.job_apps_head[j] = head + 1
-        wrk.job_apps_targets[row_from_head, col] = -1
-
-    # Summary log
-    total_dropped = apps_dropped_queue_full + apps_dropped_no_vacancy
-    if info_enabled:
-        log.info(
-            f"  Round Summary: "
-            f"{apps_sent_successfully} applications successfully queued, "
-            f"{total_dropped} dropped."
-        )
-    if total_dropped > 0 and debug_enabled:
-        log.debug(
-            f"    Dropped breakdown -> Queue Full: {apps_dropped_queue_full},"
-            f" No Vacancy: {apps_dropped_no_vacancy}"
-        )
-    if info_enabled:
-        log.info("--- Application Sending Round complete ---")
-
-
-def _check_labor_consistency(tag: str, i: int, wrk: Worker, emp: Employer) -> bool:
-    """
-    Compare firm‐side bookkeeping (`emp.current_labor[i]`)
-    with the ground truth reconstructed from the Worker table.
-    """
-    true_headcount = np.count_nonzero((wrk.employed == 1) & (wrk.employer == i))
-    recorded = int(emp.current_labor[i])
-
-    if true_headcount != recorded:
-        log.warning(
-            f"[{tag:^10s}] LABOR INCONSISTENCY: Firm {i:3d} | "
-            f"Recorded Labor: {recorded:3d}, True Headcount: {true_headcount:3d}, "
-            f"Δ={true_headcount - recorded:+d}"
-        )
-        return False
-    elif log.isEnabledFor(logging.TRACE):
-        log.trace(
-            f"[{tag:^10s}] Labor consistent for firm {i:3d}: {recorded:3d} workers."
-        )
-    return True
-
-
-def _safe_bincount_employed(wrk: Worker, n_firms: int) -> Int1D:  # pragma: no cover
-    """
-    Return head-counts per firm, *ignoring* any corrupted rows where
-    wrk.employed == 1 but wrk.employer < 0.
-    Also log those rows in order to trace them later.
-    """
-    mask_good = (wrk.employed == 1) & (wrk.employer >= 0)
-    mask_bad = (wrk.employed == 1) & (wrk.employer < 0)
-
-    if mask_bad.any():
-        bad_idx = np.where(mask_bad)[0]
-        log.error(
-            f"[CORRUPT WORKER DATA] {bad_idx.size} worker rows have "
-            f"employed=1 but employer<0; indices={bad_idx.tolist()}"
-        )
-
-    return np.bincount(
-        wrk.employer[mask_good].astype(np.int64),
-        minlength=n_firms,
-    ).astype(np.int64)
-
-
-def _clean_queue(
-    slice_: Idx1D, wrk: Worker, firm_idx_for_log: int, *, trace_enabled: bool = False
-) -> Idx1D:
-    """
-    Return a *unique* array of still-unemployed worker ids
-    from the raw queue slice (may contain -1 sentinels and duplicates),
-    preserving the original order of first appearance.
-    """
-    if trace_enabled:
-        log.trace(
-            f"    Firm {firm_idx_for_log}: Cleaning queue. Initial raw slice: {slice_}"
-        )
-
-    # Drop -1 sentinels
-    cleaned_slice = slice_[slice_ >= 0]
-    if cleaned_slice.size == 0:
-        if trace_enabled:
-            log.trace(
-                f"    Firm {firm_idx_for_log}: Queue empty after dropping sentinels."
-            )
-        return cleaned_slice.astype(np.intp)
-
-    if trace_enabled:
-        log.trace(
-            f"    Firm {firm_idx_for_log}: "
-            f"Queue after dropping sentinels: {cleaned_slice}"
-        )
-
-    # Unique *without* sorting
-    first_idx = np.unique(cleaned_slice, return_index=True)[1]
-    unique_slice = cleaned_slice[np.sort(first_idx)]
-    if trace_enabled:
-        log.trace(
-            f"    Firm {firm_idx_for_log}: "
-            f"Queue after unique (order kept): {unique_slice}"
-        )
-
-    # Keep only unemployed workers
-    unemployed_mask = wrk.employed[unique_slice] == 0
-    final_queue = unique_slice[unemployed_mask]
-    if trace_enabled:
-        log.trace(
-            f"    Firm {firm_idx_for_log}: "
-            f"Final cleaned queue (unique, unemployed): {final_queue}"
-        )
-
-    return cast(Idx1D, final_queue)
-
-
-def firms_hire_workers(
-    wrk: Worker,
-    emp: Employer,
-    *,
-    theta: int,
-    rng: Rng = make_rng(),
-) -> None:
-    """
-    Firms process applications and hire workers to fill vacancies.
-
-    See Also
-    --------
-    bamengine.events.labor_market.FirmsHireWorkers : Full documentation
-    """
-    info_enabled = log.isEnabledFor(logging.INFO)
-    if info_enabled:
-        log.info("--- Firms Hiring Workers ---")
-    hiring_ids = np.where(emp.n_vacancies > 0)[0]
-    total_vacancies = emp.n_vacancies.sum()
-    if info_enabled:
-        log.info(
-            f"  {hiring_ids.size} firms have {total_vacancies:,} "
-            f"total vacancies and are attempting to hire."
-        )
-
-    total_hires_this_round = 0
-    total_rejected_this_round = 0
-
-    # Cache log level checks outside the loop
-    debug_enabled = log.isEnabledFor(logging.DEBUG)
-    trace_enabled = log.isEnabledFor(logging.TRACE)
-
-    for i in hiring_ids:
-        if debug_enabled:
-            log.debug(f"  Processing firm {i} (vacancies: {emp.n_vacancies[i]})")
-
-        if debug_enabled:
-            _check_labor_consistency("PRE-hire", i, wrk, emp)
-
-        n_recv = emp.recv_job_apps_head[i] + 1
-        if n_recv <= 0:
-            if debug_enabled:
-                log.debug(f"    Firm {i} has no applications. Skipping.")
-            continue
-
-        raw_queue = emp.recv_job_apps[i, :n_recv].copy()
-        if debug_enabled:
-            log.debug(
-                f"    Firm {i} raw application queue "
-                f"({n_recv} applications): {raw_queue}"
-            )
-
-        queue = _clean_queue(
-            raw_queue, wrk, firm_idx_for_log=i, trace_enabled=trace_enabled
-        )
-
-        if queue.size == 0:
-            if debug_enabled:
-                log.debug(
-                    f"    Firm {i}: no valid (unique, unemployed) "
-                    f"applicants in queue. Flushing."
-                )
-            emp.recv_job_apps_head[i] = -1
-            emp.recv_job_apps[i, :n_recv] = -1
-            continue
-
-        if debug_enabled:
-            log.debug(f"    Firm {i} has {queue.size} valid potential hires: {queue}")
-
-        num_to_hire = min(queue.size, emp.n_vacancies[i])
-        num_rejected = queue.size - num_to_hire
-
-        if num_to_hire < queue.size:
-            if debug_enabled:
-                log.debug(
-                    f"    Firm {i} capping hires from {queue.size} "
-                    f"to {num_to_hire} due to vacancy limit "
-                    f"({num_rejected} rejected)."
-                )
-            total_rejected_this_round += num_rejected
-
-        # FIFO selection: takes first num_to_hire from queue order
-        final_hires = queue[:num_to_hire]
-
-        # extra validation, should never trigger
-        if final_hires.size == 0:  # pragma: no cover
-            emp.recv_job_apps_head[i] = -1
-            emp.recv_job_apps[i, :n_recv] = -1
-            continue
-
-        if info_enabled:
-            log.info(
-                f"    Firm {i} is hiring {final_hires.size} worker(s): "
-                f"{final_hires.tolist()}"
-            )
-        total_hires_this_round += final_hires.size
-
-        # worker‑side updates
-        if debug_enabled:
-            log.debug(
-                f"      Updating state for {final_hires.size} newly hired workers."
-            )
-        wrk.employer[final_hires] = i
-        wrk.wage[final_hires] = emp.wage_offer[i]
-        wrk.periods_left[final_hires] = theta
-        wrk.contract_expired[final_hires] = 0
-        wrk.fired[final_hires] = 0
-        wrk.job_apps_head[final_hires] = -1
-        wrk.job_apps_targets[final_hires, :] = -1
-
-        # firm‑side updates
-        emp.current_labor[i] += final_hires.size
-        emp.n_vacancies[i] -= final_hires.size
-        if debug_enabled:
-            log.debug(
-                f"      Firm {i} state updated: "
-                f"current_labor={emp.current_labor[i]}, "
-                f"n_vacancies={emp.n_vacancies[i]}"
-            )
-
-        # flush inbound queue for this firm
-        emp.recv_job_apps_head[i] = -1
-        emp.recv_job_apps[i, :n_recv] = -1
-        if debug_enabled:
-            log.debug(f"    Firm {i} application queue flushed.")
-
-        if debug_enabled:
-            _check_labor_consistency("POST-hire", i, wrk, emp)
-
-    if info_enabled:
-        log.info(
-            f"  Total hires made this step across all firms: {total_hires_this_round}"
-            + (
-                f", {total_rejected_this_round} rejected due to crowding"
-                if total_rejected_this_round > 0
-                else ""
-            )
-        )
-    if log.isEnabledFor(logging.DEBUG):
-        true_labor_counts = _safe_bincount_employed(wrk, emp.current_labor.size)
-        mismatched_firms = np.flatnonzero(emp.current_labor != true_labor_counts)
-        if mismatched_firms.size:
-            log.error(
-                f"[GLOBAL LABOR MISMATCH] {mismatched_firms.size} firms "
-                f"have inconsistent labor counts."
-            )
-            for i_mismatch in mismatched_firms:
-                log.error(
-                    f"  Firm {i_mismatch}: recorded={emp.current_labor[i_mismatch]}, "
-                    f"true={true_labor_counts[i_mismatch]}"
-                )
-        else:
-            log.debug(
-                "[GLOBAL LABOR CONSISTENCY] "
-                "All firm labor counts match worker table after hiring."
-            )
-    if info_enabled:
-        log.info("--- Firms Hiring Workers complete ---")
-
-
-def _hire_workers(
-    wrk: Worker,
-    emp: Employer,
-    firm_idx: int,
-    worker_ids: Idx1D,
-    *,
-    theta: int,
-    rng: Rng = make_rng(),
-) -> None:
-    """Apply state updates for hiring a batch of workers to a firm.
-
-    Shared helper used by both the legacy ``firms_hire_workers`` flow and the
-    new cascade matching events (``workers_apply_to_firms``,
-    ``workers_apply_to_best_firm``).
-    """
-    # worker-side updates
-    wrk.employer[worker_ids] = firm_idx
-    wrk.wage[worker_ids] = emp.wage_offer[firm_idx]
-    wrk.periods_left[worker_ids] = theta
-    wrk.contract_expired[worker_ids] = 0
-    wrk.fired[worker_ids] = 0
-    wrk.job_apps_head[worker_ids] = -1
-    wrk.job_apps_targets[worker_ids, :] = -1
-
-    # firm-side updates
-    emp.current_labor[firm_idx] += worker_ids.size
-    emp.n_vacancies[firm_idx] -= worker_ids.size
-
-
 def firms_calc_wage_bill(emp: Employer, wrk: Worker) -> None:
     """
     Calculate total wage bill per firm.
@@ -826,3 +400,118 @@ def firms_calc_wage_bill(emp: Employer, wrk: Worker) -> None:
         )
     if info_enabled:
         log.info("--- Wage Bill Calculation complete ---")
+
+
+def labor_market_round(
+    emp: Employer,
+    wrk: Worker,
+    *,
+    theta: int,
+    rng: Rng = make_rng(),
+) -> None:
+    """One vectorized round of labor market matching.
+
+    All unemployed applicants simultaneously send their next application,
+    conflicts are resolved randomly, and accepted workers are batch-hired.
+
+    Parameters
+    ----------
+    emp : Employer
+        Employer role (firms).
+    wrk : Worker
+        Worker role (households).
+    theta : int
+        Minimum contract duration.
+    rng : Rng
+        Random generator for conflict resolution.
+    """
+    info_enabled = log.isEnabledFor(logging.INFO)
+    if info_enabled:
+        log.info("--- Labor Market Round ---")
+
+    stride = wrk.job_apps_targets.shape[1]  # max_M
+    n_firms = emp.current_labor.size
+
+    # 1. Find active unemployed applicants with pending applications
+    unemp_ids = np.where(wrk.employed == 0)[0]
+    if unemp_ids.size == 0:
+        if info_enabled:
+            log.info("  No unemployed workers. Skipping round.")
+            log.info("--- Labor Market Round complete ---")
+        return
+
+    active_mask = wrk.job_apps_head[unemp_ids] >= 0
+    active = unemp_ids[active_mask]
+
+    if active.size == 0:
+        if info_enabled:
+            log.info("  No workers with pending applications. Skipping round.")
+            log.info("--- Labor Market Round complete ---")
+        return
+
+    # 2. Decode targets from head pointers
+    heads = wrk.job_apps_head[active]
+    rows, cols = np.divmod(heads, stride)
+    target_firms = wrk.job_apps_targets[rows, cols]
+
+    # 3. Filter: valid targets (not -1)
+    valid_target_mask = target_firms >= 0
+    # Also filter for firms with vacancies
+    has_vacancy_mask = valid_target_mask.copy()
+    has_vacancy_mask[valid_target_mask] &= (
+        emp.n_vacancies[target_firms[valid_target_mask]] > 0
+    )
+
+    # 4. Advance ALL head pointers (even for invalid/no-vacancy targets)
+    new_heads = heads + 1
+    exhausted = (new_heads >= (active + 1) * stride) | (~valid_target_mask)
+    new_heads[exhausted] = -1
+    wrk.job_apps_head[active] = new_heads
+    # Clear consumed slots
+    wrk.job_apps_targets[rows, cols] = -1
+
+    # 5. Get senders with valid, vacancy-having targets
+    valid_senders = active[has_vacancy_mask]
+    valid_targets = target_firms[has_vacancy_mask]
+
+    if valid_senders.size == 0:
+        if info_enabled:
+            log.info("  No valid applications this round.")
+            log.info("--- Labor Market Round complete ---")
+        return
+
+    # 6. Conflict resolution
+    accepted_mask = resolve_conflicts(
+        valid_senders, valid_targets, emp.n_vacancies, n_firms, rng
+    )
+
+    hired_workers = valid_senders[accepted_mask]
+    hired_firms = valid_targets[accepted_mask]
+
+    if hired_workers.size == 0:
+        if info_enabled:
+            log.info("  No hires this round after conflict resolution.")
+            log.info("--- Labor Market Round complete ---")
+        return
+
+    if info_enabled:
+        log.info(f"  Hiring {hired_workers.size} worker(s) this round.")
+
+    # 7. Batch hire: update worker state
+    wrk.employer[hired_workers] = hired_firms
+    wrk.wage[hired_workers] = emp.wage_offer[hired_firms]
+    wrk.periods_left[hired_workers] = theta
+    wrk.contract_expired[hired_workers] = 0
+    wrk.fired[hired_workers] = 0
+    wrk.job_apps_head[hired_workers] = -1
+    wrk.job_apps_targets[hired_workers, :] = -1
+
+    # 8. Batch hire: update firm state
+    hire_counts = np.bincount(hired_firms, minlength=n_firms).astype(
+        emp.current_labor.dtype
+    )
+    emp.current_labor += hire_counts
+    emp.n_vacancies -= hire_counts
+
+    if info_enabled:
+        log.info("--- Labor Market Round complete ---")

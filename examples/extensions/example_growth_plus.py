@@ -174,9 +174,9 @@ COLLECT_CONFIG = {
         "Employer.n_vacancies": "firms_decide_vacancies",
         "Borrower.net_worth": "firms_run_production",
         "Consumer.income_to_spend": "consumers_decide_income_to_spend",
-        "LoanBook.principal": "banks_provide_loans",
-        "LoanBook.rate": "banks_provide_loans",
-        "LoanBook.source_ids": "banks_provide_loans",
+        "LoanBook.principal": "credit_market_round",
+        "LoanBook.rate": "credit_market_round",
+        "LoanBook.source_ids": "credit_market_round",
     },
 }
 results = sim.run(collect=COLLECT_CONFIG)

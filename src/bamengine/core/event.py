@@ -62,8 +62,8 @@ def _camel_to_snake(name: str) -> str:
     --------
     >>> _camel_to_snake("FirmsDecideDesiredProduction")
     'firms_decide_desired_production'
-    >>> _camel_to_snake("WorkersSendOneRound")
-    'workers_send_one_round'
+    >>> _camel_to_snake("LaborMarketRound")
+    'labor_market_round'
     """
     # Insert underscore before uppercase letters (except first)
     s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
@@ -231,7 +231,7 @@ class Event(ABC):
         ...     "logging": {
         ...         "events": {
         ...             "firms_adjust_price": "DEBUG",
-        ...             "workers_send_one_round": "WARNING",
+        ...             "labor_market_round": "WARNING",
         ...         }
         ...     }
         ... }

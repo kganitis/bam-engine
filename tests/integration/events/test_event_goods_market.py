@@ -1,5 +1,5 @@
 """
-Event-5 integration tests  ⸺  goods-market round
+Event-5 integration tests  --  goods-market round
 =================================================
 
 Two test-cases run the *entire* goods-market sequence on a tiny `Simulation`.
@@ -21,7 +21,7 @@ from bamengine.events._internal.goods_market import (  # systems under test
     consumers_decide_firms_to_visit,
     consumers_decide_income_to_spend,
     consumers_finalize_purchases,
-    consumers_shop_sequential,
+    goods_market_round,
 )
 from bamengine.simulation import Simulation
 
@@ -56,7 +56,7 @@ def _run_goods_event(sch: Simulation) -> dict[str, NDArray[np.float64]]:
 
     # shopping
     consumers_decide_firms_to_visit(sch.con, sch.prod, max_Z=sch.max_Z, rng=sch.rng)
-    consumers_shop_sequential(sch.con, sch.prod, max_Z=sch.max_Z, rng=sch.rng)
+    goods_market_round(sch.con, sch.prod, max_Z=sch.max_Z, rng=sch.rng)
 
     # final bookkeeping
     snap["inv_after"] = sch.prod.inventory.copy()
@@ -71,7 +71,7 @@ def test_event_goods_market_basic(tiny_sched: Simulation) -> None:
     """
     Happy-path regression:
 
-    * Σ household-spending == Σ firm-sales value
+    * sum household-spending == sum firm-sales value
     * no inventory < 0
     * savings non-negative and income_to_spend flushed to zero
     """
@@ -88,7 +88,7 @@ def test_event_goods_market_basic(tiny_sched: Simulation) -> None:
     # money-flow identity
     wealth0 = snap["inc_before"] + snap["sav_before"]
     wealth1 = snap["sav_final"]
-    spent = wealth0 - wealth1  # ≥ 0
+    spent = wealth0 - wealth1  # >= 0
 
     qty_sold = snap["inv_before"] - snap["inv_after"]
     sales_value = (qty_sold * sch.prod.price).sum()
@@ -105,11 +105,11 @@ def test_goods_market_post_state_consistency(tiny_sched: Simulation) -> None:
     """
     Invariants checked after the round:
 
-    1. `largest_prod_prev` either −1 or a valid firm id.
-    2. `shop_visits_head` ∈ [−1 … n_households × Z].
+    1. `largest_prod_prev` either -1 or a valid firm id.
+    2. `shop_visits_head` in [-1 ... n_households * Z].
     3. Budget identity per household:
          sav_after_split + spent_income == sav_final
-       → equivalently   sav_final − unspent_income == sav_after_split
+       -> equivalently   sav_final - unspent_income == sav_after_split
     """
     sch = tiny_sched
 

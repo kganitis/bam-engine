@@ -51,8 +51,8 @@ ROBUSTNESS_COLLECT_CONFIG: dict[str, Any] = {
         "Worker.employed": "firms_run_production",
         "Producer.production": "firms_run_production",
         "Employer.n_vacancies": "firms_decide_vacancies",
-        "LoanBook.principal": "banks_provide_loans",
-        "LoanBook.rate": "banks_provide_loans",
+        "LoanBook.principal": "credit_market_round",
+        "LoanBook.rate": "credit_market_round",
     },
 }
 

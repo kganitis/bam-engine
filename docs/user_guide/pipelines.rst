@@ -10,9 +10,10 @@ specification and makes the execution flow predictable and debuggable.
 The Default Pipeline
 --------------------
 
-The default pipeline executes 8 phases per period. Within the labor, credit,
-and goods market phases, matching events are **interleaved** — seekers and
-providers alternate turns for multiple rounds.
+The default pipeline executes 8 phases per period. Labor and credit market
+matching uses **batch processing** with vectorized NumPy operations. The goods
+market uses **batch-sequential** processing where consumers are divided into
+batches, each completing all visits before the next batch starts.
 
 **Phase 1: Planning** (6 events)
 
@@ -25,7 +26,7 @@ providers alternate turns for multiple rounds.
    firms_decide_vacancies
    firms_fire_excess_workers
 
-**Phase 2: Labor Market** (6 events, with interleaved matching)
+**Phase 2: Labor Market** (4 setup + max_M rounds + wage bill)
 
 ::
 
@@ -33,14 +34,14 @@ providers alternate turns for multiple rounds.
    adjust_minimum_wage
    firms_decide_wage_offer
    workers_decide_firms_to_apply
-   workers_send_one_round <-> firms_hire_workers  x max_M
+   labor_market_round x max_M
    firms_calc_wage_bill
 
-The ``workers_send_one_round <-> firms_hire_workers x max_M`` expands to
-``max_M`` alternating rounds: send, hire, send, hire, ... (default: 4 pairs =
-8 events).
+``labor_market_round x max_M`` expands to ``max_M`` batch matching rounds
+(default: 4). Each round processes all applications simultaneously using
+vectorized conflict resolution.
 
-**Phase 3: Credit Market** (7 events, with interleaved matching)
+**Phase 3: Credit Market** (5 setup + max_H rounds + firing)
 
 ::
 
@@ -49,7 +50,7 @@ The ``workers_send_one_round <-> firms_hire_workers x max_M`` expands to
    firms_decide_credit_demand
    firms_calc_financial_fragility
    firms_prepare_loan_applications
-   firms_send_one_loan_app <-> banks_provide_loans  x max_H
+   credit_market_round x max_H
    firms_fire_workers
 
 **Phase 4: Production** (5 events)
@@ -69,7 +70,7 @@ The ``workers_send_one_round <-> firms_hire_workers x max_M`` expands to
    consumers_calc_propensity
    consumers_decide_income_to_spend
    consumers_decide_firms_to_visit
-   consumers_shop_sequential
+   goods_market_round
    consumers_finalize_purchases
 
 **Phase 6: Revenue** (3 events)
@@ -152,7 +153,7 @@ For more control, modify the pipeline directly after initialization:
    sim.pipeline.insert_before("firms_adjust_price", "pre_pricing_check")
 
    # Remove an event
-   sim.pipeline.remove("workers_send_one_round_0")
+   sim.pipeline.remove("labor_market_round_0")
 
    # Replace an event
    sim.pipeline.replace("firms_decide_desired_production", "my_production_rule")
@@ -179,22 +180,17 @@ For full control over the event sequence, create a custom pipeline YAML file:
      - firms_decide_desired_production
 
      # Repeated event — execute N times
-     - consumers_shop_one_round x 4
-
-     # Interleaved events — alternate between two events, N rounds
-     - workers_send_one_round <-> firms_hire_workers x 6
+     - labor_market_round x 4
 
      # Parameter substitution — use config values
-     - workers_send_one_round <-> firms_hire_workers x {max_M}
-     - firms_send_one_loan_app <-> banks_provide_loans x {max_H}
-     - consumers_shop_one_round x {max_Z}
+     - labor_market_round x {max_M}
+     - credit_market_round x {max_H}
 
 **Parameter substitution** replaces ``{param_name}`` with the corresponding
 configuration value at pipeline load time. Available substitutions:
 
 - ``{max_M}`` — Number of labor market matching rounds
 - ``{max_H}`` — Number of credit market matching rounds
-- ``{max_Z}`` — Number of goods market shopping rounds
 
 
 Planning-Phase Pricing (Alternative)
@@ -261,9 +257,9 @@ Tips
   init — declaring ``@event(after=...)`` alone does nothing.
 - **Modify before running**: Pipeline changes should happen between
   ``Simulation.init()`` and ``sim.run()``, not during execution.
-- **Interleaved matching is hardcoded**: The default pipeline always uses
-  interleaved matching for labor and credit markets, regardless of deprecated
-  config parameters.
+- **Batch matching**: Labor and credit markets use vectorized batch
+  matching with conflict resolution. The goods market uses batch-sequential
+  processing.
 
 
 .. seealso::

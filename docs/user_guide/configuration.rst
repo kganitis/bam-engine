@@ -295,8 +295,8 @@ Control log verbosity globally or per-event:
            "default_level": "WARNING",  # Global level
            "log_file": "simulation.log",  # Optional file output
            "events": {
-               "firms_hire_workers": "DEBUG",  # Verbose for one event
-               "workers_send_one_round": "ERROR",  # Suppress another
+               "labor_market_round": "DEBUG",  # Verbose for one event
+               "credit_market_round": "ERROR",  # Suppress another
            },
        },
        seed=42,
@@ -326,7 +326,7 @@ YAML logging configuration:
      log_file: output/simulation.log
      events:
        firms_plan_price: TRACE
-       firms_hire_workers: DEBUG
+       labor_market_round: DEBUG
 
 
 Extension Parameters

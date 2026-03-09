@@ -295,17 +295,16 @@ Use ``argpartition`` instead of ``argsort`` when only top-k elements are needed:
 Critical Path
 ~~~~~~~~~~~~~
 
-The market queuing system (labor, credit, goods markets) contains the primary
-bottlenecks. Most operations are now vectorized, but some sequential matching
-remains:
+The market matching system (labor, credit, goods markets) contains the primary
+bottlenecks. All three markets now use vectorized batch processing:
 
 * **Goods market**: ``consumers_decide_firms_to_visit`` is fully vectorized using
-  batch random sampling and 2D array operations. ``consumers_shop_sequential``
-  requires sequential processing due to inventory state dependencies.
-* **Labor market**: ``workers_decide_firms_to_apply``, ``firms_hire_workers``
-  use sequential queue processing for multi-round matching.
-* **Credit market**: Similar sequential matching for loan applications.
-
-The sequential shopping and hiring loops are inherently O(n) and cannot be
-fully parallelized due to state-dependent matching where each transaction
-affects subsequent ones.
+  batch random sampling and 2D array operations. ``goods_market_round`` uses
+  batch-sequential processing — consumers are divided into ~10 batches, each
+  completing all Z visits with vectorized NumPy operations before the next batch
+  starts. This preserves sequential depletion dynamics while enabling vectorization.
+* **Labor market**: ``workers_decide_firms_to_apply`` uses vectorized firm selection.
+  ``labor_market_round`` processes all applications simultaneously with batch
+  conflict resolution via ``resolve_conflicts()``.
+* **Credit market**: ``credit_market_round`` uses ``grouped_cumsum`` for vectorized
+  supply exhaustion, processing applications in ascending fragility order.

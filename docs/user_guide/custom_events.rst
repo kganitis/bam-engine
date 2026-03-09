@@ -224,7 +224,7 @@ an event, hook it into the pipeline, and run.
 Built-in Events
 ---------------
 
-BAM Engine includes 39 built-in events organized in 8 phases. Below is a
+BAM Engine includes 37 built-in events organized in 8 phases. Below is a
 summary — see :doc:`bam_model` for the economic logic of each phase.
 
 **Phase 1: Planning**
@@ -258,10 +258,8 @@ summary — see :doc:`bam_model` for the economic logic of each phase.
      - Firms set wage offers with random markup
    * - ``workers_decide_firms_to_apply``
      - Workers select firms to apply to
-   * - ``workers_send_one_round``
-     - Workers send one application (interleaved matching)
-   * - ``firms_hire_workers``
-     - Firms process applications and hire
+   * - ``labor_market_round``
+     - Batch matching with conflict resolution (x max_M)
    * - ``firms_calc_wage_bill``
      - Calculate total wage obligations
 
@@ -280,10 +278,8 @@ summary — see :doc:`bam_model` for the economic logic of each phase.
      - Calculate leverage ratio for credit evaluation
    * - ``firms_prepare_loan_applications``
      - Firms rank banks by interest rate
-   * - ``firms_send_one_loan_app``
-     - Firms send one loan application (interleaved matching)
-   * - ``banks_provide_loans``
-     - Banks process applications by fragility order
+   * - ``credit_market_round``
+     - Batch credit matching by fragility order (x max_H)
    * - ``firms_fire_workers``
      - Fire workers if credit insufficient
 
@@ -314,8 +310,8 @@ summary — see :doc:`bam_model` for the economic logic of each phase.
      - Allocate spending budget
    * - ``consumers_decide_firms_to_visit``
      - Select firms to visit (loyalty + random)
-   * - ``consumers_shop_sequential``
-     - Sequential shopping across selected firms
+   * - ``goods_market_round``
+     - Batch-sequential shopping (handles all Z visits)
    * - ``consumers_finalize_purchases``
      - Save unspent budget
 

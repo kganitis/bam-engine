@@ -16,33 +16,16 @@ def test_parse_event_spec_single_event():
 
 def test_parse_event_spec_repeated_event():
     """Parse repeated event specification (event x N)."""
-    result = Pipeline._parse_event_spec("workers_send_one_round x 3")
+    result = Pipeline._parse_event_spec("labor_market_round x 3")
     assert result == [
-        "workers_send_one_round",
-        "workers_send_one_round",
-        "workers_send_one_round",
-    ]
-
-
-def test_parse_event_spec_interleaved_events():
-    """Parse interleaved event specification (event1 <-> event2 x N)."""
-    result = Pipeline._parse_event_spec(
-        "workers_send_one_round <-> firms_hire_workers x 2"
-    )
-    assert result == [
-        "workers_send_one_round",
-        "firms_hire_workers",
-        "workers_send_one_round",
-        "firms_hire_workers",
+        "labor_market_round",
+        "labor_market_round",
+        "labor_market_round",
     ]
 
 
 def test_parse_event_spec_whitespace_handling():
     """Parse handles various whitespace patterns."""
-    # Extra spaces around operators
-    result = Pipeline._parse_event_spec("event1  <->  event2  x  3")
-    assert result == ["event1", "event2", "event1", "event2", "event1", "event2"]
-
     # Tabs and spaces
     result = Pipeline._parse_event_spec("event_name\tx\t5")
     assert len(result) == 5
@@ -81,8 +64,8 @@ def test_from_yaml_with_parameters():
     yaml_content = """
 events:
   - firms_decide_desired_production
-  - workers_send_one_round x {max_M}
-  - firms_hire_workers x {max_H}
+  - labor_market_round x {max_M}
+  - credit_market_round x {max_H}
 """
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
@@ -95,41 +78,8 @@ events:
 
         # Should have 1 + 3 + 2 = 6 events
         assert len(pipeline) == 6
-        assert event_names.count("workers_send_one_round") == 3
-        assert event_names.count("firms_hire_workers") == 2
-    finally:
-        Path(yaml_path).unlink()
-
-
-def test_from_yaml_with_interleaved_events():
-    """Load pipeline with interleaved event pattern."""
-    import bamengine.events  # noqa: F401
-
-    yaml_content = """
-events:
-  - firms_decide_wage_offer
-  - workers_send_one_round <-> firms_hire_workers x {max_M}
-  - firms_calc_wage_bill
-"""
-
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
-        f.write(yaml_content)
-        yaml_path = f.name
-
-    try:
-        pipeline = Pipeline.from_yaml(yaml_path, max_M=4)
-        event_names = [e.name for e in pipeline.events]
-
-        # Should have 1 + (2*4) + 1 = 10 events
-        assert len(pipeline) == 10
-
-        # Check interleaving pattern
-        assert event_names[0] == "firms_decide_wage_offer"
-        assert event_names[1] == "workers_send_one_round"
-        assert event_names[2] == "firms_hire_workers"
-        assert event_names[3] == "workers_send_one_round"
-        assert event_names[4] == "firms_hire_workers"
-        assert event_names[-1] == "firms_calc_wage_bill"
+        assert event_names.count("labor_market_round") == 3
+        assert event_names.count("credit_market_round") == 2
     finally:
         Path(yaml_path).unlink()
 
@@ -174,9 +124,9 @@ events:
   # Custom simplified pipeline (for testing/research)
   - firms_decide_desired_production
   - firms_plan_price
-  - workers_send_one_round <-> firms_hire_workers x 2
+  - labor_market_round x 2
   - firms_run_production
-  - consumers_shop_sequential
+  - goods_market_round
   - firms_collect_revenue
 """
 
@@ -188,8 +138,8 @@ events:
         pipeline = Pipeline.from_yaml(yaml_path)
 
         # Should create simplified pipeline
-        # 1 + 1 + (2*2) + 1 + 1 + 1 = 9 events
-        assert len(pipeline) == 9
+        # 1 + 1 + 2 + 1 + 1 + 1 = 7 events
+        assert len(pipeline) == 7
         event_names = [e.name for e in pipeline.events]
         assert event_names[0] == "firms_decide_desired_production"
         assert event_names[-1] == "firms_collect_revenue"

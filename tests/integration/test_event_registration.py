@@ -26,8 +26,7 @@ def test_all_labor_market_events_registered():
     assert "adjust_minimum_wage" in events
     assert "firms_decide_wage_offer" in events
     assert "workers_decide_firms_to_apply" in events
-    assert "workers_send_one_round" in events
-    assert "firms_hire_workers" in events
+    assert "labor_market_round" in events
     assert "firms_calc_wage_bill" in events
 
 
@@ -40,8 +39,7 @@ def test_all_credit_market_events_registered():
     assert "firms_decide_credit_demand" in events
     assert "firms_calc_financial_fragility" in events
     assert "firms_prepare_loan_applications" in events
-    assert "firms_send_one_loan_app" in events
-    assert "banks_provide_loans" in events
+    assert "credit_market_round" in events
     assert "firms_fire_workers" in events
 
 
@@ -62,7 +60,7 @@ def test_all_goods_market_events_registered():
     assert "consumers_calc_propensity" in events
     assert "consumers_decide_income_to_spend" in events
     assert "consumers_decide_firms_to_visit" in events
-    assert "consumers_shop_sequential" in events
+    assert "goods_market_round" in events
     assert "consumers_finalize_purchases" in events
 
 

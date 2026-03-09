@@ -9,29 +9,26 @@ def test_create_default_pipeline():
     max_M, max_H, max_Z = 5, 3, 2
     pipeline = create_default_pipeline(max_M=max_M, max_H=max_H, max_Z=max_Z)
 
-    # Default pipeline uses interleaved matching for both labor and credit.
-    # Base pipeline = 35 events + 2*max_M labor rounds + 2*max_H credit rounds
-    expected = 35 + 2 * max_M + 2 * max_H
+    # Default pipeline = 35 base events + max_M labor rounds + max_H credit rounds
+    expected = 35 + max_M + max_H
     assert len(pipeline) == expected
 
 
-def test_default_pipeline_interleaved_matching_events():
-    """Default pipeline uses interleaved matching (repeated rounds)."""
+def test_default_pipeline_market_round_counts():
+    """Default pipeline has correct number of market round events."""
     max_M, max_H = 3, 2
     pipeline = create_default_pipeline(max_M=max_M, max_H=max_H, max_Z=2)
 
     event_names = [e.name for e in pipeline.events]
 
-    # Interleaved labor: send/hire repeated max_M times
-    assert event_names.count("workers_send_one_round") == max_M
-    assert event_names.count("firms_hire_workers") == max_M
+    # Labor rounds repeated max_M times
+    assert event_names.count("labor_market_round") == max_M
 
-    # Interleaved credit: app/provide repeated max_H times
-    assert event_names.count("firms_send_one_loan_app") == max_H
-    assert event_names.count("banks_provide_loans") == max_H
+    # Credit rounds repeated max_H times
+    assert event_names.count("credit_market_round") == max_H
 
-    # consumers_shop_sequential is still a single event
-    assert event_names.count("consumers_shop_sequential") == 1
+    # Goods market round is a single event
+    assert event_names.count("goods_market_round") == 1
 
 
 def test_default_pipeline_order_matches_simulation():
@@ -71,10 +68,10 @@ def test_default_pipeline_contains_all_phases():
 
     # Check for representative events from each phase
     assert "firms_decide_desired_production" in event_names  # Planning
-    assert "workers_send_one_round" in event_names  # Labor (interleaved)
-    assert "firms_send_one_loan_app" in event_names  # Credit (interleaved)
+    assert "labor_market_round" in event_names  # Labor
+    assert "credit_market_round" in event_names  # Credit
     assert "firms_run_production" in event_names  # Production
-    assert "consumers_shop_sequential" in event_names  # Goods
+    assert "goods_market_round" in event_names  # Goods
     assert "firms_collect_revenue" in event_names  # Revenue
     assert "mark_bankrupt_firms" in event_names  # Bankruptcy
     assert "spawn_replacement_banks" in event_names  # Entry (end of period)
@@ -94,27 +91,25 @@ def test_default_pipeline_executes_without_error():
     # Just verify pipeline executed without errors
 
 
-def test_interleaved_labor_event_order():
-    """Interleaved labor events appear after workers_decide_firms_to_apply."""
+def test_default_pipeline_labor_round_order():
+    """Labor market rounds appear after workers_decide_firms_to_apply."""
     pipeline = create_default_pipeline(max_M=2, max_H=2, max_Z=2)
     names = [e.name for e in pipeline.events]
 
     # Find the insertion anchor
     decide_idx = names.index("workers_decide_firms_to_apply")
 
-    # The interleaved events should come right after
-    assert names[decide_idx + 1] == "workers_send_one_round"
-    assert names[decide_idx + 2] == "firms_hire_workers"
-    assert names[decide_idx + 3] == "workers_send_one_round"
-    assert names[decide_idx + 4] == "firms_hire_workers"
+    # The labor market rounds should come right after
+    assert names[decide_idx + 1] == "labor_market_round"
+    assert names[decide_idx + 2] == "labor_market_round"
 
 
 def test_default_pipeline_length_depends_on_market_params():
-    """Default (interleaved) pipeline length scales with max_M and max_H."""
+    """Default pipeline length scales with max_M and max_H."""
     p1 = create_default_pipeline(max_M=2, max_H=2, max_Z=2)
     p2 = create_default_pipeline(max_M=5, max_H=4, max_Z=2)
 
-    # Different max_M/max_H → different lengths
+    # Different max_M/max_H -> different lengths
     assert len(p1) != len(p2)
-    assert len(p1) == 35 + 2 * 2 + 2 * 2  # 43
-    assert len(p2) == 35 + 2 * 5 + 2 * 4  # 53
+    assert len(p1) == 35 + 2 + 2  # 39
+    assert len(p2) == 35 + 5 + 4  # 44

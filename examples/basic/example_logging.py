@@ -94,8 +94,7 @@ print("Done (you should see more log messages)")
 log_config = {
     "default_level": "WARNING",  # Base level (quiet)
     "events": {
-        "workers_send_one_round": "DEBUG",  # Verbose for this event
-        "firms_hire_workers": "DEBUG",  # And this one
+        "labor_market_round": "DEBUG",  # Verbose for this event
     },
 }
 
@@ -194,11 +193,9 @@ quiet_config = {
     "default_level": "INFO",
     "events": {
         # Market matching events run multiple times per period
-        "workers_send_one_round": "WARNING",
-        "firms_hire_workers": "WARNING",
-        "firms_send_one_loan_app": "WARNING",
-        "banks_provide_loans": "WARNING",
-        "consumers_shop_one_round": "WARNING",
+        "labor_market_round": "WARNING",
+        "credit_market_round": "WARNING",
+        "goods_market_round": "WARNING",
     },
 }
 
@@ -268,9 +265,9 @@ print("\nCustom TaxCollectionEvent defined (see code for logging pattern)")
 #     logging:
 #       default_level: INFO
 #       events:
-#         workers_send_one_round: WARNING
-#         firms_hire_workers: DEBUG
-#         firms_adjust_price: TRACE
+#         labor_market_round: WARNING
+#         credit_market_round: DEBUG
+#         firms_plan_price: TRACE
 #
 # Then load it:
 #
@@ -285,9 +282,9 @@ YAML logging configuration example:
 logging:
   default_level: INFO
   events:
-    workers_send_one_round: WARNING
-    firms_hire_workers: DEBUG
-    firms_adjust_price: TRACE
+    labor_market_round: WARNING
+    credit_market_round: DEBUG
+    firms_plan_price: TRACE
 """
 )
 

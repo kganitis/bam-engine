@@ -830,9 +830,9 @@ COLLECT_CONFIG = {
         "Borrower.gross_profit": "firms_collect_revenue",
         "Borrower.total_funds": "firms_collect_revenue",
         "Consumer.income_to_spend": "consumers_decide_income_to_spend",
-        "LoanBook.principal": "banks_provide_loans",
-        "LoanBook.rate": "banks_provide_loans",
-        "LoanBook.source_ids": "banks_provide_loans",
+        "LoanBook.principal": "credit_market_round",
+        "LoanBook.rate": "credit_market_round",
+        "LoanBook.source_ids": "credit_market_round",
     },
 }
 

@@ -3,7 +3,7 @@ Labor market events for wage setting, applications, and hiring.
 
 This module defines the labor market phase events that execute after planning.
 Firms post wage offers, unemployed workers apply to firms, and firms hire
-workers through a sequential matching process.
+workers through a batch matching process.
 
 Event Sequence
 --------------
@@ -13,12 +13,8 @@ The labor market events execute in this order:
 2. AdjustMinimumWage - Update minimum wage based on inflation (periodic)
 3. FirmsDecideWageOffer - Firms post wage offers with random markup
 4. WorkersDecideFirmsToApply - Unemployed workers select firms to apply to
-5. WorkersSendOneRound ↔ FirmsHireWorkers - Interleaved application/hiring rounds (max_M times)
+5. LaborMarketRound - Batch labor market matching (max_M times)
 6. FirmsCalcWageBill - Calculate total wage bill from employed workers
-
-The send/hire rounds are interleaved to simulate sequential matching: workers
-send one application, firms process it and hire if possible, then the next
-round begins. This repeats max_M times to process all applications.
 
 Design Notes
 ------------
@@ -27,6 +23,9 @@ Design Notes
 - Loyalty rule: workers whose contracts expired (not fired) apply to previous employer first
 - Wage offers constrained by minimum wage floor
 - Contract duration: θ + Poisson(λ=10) periods
+- Batch matching: all unemployed applicants simultaneously send their next application,
+  conflicts are resolved randomly (up to n_vacancies per firm), and accepted workers
+  are batch-hired
 
 Examples
 --------
@@ -413,7 +412,7 @@ class WorkersDecideFirmsToApply:
     See Also
     --------
     FirmsDecideWageOffer : Determines wage offers used for sorting
-    WorkersSendOneRound : Processes applications from queue
+    LaborMarketRound : Processes applications from queue
     Worker : Employment state with application queue
     bamengine.events._internal.labor_market.workers_decide_firms_to_apply : Implementation
     """
@@ -428,198 +427,6 @@ class WorkersDecideFirmsToApply:
             emp=sim.emp,
             max_M=sim.config.max_M,
             job_search_method=sim.config.job_search_method,
-            rng=sim.rng,
-        )
-
-
-@event
-class WorkersSendOneRound:
-    """
-    Workers send one round of job applications to firms.
-
-    Each unemployed worker sends one application from their queue to the
-    corresponding firm. Applications may be dropped if the firm's application
-    queue is full. This event is repeated max_M times in the pipeline,
-    interleaved with FirmsHireWorkers, to process all applications sequentially.
-
-    Algorithm
-    ---------
-    For each unemployed worker j:
-
-    1. Check if worker has applications remaining in queue (head pointer >= 0)
-    2. Pop next target firm from worker's application queue
-    3. Check if target firm still has vacancies (:math:`V_i > 0`)
-    4. If yes, append worker ID to firm's application queue
-    5. Advance worker's queue pointer
-
-    Mathematical Notation
-    ---------------------
-    Sequential matching process over R rounds (:math:`R` = max_M):
-
-    .. math::
-        \\text{Round } r: \\text{ For each unemployed } j, \\text{ send to firm } \\text{Queue}_j[r]
-
-    Applications processed: :math:`A_i(r) = \\{j : \\text{Queue}_j[r] = i \\text{ and } V_i > 0\\}`
-
-    Examples
-    --------
-    Execute this event (typically in loop with FirmsHireWorkers):
-
-    >>> import bamengine as be
-    >>> sim = be.Simulation.init(n_firms=100, n_households=500, seed=42)
-    >>> # First prepare applications
-    >>> event_prepare = sim.get_event("workers_decide_firms_to_apply")
-    >>> event_prepare.execute(sim)
-    >>> # Now process one round
-    >>> event_send = sim.get_event("workers_send_one_round")
-    >>> event_send.execute(sim)
-
-    Process all application rounds:
-
-    >>> max_M = sim.config.max_M
-    >>> for _ in range(max_M):
-    ...     sim.get_event("workers_send_one_round")().execute(sim)
-    ...     sim.get_event("firms_hire_workers")().execute(sim)
-
-    Notes
-    -----
-    This event must execute after WorkersDecideFirmsToApply (need application queues).
-
-    This event is typically repeated max_M times, interleaved with FirmsHireWorkers,
-    to simulate sequential matching where workers send one application at a time
-    and firms can hire immediately.
-
-    Applications may be dropped silently if:
-    - Target firm's application queue is full (unlikely with large buffers)
-    - Target firm has no vacancies remaining (filled by earlier hires)
-
-    The interleaved send/hire pattern prevents workers from "holding" multiple
-    offers simultaneously.
-
-    See Also
-    --------
-    WorkersDecideFirmsToApply : Prepares application queues
-    FirmsHireWorkers : Processes applications and hires workers
-    Worker : Employment state with application queue
-    bamengine.events._internal.labor_market.workers_send_one_round : Implementation
-    """
-
-    def execute(self, sim: Simulation) -> None:
-        from bamengine.events._internal.labor_market import workers_send_one_round
-
-        workers_send_one_round(sim.wrk, sim.emp, rng=sim.rng)
-
-
-@event
-class FirmsHireWorkers:
-    """
-    Firms process applications and hire workers.
-
-    Each firm with vacancies processes its application queue, hires up to the
-    number of available vacancies, and updates worker state (employment, wage,
-    contract duration). This event is repeated max_M times in the pipeline,
-    interleaved with WorkersSendOneRound, to process all application rounds.
-
-    Algorithm
-    ---------
-    For each firm i with vacancies (V_i > 0):
-
-    1. Pop one application from firm's application queue
-    2. Check if worker is still unemployed (may have been hired by another firm)
-    3. If worker unemployed:
-       - Set worker's employer = firm ID
-       - Set worker's wage = firm's wage offer
-       - Set contract duration: θ
-       - Set worker's periods_left = θ
-       - Increment firm's current_labor count
-       - Decrement firm's vacancies count
-    4. If no vacancies remain, clear firm's application queue
-
-    Mathematical Notation
-    ---------------------
-    For firm i hiring worker j:
-
-    .. math::
-        \\text{employer}_j \\leftarrow i
-
-        \\text{wage}_j \\leftarrow w_i
-
-        \\text{periods\\_left}_j \\leftarrow \\theta
-
-        L_i \\leftarrow L_i + 1
-
-        V_i \\leftarrow V_i - 1
-
-    where:
-
-    - :math:`L_i`: current labor force at firm i
-    - :math:`V_i`: remaining vacancies at firm i
-    - :math:`w_i`: wage offer by firm i
-    - :math:`\\theta`: minimum contract duration (config parameter)
-
-    Examples
-    --------
-    Execute this event (typically in loop with WorkersSendOneRound):
-
-    >>> import bamengine as be
-    >>> sim = be.Simulation.init(n_firms=100, n_households=500, seed=42)
-    >>> # Prepare applications
-    >>> sim.get_event("workers_decide_firms_to_apply")().execute(sim)
-    >>> # Process one round
-    >>> sim.get_event("workers_send_one_round")().execute(sim)
-    >>> sim.get_event("firms_hire_workers")().execute(sim)
-
-    Check hired workers:
-
-    >>> import numpy as np
-    >>> employed_count = sim.wrk.employed.sum()
-    >>> employed_count  # doctest: +SKIP
-    480
-
-    Verify contract durations:
-
-    >>> employed_mask = sim.wrk.employed
-    >>> contract_lengths = sim.wrk.periods_left[employed_mask]
-    >>> (contract_lengths >= sim.config.theta).all()
-    True
-
-    Check labor counts match:
-
-    >>> # Worker count should match firm labor count
-    >>> worker_counts = np.bincount(sim.wrk.employer[sim.wrk.employed], minlength=100)
-    >>> np.array_equal(worker_counts, sim.emp.current_labor)
-    True
-
-    Notes
-    -----
-    This event must execute after WorkersSendOneRound (need applications to process).
-
-    This event is typically repeated max_M times, interleaved with WorkersSendOneRound,
-    to simulate sequential matching where firms can hire immediately after receiving
-    applications.
-
-    Contract duration is stochastic: θ + Poisson(λ=10), where θ is the minimum
-    contract duration. This introduces heterogeneity in contract lengths.
-
-    Firms hire workers on a first-come, first-served basis from their application
-    queue. Workers who arrive later may find vacancies already filled.
-
-    See Also
-    --------
-    WorkersSendOneRound : Sends applications to firms
-    WorkersDecideFirmsToApply : Prepares application queues
-    Worker : Employment state updated by hiring
-    Employer : Labor force state updated by hiring
-    bamengine.events._internal.labor_market.firms_hire_workers : Implementation
-    """
-
-    def execute(self, sim: Simulation) -> None:
-        from bamengine.events._internal.labor_market import firms_hire_workers
-
-        firms_hire_workers(
-            wrk=sim.wrk,
-            emp=sim.emp,
-            theta=sim.config.theta,
             rng=sim.rng,
         )
 
@@ -684,7 +491,7 @@ class FirmsCalcWageBill:
 
     Notes
     -----
-    This event must execute after all FirmsHireWorkers rounds complete.
+    This event must execute after all LaborMarketRound rounds complete.
 
     The wage bill represents the total labor cost that will be paid in the
     production phase (FirmsPayWages event).
@@ -694,7 +501,7 @@ class FirmsCalcWageBill:
 
     See Also
     --------
-    FirmsHireWorkers : Hires workers and sets their wages
+    LaborMarketRound : Batch labor market matching that hires workers
     FirmsCalcBreakevenPrice : Uses wage bill to calculate production costs
     FirmsPayWages : Pays wages based on wage_bill
     Employer : Labor hiring state with wage_bill field
@@ -708,24 +515,22 @@ class FirmsCalcWageBill:
 
 
 @event
-class LaborMarketRoundVec:
-    """One vectorized round of labor market matching.
+class LaborMarketRound:
+    """One round of batch labor market matching.
 
-    Replaces the interleaved ``WorkersSendOneRound <-> FirmsHireWorkers``
-    pair with a single batch-matching event.  All unemployed applicants
-    simultaneously send their next application, conflicts are resolved
-    randomly (up to ``n_vacancies`` per firm), and accepted workers are
-    batch-hired.
+    All unemployed applicants simultaneously send their next application,
+    conflicts are resolved randomly (up to ``n_vacancies`` per firm), and
+    accepted workers are batch-hired.
 
-    This event is called ``max_M`` times in the vectorized pipeline.
+    This event is called ``max_M`` times in the pipeline.
 
     See Also
     --------
-    bamengine.events._internal.vectorized_markets.labor_market_round_vec :
+    bamengine.events._internal.labor_market.labor_market_round :
         Implementation
     """
 
     def execute(self, sim: Simulation) -> None:
-        from bamengine.events._internal.vectorized_markets import labor_market_round_vec
+        from bamengine.events._internal.labor_market import labor_market_round
 
-        labor_market_round_vec(sim.emp, sim.wrk, theta=sim.config.theta, rng=sim.rng)
+        labor_market_round(sim.emp, sim.wrk, theta=sim.config.theta, rng=sim.rng)

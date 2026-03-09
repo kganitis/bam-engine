@@ -92,9 +92,9 @@ def test_consumers_decide_firms_to_visit(benchmark, sim_steady_state):
 
 
 @pytest.mark.benchmark(group="events")
-def test_consumers_shop_sequential(benchmark, sim_steady_state):
-    """Benchmark sequential shopping (all rounds)."""
-    event = sim_steady_state.get_event("consumers_shop_sequential")
+def test_goods_market_round(benchmark, sim_steady_state):
+    """Benchmark batch-sequential goods market matching."""
+    event = sim_steady_state.get_event("goods_market_round")
     benchmark(event.execute, sim_steady_state)
 
 
@@ -106,7 +106,7 @@ def test_workers_decide_firms_to_apply(benchmark, sim_steady_state):
 
 
 @pytest.mark.benchmark(group="events")
-def test_workers_send_one_round(benchmark, sim_steady_state):
-    """Benchmark interleaved labor matching process (one round)."""
-    event = sim_steady_state.get_event("workers_send_one_round")
+def test_labor_market_round(benchmark, sim_steady_state):
+    """Benchmark batch labor market matching (one round)."""
+    event = sim_steady_state.get_event("labor_market_round")
     benchmark(event.execute, sim_steady_state)

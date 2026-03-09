@@ -440,12 +440,12 @@ def test_pipeline_with_repeats():
 
     pipeline = Pipeline.from_event_list(
         [
-            "workers_send_one_round",
-            "firms_hire_workers",
+            "labor_market_round",
+            "credit_market_round",
         ],
         repeats={
-            "workers_send_one_round": 5,
-            "firms_hire_workers": 5,
+            "labor_market_round": 5,
+            "credit_market_round": 5,
         },
     )
 
@@ -467,18 +467,18 @@ def test_pipeline_repeated_events_preserve_order():
     # These events are in reverse order - will be preserved
     pipeline = Pipeline.from_event_list(
         [
-            "firms_hire_workers",  # Listed first
-            "workers_send_one_round",  # Listed second
+            "credit_market_round",  # Listed first
+            "labor_market_round",  # Listed second
         ],
         repeats={
-            "workers_send_one_round": 3,
-            "firms_hire_workers": 3,
+            "labor_market_round": 3,
+            "credit_market_round": 3,
         },
     )
 
     # Order should be preserved (even though it's logically wrong)
-    assert pipeline.events[0].name == "firms_hire_workers"
-    assert pipeline.events[1].name == "workers_send_one_round"
+    assert pipeline.events[0].name == "credit_market_round"
+    assert pipeline.events[1].name == "labor_market_round"
     # Both should be repeated
     assert isinstance(pipeline.events[0], RepeatedEvent)
     assert isinstance(pipeline.events[1], RepeatedEvent)

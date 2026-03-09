@@ -4,12 +4,12 @@ Event-3 integration tests (credit market)
 Two tests exercise the full credit-market round on the tiny simulation:
 
 1. test_event_credit_market_basic
-   – happy-path regression + cross-component money-flow checks.
+   - happy-path regression + cross-component money-flow checks.
 
 2. test_credit_market_post_state_consistency
-   – deeper invariants that require seeing *all* components together.
+   - deeper invariants that require seeing *all* components together.
 
-They complement the unit tests by checking ledger arithmetic, borrower ↔ lender
+They complement the unit tests by checking ledger arithmetic, borrower <-> lender
 balance symmetry, queue flushing, and simulation helpers.
 """
 
@@ -21,12 +21,11 @@ from numpy.typing import NDArray
 from bamengine.events._internal.credit_market import (
     banks_decide_credit_supply,
     banks_decide_interest_rate,
-    banks_provide_loans,
+    credit_market_round,
     firms_calc_financial_fragility,
     firms_decide_credit_demand,
     firms_fire_workers,
     firms_prepare_loan_applications,
-    firms_send_one_loan_app,
 )
 from bamengine.simulation import Simulation
 
@@ -54,8 +53,14 @@ def _run_credit_event(sch: Simulation) -> NDArray[np.float64]:
         sch.bor, sch.lend, sch.lb, max_H=sch.max_H, rng=sch.rng
     )
     for _ in range(sch.max_H):
-        firms_send_one_loan_app(sch.bor, sch.lend)
-        banks_provide_loans(sch.bor, sch.lb, sch.lend, r_bar=sch.r_bar)
+        credit_market_round(
+            sch.bor,
+            sch.lend,
+            sch.lb,
+            r_bar=sch.r_bar,
+            max_leverage=sch.config.max_leverage,
+            rng=sch.rng,
+        )
 
     # layoffs triggered by unmet wage bill
     firms_fire_workers(sch.emp, sch.wrk, rng=sch.rng)

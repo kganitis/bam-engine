@@ -142,8 +142,8 @@ BUFFER_STOCK_COLLECT: dict[str, Any] = {
         "Consumer.savings": None,  # end of period
         "BufferStock.propensity": "consumers_calc_buffer_stock_propensity",
         "Shareholder.dividends": "consumers_calc_buffer_stock_propensity",
-        "LoanBook.principal": "banks_provide_loans",
-        "LoanBook.rate": "banks_provide_loans",
+        "LoanBook.principal": "credit_market_round",
+        "LoanBook.rate": "credit_market_round",
     },
 }
 

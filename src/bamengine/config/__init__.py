@@ -47,8 +47,8 @@ Custom logging:
 >>> log_config = {
 ...     "default_level": "DEBUG",
 ...     "events": {
-...         "workers_send_one_round": "WARNING",
-...         "firms_hire_workers": "INFO",
+...         "labor_market_round": "WARNING",
+...         "credit_market_round": "INFO",
 ...     },
 ... }
 >>> sim = be.Simulation.init(logging=log_config)

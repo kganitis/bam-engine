@@ -191,7 +191,7 @@ Use ``TRACE`` level logging to see exactly what happens inside events:
        logging={
            "default_level": "WARNING",
            "events": {
-               "firms_hire_workers": "TRACE",  # Verbose for this event only
+               "labor_market_round": "TRACE",  # Verbose for this event only
            },
        },
        seed=42,

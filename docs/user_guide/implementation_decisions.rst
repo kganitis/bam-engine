@@ -91,48 +91,55 @@ to the previous period's price if all production is zero.
 Market Matching
 ---------------
 
-.. _decision-interleaved:
+.. _decision-batch-matching:
 
-Matching Structure: Interleaved Round-Robin
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Matching Structure: Batch Matching with Conflict Resolution
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Choice:** Both labor and credit markets use interleaved round-robin matching ---
-agents send one application per round, then counterparties process, repeat for
-``max_M`` (labor) or ``max_H`` (credit) rounds.
+**Choice:** Both labor and credit markets use vectorized batch matching --- all
+applications in a round are processed simultaneously using NumPy operations, with
+conflict resolution for cases where multiple agents target the same counterparty.
 
 **Book reference:** Sections 3.3--3.4 describe "sequential" matching without
-distinguishing interleaved from cascade approaches.
+specifying the implementation approach.
 
 **Alternatives considered:**
 
-- *Cascade matching* --- each agent walks their entire ranked queue in a single pass
-  (one event per market). This alternative was implemented and tested but has been
-  removed from the codebase.
+- *Sequential loop-based matching* --- process each agent one at a time in a Python
+  loop. Simpler but much slower. This alternative was the original implementation
+  and has been removed from the codebase.
+- *Cascade matching* --- each agent walks their entire ranked queue in a single pass.
+  This alternative was implemented and tested but has been removed from the codebase.
 
-**Reasoning:** Both approaches were implemented and tested. Interleaved better
-distributes opportunities across agents --- no single agent exhausts all options
-before others get a turn.
+**Reasoning:** Batch matching with conflict resolution produces equivalent economic
+outcomes to sequential processing while being significantly faster through NumPy
+vectorization. When multiple workers apply to the same firm, the conflict resolver
+randomly selects one winner per vacancy, preserving fairness.
 
 
-.. _decision-labor-fifo:
+.. _decision-labor-conflict:
 
-Within-Round Labor Matching: Sequential (FIFO)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Within-Round Labor Matching: Batch Conflict Resolution
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Choice:** Within each matching round, workers are processed sequentially in shuffled
-order (FIFO from the application queue).
+**Choice:** Within each matching round, all workers apply simultaneously. When
+multiple workers target the same firm, a random conflict resolution step selects
+winners based on available vacancies.
 
 **Book reference:** Not specified.
 
 **Alternatives considered:**
 
-- *Simultaneous* --- all workers apply at once, firms select randomly from crowded
-  queues (creates natural unemployment through coordination failure). Tested but
-  produced artificial unemployment at high-wage firms due to crowding. This alternative
-  has been removed from the codebase.
+- *Sequential FIFO* --- process workers one at a time in shuffled order. Equivalent
+  outcomes but slower due to Python loops. This alternative was the original
+  implementation and has been removed from the codebase.
+- *Simultaneous crowding* --- all workers apply at once, firms select randomly from
+  crowded queues. Tested but produced artificial unemployment at high-wage firms
+  due to crowding. This alternative has been removed from the codebase.
 
-**Reasoning:** Sequential processing is cleaner: queue arrival order matters, with
-random shuffling each round for fairness. No crowding artifacts.
+**Reasoning:** Batch conflict resolution produces the same statistical properties
+as sequential FIFO (random ordering determines priority) while enabling vectorized
+NumPy operations for performance.
 
 
 .. _decision-search-pool:
@@ -157,26 +164,31 @@ important source of frictional unemployment. Configurable via
 ``job_search_method`` in ``defaults.yml``.
 
 
-.. _decision-sequential-shopping:
+.. _decision-batch-sequential-shopping:
 
-Goods Market: Sequential Shopping
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Goods Market: Batch-Sequential Shopping
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Choice:** Each consumer completes all ``Z`` firm visits before the next consumer
-starts. Consumer order is randomized each period.
+**Choice:** Consumers are shuffled and divided into batches (~10 batches by default).
+Each batch completes all ``Z`` firm visits using vectorized NumPy operations before
+the next batch starts. Consumer order is randomized each period.
 
 **Book reference:** Section 3.4 does not specify whether consumers take turns or
 complete all visits at once.
 
 **Alternatives considered:**
 
+- *Fully sequential* --- each consumer completes all visits before the next starts.
+  Equivalent outcomes but slower due to Python loops. This alternative was the
+  original implementation and has been removed from the codebase.
 - *Round-robin* --- all consumers visit one firm each, then all visit another, for
   ``Z`` rounds. This alternative was implemented and tested but has been removed from
   the codebase.
 
-**Reasoning:** Sequential creates more realistic market inefficiencies --- earlier
-consumers (random order) have better access to inventory. This is closer to a real
-market where first-movers have an advantage.
+**Reasoning:** Batch-sequential preserves the key economic property that earlier
+consumers have better access to inventory (sequential depletion), while using
+vectorized NumPy operations within each batch for performance. The batch size is
+small enough that inventory depletion dynamics are realistic.
 
 
 Wages & Contracts
@@ -494,5 +506,5 @@ reflects its intended economic meaning at the right moment. Scenario-specific
      - End-of-period
      - Must reflect final state after all income/spending flows.
    * - ``LoanBook.*``
-     - ``banks_provide_loans``
+     - ``credit_market_round``
      - After credit matching, showing all loans granted this period.

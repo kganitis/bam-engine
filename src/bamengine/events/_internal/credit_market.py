@@ -16,8 +16,7 @@ import numpy as np
 from bamengine import Rng, logging, make_rng
 from bamengine.relationships import LoanBook
 from bamengine.roles import Borrower, Employer, Lender, Worker
-from bamengine.typing import Idx1D
-from bamengine.utils import EPS, select_top_k_indices_sorted
+from bamengine.utils import EPS, grouped_cumsum, select_top_k_indices_sorted
 
 log = logging.getLogger(__name__)
 
@@ -285,385 +284,170 @@ def firms_prepare_loan_applications(
         log.info("--- Loan Application Preparation complete ---")
 
 
-def firms_send_one_loan_app(bor: Borrower, lend: Lender, rng: Rng = make_rng()) -> None:
-    """
-    Process one round of loan applications from firms to banks.
-
-    See Also
-    --------
-    bamengine.events.credit_market.FirmsSendOneLoanApp : Full documentation
-    """
-    info_enabled = log.isEnabledFor(logging.INFO)
-    if info_enabled:
-        log.info("--- Borrowers Sending One Round of Applications ---")
-    stride = bor.loan_apps_targets.shape[1]  # max_H
-    borrowers = np.where(bor.credit_demand > 0.0)[0]  # borrowers ids
-    active_applicants_mask = bor.loan_apps_head[borrowers] >= 0
-    borrowers_applying = borrowers[active_applicants_mask]
-
-    if borrowers_applying.size == 0:
-        if info_enabled:
-            log.info("  No borrowers with pending applications found. Skipping round.")
-            log.info("--- Application Sending Round complete ---")
-        return
-
-    if info_enabled:
-        log.info(
-            f"  Processing {borrowers_applying.size} borrowers with pending applications "
-            f"(Stride={stride})."
-        )
-
-    rng.shuffle(borrowers_applying)  # order randomly chosen at each time step
-
-    # Counters for logging
-    apps_sent_successfully = 0
-    apps_dropped_queue_full = 0
-    apps_dropped_no_credit = 0
-
-    for i in borrowers_applying:
-        head = bor.loan_apps_head[i]
-        if head < 0:
-            log.warning(
-                f"  Borrower {i} was in applying list but head is {head}. Skipping."
-            )
-            continue
-
-        row_from_head, col = divmod(head, stride)
-        if row_from_head != i:
-            log.error(
-                f"  CRITICAL MISMATCH for borrower {i}: "
-                f"head={head} decoded to row {row_from_head}."
-            )
-
-        if head >= (i + 1) * stride:
-            # Normal exit condition for an applicant who finished their list.
-            if log.isEnabledFor(logging.DEBUG):
-                log.debug(
-                    f"    Borrower {i} has exhausted all {stride} application slots. "
-                    f"Setting head to -1."
-                )
-            bor.loan_apps_head[i] = -1
-            continue
-
-        lend_id = bor.loan_apps_targets[row_from_head, col]
-        if lend_id < 0:
-            if log.isEnabledFor(logging.DEBUG):
-                log.debug(
-                    f"    Borrower {i} encountered sentinel (-1) at col {col}. "
-                    f"End of list. Setting head to -1."
-                )
-            bor.loan_apps_head[i] = -1
-            continue
-
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug(f"    Borrower {i} applying to bank {lend_id} (app #{col + 1}).")
-
-        # Check for remaining credit before checking queue space
-        if lend.credit_supply[lend_id] <= 0:
-            if log.isEnabledFor(logging.DEBUG):
-                log.debug(
-                    f"  Bank {lend_id} has no more credit to supply. "
-                    f"Borrower {i} application dropped."
-                )
-            apps_dropped_no_credit += 1
-            bor.loan_apps_head[i] = head + 1
-            bor.loan_apps_targets[row_from_head, col] = -1
-            continue
-
-        # Check bank's application queue available space
-        ptr = lend.recv_loan_apps_head[lend_id] + 1
-        if ptr >= lend.recv_loan_apps.shape[1]:
-            if log.isEnabledFor(logging.DEBUG):
-                log.debug(
-                    f"    Bank {lend_id} application queue full. "
-                    f"Borrower {i} application dropped."
-                )
-            apps_dropped_queue_full += 1
-            bor.loan_apps_head[i] = head + 1
-            bor.loan_apps_targets[row_from_head, col] = -1
-            continue
-
-        # Application is successful
-        lend.recv_loan_apps_head[lend_id] = ptr
-        lend.recv_loan_apps[lend_id, ptr] = i
-        apps_sent_successfully += 1
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug(
-                f"  Borrower {i} application queued at bank {lend_id} slot {ptr}."
-            )
-
-        bor.loan_apps_head[i] = head + 1
-        bor.loan_apps_targets[row_from_head, col] = -1
-
-    # Summary log
-    total_dropped = apps_dropped_queue_full + apps_dropped_no_credit
-    if info_enabled:
-        log.info(
-            f"  Round Summary: "
-            f"{apps_sent_successfully} applications successfully queued, "
-            f"{total_dropped} dropped."
-        )
-    if total_dropped > 0 and log.isEnabledFor(logging.DEBUG):
-        log.debug(
-            f"    Dropped breakdown -> Queue Full: {apps_dropped_queue_full},"
-            f" No Credit: {apps_dropped_no_credit}"
-        )
-    if info_enabled:
-        log.info("--- Application Sending Round complete ---")
-
-
-def _clean_queue(
-    slice_: Idx1D,
+def credit_market_round(
     bor: Borrower,
-    bank_idx_for_log: int,
-) -> Idx1D:  # pragma: no cover
-    """
-    Return a queue (Idx1D) of *unique* borrower ids that still demand credit
-    from the raw queue slice (may contain -1 sentinels and duplicates).
+    lend: Lender,
+    lb: LoanBook,
+    *,
+    r_bar: float,
+    max_leverage: float = 0.0,
+    max_loan_to_net_worth: float = 0.0,
+    rng: Rng = make_rng(),
+) -> None:
+    """One vectorized round of credit market matching.
 
-    Borrowers are sorted by leverage (ascending projected_fragility),
-    so the least fragile firms are served first.
+    All borrowers simultaneously send their next loan application,
+    applicants are grouped by bank, ranked by fragility (ascending),
+    and loans are provisioned using grouped cumsum to track supply
+    exhaustion per bank.
 
     Parameters
     ----------
-    slice_ : Idx1D
-        Raw queue slice (may contain -1 sentinels and duplicates)
     bor : Borrower
-        Borrower role with credit_demand and net_worth
-    bank_idx_for_log : int
-        Bank index for logging purposes
-
-    Returns
-    -------
-    Idx1D
-        Cleaned queue of unique borrower ids with positive credit demand
-    """
-    if log.isEnabledFor(logging.TRACE):
-        log.trace(
-            f"    Bank {bank_idx_for_log}: Cleaning queue. Initial raw slice: {slice_}"
-        )
-
-    # Drop -1 sentinels
-    cleaned_slice = slice_[slice_ >= 0]
-    if cleaned_slice.size == 0:
-        if log.isEnabledFor(logging.TRACE):
-            log.trace(
-                f"    Bank {bank_idx_for_log}: Queue empty after dropping sentinels."
-            )
-        return cleaned_slice.astype(np.intp)
-
-    if log.isEnabledFor(logging.TRACE):
-        log.trace(
-            f"    Bank {bank_idx_for_log}: "
-            f"Queue after dropping sentinels: {cleaned_slice}"
-        )
-
-    # Unique *without* sorting
-    first_idx = np.unique(cleaned_slice, return_index=True)[1]
-    unique_slice = cleaned_slice[np.sort(first_idx)]
-    if log.isEnabledFor(logging.TRACE):
-        log.trace(
-            f"    Bank {bank_idx_for_log}: "
-            f"Queue after unique (order kept): {unique_slice}"
-        )
-
-    # Keep only positive-demand firms
-    cd_mask = bor.credit_demand[unique_slice] > 0
-    filtered_queue = unique_slice[cd_mask]
-    if filtered_queue.size == 0:
-        if log.isEnabledFor(logging.TRACE):
-            log.trace(
-                f"    Bank {bank_idx_for_log}: "
-                f"No borrowers left after credit-demand filter."
-            )
-        return filtered_queue
-
-    # Sort by leverage (ascending) - least leveraged first
-    # Uses projected_fragility as proxy for leverage
-    sort_idx = np.argsort(bor.projected_fragility[filtered_queue])
-    ordered_queue = filtered_queue[sort_idx]
-    if log.isEnabledFor(logging.TRACE):
-        log.trace(
-            f"    Bank {bank_idx_for_log}: "
-            f"Final cleaned queue (leverage-asc): {ordered_queue}"
-        )
-    return ordered_queue
-
-
-def banks_provide_loans(
-    bor: Borrower,
-    lb: LoanBook,
-    lend: Lender,
-    *,
-    r_bar: float,
-    max_loan_to_net_worth: float = 0.0,
-    max_leverage: float = 0.0,
-) -> None:
-    """
-    Banks process applications and provide loans ranked by net worth.
-
-    Loans accumulate across rounds — no per-bank purge of existing loans.
-    Multi-lender support: firms can hold loans from multiple banks.
-
-    See Also
-    --------
-    bamengine.events.credit_market.BanksProvideLoans : Full documentation
+        Borrower role (firms).
+    lend : Lender
+        Lender role (banks).
+    lb : LoanBook
+        Loan relationship ledger.
+    r_bar : float
+        Baseline policy rate.
+    max_leverage : float
+        Cap on fragility for interest rate calculation.
+    max_loan_to_net_worth : float
+        Maximum loan-to-net-worth ratio (0 = no cap).
+    rng : Rng
+        Random generator for tie-breaking.
     """
     assert lend.opex_shock is not None, (
-        "lend.opex_shock must be set before banks_provide_loans() — "
+        "lend.opex_shock must be set before credit_market_round() — "
         "run banks_decide_interest_rate() first"
     )
     info_enabled = log.isEnabledFor(logging.INFO)
     if info_enabled:
-        log.info("--- Banks Providing Loans ---")
-    bank_ids = np.where(lend.credit_supply > 0.0)[0]
-    total_credit_supply = lend.credit_supply.sum()
-    if info_enabled:
-        log.info(
-            f"  {bank_ids.size} banks have {total_credit_supply:,} "
-            f"total credit supply and are attempting to provide loans."
-        )
+        log.info("--- Credit Market Round ---")
 
-    total_loans_this_round = 0
+    stride = bor.loan_apps_targets.shape[1]  # max_H
+    n_banks = lend.credit_supply.size
 
-    for k in bank_ids:
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug(f"  Processing bank {k} (credit supply: {lend.credit_supply[k]})")
+    # 1. Find active borrowers with credit demand > 0 and pending apps
+    borrowers = np.where(bor.credit_demand > 0.0)[0]
+    if borrowers.size == 0:
+        if info_enabled:
+            log.info("  No borrowers with credit demand. Skipping round.")
+            log.info("--- Credit Market Round complete ---")
+        return
 
-        n_recv = lend.recv_loan_apps_head[k] + 1
-        if n_recv <= 0:
-            if log.isEnabledFor(logging.DEBUG):
-                log.debug(f"    Bank {k} has no applications. Skipping.")
-            continue
+    active_mask = bor.loan_apps_head[borrowers] >= 0
+    active = borrowers[active_mask]
 
-        raw_queue = lend.recv_loan_apps[k, :n_recv].copy()
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug(
-                f"    Bank {k} raw application queue "
-                f"({n_recv} applications): {raw_queue}"
-            )
+    if active.size == 0:
+        if info_enabled:
+            log.info("  No borrowers with pending applications. Skipping round.")
+            log.info("--- Credit Market Round complete ---")
+        return
 
-        queue = _clean_queue(raw_queue, bor, bank_idx_for_log=k)
+    # 2. Decode targets from head pointers
+    heads = bor.loan_apps_head[active]
+    rows, cols = np.divmod(heads, stride)
+    target_banks = bor.loan_apps_targets[rows, cols]
 
-        if queue.size == 0:
-            if log.isEnabledFor(logging.DEBUG):
-                log.debug(
-                    f"    Bank {k}: no valid (unique, positive credit demand) "
-                    f"applicants in queue. Flushing."
-                )
-            lend.recv_loan_apps_head[k] = -1
-            lend.recv_loan_apps[k, :n_recv] = -1
-            continue
+    # 3. Filter: valid targets (not -1) with credit supply
+    valid_mask = target_banks >= 0
+    valid_with_supply = valid_mask.copy()
+    valid_with_supply[valid_mask] &= lend.credit_supply[target_banks[valid_mask]] > EPS
 
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug(
-                f"    Bank {k} has {queue.size} valid potential borrowers: {queue}"
-            )
+    # 4. Advance ALL head pointers
+    new_heads = heads + 1
+    exhausted = new_heads >= (active + 1) * stride
+    new_heads[exhausted | (~valid_mask)] = -1
+    bor.loan_apps_head[active] = new_heads
 
-        # gather loan data
-        cd = bor.credit_demand[queue]
-        frag = bor.projected_fragility[queue]
-        max_grant = np.minimum(cd, lend.credit_supply[k])
+    # 5. Get valid senders
+    valid_firms = active[valid_with_supply]
+    valid_banks = target_banks[valid_with_supply]
 
-        # Apply loan-to-net-worth cap if configured
-        if max_loan_to_net_worth > 0.0:
-            nw_cap = bor.net_worth[queue] * max_loan_to_net_worth
-            max_grant = np.minimum(max_grant, nw_cap)
-            if log.isEnabledFor(logging.DEBUG):
-                log.debug(
-                    f"    Bank {k}: Applied max_loan_to_net_worth={max_loan_to_net_worth} "
-                    f"cap. nw_cap={nw_cap}, max_grant after cap={max_grant}"
-                )
+    if valid_firms.size == 0:
+        if info_enabled:
+            log.info("  No valid applications this round.")
+            log.info("--- Credit Market Round complete ---")
+        return
 
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug(
-                f"    Bank {k} loan data: credit_demand={cd}, "
-                f"fragility={frag}, max_grant={max_grant}"
-            )
+    # 6. Group by target bank, sort within groups by fragility (ascending)
+    #    np.lexsort sorts by last key first, so (fragility, bank) sorts by
+    #    bank first, then by fragility within each bank.
+    frag = bor.projected_fragility[valid_firms]
+    sort_order = np.lexsort((frag, valid_banks))
+    sorted_firms = valid_firms[sort_order]
+    sorted_banks = valid_banks[sort_order]
+    sorted_frag = frag[sort_order]
 
-        # determine actual loan amounts
-        cumsum = np.cumsum(max_grant, dtype=np.float64)
-        cut = cumsum > lend.credit_supply[k]
-        if cut.any():
-            first_exceed = cut.argmax()
-            if log.isEnabledFor(logging.DEBUG):
-                log.debug(
-                    f"    Bank {k} credit supply exceeded at position {first_exceed}. "
-                    f"Adjusting loan amounts."
-                )
-            max_grant[first_exceed] -= cumsum[first_exceed] - lend.credit_supply[k]
-            max_grant[first_exceed + 1 :] = 0.0
+    # 7. Compute loan amounts per applicant
+    max_grant = bor.credit_demand[sorted_firms].copy()
 
-        mask = max_grant > 0.0
-        # check if any loans were granted, should never trigger
-        if not mask.any():  # pragma: no cover
-            if log.isEnabledFor(logging.DEBUG):
-                log.debug(f"    Bank {k}: No loans granted this round. Flushing queue.")
-            lend.recv_loan_apps_head[k] = -1
-            lend.recv_loan_apps[k, :n_recv] = -1
-            continue
+    # Apply loan-to-net-worth cap if configured
+    if max_loan_to_net_worth > 0.0:
+        nw_cap = bor.net_worth[sorted_firms] * max_loan_to_net_worth
+        max_grant = np.minimum(max_grant, nw_cap)
 
-        final_borrowers = queue[mask]
-        final_amounts = max_grant[mask]
-        # Cap fragility for interest rate calculation if max_leverage is set
-        frag_for_rate = frag[mask]
-        if max_leverage > 0.0:
-            frag_for_rate = np.minimum(frag_for_rate, max_leverage)
-            if log.isEnabledFor(logging.DEBUG):
-                capped_count = np.sum(frag[mask] > max_leverage)
-                if capped_count > 0:
-                    log.debug(
-                        f"    Bank {k}: Capped fragility for {capped_count} borrower(s) "
-                        f"at max_leverage={max_leverage}"
-                    )
-        final_rates = r_bar * (1.0 + lend.opex_shock[k] * frag_for_rate)
+    # 8. Grouped cumsum to track supply exhaustion per bank
+    #    Find group boundaries (where bank ID changes)
+    bank_change = np.empty(sorted_banks.size, dtype=np.bool_)
+    bank_change[0] = True
+    bank_change[1:] = sorted_banks[1:] != sorted_banks[:-1]
+    group_starts = np.where(bank_change)[0]
 
-        # extra validation, should never trigger
-        if final_borrowers.size == 0:  # pragma: no cover
-            lend.recv_loan_apps_head[k] = -1
-            lend.recv_loan_apps[k, :n_recv] = -1
-            continue
+    # Per-bank supply lookup for each applicant's bank
+    per_applicant_supply = lend.credit_supply[sorted_banks]
 
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug(
-                f"    Bank {k} is granting loans to "
-                f"{final_borrowers.size} borrower(s): {final_borrowers.tolist()}"
-            )
-        total_loans_this_round += final_amounts.sum()
+    # Grouped cumsum of max_grant per bank
+    cum_demand = grouped_cumsum(max_grant, group_starts)
 
-        # ledger updates
-        log.debug(f"      Updating ledger for {final_borrowers.size} new loans.")
-        lb.append_loans_for_lender(k, final_borrowers, final_amounts, final_rates)
+    # Mask where cumulative demand exceeds supply
+    exceeds = cum_demand > per_applicant_supply
+    # For the boundary applicant: partial grant
+    # Amount available = supply - (cum_demand - max_grant) = supply - cum_demand_before
+    cum_before = cum_demand - max_grant
+    partial_amount = np.maximum(per_applicant_supply - cum_before, 0.0)
+    # Final amounts: full grant where not exceeding, partial at boundary, 0 beyond
+    final_amounts = np.where(exceeds, partial_amount, max_grant)
 
-        # borrower‑side updates
-        bor.total_funds[final_borrowers] += final_amounts
-        bor.credit_demand[final_borrowers] -= final_amounts
-        assert (bor.credit_demand >= -EPS).all(), "negative credit_demand"
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug(
-                "      Borrower state updated: "
-                "total_funds increased, credit_demand decreased"
-            )
+    # Only keep positive amounts
+    pos_mask = final_amounts > EPS
+    if not pos_mask.any():
+        if info_enabled:
+            log.info("  No loans granted this round.")
+            log.info("--- Credit Market Round complete ---")
+        return
 
-        # lender‑side updates
-        lend.credit_supply[k] -= final_amounts.sum()
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug(
-                f"      Bank {k} state updated: credit_supply={lend.credit_supply[k]}"
-            )
+    loan_firms = sorted_firms[pos_mask]
+    loan_banks = sorted_banks[pos_mask]
+    loan_amounts = final_amounts[pos_mask]
+    loan_frag = sorted_frag[pos_mask]
 
-        # flush inbound queue for this bank
-        lend.recv_loan_apps_head[k] = -1
-        lend.recv_loan_apps[k, :n_recv] = -1
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug(f"    Bank {k} application queue flushed.")
+    # 9. Calculate interest rates
+    frag_for_rate = loan_frag
+    if max_leverage > 0.0:
+        frag_for_rate = np.minimum(frag_for_rate, max_leverage)
+    loan_rates = r_bar * (1.0 + lend.opex_shock[loan_banks] * frag_for_rate)
+
+    # 10. Batch append to LoanBook
+    lb.append_loans_batch(loan_banks, loan_firms, loan_amounts, loan_rates)
+
+    # 11. Update borrower state
+    np.add.at(bor.total_funds, loan_firms, loan_amounts)
+    np.subtract.at(bor.credit_demand, loan_firms, loan_amounts)
+    # Clamp any tiny negative values from floating point
+    np.maximum(bor.credit_demand, 0.0, out=bor.credit_demand)
+
+    # 12. Update lender state: deduct per-bank totals
+    bank_totals = np.bincount(loan_banks, weights=loan_amounts, minlength=n_banks)
+    lend.credit_supply -= bank_totals
 
     if info_enabled:
         log.info(
-            f"  Total loan amount provided this round across all banks: "
-            f"{total_loans_this_round}"
+            f"  Granted {loan_firms.size} loans totaling {loan_amounts.sum():,.2f}"
         )
-        log.info("--- Banks Providing Loans complete ---")
+        log.info("--- Credit Market Round complete ---")
 
 
 def firms_fire_workers(
@@ -672,143 +456,124 @@ def firms_fire_workers(
     *,
     rng: Rng = make_rng(),
 ) -> None:
-    """
-    Firms lay off workers when credit is insufficient for wage bill.
+    """Vectorized firing of workers when credit is insufficient.
 
-    See Also
-    --------
-    bamengine.events.credit_market.FirmsFireWorkers : Full documentation
+    Groups workers by employer, identifies firms with financing gaps,
+    randomly selects victims using cumulative wage sums, and batch-updates
+    all worker/firm state.
+
+    Parameters
+    ----------
+    emp : Employer
+        Employer role (firms).
+    wrk : Worker
+        Worker role (households).
+    rng : Rng
+        Random generator for random firing selection.
     """
     info_enabled = log.isEnabledFor(logging.INFO)
     if info_enabled:
         log.info("--- Firms Firing Workers ---")
 
-    # Find firms with financing gaps
+    n_firms = emp.current_labor.size
     gaps = emp.wage_bill - emp.total_funds
-    firing_ids = np.where(gaps > 0.0)[0]
-    total_gap = gaps[gaps > EPS].sum() if gaps.size > 0 else 0.0
+    firing_ids = np.where(gaps > EPS)[0]
+
+    if firing_ids.size == 0:
+        if info_enabled:
+            log.info("  No firms need to fire workers.")
+            log.info("--- Firms Firing Workers complete ---")
+        return
 
     if info_enabled:
+        total_gap = gaps[firing_ids].sum()
         log.info(
-            f"  {firing_ids.size} firms have financing gaps totaling {total_gap:,.2f} "
-            f"and need to fire workers."
+            f"  {firing_ids.size} firms have financing gaps totaling {total_gap:,.2f}"
         )
 
-    total_workers_fired_this_step = 0
+    # Build worker-to-employer index for all employed workers
+    employed_mask = wrk.employed == 1
+    all_employed = np.where(employed_mask)[0]
 
-    for i in firing_ids:
-        gap = gaps[i]
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug(
-                f"  Processing firm {i} (wage bill: {emp.wage_bill[i]:.2f}, "
-                f"total funds: {emp.total_funds[i]:.2f}, gap: {gap:.2f})"
-            )
+    if all_employed.size == 0:
+        if info_enabled:
+            log.info("  No employed workers. Skipping.")
+            log.info("--- Firms Firing Workers complete ---")
+        return
 
-        # validate workforce consistency
-        workforce = np.where((wrk.employed == 1) & (wrk.employer == i))[0]
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug(
-                f"    Firm {i} workforce validation: "
-                f"real={workforce.size}, recorded={emp.current_labor[i]}"
-            )
+    employers_of_employed = wrk.employer[all_employed]
 
-        if workforce.size != emp.current_labor[i]:
-            log.critical(
-                f"    Firm {i}: Real workforce ({workforce.size}) INCONSISTENT "
-                f"with bookkeeping ({emp.current_labor[i]})."
-            )
+    # Sort workers by employer
+    sort_order = np.argsort(employers_of_employed, kind="stable")
+    sorted_workers = all_employed[sort_order]
+    sorted_employers = employers_of_employed[sort_order]
 
-        if workforce.size == 0:
-            if log.isEnabledFor(logging.DEBUG):
-                log.debug(f"    Firm {i}: No workers to fire. Skipping.")
+    # Group boundaries per firm
+    boundaries_lo = np.searchsorted(sorted_employers, firing_ids, side="left")
+    boundaries_hi = np.searchsorted(sorted_employers, firing_ids, side="right")
+
+    # Process each firing firm
+    all_victims = []
+    all_victim_employers = []
+    total_fired = 0
+
+    for idx in range(firing_ids.size):
+        i = firing_ids[idx]
+        lo, hi = boundaries_lo[idx], boundaries_hi[idx]
+        group = sorted_workers[lo:hi]
+
+        if group.size == 0:
             continue
 
-        # determine workers to fire
-        worker_wages = wrk.wage[workforce]
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug(
-                f"    Firm {i} worker wages: {worker_wages} "
-                f"(total: {worker_wages.sum():.2f})"
-            )
+        gap = gaps[i]
+        worker_wages = wrk.wage[group]
 
-        # Random firing until gap is covered
-        shuffled_indices = rng.permutation(workforce.size)
-        shuffled_wages = worker_wages[shuffled_indices]
+        # Random firing until gap covered
+        shuffled = rng.permutation(group.size)
+        shuffled_wages = worker_wages[shuffled]
         cumsum_wages = np.cumsum(shuffled_wages)
 
-        # Find first position where cumulative wages >= gap
-        sufficient_mask = cumsum_wages >= gap
-        if sufficient_mask.any():
-            n_fire = sufficient_mask.argmax() + 1
+        sufficient = cumsum_wages >= gap
+        if sufficient.any():
+            n_fire = int(sufficient.argmax()) + 1
         else:
-            n_fire = workforce.size  # Fire everyone if still not enough
+            n_fire = group.size
 
-        victims_indices = shuffled_indices[:n_fire]
-        victims = workforce[victims_indices]
+        victims = group[shuffled[:n_fire]]
+        all_victims.append(victims)
+        all_victim_employers.append(np.full(victims.size, i, dtype=np.intp))
+        total_fired += victims.size
 
-        fired_wages = wrk.wage[victims]
-        total_fired_wage = fired_wages.sum()
+    if not all_victims:
+        if info_enabled:
+            log.info("  No workers fired.")
+            log.info("--- Firms Firing Workers complete ---")
+        return
 
-        # extra validation, should never trigger
-        if victims.size == 0:  # pragma: no cover
-            continue
+    victims = np.concatenate(all_victims)
+    victim_employers = np.concatenate(all_victim_employers)
 
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug(
-                f"    Firm {i} is firing {victims.size} worker(s): "
-                f"{victims.tolist()} (total wage savings: {total_fired_wage:.2f})"
-            )
-        total_workers_fired_this_step += victims.size
+    # Capture fired wages before zeroing
+    fired_wages = wrk.wage[victims].copy()
 
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug(
-                f"    Firm {i} firing details: gap={gap:.2f}, "
-                f"wage_savings={total_fired_wage:.2f}, "
-                f"coverage={min(100.0, (total_fired_wage / gap) * 100):.1f}%"
-            )
+    # Batch worker-side updates
+    wrk.employer[victims] = -1
+    wrk.employer_prev[victims] = victim_employers
+    wrk.wage[victims] = 0.0
+    wrk.periods_left[victims] = 0
+    wrk.contract_expired[victims] = 0
+    wrk.fired[victims] = 1
 
-        # worker‑side updates
-        log.debug(f"      Updating state for {victims.size} fired workers.")
-        wrk.employer[victims] = -1
-        wrk.employer_prev[victims] = i
-        wrk.wage[victims] = 0.0
-        wrk.periods_left[victims] = 0
-        wrk.contract_expired[victims] = 0
-        wrk.fired[victims] = 1
+    # Batch firm-side updates
+    fire_counts = np.bincount(victim_employers, minlength=n_firms)
+    emp.current_labor -= fire_counts.astype(emp.current_labor.dtype)
 
-        # firm‑side updates
-        emp.current_labor[i] -= victims.size
-        # Recalculate wage bill based on remaining workers
-        remaining_workforce = np.where((wrk.employed == 1) & (wrk.employer == i))[0]
-        emp.wage_bill[i] = (
-            wrk.wage[remaining_workforce].sum() if remaining_workforce.size > 0 else 0.0
-        )
-
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug(
-                f"      Firm {i} state updated: "
-                f"current_labor={emp.current_labor[i]}, "
-                f"wage_bill={emp.wage_bill[i]:.2f}"
-            )
+    # Subtract fired wages from wage bill (avoids full-workforce scan)
+    fired_wage_sum = np.bincount(
+        victim_employers, weights=fired_wages, minlength=n_firms
+    )
+    emp.wage_bill -= fired_wage_sum
 
     if info_enabled:
-        log.info(
-            f"  Total workers fired this step across all firms: "
-            f"{total_workers_fired_this_step}"
-        )
-    if log.isEnabledFor(logging.DEBUG):
-        remaining_gaps = emp.wage_bill - emp.total_funds
-        firms_with_gaps = np.flatnonzero(remaining_gaps > EPS)
-        if firms_with_gaps.size > 0:
-            log.warning(
-                f"[REMAINING GAPS] {firms_with_gaps.size} firms still have "
-                f"financing gaps after firing."
-            )
-            for i_gap in firms_with_gaps:
-                log.warning(
-                    f"  Firm {i_gap}: remaining gap={remaining_gaps[i_gap]:.2f}"
-                )
-        else:
-            log.debug("[GAPS RESOLVED] All financing gaps resolved after firing.")
-    if info_enabled:
+        log.info(f"  Fired {total_fired} workers across {firing_ids.size} firms.")
         log.info("--- Firms Firing Workers complete ---")

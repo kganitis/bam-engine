@@ -226,8 +226,8 @@ class TestLoggingValidation:
         log_config = {
             "default_level": "INFO",
             "events": {
-                "workers_send_one_round": "DEBUG",
-                "firms_hire_workers": "WARNING",
+                "labor_market_round": "DEBUG",
+                "credit_market_round": "WARNING",
             },
         }
         # Should not raise
@@ -235,13 +235,13 @@ class TestLoggingValidation:
 
     def test_invalid_event_level(self):
         """Invalid event log levels should be rejected."""
-        log_config = {"events": {"workers_send_one_round": "INVALID"}}
+        log_config = {"events": {"labor_market_round": "INVALID"}}
         with pytest.raises(ValueError, match="Invalid log level"):
             ConfigValidator._validate_logging(log_config)
 
     def test_events_must_be_dict(self):
         """Events must be a dictionary."""
-        log_config = {"events": ["workers_send_one_round"]}
+        log_config = {"events": ["labor_market_round"]}
         with pytest.raises(ValueError, match="must be dict"):
             ConfigValidator._validate_logging(log_config)
 
@@ -373,7 +373,7 @@ events:
         yaml_content = """
 events:
   - firms_decide_desired_production
-  - consumers_shop_sequential x {max_Z}
+  - goods_market_round x {max_Z}
 """
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
             f.write(yaml_content)
@@ -391,7 +391,7 @@ events:
         """Unsubstituted placeholders should raise ValueError."""
         yaml_content = """
 events:
-  - workers_send_one_round_{i}
+  - labor_market_round_{i}
 """
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
             f.write(yaml_content)
@@ -425,7 +425,7 @@ events:
         """Interleaved event syntax should be validated."""
         yaml_content = """
 events:
-  - workers_send_one_round <-> firms_hire_workers x 2
+  - labor_market_round <-> credit_market_round x 2
 """
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
             f.write(yaml_content)
