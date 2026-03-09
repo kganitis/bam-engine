@@ -10,8 +10,43 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 
    Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.
 
+[0.6.0] - 2026-03-09
+---------------------
+
+This release consolidates two parallel market matching implementations (sequential
+Python loops vs. vectorized NumPy batches) into a single vectorized implementation.
+Simulation behavior is preserved.
+
+Changed
+~~~~~~~
+
+**Vectorized Market Matching**
+
+* **Labor market**: ``labor_market_round`` replaces ``workers_send_one_round`` +
+  ``firms_hire_workers``. Batch conflict resolution via ``resolve_conflicts()`` utility.
+  Pipeline calls it ``max_M`` times (one round per call).
+* **Credit market**: ``credit_market_round`` replaces ``firms_send_one_loan_app`` +
+  ``banks_provide_loans``. Firms sorted by ``projected_fragility`` (ascending leverage)
+  within each target bank; ``grouped_cumsum()`` tracks per-bank supply exhaustion.
+  Pipeline calls it ``max_H`` times.
+* **Goods market**: ``goods_market_round`` replaces ``consumers_shop_sequential``.
+  Uses **batch-sequential processing** (~10 randomized consumer batches, each completing
+  all Z visits before the next starts). Pipeline calls it once (handles visits internally).
+  See :ref:`decision-batch-sequential-shopping` for design rationale.
+
+**Pipeline Syntax**
+
+* Removed interleave syntax (``<->``) from pipeline YAML. Only ``event x N`` repetition
+  remains.
+
+Removed
+~~~~~~~
+
+* **Sequential event classes**: ``WorkersSendOneRound``, ``FirmsHireWorkers``,
+  ``FirmsSendOneLoanApp``, ``BanksProvideLoans``, ``ConsumersShopSequential``.
+
 [0.5.1] - 2026-03-04
-------------
+---------------------
 
 Performance
 ~~~~~~~~~~~
@@ -22,7 +57,7 @@ Performance
   loyalty shift, slice assignment). ~3.5x faster event execution.
 
 [0.5.0] - 2026-03-04
-------------
+---------------------
 
 Added
 ~~~~~
