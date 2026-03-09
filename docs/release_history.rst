@@ -39,6 +39,12 @@ Changed
 * Removed interleave syntax (``<->``) from pipeline YAML. Only ``event x N`` repetition
   remains.
 
+Performance
+~~~~~~~~~~~
+
+* Vectorized batch matching yields **~30% faster** full simulation runs across all
+  economy sizes. See `ASV benchmarks <https://kganitis.github.io/bam-engine/>`_.
+
 Removed
 ~~~~~~~
 
