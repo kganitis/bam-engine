@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from bamengine.utils import grouped_cumsum, resolve_conflicts
+from bamengine.utils import (
+    _flatten_and_shuffle_groups,
+    grouped_cumsum,
+    resolve_conflicts,
+)
 
 # ── grouped_cumsum ────────────────────────────────────────────────────────────
 
@@ -184,3 +188,85 @@ class TestResolveConflicts:
             assert accepted[mask_t].sum() == expected, (
                 f"target {t}: expected {expected}"
             )
+
+
+# ── _flatten_and_shuffle_groups ──────────────────────────────────────────────
+
+
+class TestFlattenAndShuffleGroups:
+    """Tests for _flatten_and_shuffle_groups."""
+
+    def test_single_group(self):
+        """Single group returns all items shuffled."""
+        source = np.array([10, 20, 30, 40, 50])
+        lo = np.array([1])
+        hi = np.array([4])
+        rng = np.random.default_rng(42)
+
+        items, gidx, rank, sizes, _starts = _flatten_and_shuffle_groups(
+            source, lo, hi, rng
+        )
+        assert items.size == 3  # hi - lo = 3
+        assert set(items.tolist()) == {20, 30, 40}
+        assert (gidx == 0).all()
+        np.testing.assert_array_equal(rank, [0, 1, 2])
+        np.testing.assert_array_equal(sizes, [3])
+
+    def test_multiple_groups_different_sizes(self):
+        """Multiple groups with different sizes preserve elements."""
+        source = np.arange(10)  # [0..9]
+        lo = np.array([0, 2, 7])
+        hi = np.array([2, 7, 10])
+        rng = np.random.default_rng(42)
+
+        items, gidx, rank, sizes, _starts = _flatten_and_shuffle_groups(
+            source, lo, hi, rng
+        )
+        assert items.size == 10
+        np.testing.assert_array_equal(sizes, [2, 5, 3])
+        # Each group's items are a permutation of the original slice
+        assert set(items[gidx == 0].tolist()) == {0, 1}
+        assert set(items[gidx == 1].tolist()) == {2, 3, 4, 5, 6}
+        assert set(items[gidx == 2].tolist()) == {7, 8, 9}
+        # Rank within each group is 0..size-1
+        for g in range(3):
+            g_rank = rank[gidx == g]
+            np.testing.assert_array_equal(sorted(g_rank), np.arange(sizes[g]))
+
+    def test_empty_groups(self):
+        """Empty input returns empty arrays."""
+        source = np.arange(5)
+        lo = np.array([], dtype=np.intp)
+        hi = np.array([], dtype=np.intp)
+        rng = np.random.default_rng(42)
+
+        items, _gidx, _rank, _sizes, _starts = _flatten_and_shuffle_groups(
+            source, lo, hi, rng
+        )
+        assert items.size == 0
+
+    def test_deterministic(self):
+        """Same seed produces identical results."""
+        source = np.arange(20)
+        lo = np.array([0, 5, 15])
+        hi = np.array([5, 15, 20])
+
+        r1 = _flatten_and_shuffle_groups(source, lo, hi, np.random.default_rng(99))
+        r2 = _flatten_and_shuffle_groups(source, lo, hi, np.random.default_rng(99))
+        for a, b in zip(r1, r2, strict=True):
+            np.testing.assert_array_equal(a, b)
+
+    def test_zero_size_group_skipped(self):
+        """Groups where lo == hi contribute zero items."""
+        source = np.arange(10)
+        lo = np.array([0, 3, 3, 7])  # group 2 is empty (lo==hi)
+        hi = np.array([3, 3, 7, 10])
+        rng = np.random.default_rng(42)
+
+        items, gidx, _rank, sizes, _starts = _flatten_and_shuffle_groups(
+            source, lo, hi, rng
+        )
+        assert items.size == 10  # 3 + 0 + 4 + 3
+        np.testing.assert_array_equal(sizes, [3, 0, 4, 3])
+        # group 1 (empty) should have no items
+        assert (gidx == 1).sum() == 0

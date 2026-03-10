@@ -516,3 +516,73 @@ def resolve_conflicts(
     accepted = np.empty(m, dtype=np.bool_)
     accepted[order] = accepted_sorted
     return accepted
+
+
+# ── _flatten_and_shuffle_groups ──────────────────────────────────────────────
+
+
+def _flatten_and_shuffle_groups(
+    source: Idx1D,
+    boundaries_lo: Idx1D,
+    boundaries_hi: Idx1D,
+    rng: Rng,
+) -> tuple[Idx1D, Idx1D, Idx1D, Idx1D, Idx1D]:
+    """Extract items from ragged groups and shuffle within each group.
+
+    Given a *source* array and per-group boundaries ``[lo, hi)``, builds a
+    flat array of all items across the specified groups, then randomly
+    reorders items within each group using a random-priority lexsort.
+
+    Parameters
+    ----------
+    source : Idx1D
+        Source array to index into (e.g. sorted worker IDs).
+    boundaries_lo, boundaries_hi : Idx1D
+        Per-group start/end indices into *source* (length *n_groups*).
+    rng : Rng
+        Random generator for within-group shuffling.
+
+    Returns
+    -------
+    items : Idx1D
+        Flat array of items in shuffled-within-group order (length *total*).
+    group_idx : Idx1D
+        Which group each item belongs to (0..n_groups-1).
+    rank : Idx1D
+        Within-group position (0..group_size-1) in shuffled order.
+    group_sizes : Idx1D
+        Number of items per group.
+    group_starts : Idx1D
+        Cumulative group starts (length *n_groups + 1*);
+        ``group_starts[-1] == total``.
+    """
+    group_sizes = boundaries_hi - boundaries_lo
+    total = int(group_sizes.sum())
+    n_groups = boundaries_lo.size
+
+    if total == 0:
+        empty = np.empty(0, dtype=np.intp)
+        starts = np.zeros(n_groups + 1, dtype=np.intp)
+        return empty, empty, empty, group_sizes, starts
+
+    # Cumulative group boundaries in the flat output
+    group_starts = np.empty(n_groups + 1, dtype=np.intp)
+    group_starts[0] = 0
+    np.cumsum(group_sizes, out=group_starts[1:])
+
+    # Map each flat position to its group and position within source
+    group_idx = np.repeat(np.arange(n_groups, dtype=np.intp), group_sizes)
+    within = np.arange(total, dtype=np.intp) - np.repeat(group_starts[:-1], group_sizes)
+    positions = np.repeat(boundaries_lo, group_sizes) + within
+    flat_items = source[positions]
+
+    # Shuffle within groups via random-priority lexsort
+    priorities = rng.random(total)
+    order = np.lexsort((priorities, group_idx))
+
+    # Reorder all arrays; groups stay contiguous, internal order is randomized
+    items = flat_items[order]
+    group_idx_sorted = group_idx[order]
+    rank = np.arange(total, dtype=np.intp) - np.repeat(group_starts[:-1], group_sizes)
+
+    return items, group_idx_sorted, rank, group_sizes, group_starts
