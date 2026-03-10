@@ -10,6 +10,29 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 
    Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.
 
+[0.6.1] - 2026-03-10
+---------------------
+
+This patch eliminates the last Python loops in grouped random selection
+(``resolve_conflicts``, ``firms_fire_excess_workers``, ``firms_fire_workers``)
+by replacing per-group ``rng.choice``/``rng.permutation`` calls with a
+vectorized random-priority + lexsort pattern.
+
+Performance
+~~~~~~~~~~~
+
+* **Vectorized** ``resolve_conflicts`` — replaced per-target Python loop +
+  ``rng.choice`` with ``rng.random()`` + ``np.lexsort`` + grouped rank
+  comparison. **3.4x faster** (0.100s → 0.029s, 7.5% → 2.3% of runtime).
+* **Vectorized** ``firms_fire_excess_workers`` — replaced per-firm
+  ``rng.permutation`` loop with ``_flatten_and_shuffle_groups`` helper +
+  rank threshold.
+* **Vectorized** ``firms_fire_workers`` — replaced per-firm cumsum loop with
+  ``_flatten_and_shuffle_groups`` + ``grouped_cumsum`` +
+  ``np.minimum.reduceat``.
+* New shared helper ``_flatten_and_shuffle_groups`` extracts items from ragged
+  group boundaries into a flat shuffled array using random-priority lexsort.
+
 [0.6.0] - 2026-03-09
 ---------------------
 
