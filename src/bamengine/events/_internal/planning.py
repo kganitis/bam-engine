@@ -16,7 +16,7 @@ import numpy as np
 from bamengine import Rng, logging, make_rng
 from bamengine.relationships import LoanBook
 from bamengine.roles import Employer, Producer, Worker
-from bamengine.utils import EPS
+from bamengine.utils import EPS, _flatten_and_shuffle_groups
 
 log = logging.getLogger(__name__)
 
@@ -441,41 +441,28 @@ def firms_fire_excess_workers(
     boundaries_lo = np.searchsorted(sorted_employers, firing_ids, side="left")
     boundaries_hi = np.searchsorted(sorted_employers, firing_ids, side="right")
 
-    # Collect all victims across all firing firms
-    all_victims = []
-    all_victim_employers = []
-    debug_enabled = log.isEnabledFor(logging.DEBUG)
+    # Vectorized firing: flatten all workers at firing firms, shuffle within
+    # groups, and fire those whose within-group rank < excess.
+    items, group_idx, rank, group_sizes, _group_starts = _flatten_and_shuffle_groups(
+        sorted_workers, boundaries_lo, boundaries_hi, rng
+    )
 
-    for idx in range(firing_ids.size):
-        i = firing_ids[idx]
-        lo, hi = boundaries_lo[idx], boundaries_hi[idx]
-        group = sorted_workers[lo:hi]
-        n_to_fire = excess[i]
+    if items.size == 0:
+        if info_enabled:
+            log.info("  No workers at firing firms. Skipping.")
+            log.info("--- Firms Firing Excess Workers complete ---")
+        return
 
-        if debug_enabled:
-            log.debug(
-                f"  Firm {i}: current_labor={emp.current_labor[i]}, "
-                f"desired_labor={emp.desired_labor[i]}, "
-                f"actual_workers={group.size}, excess={n_to_fire}"
-            )
+    # Fire threshold per group: min(excess, group_size)
+    fire_counts = np.minimum(excess[firing_ids], group_sizes)
+    threshold = np.repeat(fire_counts, group_sizes)
+    fire_mask = rank < threshold
 
-        if group.size == 0:  # pragma: no cover
-            continue
+    victims = items[fire_mask]
+    victim_employers = firing_ids[group_idx[fire_mask]]
+    total_workers_fired_this_step = int(victims.size)
 
-        # Random selection of victims
-        shuffled = rng.permutation(group.size)
-        n_fire = min(n_to_fire, group.size)
-        victims = group[shuffled[:n_fire]]
-
-        if victims.size > 0:
-            all_victims.append(victims)
-            all_victim_employers.append(np.full(victims.size, i, dtype=np.intp))
-            total_workers_fired_this_step += victims.size
-
-    if all_victims:
-        victims = np.concatenate(all_victims)
-        victim_employers = np.concatenate(all_victim_employers)
-
+    if victims.size > 0:
         # Batch worker-side updates
         wrk.employer[victims] = -1
         wrk.employer_prev[victims] = victim_employers
