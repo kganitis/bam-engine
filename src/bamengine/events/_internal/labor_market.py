@@ -41,13 +41,13 @@ def calc_inflation_rate(ec: Economy) -> None:
 
     # Year-over-year method: compare P_t to P_{t-4}
     # Needs at least 5 periods of history
-    if hist.size <= 4:
+    if len(hist) <= 4:
         if info_enabled:
             log.info(
                 "  Not enough history to calculate annual inflation (<5 periods). "
                 "Setting to 0.0."
             )
-        ec.inflation_history = np.append(ec.inflation_history, 0.0)
+        ec.inflation_history.append(0.0)
         return
 
     p_now = hist[-1]
@@ -62,10 +62,10 @@ def calc_inflation_rate(ec: Economy) -> None:
     else:
         inflation = (p_now - p_prev) / p_prev
 
-    ec.inflation_history = np.append(ec.inflation_history, inflation)
+    ec.inflation_history.append(inflation)
     if info_enabled:
         log.info(
-            f"  Annual inflation calculated for period t={hist.size - 1}: {inflation:+.3%}"
+            f"  Annual inflation calculated for period t={len(hist) - 1}: {inflation:+.3%}"
         )
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"    Calculation: (p_now={p_now:.3f} / p_t-4={p_prev:.3f}) - 1")
@@ -93,13 +93,13 @@ def adjust_minimum_wage(ec: Economy, wrk: Worker) -> None:
     if info_enabled:
         log.info("--- Adjusting Minimum Wage (based on history) ---")
     m = ec.min_wage_rev_period
-    if ec.avg_mkt_price_history.size <= m:
+    if len(ec.avg_mkt_price_history) <= m:
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
-                f"  Skipping: not enough history ({ec.avg_mkt_price_history.size} <= {m})."
+                f"  Skipping: not enough history ({len(ec.avg_mkt_price_history)} <= {m})."
             )
         return
-    if (ec.avg_mkt_price_history.size - 1) % m != 0:
+    if (len(ec.avg_mkt_price_history) - 1) % m != 0:
         if log.isEnabledFor(logging.DEBUG):
             log.debug("  Skipping: not a revision period.")
         return

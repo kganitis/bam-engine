@@ -59,7 +59,7 @@ def update_avg_mkt_price(
 
     # update economy state
     ec.avg_mkt_price = p_avg_trimmed
-    ec.avg_mkt_price_history = np.append(ec.avg_mkt_price_history, ec.avg_mkt_price)
+    ec.avg_mkt_price_history.append(ec.avg_mkt_price)
 
     if info_enabled:
         log.info(f"  Average market price updated: {ec.avg_mkt_price:.4f}")

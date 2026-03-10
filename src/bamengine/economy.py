@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from bamengine.typing import Float1D, Idx1D
+from bamengine.typing import Idx1D
 
 
 @dataclass(slots=True)
@@ -103,13 +103,13 @@ class Economy:
     min_wage_rev_period: int
     """Period when the minimum wage was last revised."""
 
-    # time-series
-    avg_mkt_price_history: Float1D
-    """Time series of average market prices, shape ``(t+1,)``."""
-    unemp_rate_history: Float1D
-    """Time series of raw unemployment rates, shape ``(t+1,)``."""
-    inflation_history: Float1D
-    """Time series of inflation rates, shape ``(t+1,)``."""
+    # time-series (Python lists for O(1) amortized append)
+    avg_mkt_price_history: list[float]
+    """Time series of average market prices, length ``t + 1``."""
+    unemp_rate_history: list[float]
+    """Time series of raw unemployment rates, length ``t + 1``."""
+    inflation_history: list[float]
+    """Time series of inflation rates, length ``t + 1``."""
 
     # transient exit lists (flushed each Entry event)
     exiting_firms: Idx1D = field(default_factory=lambda: np.empty(0, np.intp))

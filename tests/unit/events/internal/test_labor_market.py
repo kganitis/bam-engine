@@ -8,7 +8,6 @@ from typing import cast
 
 import numpy as np
 import pytest
-from numpy.typing import NDArray
 
 from bamengine import Rng, make_rng
 from bamengine.events._internal.labor_market import (
@@ -61,7 +60,7 @@ def _mini_state(
 
 def test_calc_inflation_rate_yoy_min_history() -> None:
     """YoY method requires 5 periods of history, returns 0 if less."""
-    ec = mock_economy(avg_mkt_price_history=np.array([1.0, 1.1, 1.2, 1.3]))
+    ec = mock_economy(avg_mkt_price_history=[1.0, 1.1, 1.2, 1.3])
     calc_inflation_rate(ec)
     assert ec.inflation_history[-1] == 0.0
 
@@ -69,7 +68,7 @@ def test_calc_inflation_rate_yoy_min_history() -> None:
 def test_calc_inflation_rate_yoy_prev_nonpositive() -> None:
     """YoY method returns 0 if previous price is non-positive."""
     # t = 4 (len=5); p_{t-4} is index 0 -> set to 0.0 to trigger branch
-    ec = mock_economy(avg_mkt_price_history=np.array([0.0, 1.0, 1.1, 1.2, 1.3]))
+    ec = mock_economy(avg_mkt_price_history=[0.0, 1.0, 1.1, 1.2, 1.3])
     calc_inflation_rate(ec)
     assert ec.inflation_history[-1] == 0.0
 
@@ -77,13 +76,13 @@ def test_calc_inflation_rate_yoy_prev_nonpositive() -> None:
 @pytest.mark.parametrize(
     ("prices", "direction"),
     [
-        (np.array([1.00, 1.05, 1.10, 1.15, 1.20]), "up"),  # inflation → increases
-        (np.array([1.00, 0.95, 0.90, 0.85, 0.80]), "down"),  # deflation → decreases
-        (np.array([1.00, 1.10, 1.20, 1.30]), "flat"),  # = m  → no revision
-        (np.array([1.00, 1.05, 1.10, 1.15, 1.20, 1.30]), "flat"),  # < m  → no revision
+        ([1.00, 1.05, 1.10, 1.15, 1.20], "up"),  # inflation → increases
+        ([1.00, 0.95, 0.90, 0.85, 0.80], "down"),  # deflation → decreases
+        ([1.00, 1.10, 1.20, 1.30], "flat"),  # = m  → no revision
+        ([1.00, 1.05, 1.10, 1.15, 1.20, 1.30], "flat"),  # < m  → no revision
     ],
 )
-def test_adjust_minimum_wage_edges(prices: NDArray[np.float64], direction: str) -> None:
+def test_adjust_minimum_wage_edges(prices: list[float], direction: str) -> None:
     """Guard array bounds; min wage moves with inflation or stays flat."""
     ec = mock_economy(
         min_wage=2.0,
@@ -108,9 +107,7 @@ def test_adjust_minimum_wage_revision() -> None:
     """Exact revision step (len = m+1) – floor must move by realised inflation."""
     ec = mock_economy(
         min_wage=1.0,
-        avg_mkt_price_history=np.array(
-            [1.00, 1.05, 1.10, 1.15, 1.20]
-        ),  # t = 4 (len = 5)
+        avg_mkt_price_history=[1.00, 1.05, 1.10, 1.15, 1.20],  # t = 4 (len = 5)
         min_wage_rev_period=4,
     )
     wrk = mock_worker(
@@ -126,10 +123,10 @@ def test_adjust_minimum_wage_revision() -> None:
 def test_adjust_minimum_wage_from_history_revision() -> None:
     ec = mock_economy(
         min_wage=1.0,
-        avg_mkt_price_history=np.array([1, 1, 1, 1, 1]),  # len=5, m=4 -> revision
+        avg_mkt_price_history=[1, 1, 1, 1, 1],  # len=5, m=4 -> revision
         min_wage_rev_period=4,
     )
-    ec.inflation_history = np.array([0.10])  # +10%
+    ec.inflation_history = [0.10]  # +10%
     wrk = mock_worker(
         n=2, employer=np.array([0, -1], dtype=np.intp), wage=np.array([0.9, 0.0])
     )
@@ -142,12 +139,10 @@ def test_adjust_minimum_wage_from_history_revision() -> None:
 def test_adjust_minimum_wage_skips_when_not_revision() -> None:
     ec = mock_economy(
         min_wage=1.0,
-        avg_mkt_price_history=np.array(
-            [1, 1, 1, 1, 1, 1]
-        ),  # len=6, not revision (5 % 4 != 0)
+        avg_mkt_price_history=[1, 1, 1, 1, 1, 1],  # len=6, not revision (5 % 4 != 0)
         min_wage_rev_period=4,
     )
-    ec.inflation_history = np.array([0.25])
+    ec.inflation_history = [0.25]
     wrk = mock_worker(
         n=2, employer=np.array([0, -1], dtype=np.intp), wage=np.array([0.9, 0.0])
     )

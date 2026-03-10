@@ -496,15 +496,13 @@ def goods_market_round(
             spent = qty_actual * prices
             con.income_to_spend[shoppers] -= spent
             np.subtract.at(prod.inventory, targets, qty_actual)
-            # Clamp only modified subsets (not full arrays) for efficiency.
-            # Fancy indexing returns copies, so we must assign back explicitly.
+            # Clamp negatives from floating-point drift after subtract.at.
+            # Full-array clamp is faster than np.unique + targeted clamp
+            # (O(F) memop vs O(S log S) sort), and F=100 makes it negligible.
             con.income_to_spend[shoppers] = np.maximum(
                 con.income_to_spend[shoppers], 0.0
             )
-            affected_firms = np.unique(targets)
-            prod.inventory[affected_firms] = np.maximum(
-                prod.inventory[affected_firms], 0.0
-            )
+            np.maximum(prod.inventory, 0.0, out=prod.inventory)
 
             total_purchases += shoppers.size
             total_qty += qty_actual.sum()

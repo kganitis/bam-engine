@@ -829,9 +829,9 @@ class Simulation:
 
         # economy level scalars & time-series
         avg_mkt_price = price.mean()
-        avg_mkt_price_history = np.array([avg_mkt_price])
-        unemp_rate_history = np.array([1.0])
-        inflation_history = np.array([0.0])
+        avg_mkt_price_history = [float(avg_mkt_price)]
+        unemp_rate_history = [1.0]
+        inflation_history = [0.0]
 
         # Wrap into components
         # -----------------------------------------------------------------

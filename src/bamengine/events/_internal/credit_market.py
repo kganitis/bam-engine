@@ -241,13 +241,19 @@ def firms_prepare_loan_applications(
             log.info("--- Loan Application Preparation complete ---")
         return
 
-    # Sample H random lending banks per borrower
+    # Sample H random lending banks per borrower (vectorized)
     H_eff = min(max_H, lenders.size)
     if info_enabled:
         log.info(f"  Effective applications per borrower (H_eff): {H_eff}")
-    sample = np.array(
-        [rng.choice(lenders, size=H_eff, replace=False) for _ in range(borrowers.size)]
-    )
+    # Generate one random score per (borrower, lender) pair, then pick the H_eff
+    # smallest per row via argpartition — equivalent to sampling without replacement
+    if H_eff == lenders.size:
+        # All lenders selected — no need to sample
+        sample = np.broadcast_to(lenders, (borrowers.size, lenders.size)).copy()
+    else:
+        rand_scores = rng.random((borrowers.size, lenders.size))
+        top_indices = np.argpartition(rand_scores, H_eff, axis=1)[:, :H_eff]
+        sample = lenders[top_indices]
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Initial random bank sample (first 10 borrowers):\n{sample[:10]}")
 

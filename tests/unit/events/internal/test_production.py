@@ -27,12 +27,12 @@ def test_update_avg_mkt_price_appends_series() -> None:
     ec = mock_economy()
     prod = mock_producer(n=3, price=np.array([1.0, 2.0, 3.0]))
 
-    hist_len_before = ec.avg_mkt_price_history.size
+    hist_len_before = len(ec.avg_mkt_price_history)
     update_avg_mkt_price(ec, prod)
 
     expected_avg = prod.price.mean()
     assert ec.avg_mkt_price == expected_avg
-    assert ec.avg_mkt_price_history.size == hist_len_before + 1
+    assert len(ec.avg_mkt_price_history) == hist_len_before + 1
     assert ec.avg_mkt_price_history[-1] == expected_avg
 
 
