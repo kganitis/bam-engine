@@ -279,6 +279,35 @@ class TestFirmsFireWorkers:
                 assert (sim.wrk.employer[fired] == -1).all()
                 assert (sim.wrk.wage[fired] == 0.0).all()
 
+    def test_fires_minimum_workers_to_cover_gap(self):
+        """Fires the fewest workers needed to cover the financing gap."""
+        from bamengine.events._internal.credit_market import firms_fire_workers
+
+        sim = _make_sim(seed=42)
+        sim.step()  # populate state
+
+        # Find a firm with at least 3 workers
+        firm_idx = np.where(sim.emp.current_labor >= 3)[0]
+        if firm_idx.size == 0:
+            return  # skip if no suitable firm
+
+        i = firm_idx[0]
+        workers_at_i = np.where(sim.wrk.employer == i)[0]
+        n_workers = workers_at_i.size
+
+        # Set uniform wages and create a gap requiring exactly 2 firings
+        wage = 10.0
+        sim.wrk.wage[workers_at_i] = wage
+        sim.emp.wage_bill[i] = n_workers * wage
+        sim.emp.total_funds[i] = (n_workers - 2) * wage  # gap = 20
+        sim.bor.total_funds[i] = sim.emp.total_funds[i]
+
+        labor_before = int(sim.emp.current_labor[i])
+        firms_fire_workers(sim.emp, sim.wrk, rng=sim.rng)
+
+        # Firm should fire exactly 2 workers (gap=20, wage=10 each)
+        assert sim.emp.current_labor[i] == labor_before - 2
+
     def test_no_gap_no_firing(self):
         """Firms without gaps don't fire anyone."""
         sim = _make_sim(seed=42)

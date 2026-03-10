@@ -16,7 +16,12 @@ import numpy as np
 from bamengine import Rng, logging, make_rng
 from bamengine.relationships import LoanBook
 from bamengine.roles import Borrower, Employer, Lender, Worker
-from bamengine.utils import EPS, grouped_cumsum, select_top_k_indices_sorted
+from bamengine.utils import (
+    EPS,
+    _flatten_and_shuffle_groups,
+    grouped_cumsum,
+    select_top_k_indices_sorted,
+)
 
 log = logging.getLogger(__name__)
 
@@ -518,46 +523,57 @@ def firms_fire_workers(
     boundaries_lo = np.searchsorted(sorted_employers, firing_ids, side="left")
     boundaries_hi = np.searchsorted(sorted_employers, firing_ids, side="right")
 
-    # Process each firing firm
-    all_victims = []
-    all_victim_employers = []
-    total_fired = 0
+    # Vectorized firing: flatten workers at firing firms, shuffle within
+    # groups, compute grouped wage cumsum, fire until cumsum covers gap.
+    items, group_idx, rank, group_sizes, group_starts = _flatten_and_shuffle_groups(
+        sorted_workers, boundaries_lo, boundaries_hi, rng
+    )
 
-    for idx in range(firing_ids.size):
-        i = firing_ids[idx]
-        lo, hi = boundaries_lo[idx], boundaries_hi[idx]
-        group = sorted_workers[lo:hi]
+    if items.size == 0:
+        if info_enabled:
+            log.info("  No workers at firing firms.")
+            log.info("--- Firms Firing Workers complete ---")
+        return
 
-        if group.size == 0:
-            continue
+    # Grouped cumulative sum of wages in shuffled order
+    shuffled_wages = wrk.wage[items]
+    grouped_cumwage = grouped_cumsum(shuffled_wages, group_starts[:-1])
 
-        gap = gaps[i]
-        worker_wages = wrk.wage[group]
+    # Per-worker gap threshold
+    gap_per_worker = np.repeat(gaps[firing_ids], group_sizes)
 
-        # Random firing until gap covered
-        shuffled = rng.permutation(group.size)
-        shuffled_wages = worker_wages[shuffled]
-        cumsum_wages = np.cumsum(shuffled_wages)
+    # Find first position per group where cumulative wage >= gap
+    sufficient = grouped_cumwage >= gap_per_worker
+    INF = int(items.size) + 1
+    rank_if_sufficient = np.where(sufficient, rank, INF)
 
-        sufficient = cumsum_wages >= gap
-        if sufficient.any():
-            n_fire = int(sufficient.argmax()) + 1
-        else:
-            n_fire = group.size
+    # np.minimum.reduceat finds earliest sufficient rank per group
+    # (only over non-empty groups)
+    non_empty = group_sizes > 0
+    first_sufficient = np.full(firing_ids.size, INF, dtype=np.intp)
+    if non_empty.any():
+        ne_starts = group_starts[:-1][non_empty]
+        ne_result = np.minimum.reduceat(rank_if_sufficient, ne_starts)
+        first_sufficient[non_empty] = ne_result
 
-        victims = group[shuffled[:n_fire]]
-        all_victims.append(victims)
-        all_victim_employers.append(np.full(victims.size, i, dtype=np.intp))
-        total_fired += victims.size
+    # Fire count: first_sufficient + 1, or group_size if gap never covered
+    fire_count = np.where(
+        first_sufficient < INF,
+        first_sufficient + 1,
+        group_sizes,
+    )
+    threshold = np.repeat(fire_count, group_sizes)
+    fire_mask = rank < threshold
 
-    if not all_victims:
+    victims = items[fire_mask]
+    victim_employers = firing_ids[group_idx[fire_mask]]
+    total_fired = int(victims.size)
+
+    if victims.size == 0:
         if info_enabled:
             log.info("  No workers fired.")
             log.info("--- Firms Firing Workers complete ---")
         return
-
-    victims = np.concatenate(all_victims)
-    victim_employers = np.concatenate(all_victim_employers)
 
     # Capture fired wages before zeroing
     fired_wages = wrk.wage[victims].copy()
