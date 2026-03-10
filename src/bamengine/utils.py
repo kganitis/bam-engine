@@ -493,35 +493,26 @@ def resolve_conflicts(
     if m == 0:
         return np.empty(0, dtype=np.bool_)
 
-    # Sort senders by target
-    order = np.argsort(target_ids, kind="stable")
+    # Assign random priorities and sort by (target, priority) — gives
+    # random ordering within each target group in a single vectorized pass.
+    priorities = rng.random(m)
+    order = np.lexsort((priorities, target_ids))
     sorted_targets = target_ids[order]
 
     # Group boundaries via bincount → cumsum
     counts = np.bincount(sorted_targets, minlength=n_targets)
-    boundaries = np.empty(n_targets + 1, dtype=np.intp)
-    boundaries[0] = 0
-    np.cumsum(counts, out=boundaries[1:])
+    group_starts = np.empty(n_targets + 1, dtype=np.intp)
+    group_starts[0] = 0
+    np.cumsum(counts, out=group_starts[1:])
 
-    accepted_in_sorted = np.zeros(m, dtype=np.bool_)
+    # Within-group rank: position in sorted array minus group start
+    rank = np.arange(m, dtype=np.intp) - np.repeat(group_starts[:-1], counts)
 
-    # Process targets that have at least one sender
-    active_targets = np.where(counts > 0)[0]
-    for t in active_targets:
-        lo, hi = boundaries[t], boundaries[t + 1]
-        group_size = hi - lo
-        cap = int(capacity_per_target[t])
-        if cap <= 0:
-            continue
-        if group_size <= cap:
-            # All accepted
-            accepted_in_sorted[lo:hi] = True
-        else:
-            # Randomly pick `cap` from the group
-            chosen = rng.choice(group_size, size=cap, replace=False)
-            accepted_in_sorted[lo + chosen] = True
+    # Accept if rank < capacity for that target (and capacity > 0)
+    caps = capacity_per_target[sorted_targets]
+    accepted_sorted = (rank < caps) & (caps > 0)
 
     # Un-sort back to original order
     accepted = np.empty(m, dtype=np.bool_)
-    accepted[order] = accepted_in_sorted
+    accepted[order] = accepted_sorted
     return accepted

@@ -163,3 +163,24 @@ class TestResolveConflicts:
         # Exactly 1 from target 0 (indices 0-2) and 1 from target 1 (indices 3-4)
         assert accepted[:3].sum() == 1
         assert accepted[3:].sum() == 1
+
+    def test_many_targets_mixed_subscription(self):
+        """50 targets, mix of over/under/exactly-subscribed — total accepted is correct."""
+        rng = np.random.default_rng(123)
+        n_targets = 50
+        n_senders = 200
+        targets = rng.integers(0, n_targets, size=n_senders)
+        cap = rng.integers(1, 6, size=n_targets)  # 1..5 capacity each
+
+        accepted = resolve_conflicts(
+            np.arange(n_senders), targets, cap, n_targets, np.random.default_rng(42)
+        )
+
+        # Per-target: accepted count == min(senders_to_target, capacity)
+        for t in range(n_targets):
+            mask_t = targets == t
+            senders_to_t = mask_t.sum()
+            expected = min(senders_to_t, cap[t])
+            assert accepted[mask_t].sum() == expected, (
+                f"target {t}: expected {expected}"
+            )
