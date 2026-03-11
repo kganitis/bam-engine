@@ -134,7 +134,3 @@ job_search_method: all_firms         # How workers sample firms for job applicat
 consumer_matching: loyalty           # Consumer firm selection strategy
                                      # "loyalty" = preferential attachment (largest prev producer)
                                      # "random" = pure random selection (no loyalty)
-
-n_batches:            10             # Goods market sequential batches
-                                     # More batches ≈ more sequential (less phantom-goods)
-                                     # 25 works well for 500 households (~20 per batch)
