@@ -93,7 +93,7 @@ def test_consumers_decide_firms_to_visit(benchmark, sim_steady_state):
 
 @pytest.mark.benchmark(group="events")
 def test_goods_market_round(benchmark, sim_steady_state):
-    """Benchmark batch-sequential goods market matching."""
+    """Benchmark sequential goods market matching."""
     event = sim_steady_state.get_event("goods_market_round")
     benchmark(event.execute, sim_steady_state)
 
