@@ -12,8 +12,8 @@ The Default Pipeline
 
 The default pipeline executes 8 phases per period. Labor and credit market
 matching uses **batch processing** with vectorized NumPy operations. The goods
-market uses **batch-sequential** processing where consumers are divided into
-batches, each completing all visits before the next batch starts.
+market uses **sequential** processing where each consumer completes all visits
+before the next consumer starts.
 
 **Phase 1: Planning** (6 events)
 
@@ -258,7 +258,7 @@ Tips
 - **Modify before running**: Pipeline changes should happen between
   ``Simulation.init()`` and ``sim.run()``, not during execution.
 - **Batch matching**: Labor and credit markets use vectorized batch
-  matching with conflict resolution. The goods market uses batch-sequential
+  matching with conflict resolution. The goods market uses sequential
   processing.
 
 

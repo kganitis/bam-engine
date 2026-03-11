@@ -300,9 +300,9 @@ bottlenecks. All three markets now use vectorized batch processing:
 
 * **Goods market**: ``consumers_decide_firms_to_visit`` is fully vectorized using
   batch random sampling and 2D array operations. ``goods_market_round`` uses
-  batch-sequential processing — consumers are divided into ~10 batches, each
-  completing all Z visits with vectorized NumPy operations before the next batch
-  starts. This preserves sequential depletion dynamics while enabling vectorization.
+  sequential processing — each consumer completes all Z visits before the next
+  starts. The inner loop uses Python lists for performance (avoiding NumPy
+  per-element overhead), adding ~1-4% to total simulation time at all scales.
 * **Labor market**: ``workers_decide_firms_to_apply`` uses vectorized firm selection.
   ``labor_market_round`` processes all applications simultaneously with batch
   conflict resolution via ``resolve_conflicts()``.

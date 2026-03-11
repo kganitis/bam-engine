@@ -165,30 +165,32 @@ important source of frictional unemployment. Configurable via
 
 
 .. _decision-batch-sequential-shopping:
+.. _decision-sequential-shopping:
 
-Goods Market: Batch-Sequential Shopping
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Goods Market: Sequential Shopping
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Choice:** Consumers are shuffled and divided into batches (~10 batches by default).
-Each batch completes all ``Z`` firm visits using vectorized NumPy operations before
-the next batch starts. Consumer order is randomized each period.
+**Choice:** Consumers are shuffled and each completes all ``Z`` firm visits
+before the next consumer starts. Consumer order is randomized each period.
+The inner loop uses Python lists (converted from NumPy arrays via ``.tolist()``)
+to avoid per-element NumPy overhead.
 
-**Book reference:** Section 3.4 does not specify whether consumers take turns or
-complete all visits at once.
+**Book reference:** Section 3.4 describes consumers visiting firms sequentially.
 
 **Alternatives considered:**
 
-- *Fully sequential* --- each consumer completes all visits before the next starts.
-  Equivalent outcomes but slower due to Python loops. This alternative was the
-  original implementation and has been removed from the codebase.
+- *Batch-sequential* --- consumers divided into ~10 batches, each batch processed
+  with vectorized NumPy operations. Previously implemented (v0.6.0) but created
+  phantom goods (~160 within-batch inventory collisions per period) where firms
+  earned revenue for goods never produced. Removed.
 - *Round-robin* --- all consumers visit one firm each, then all visit another, for
-  ``Z`` rounds. This alternative was implemented and tested but has been removed from
-  the codebase.
+  ``Z`` rounds. Implemented and tested but produced different dynamics due to
+  visit separation. Removed.
 
-**Reasoning:** Batch-sequential preserves the key economic property that earlier
-consumers have better access to inventory (sequential depletion), while using
-vectorized NumPy operations within each batch for performance. The batch size is
-small enough that inventory depletion dynamics are realistic.
+**Reasoning:** Sequential processing eliminates phantom goods entirely while adding
+minimal overhead (~1-4% of total simulation time at all scales up to 10x). The
+Python-list hot path makes sequential competitive with batch approaches by avoiding
+NumPy's per-element indexing overhead.
 
 
 Wages & Contracts

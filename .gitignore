@@ -93,6 +93,7 @@ analysis/
 diagnostics/
 notes/
 thesis/
+scripts/
 
 # Git worktrees
 .worktrees/
