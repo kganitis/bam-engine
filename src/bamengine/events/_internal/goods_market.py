@@ -384,10 +384,10 @@ def goods_market_round(
     vectorized NumPy operations for performance.
 
     When multiple consumers in the same batch target the same firm, a small
-    oversell can occur (each reads stale inventory).  This is intentionally
-    retained: the phantom goods compensate for the batch-sequential variance
-    reduction relative to true sequential processing.  Inventory is clamped
-    to zero after each visit iteration, bounding the actual oversell.
+    oversell can occur (each reads stale inventory).  This is intentional:
+    phantom goods compensate for the batch-sequential variance reduction
+    relative to true sequential processing.  Inventory is clamped to zero
+    once per batch, bounding the actual oversell.
 
     Parameters
     ----------
@@ -406,8 +406,6 @@ def goods_market_round(
     info_enabled = log.isEnabledFor(logging.INFO)
     if info_enabled:
         log.info("--- Goods Market Round ---")
-
-    stride = con.shop_visits_targets.shape[1]
 
     # Identify consumers with budget
     buyers = np.where(con.income_to_spend > EPS)[0]
@@ -438,75 +436,63 @@ def goods_market_round(
     # Recompute actual count from batch_size to handle rounding
     actual_n_batches = (buyers.size + batch_size - 1) // batch_size
 
+    # Pre-cache array references (constant during shopping round)
+    targets_arr = con.shop_visits_targets
+    inv = prod.inventory
+    prices_arr = prod.price
+
     for b in range(actual_n_batches):
         batch = buyers[b * batch_size : (b + 1) * batch_size]
 
-        # Each consumer in this batch processes all Z visits
-        for _visit in range(max_Z):
-            # Filter to batch members with budget and valid head
-            has_budget = con.income_to_spend[batch] > EPS
-            has_head = con.shop_visits_head[batch] >= 0
-            active_mask = has_budget & has_head
-            active = batch[active_mask]
+        # Work on a local budget copy to avoid repeated fancy-index
+        # read/writes on the global income_to_spend array.
+        budget = con.income_to_spend[batch]  # fancy index → copy
 
-            if active.size == 0:
-                break
+        # Each consumer in this batch processes all Z visits.
+        # Targets are indexed directly by [consumer, visit] — the head
+        # pointer machinery is unnecessary since consumers_decide_firms_to_visit
+        # fills targets sequentially into slots 0..max_Z-1.
+        for visit in range(max_Z):
+            targets = targets_arr[batch, visit]
 
-            # Decode targets
-            heads = con.shop_visits_head[active]
-            rows, cols = np.divmod(heads, stride)
-            target_firms = con.shop_visits_targets[rows, cols]
-            valid_mask = target_firms >= 0
+            # Combined filter: has budget, valid target, firm has inventory.
+            # np.maximum(targets, 0) prevents negative indexing when target=-1;
+            # the result is masked out by `targets >= 0` anyway.
+            safe_t = np.maximum(targets, 0)
+            active_mask = (budget > EPS) & (targets >= 0) & (inv[safe_t] > EPS)
 
-            # Advance head pointers
-            new_heads = heads + 1
-            past_end = new_heads >= (active + 1) * stride
-            new_heads[past_end | (~valid_mask)] = -1
-            con.shop_visits_head[active] = new_heads
-            con.shop_visits_targets[rows, cols] = -1
-
-            # Filter to valid targets with inventory
-            valid_shoppers = active[valid_mask]
-            valid_targets = target_firms[valid_mask]
-
-            if valid_shoppers.size == 0:
+            if not active_mask.any():
                 continue
 
-            has_inv = prod.inventory[valid_targets] > EPS
-            shoppers = valid_shoppers[has_inv]
-            targets = valid_targets[has_inv]
+            local_idx = np.where(active_mask)[0]
+            firm_ids = targets[local_idx]
 
-            if shoppers.size == 0:
-                continue
-
-            # Compute purchases -- cap at available inventory.
-            # NOTE: np.minimum is used instead of fcfs_ration because the
-            # small overselling at duplicate targets (~1 phantom unit per
-            # collision) is a load-bearing approximation error.  It
-            # compensates for the batch-sequential variance reduction vs.
-            # true sequential processing.  FCFS correctly prevents
-            # overselling but reduces aggregate consumption enough to
-            # cause 10-17% unemployment vs the 6% target.  The clamp to
-            # zero after np.subtract.at limits the actual oversell.
-            prices = prod.price[targets]
-            qty_wanted = con.income_to_spend[shoppers] / prices
-            qty_actual = np.minimum(qty_wanted, prod.inventory[targets])
+            # Compute purchases — cap at available inventory.
+            # Within a batch, multiple consumers may read the same (stale)
+            # inventory, causing small oversells.  This is intentional:
+            # phantom goods compensate for the batch-sequential variance
+            # reduction vs true sequential processing.
+            prices = prices_arr[firm_ids]
+            qty_wanted = budget[local_idx] / prices
+            qty_actual = np.minimum(qty_wanted, inv[firm_ids])
 
             # Execute purchases
             spent = qty_actual * prices
-            con.income_to_spend[shoppers] -= spent
-            np.subtract.at(prod.inventory, targets, qty_actual)
-            # Clamp negatives from floating-point drift after subtract.at.
-            # Full-array clamp is faster than np.unique + targeted clamp
-            # (O(F) memop vs O(S log S) sort), and F=100 makes it negligible.
-            con.income_to_spend[shoppers] = np.maximum(
-                con.income_to_spend[shoppers], 0.0
-            )
-            np.maximum(prod.inventory, 0.0, out=prod.inventory)
+            budget[local_idx] -= spent
+            np.subtract.at(inv, firm_ids, qty_actual)
 
-            total_purchases += shoppers.size
-            total_qty += qty_actual.sum()
-            total_revenue += spent.sum()
+            if info_enabled:
+                total_purchases += local_idx.size
+                total_qty += float(qty_actual.sum())
+                total_revenue += float(spent.sum())
+
+        # Write back budget and clamp once per batch.
+        # Inventory can go briefly negative from subtract.at collisions;
+        # has_inv filters negative-inventory firms in subsequent visits,
+        # so per-visit clamping is unnecessary — once per batch suffices.
+        np.maximum(budget, 0.0, out=budget)
+        con.income_to_spend[batch] = budget
+        np.maximum(inv, 0.0, out=inv)
 
     if info_enabled:
         log.info(

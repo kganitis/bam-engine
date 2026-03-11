@@ -252,6 +252,7 @@ class ConfigValidator:
             "max_Z",
             "theta",
             "min_wage_rev_period",
+            "n_batches",
         ]
 
         # Float parameters (scalars only)
@@ -447,6 +448,8 @@ class ConfigValidator:
             "max_loan_to_net_worth": (0.0, None),
             "max_leverage": (0.0, None),
             "cap_factor": (1.0, None),
+            # Goods market batching (positive)
+            "n_batches": (1, None),
             # New firm parameters (non-negative)
             "new_firm_size_factor": (0.0, None),
             "new_firm_production_factor": (0.0, None),

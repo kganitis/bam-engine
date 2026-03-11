@@ -193,3 +193,13 @@ class Config:
     # Consumer matching strategy
     consumer_matching: str = "loyalty"
     """Consumer matching strategy: ``"loyalty"`` or ``"random"``."""
+
+    # Goods market batching
+    n_batches: int = 10
+    """Number of sequential batches in the goods market (positive).
+
+    Consumers are shuffled and divided into this many batches.  Each batch
+    completes all shopping visits before the next starts.  More batches
+    better approximate fully-sequential dynamics at the cost of more Python
+    loop iterations.  Default 10 (~50 consumers per batch at 500 households).
+    """

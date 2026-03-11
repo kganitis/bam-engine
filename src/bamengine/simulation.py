@@ -924,6 +924,7 @@ class Simulation:
             # Implementation variants
             job_search_method=p["job_search_method"],
             consumer_matching=p["consumer_matching"],
+            n_batches=p["n_batches"],
             # New firm entry parameters
             new_firm_size_factor=p["new_firm_size_factor"],
             new_firm_production_factor=p["new_firm_production_factor"],

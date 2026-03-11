@@ -383,5 +383,6 @@ class GoodsMarketRound:
             sim.con,
             sim.prod,
             max_Z=sim.config.max_Z,
+            n_batches=sim.config.n_batches,
             rng=sim.rng,
         )
