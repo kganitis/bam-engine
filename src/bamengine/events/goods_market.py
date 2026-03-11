@@ -3,7 +3,7 @@ Goods market events for consumption decisions and shopping.
 
 This module defines the goods market phase events that execute after production.
 Households calculate consumption propensity, allocate income to spending,
-select firms to visit, and purchase goods through batch-sequential shopping.
+select firms to visit, and purchase goods through sequential shopping.
 
 Event Sequence
 --------------
@@ -360,15 +360,11 @@ class ConsumersFinalizePurchases:
 
 @event
 class GoodsMarketRound:
-    """Batch-sequential goods market matching.
+    """Sequential goods market matching.
 
-    Consumers are shuffled and divided into batches, each completing all Z
-    visits before the next batch starts.  This preserves the sequential
-    depletion dynamics while using vectorized NumPy operations within each
-    batch.
-
-    This event is called once in the pipeline (it handles all Z rounds
-    internally).
+    Consumers are shuffled and each completes all Z shopping visits
+    before the next consumer starts.  This event is called once in
+    the pipeline (it handles all Z rounds internally).
 
     See Also
     --------
@@ -383,6 +379,5 @@ class GoodsMarketRound:
             sim.con,
             sim.prod,
             max_Z=sim.config.max_Z,
-            n_batches=sim.config.n_batches,
             rng=sim.rng,
         )

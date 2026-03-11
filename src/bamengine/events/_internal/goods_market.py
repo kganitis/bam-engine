@@ -372,22 +372,17 @@ def goods_market_round(
     prod: Producer,
     *,
     max_Z: int,
-    n_batches: int = 10,
     rng: Rng = make_rng(),
 ) -> None:
-    """Vectorized goods market matching via batch-sequential processing.
+    """Sequential goods market matching.
 
-    Processes consumers in randomized batches, where each batch completes
-    ALL shopping visits before the next batch starts -- mirroring the
-    sequential version's dynamics where early consumers deplete inventory
-    that later consumers must work around.  Each batch is processed using
-    vectorized NumPy operations for performance.
+    Each consumer completes all shopping visits before the next consumer
+    starts, matching the book's specification (Section 3.4).  Consumers
+    are shuffled each period.
 
-    When multiple consumers in the same batch target the same firm, a small
-    oversell can occur (each reads stale inventory).  This is intentional:
-    phantom goods compensate for the batch-sequential variance reduction
-    relative to true sequential processing.  Inventory is clamped to zero
-    once per batch, bounding the actual oversell.
+    The inner loop uses Python lists (via ``.tolist()``) to avoid NumPy
+    per-element indexing overhead.  Results are written back to the
+    original NumPy arrays after all purchases complete.
 
     Parameters
     ----------
@@ -397,9 +392,6 @@ def goods_market_round(
         Producer role (firms).
     max_Z : int
         Maximum shopping visits per consumer.
-    n_batches : int
-        Number of sequential batches to split consumers into.  More batches
-        better approximate fully sequential processing.  Default 10.
     rng : Rng
         Random generator for consumer ordering.
     """
@@ -421,78 +413,43 @@ def goods_market_round(
             log.info("--- Goods Market Round complete ---")
         return
 
-    # Shuffle consumers -- single global ordering like sequential version
+    # Shuffle consumers — randomized order each period
     rng.shuffle(buyers)
 
     total_purchases = 0
     total_qty = 0.0
     total_revenue = 0.0
 
-    # Process in batches -- each batch completes all Z visits before
-    # the next batch starts, preserving sequential depletion dynamics.
-    # Batch 0 = highest-priority consumers (first in shuffle order).
-    actual_n_batches = min(n_batches, buyers.size)
-    batch_size = max(1, buyers.size // actual_n_batches)
-    # Recompute actual count from batch_size to handle rounding
-    actual_n_batches = (buyers.size + batch_size - 1) // batch_size
+    # Python lists for the hot path: eliminates NumPy per-element overhead
+    budget = con.income_to_spend.tolist()
+    inv = prod.inventory.tolist()
+    prices = prod.price.tolist()
+    targets = con.shop_visits_targets.tolist()
 
-    # Pre-cache array references (constant during shopping round)
-    targets_arr = con.shop_visits_targets
-    inv = prod.inventory
-    prices_arr = prod.price
-
-    for b in range(actual_n_batches):
-        batch = buyers[b * batch_size : (b + 1) * batch_size]
-
-        # Work on a local budget copy to avoid repeated fancy-index
-        # read/writes on the global income_to_spend array.
-        budget = con.income_to_spend[batch]  # fancy index → copy
-
-        # Each consumer in this batch processes all Z visits.
-        # Targets are indexed directly by [consumer, visit] — the head
-        # pointer machinery is unnecessary since consumers_decide_firms_to_visit
-        # fills targets sequentially into slots 0..max_Z-1.
-        for visit in range(max_Z):
-            targets = targets_arr[batch, visit]
-
-            # Combined filter: has budget, valid target, firm has inventory.
-            # np.maximum(targets, 0) prevents negative indexing when target=-1;
-            # the result is masked out by `targets >= 0` anyway.
-            safe_t = np.maximum(targets, 0)
-            active_mask = (budget > EPS) & (targets >= 0) & (inv[safe_t] > EPS)
-
-            if not active_mask.any():
+    for c in buyers.tolist():
+        for v in range(max_Z):
+            t = targets[c][v]
+            if t < 0:
+                break
+            if budget[c] <= EPS:
+                break
+            if inv[t] <= EPS:
                 continue
-
-            local_idx = np.where(active_mask)[0]
-            firm_ids = targets[local_idx]
-
-            # Compute purchases — cap at available inventory.
-            # Within a batch, multiple consumers may read the same (stale)
-            # inventory, causing small oversells.  This is intentional:
-            # phantom goods compensate for the batch-sequential variance
-            # reduction vs true sequential processing.
-            prices = prices_arr[firm_ids]
-            qty_wanted = budget[local_idx] / prices
-            qty_actual = np.minimum(qty_wanted, inv[firm_ids])
-
-            # Execute purchases
-            spent = qty_actual * prices
-            budget[local_idx] -= spent
-            np.subtract.at(inv, firm_ids, qty_actual)
+            qty = budget[c] / prices[t]
+            if qty > inv[t]:
+                qty = inv[t]
+            spent = qty * prices[t]
+            budget[c] -= spent
+            inv[t] -= qty
 
             if info_enabled:
-                total_purchases += local_idx.size
-                total_qty += float(qty_actual.sum())
-                total_revenue += float(spent.sum())
+                total_purchases += 1
+                total_qty += qty
+                total_revenue += spent
 
-        # Write back budget and clamp once per batch.
-        # Inventory can go briefly negative from subtract.at collisions;
-        # has_inv filters negative-inventory firms in subsequent visits,
-        # so per-visit clamping is unnecessary — once per batch suffices.
-        np.maximum(budget, 0.0, out=budget)
-        con.income_to_spend[batch] = budget
-        np.maximum(inv, 0.0, out=inv)
+    # Write back to NumPy arrays
+    con.income_to_spend[:] = budget
+    prod.inventory[:] = inv
 
     if info_enabled:
         log.info(
