@@ -51,7 +51,7 @@
 #   2. Labor Market: Wage setting, job search, batch matching (max_M rounds)
 #   3. Credit Market: Loan supply/demand, batch matching (max_H rounds), firing
 #   4. Production: Wage payments, production execution, contract updates
-#   5. Goods Market: Consumption decisions, batch-sequential shopping
+#   5. Goods Market: Consumption decisions, sequential shopping
 #   6. Revenue: Revenue collection, debt repayment, dividends
 #   7. Bankruptcy: Insolvency detection, firm/bank exit
 #   8. Entry: Replacement firm/bank spawning
@@ -118,12 +118,12 @@ events:
   # PHASE 5: GOODS MARKET (5 events)
   # ────────────────────────────────────────────────────────────────────────────
   # Households decide spending based on income/savings, select firms to visit,
-  # batch-sequential shopping, then save unspent income.
+  # sequential shopping, then save unspent income.
 
   - consumers_calc_propensity          # Calculate consumption propensity from savings
   - consumers_decide_income_to_spend   # Allocate income for consumption
   - consumers_decide_firms_to_visit    # Select firms to shop at (price-sorted)
-  - goods_market_round                 # Batch-sequential shopping (handles all Z visits)
+  - goods_market_round                 # Sequential shopping (handles all Z visits)
   - consumers_finalize_purchases       # Update savings with unspent income
 
   # ────────────────────────────────────────────────────────────────────────────

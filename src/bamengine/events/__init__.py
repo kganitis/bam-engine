@@ -32,7 +32,7 @@ Key Design Patterns
 - **Pipeline composition**: Events composed via YAML configuration
 - **Stateless execution**: Events receive Simulation object, operate on roles/relationships
 - **Batch matching**: Market matching uses vectorized NumPy operations with conflict
-  resolution, grouped cumsum, and batch-sequential processing
+  resolution and grouped cumsum
 
 Event Naming Convention
 -----------------------
