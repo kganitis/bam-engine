@@ -32,6 +32,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 [![Tests](https://github.com/kganitis/bam-engine/actions/workflows/test.yml/badge.svg)](https://github.com/kganitis/bam-engine/actions/workflows/test.yml)
+[![Model Validation](https://github.com/kganitis/bam-engine/actions/workflows/validation-status.yml/badge.svg)](https://github.com/kganitis/bam-engine/actions/workflows/validation-status.yml)
 [![Repo-Review](https://github.com/kganitis/bam-engine/actions/workflows/repo-review.yml/badge.svg)](https://github.com/kganitis/bam-engine/actions/workflows/repo-review.yml)
 [![codecov](https://codecov.io/github/kganitis/bam-engine/graph/badge.svg?token=YIG31U3OR3?color=brightgreen)](https://codecov.io/github/kganitis/bam-engine)
 [![Benchmarks](https://img.shields.io/badge/benchmarks-asv-brightgreen)](https://kganitis.github.io/bam-engine/)
