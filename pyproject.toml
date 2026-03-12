@@ -292,10 +292,7 @@ minversion = "8.0"
 testpaths = ["tests"]
 log_level = "INFO"
 xfail_strict = true
-filterwarnings = [
-    "error",
-    "default::tests.validation.StabilityWarning",
-]
+filterwarnings = ["error"]
 pythonpath = ["src"]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",

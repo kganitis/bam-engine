@@ -23,11 +23,8 @@ The test fails if ANY metric has FAIL status. WARN is acceptable.
 
 from __future__ import annotations
 
-import warnings
-
 import pytest
 
-from tests.validation import StabilityWarning
 from validation import (
     DEFAULT_STABILITY_SEEDS,
     print_growth_plus_report,
@@ -71,21 +68,12 @@ def test_growth_plus_seed_stability() -> None:
     """Test that Growth+ passes consistently across 100 seeds.
 
     Runs validation with 100 seeds using 10 parallel workers and checks:
-    1. At least 95% of seeds pass (warns if < 98%)
+    1. At least 95% of seeds pass
     2. Score standard deviation is reasonable (< 0.15)
     """
     result = run_growth_plus_stability_test(seeds=DEFAULT_STABILITY_SEEDS, n_workers=10)
     print_growth_plus_stability_report(result)
 
-    # Warn zone: 95-97% pass rate — passed but marginal, run 1000-seed benchmark
-    if result.pass_rate < 0.98:
-        warnings.warn(
-            f"Stability marginal: {result.pass_rate:.1%} pass rate "
-            f"({int(result.pass_rate * result.n_seeds)}/{result.n_seeds} seeds). "
-            f"Consider running 1000-seed benchmark to confirm.",
-            StabilityWarning,
-            stacklevel=1,
-        )
     assert result.pass_rate >= 0.95, (
         f"Pass rate too low: {result.pass_rate:.0%} (expected >= 95%)"
     )

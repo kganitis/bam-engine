@@ -77,8 +77,6 @@ from validation.scoring import (
     score_pct_within_target,
     score_range,
 )
-
-# Core types
 from validation.types import (
     DEFAULT_STABILITY_SEEDS,
     CheckType,
