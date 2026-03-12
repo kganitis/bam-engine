@@ -1,0 +1,369 @@
+{
+  "metadata": {
+    "commit": "34d1286ea127b58cce14d8f3508e80d76dbb2c97",
+    "commit_short": "34d1286",
+    "timestamp": "2026-03-12T11:53:54",
+    "branch": "main",
+    "tag": "v0.5.0",
+    "version": null,
+    "n_seeds": 1000,
+    "n_periods": 1000,
+    "n_workers": 10,
+    "elapsed_seconds": 318
+  },
+  "scenario": "buffer_stock",
+  "summary": {
+    "n_passed": 991,
+    "pass_rate": 0.991,
+    "mean_score": 0.8793165539260797,
+    "std_score": 0.011385180317868905,
+    "min_score": 0.8045336944201158,
+    "max_score": 0.911776374496735
+  },
+  "metrics": {
+    "unemployment_rate_mean": {
+      "mean_value": 0.06363812,
+      "std_value": 0.005080133174789807,
+      "mean_score": 0.8370376000000002,
+      "std_score": 0.12971164933384613,
+      "pass_rate": 1.0,
+      "weight": 1.5,
+      "group": "TIME_SERIES"
+    },
+    "unemployment_absolute_ceiling": {
+      "mean_value": 0.13871,
+      "std_value": 0.013888840844361356,
+      "mean_score": 1.0,
+      "std_score": 0.0,
+      "pass_rate": 1.0,
+      "weight": 3.0,
+      "group": "TIME_SERIES"
+    },
+    "unemployment_std": {
+      "mean_value": 0.027750470559126546,
+      "std_value": 0.0029916526434480297,
+      "mean_score": 0.9012175066530308,
+      "std_score": 0.053548674042271996,
+      "pass_rate": 1.0,
+      "weight": 1.0,
+      "group": "TIME_SERIES"
+    },
+    "unemployment_pct_above_floor": {
+      "mean_value": 0.95126,
+      "std_value": 0.026394779786919974,
+      "mean_score": 0.998625,
+      "std_score": 0.00860432304135544,
+      "pass_rate": 1.0,
+      "weight": 1.5,
+      "group": "TIME_SERIES"
+    },
+    "unemployment_pct_below_ceiling": {
+      "mean_value": 0.9982380000000001,
+      "std_value": 0.005324223511461559,
+      "mean_score": 1.0,
+      "std_score": 0.0,
+      "pass_rate": 1.0,
+      "weight": 0.5,
+      "group": "TIME_SERIES"
+    },
+    "inflation_rate_mean": {
+      "mean_value": 0.00205513037333775,
+      "std_value": 0.0009350712817941153,
+      "mean_score": 0.3675855062222958,
+      "std_score": 0.015584521363235258,
+      "pass_rate": 1.0,
+      "weight": 1.5,
+      "group": "TIME_SERIES"
+    },
+    "inflation_hard_ceiling_upper": {
+      "mean_value": 0.0940038041371263,
+      "std_value": 0.034649453478582906,
+      "mean_score": 0.997,
+      "std_score": 0.05469003565550128,
+      "pass_rate": 0.997,
+      "weight": 3.0,
+      "group": "TIME_SERIES"
+    },
+    "inflation_hard_floor": {
+      "mean_value": -0.0603064417580799,
+      "std_value": 0.007503641294779043,
+      "mean_score": 1.0,
+      "std_score": 0.0,
+      "pass_rate": 1.0,
+      "weight": 3.0,
+      "group": "TIME_SERIES"
+    },
+    "inflation_non_degenerate": {
+      "mean_value": 0.00205513037333775,
+      "std_value": 0.0009350712817941153,
+      "mean_score": 0.8047960471515352,
+      "std_score": 0.004250324008155072,
+      "pass_rate": 1.0,
+      "weight": 2.0,
+      "group": "TIME_SERIES"
+    },
+    "inflation_pct_in_bounds": {
+      "mean_value": 0.790628,
+      "std_value": 0.029147720596986646,
+      "mean_score": 0.9009204761904762,
+      "std_score": 0.048257449252835795,
+      "pass_rate": 1.0,
+      "weight": 1.5,
+      "group": "TIME_SERIES"
+    },
+    "log_gdp_mean": {
+      "mean_value": 8.809208984103154,
+      "std_value": 0.013579790352812909,
+      "mean_score": 0.9733879218049967,
+      "std_score": 0.019200564343188238,
+      "pass_rate": 1.0,
+      "weight": 1.0,
+      "group": "TIME_SERIES"
+    },
+    "vacancy_rate_mean": {
+      "mean_value": 0.12865792399999998,
+      "std_value": 0.0015191342989426565,
+      "mean_score": 0.8917759499999999,
+      "std_score": 0.01898917873678321,
+      "pass_rate": 1.0,
+      "weight": 0.5,
+      "group": "TIME_SERIES"
+    },
+    "vacancy_rate_pct_in_bounds": {
+      "mean_value": 0.99466,
+      "std_value": 0.0066750580521820245,
+      "mean_score": 1.0,
+      "std_score": 0.0,
+      "pass_rate": 1.0,
+      "weight": 0.5,
+      "group": "TIME_SERIES"
+    },
+    "phillips_correlation": {
+      "mean_value": -0.33831531673437965,
+      "std_value": 0.03673483204013056,
+      "mean_score": 0.928705179671342,
+      "std_score": 0.03914339859797521,
+      "pass_rate": 1.0,
+      "weight": 1.5,
+      "group": "CURVES"
+    },
+    "phillips_negative_sign": {
+      "mean_value": -0.33831531673437965,
+      "std_value": 0.03673483204013056,
+      "mean_score": 0.9191576583671897,
+      "std_score": 0.01836741602006528,
+      "pass_rate": 1.0,
+      "weight": 3.0,
+      "group": "CURVES"
+    },
+    "okun_correlation": {
+      "mean_value": -0.8383660769069239,
+      "std_value": 0.023796095067606677,
+      "mean_score": 0.9356898931274191,
+      "std_score": 0.029909238305574824,
+      "pass_rate": 1.0,
+      "weight": 3.0,
+      "group": "CURVES"
+    },
+    "beveridge_correlation": {
+      "mean_value": -0.2676963047688907,
+      "std_value": 0.057750992129445664,
+      "mean_score": 0.933197905527995,
+      "std_score": 0.04910276754581266,
+      "pass_rate": 1.0,
+      "weight": 2.0,
+      "group": "CURVES"
+    },
+    "beveridge_negative_sign": {
+      "mean_value": -0.2676963047688907,
+      "std_value": 0.057750992129445664,
+      "mean_score": 0.8838481523844455,
+      "std_score": 0.028875496064722832,
+      "pass_rate": 1.0,
+      "weight": 3.0,
+      "group": "CURVES"
+    },
+    "firm_size_skewness": {
+      "mean_value": 4.815159672092379,
+      "std_value": 1.9050718787513718,
+      "mean_score": 0.5821304949639482,
+      "std_score": 0.29732342656558813,
+      "pass_rate": 0.999,
+      "weight": 1.0,
+      "group": "DISTRIBUTION"
+    },
+    "firm_size_pct_below": {
+      "mean_value": 0.9460799999999999,
+      "std_value": 0.014704883542551412,
+      "mean_score": 0.8441666666666667,
+      "std_score": 0.04103126630771723,
+      "pass_rate": 1.0,
+      "weight": 0.5,
+      "group": "DISTRIBUTION"
+    },
+    "firm_size_tail_ratio": {
+      "mean_value": 7.315979631613133,
+      "std_value": 3.938784072850063,
+      "mean_score": 0.8705414693300532,
+      "std_score": 0.10917593419679196,
+      "pass_rate": 1.0,
+      "weight": 0.5,
+      "group": "DISTRIBUTION"
+    },
+    "sm_ccdf_r2": {
+      "mean_value": 0.9373058006327096,
+      "std_value": 0.03937023588127708,
+      "mean_score": 0.8789814329122116,
+      "std_score": 0.061257925630443626,
+      "pass_rate": 1.0,
+      "weight": 3.0,
+      "group": "DISTRIBUTION"
+    },
+    "dagum_ccdf_r2": {
+      "mean_value": 0.9449826217883924,
+      "std_value": 0.03233776279453358,
+      "mean_score": 0.8745881326220838,
+      "std_score": 0.06391360135522957,
+      "pass_rate": 0.999,
+      "weight": 3.0,
+      "group": "DISTRIBUTION"
+    },
+    "gb2_ccdf_r2": {
+      "mean_value": 0.9404893678672861,
+      "std_value": 0.0554555505400681,
+      "mean_score": 0.8440740551557382,
+      "std_score": 0.09413363974945485,
+      "pass_rate": 0.995,
+      "weight": 2.0,
+      "group": "DISTRIBUTION"
+    },
+    "best_r2": {
+      "mean_value": 0.9663065608303277,
+      "std_value": 0.017935879033765964,
+      "mean_score": 0.8596461166491494,
+      "std_score": 0.053228917881341174,
+      "pass_rate": 1.0,
+      "weight": 3.0,
+      "group": "DISTRIBUTION"
+    },
+    "wealth_gini": {
+      "mean_value": 0.25941633218105037,
+      "std_value": 0.038209312091034606,
+      "mean_score": 0.7993948341718803,
+      "std_score": 0.03207970401361397,
+      "pass_rate": 1.0,
+      "weight": 2.0,
+      "group": "DISTRIBUTION"
+    },
+    "wealth_skewness": {
+      "mean_value": 1.9087460238381406,
+      "std_value": 0.8725899621470403,
+      "mean_score": 0.8237800311477195,
+      "std_score": 0.044602979274544347,
+      "pass_rate": 1.0,
+      "weight": 1.0,
+      "group": "DISTRIBUTION"
+    },
+    "mean_mpc": {
+      "mean_value": 0.9892755853262222,
+      "std_value": 0.027156922450829374,
+      "mean_score": 0.9338622771229018,
+      "std_score": 0.04561688760359715,
+      "pass_rate": 1.0,
+      "weight": 1.5,
+      "group": "FINANCIAL"
+    },
+    "pct_dissaving": {
+      "mean_value": 0.3241739683688571,
+      "std_value": 0.06585599100650603,
+      "mean_score": 0.9437144519045012,
+      "std_score": 0.041872776045263585,
+      "pass_rate": 1.0,
+      "weight": 1.0,
+      "group": "FINANCIAL"
+    },
+    "bankruptcies_mean": {
+      "mean_value": 0.8785940000000001,
+      "std_value": 0.06091432642654764,
+      "mean_score": 0.5757188000000001,
+      "std_score": 0.012182865285309527,
+      "pass_rate": 1.0,
+      "weight": 1.0,
+      "group": "FINANCIAL"
+    },
+    "real_interest_rate_mean": {
+      "mean_value": 0.01889866491168211,
+      "std_value": 0.0009330640135127527,
+      "mean_score": 0.4816444151947018,
+      "std_score": 0.015551066891879212,
+      "pass_rate": 1.0,
+      "weight": 0.5,
+      "group": "FINANCIAL"
+    }
+  },
+  "group_display_names": {
+    "TIME_SERIES": "Time Series",
+    "CURVES": "Curves",
+    "DISTRIBUTION": "Distribution",
+    "GROWTH": "Growth",
+    "FINANCIAL": "Financial",
+    "GROWTH_RATE_DIST": "Growth Rate Distribution"
+  },
+  "failing_seeds": [
+    {
+      "seed": 56,
+      "failed_metrics": [
+        "inflation_hard_ceiling_upper"
+      ]
+    },
+    {
+      "seed": 95,
+      "failed_metrics": [
+        "gb2_ccdf_r2"
+      ]
+    },
+    {
+      "seed": 388,
+      "failed_metrics": [
+        "inflation_hard_ceiling_upper"
+      ]
+    },
+    {
+      "seed": 427,
+      "failed_metrics": [
+        "gb2_ccdf_r2"
+      ]
+    },
+    {
+      "seed": 475,
+      "failed_metrics": [
+        "gb2_ccdf_r2"
+      ]
+    },
+    {
+      "seed": 610,
+      "failed_metrics": [
+        "gb2_ccdf_r2"
+      ]
+    },
+    {
+      "seed": 646,
+      "failed_metrics": [
+        "firm_size_skewness"
+      ]
+    },
+    {
+      "seed": 827,
+      "failed_metrics": [
+        "dagum_ccdf_r2",
+        "gb2_ccdf_r2"
+      ]
+    },
+    {
+      "seed": 841,
+      "failed_metrics": [
+        "inflation_hard_ceiling_upper"
+      ]
+    }
+  ]
+}
