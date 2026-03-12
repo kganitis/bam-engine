@@ -30,6 +30,7 @@ coverage.json
 *.prof
 benchmarks/*.prof
 benchmarks/*.svg
+benchmarks/results/
 asv_benchmarks/.asv/*
 !asv_benchmarks/.asv/results/
 asv_benchmarks/.asv/results/*
