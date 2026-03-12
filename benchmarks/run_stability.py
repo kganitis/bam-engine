@@ -166,6 +166,7 @@ def _aggregate_results(all_seed_data: list[dict]) -> dict:
     n_passed = sum(1 for s in all_seed_data if s["passed"])
 
     summary = {
+        "n_passed": n_passed,
         "pass_rate": n_passed / n_seeds,
         "mean_score": float(np.mean(scores)),
         "std_score": float(np.std(scores)),
@@ -292,7 +293,7 @@ def run_scenario(
 
     # Print summary line
     sr = aggregated["summary"]
-    n_passed = int(sr["pass_rate"] * len(all_seed_data))
+    n_passed = sr["n_passed"]
     mins, secs = divmod(int(elapsed), 60)
     print(
         f"    RESULT: {n_passed}/{len(all_seed_data)} passed ({sr['pass_rate']:.1%})"
@@ -375,6 +376,7 @@ def _resolve_tag_specs(specs: list[str], force: bool) -> list[dict]:
                 "tag", "--sort=version:refname", "--list", "v*"
             ).splitlines()
             in_range = False
+            found_end = False
             for tag in all_tags:
                 if tag == start_tag:
                     in_range = True
@@ -382,7 +384,14 @@ def _resolve_tag_specs(specs: list[str], force: bool) -> list[dict]:
                     full = _git("rev-parse", tag)
                     commits.append({"hash": full, "label": tag})
                 if tag == end_tag:
+                    found_end = True
                     break
+            if not in_range:
+                print(f"ERROR: start tag '{start_tag}' not found", file=sys.stderr)
+                sys.exit(1)
+            if not found_end:
+                print(f"ERROR: end tag '{end_tag}' not found", file=sys.stderr)
+                sys.exit(1)
         else:
             # Single tag
             full = _git("rev-parse", spec)
@@ -423,6 +432,7 @@ atexit.register(_cleanup_worktrees)
 def _run_with_worktree(
     commit: dict,
     scenarios: list[str],
+    n_seeds: int,
     n_workers: int,
     n_periods: int,
     output_dir: Path,
@@ -449,7 +459,9 @@ def _run_with_worktree(
         # Replace validation and extensions with symlinks to current
         for pkg in ("validation", "extensions"):
             wt_pkg = wt_src / pkg
-            if wt_pkg.exists():
+            if wt_pkg.is_symlink():
+                wt_pkg.unlink()
+            elif wt_pkg.exists():
                 shutil.rmtree(wt_pkg)
             os.symlink(current_src / pkg, wt_pkg)
 
@@ -513,7 +525,7 @@ def _run_with_worktree(
                 result = run_scenario(
                     scenario,
                     metadata,
-                    N_CHUNKS * SEEDS_PER_CHUNK,
+                    n_seeds,
                     n_workers,
                     n_periods,
                     output_dir,
@@ -627,7 +639,9 @@ def main() -> None:
             print(f"\n{'=' * 70}")
             print(f"Commit: {commit['label']}")
             print(f"{'=' * 70}")
-            _run_with_worktree(commit, scenarios, n_workers, N_PERIODS, output_dir)
+            _run_with_worktree(
+                commit, scenarios, args.seeds, n_workers, N_PERIODS, output_dir
+            )
     else:
         # Current working tree
         metadata = _get_git_metadata()
