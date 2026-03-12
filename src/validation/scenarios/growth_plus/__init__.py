@@ -670,7 +670,7 @@ def compute_growth_plus_metrics(
     # Price ratio derived metrics
     price_ratio_mean_val = float(np.mean(price_ratio_ss))
     price_ratio_cv = _compute_cv(price_ratio_ss)
-    price_ratio_min_val = float(np.min(price_ratio_ss))
+    price_ratio_min_val = float(np.percentile(price_ratio_ss, 1))
     price_ratio_p5_val = float(np.percentile(price_ratio_ss, 5))
     price_ratio_gdp_corr = _compute_gdp_cyclicality(price_ratio_ss, log_gdp_ss)
 
