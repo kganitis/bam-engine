@@ -1,0 +1,84 @@
+name: Model Validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'benchmarks/results/*.json'
+  workflow_dispatch:
+
+jobs:
+  check-validation:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.12"
+
+    - name: Check benchmark results
+      run: |
+        python - << 'SCRIPT'
+        import json
+        import sys
+        from pathlib import Path
+
+        THRESHOLD = 0.962  # 96.2% = statistical confirmation of p >= 0.95
+        REQUIRED_SCENARIOS = ["baseline", "growth_plus", "buffer_stock"]
+        RESULTS_DIR = Path("benchmarks/results")
+
+        def find_latest_result(scenario: str) -> Path | None:
+            """Find the most recent result file for a scenario."""
+            files = sorted(RESULTS_DIR.glob(f"{scenario}_*.json"), reverse=True)
+            return files[0] if files else None
+
+        print("=" * 60)
+        print("Model Validation Status Check")
+        print(f"Threshold: {THRESHOLD:.1%} (confirms p >= 95% at 95% confidence)")
+        print("=" * 60)
+
+        all_passed = True
+        results = []
+
+        for scenario in REQUIRED_SCENARIOS:
+            filepath = find_latest_result(scenario)
+            if filepath is None:
+                print(f"\n  {scenario}: NO DATA")
+                all_passed = False
+                results.append((scenario, None, None, "MISSING"))
+                continue
+
+            data = json.loads(filepath.read_text())
+            pass_rate = data["summary"]["pass_rate"]
+            n_seeds = data["metadata"]["n_seeds"]
+            commit = data["metadata"].get("commit_short", "?")
+            passed = pass_rate >= THRESHOLD
+
+            status = "PASS" if passed else "FAIL"
+            if not passed:
+                all_passed = False
+
+            results.append((scenario, pass_rate, n_seeds, status))
+            print(f"\n  {scenario}:")
+            print(f"    File:      {filepath.name}")
+            print(f"    Commit:    {commit}")
+            print(f"    Seeds:     {n_seeds}")
+            print(f"    Pass rate: {pass_rate:.1%}")
+            print(f"    Status:    {status}")
+
+        print(f"\n{'=' * 60}")
+        print("SUMMARY")
+        print(f"{'=' * 60}")
+        for scenario, rate, seeds, status in results:
+            rate_str = f"{rate:.1%}" if rate is not None else "N/A"
+            print(f"  {scenario:<15s}  {rate_str:>6s}  {status}")
+
+        if all_passed:
+            print(f"\nResult: ALL SCENARIOS VALIDATED")
+        else:
+            print(f"\nResult: VALIDATION FAILED")
+            sys.exit(1)
+        SCRIPT
