@@ -130,12 +130,16 @@ def _make_validate(scenario_name: str):  # type: ignore[no-untyped-def]
 
 def _make_stability(scenario_name: str):  # type: ignore[no-untyped-def]
     def _stability(
-        seeds: list[int] | int = 5, n_periods: int = 1000, **config_overrides: Any
+        seeds: list[int] | int = 5,
+        n_periods: int = 1000,
+        n_workers: int = 1,
+        **config_overrides: Any,
     ) -> StabilityResult:
         return stability_test(
             get_scenario(scenario_name),
             seeds=seeds,
             n_periods=n_periods,
+            n_workers=n_workers,
             **config_overrides,
         )
 

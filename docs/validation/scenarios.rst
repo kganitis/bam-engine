@@ -19,7 +19,7 @@ Standard BAM model behavior — 25 metrics across 3 categories:
    from validation import run_validation, run_stability_test
 
    result = run_validation(seed=42, n_periods=1000)
-   stability = run_stability_test(seeds=list(range(20)))
+   stability = run_stability_test(seeds=list(range(100)))
 
 
 Growth+ (Section 3.9.2)

@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 # =============================================================================
 
 # Default seeds for stability testing across validation/calibration
-DEFAULT_STABILITY_SEEDS: list[int] = list(range(20))
+DEFAULT_STABILITY_SEEDS: list[int] = list(range(100))
 
 # Type alias for validation status
 Status = Literal["PASS", "WARN", "FAIL"]

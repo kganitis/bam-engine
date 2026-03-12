@@ -16,16 +16,19 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Changed
 ~~~~~~~
 
-* **Stability test threshold** lowered from 95% to 90% pass rate. Tests now
-  emit ``StabilityWarning`` when pass rate falls in the 90--95% marginal zone.
-  This reduces CI flakiness while the new benchmark runner provides detailed
-  1000-seed analysis.
+* **Stability tests upgraded** to 100 seeds (from 20) with 10-worker parallel
+  execution and 95% hard threshold (from 90%). ``StabilityWarning`` now emits
+  at pass rates below 98% (marginal zone), recommending a 1000-seed benchmark
+  run for confirmation.
 * Benchmark results in ``benchmarks/results/`` are now tracked in git
   (previously git-ignored) for the validation-status CI workflow.
 
 Added
 ~~~~~
 
+* Parallel seed execution in ``stability_test()`` via ``n_workers`` parameter
+  (``ProcessPoolExecutor``). Default is sequential (``n_workers=1``) for
+  backward compatibility.
 * **Benchmark-driven validation status** CI workflow
   (``validation-status.yml``): reads pre-computed 1000-seed benchmark JSON files
   and checks that all three scenarios meet the 96.2% pass rate threshold.

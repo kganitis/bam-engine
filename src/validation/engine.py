@@ -281,10 +281,21 @@ def validate(
     )
 
 
+def _validate_seed(
+    scenario: Scenario,
+    seed: int,
+    n_periods: int,
+    config_overrides: dict[str, Any],
+) -> ValidationScore:
+    """Run validation for a single seed. Module-level for ProcessPoolExecutor."""
+    return validate(scenario, seed=seed, n_periods=n_periods, **config_overrides)
+
+
 def stability_test(
     scenario: Scenario,
     seeds: list[int] | int = 5,
     n_periods: int = 1000,
+    n_workers: int = 1,
     **config_overrides: Any,
 ) -> StabilityResult:
     """Run validation across multiple seeds and measure consistency.
@@ -298,6 +309,9 @@ def stability_test(
         If int, uses seeds [0, 1, 2, ..., seeds-1].
     n_periods : int
         Number of simulation periods per seed.
+    n_workers : int
+        Number of parallel workers. Default is 1 (sequential).
+        Values > 1 use ProcessPoolExecutor for parallel seed execution.
     **config_overrides
         Any simulation config parameters to override.
 
@@ -314,14 +328,30 @@ def stability_test(
 
     # Run validation for each seed
     seed_results: list[ValidationScore] = []
-    for seed in seed_list:
-        result = validate(
-            scenario,
-            seed=seed,
-            n_periods=n_periods,
-            **config_overrides,
-        )
-        seed_results.append(result)
+    if n_workers > 1 and len(seed_list) > 1:
+        from concurrent.futures import ProcessPoolExecutor, as_completed
+
+        overrides = dict(config_overrides)
+        with ProcessPoolExecutor(max_workers=n_workers) as executor:
+            futures = {
+                executor.submit(
+                    _validate_seed, scenario, seed, n_periods, overrides
+                ): seed
+                for seed in seed_list
+            }
+            for future in as_completed(futures):
+                seed_results.append(future.result())
+        # Sort by seed for deterministic ordering
+        seed_results.sort(key=lambda r: r.config.get("seed", 0))
+    else:
+        for seed in seed_list:
+            result = validate(
+                scenario,
+                seed=seed,
+                n_periods=n_periods,
+                **config_overrides,
+            )
+            seed_results.append(result)
 
     # Compute aggregate score metrics
     scores = [r.total_score for r in seed_results]

@@ -68,24 +68,26 @@ def test_growth_plus_scenario_validation() -> None:
 
 @pytest.mark.slow
 def test_growth_plus_seed_stability() -> None:
-    """Test that Growth+ passes consistently across multiple seeds.
+    """Test that Growth+ passes consistently across 100 seeds.
 
-    This test runs validation with 20 different seeds and checks:
-    1. At least 90% of seeds pass (warns if < 95%)
+    Runs validation with 100 seeds using 10 parallel workers and checks:
+    1. At least 95% of seeds pass (warns if < 98%)
     2. Score standard deviation is reasonable (< 0.15)
     """
-    result = run_growth_plus_stability_test(seeds=DEFAULT_STABILITY_SEEDS)
+    result = run_growth_plus_stability_test(seeds=DEFAULT_STABILITY_SEEDS, n_workers=10)
     print_growth_plus_stability_report(result)
 
-    # Assert stability criteria
-    if result.pass_rate < 0.95:
+    # Warn zone: 95-97% pass rate — passed but marginal, run 1000-seed benchmark
+    if result.pass_rate < 0.98:
         warnings.warn(
-            f"Stability marginal: {result.pass_rate:.1%} pass rate (target: 95%)",
+            f"Stability marginal: {result.pass_rate:.1%} pass rate "
+            f"({int(result.pass_rate * result.n_seeds)}/{result.n_seeds} seeds). "
+            f"Consider running 1000-seed benchmark to confirm.",
             StabilityWarning,
             stacklevel=1,
         )
-    assert result.pass_rate >= 0.90, (
-        f"Pass rate too low: {result.pass_rate:.0%} (expected >= 90%)"
+    assert result.pass_rate >= 0.95, (
+        f"Pass rate too low: {result.pass_rate:.0%} (expected >= 95%)"
     )
     assert result.std_score <= 0.15, (
         f"Score too variable: std={result.std_score:.3f} (expected <= 0.15)"

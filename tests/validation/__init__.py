@@ -1,2 +1,2 @@
 class StabilityWarning(UserWarning):
-    """Emitted when stability pass rate is marginal (90-95%)."""
+    """Emitted when stability pass rate is marginal (95-97%)."""
