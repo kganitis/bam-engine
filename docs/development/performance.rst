@@ -261,10 +261,11 @@ producing JSON result files for the
    # Preview without running
    PYTHONPATH=src python benchmarks/bench_seed_stability.py --dry-run
 
-Results are saved as JSON in ``benchmarks/results/`` (git-ignored). Each file
-includes per-seed pass/fail data, per-metric statistics, and git metadata.
-Copy results to ``bamengine.org/data/stability/`` and run the manifest
-generator to update the dashboard.
+Results are saved as JSON in ``benchmarks/results/`` and committed to the
+repository for the ``validation-status`` CI workflow. Each file includes
+per-seed pass/fail data, per-metric statistics, and git metadata. Results
+are also copied to ``bamengine.org/data/stability/`` for the stability
+dashboard.
 
 Architecture Performance Notes
 ------------------------------

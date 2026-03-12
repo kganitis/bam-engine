@@ -20,10 +20,17 @@ Changed
   emit ``StabilityWarning`` when pass rate falls in the 90--95% marginal zone.
   This reduces CI flakiness while the new benchmark runner provides detailed
   1000-seed analysis.
+* Benchmark results in ``benchmarks/results/`` are now tracked in git
+  (previously git-ignored) for the validation-status CI workflow.
 
 Added
 ~~~~~
 
+* **Benchmark-driven validation status** CI workflow
+  (``validation-status.yml``): reads pre-computed 1000-seed benchmark JSON files
+  and checks that all three scenarios meet the 96.2% pass rate threshold.
+  No simulation runs in CI.
+* Model Validation badge in README.
 * **Seed stability benchmark runner** (``benchmarks/bench_seed_stability.py``):
   standalone script that runs 3 scenarios × 1000 seeds parallelized across 10
   workers, producing JSON result files for the bamengine.org stability dashboard.
@@ -36,6 +43,8 @@ Added
 Removed
 ~~~~~~~
 
+* ``.github/workflows/validation.yml`` — replaced by benchmark-driven
+  ``validation-status.yml`` that reads pre-computed results.
 * ``scripts/gate_check.py`` — superseded by ``benchmarks/bench_seed_stability.py``.
 
 [0.6.1] - 2026-03-10

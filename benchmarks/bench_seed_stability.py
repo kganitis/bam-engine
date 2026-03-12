@@ -2,7 +2,8 @@
 
 Runs seed stability tests across all three scenarios (baseline, growth+,
 buffer-stock) with 1000 seeds parallelized across 10 workers. Produces
-JSON result files for the bamengine.org stability dashboard.
+JSON result files committed to the repository for the validation-status
+CI workflow and the bamengine.org stability dashboard.
 
 Usage:
     # Current working tree

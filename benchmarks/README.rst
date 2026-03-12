@@ -95,7 +95,7 @@ CLI Options
 Output Format
 ~~~~~~~~~~~~~
 
-Results are saved as JSON files in ``benchmarks/results/`` (git-ignored) with
+Results are saved as JSON files in ``benchmarks/results/`` (committed to the repository) with
 the naming convention ``{scenario}_{commit_short}_{timestamp}.json``. Each file
 contains:
 
@@ -109,9 +109,9 @@ Workflow
 ~~~~~~~~
 
 1. Run the benchmark: ``PYTHONPATH=src python benchmarks/bench_seed_stability.py``
-2. Copy JSON results to ``bamengine.org/data/stability/``
-3. Run the manifest generator: ``python bamengine.org/scripts/generate_manifest.py``
-4. The stability dashboard picks up the new data automatically
+2. Commit the JSON results: ``git add benchmarks/results/*.json && git commit``
+3. Push to main — the ``validation-status`` CI workflow checks pass rates automatically
+4. Optionally copy results to ``bamengine.org/data/stability/`` for the dashboard
 
 See Also
 --------
