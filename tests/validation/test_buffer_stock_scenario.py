@@ -26,8 +26,8 @@ from __future__ import annotations
 import warnings
 
 import pytest
-from conftest import StabilityWarning
 
+from tests.validation import StabilityWarning
 from validation import (
     DEFAULT_STABILITY_SEEDS,
     print_buffer_stock_report,
