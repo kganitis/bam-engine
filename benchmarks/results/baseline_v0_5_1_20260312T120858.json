@@ -1,0 +1,446 @@
+{
+  "metadata": {
+    "commit": "3efb68ecfd6412fa5900de8aa317854b47ae6974",
+    "commit_short": "3efb68e",
+    "timestamp": "2026-03-12T12:08:58",
+    "branch": "main",
+    "tag": "v0.5.1",
+    "version": null,
+    "n_seeds": 1000,
+    "n_periods": 1000,
+    "n_workers": 10,
+    "elapsed_seconds": 271
+  },
+  "scenario": "baseline",
+  "summary": {
+    "n_passed": 969,
+    "pass_rate": 0.969,
+    "mean_score": 0.8613181493852881,
+    "std_score": 0.010400342451147257,
+    "min_score": 0.8210363993328745,
+    "max_score": 0.8872264584663664
+  },
+  "metrics": {
+    "unemployment_rate_mean": {
+      "mean_value": 0.057343184000000005,
+      "std_value": 0.0036846650830359034,
+      "mean_score": 0.8756000000000002,
+      "std_score": 0.086330141717067,
+      "pass_rate": 1.0,
+      "weight": 1.5,
+      "group": "TIME_SERIES"
+    },
+    "unemployment_absolute_ceiling": {
+      "mean_value": 0.13644800000000004,
+      "std_value": 0.012333340828826563,
+      "mean_score": 1.0,
+      "std_score": 0.0,
+      "pass_rate": 1.0,
+      "weight": 3.0,
+      "group": "TIME_SERIES"
+    },
+    "unemployment_std": {
+      "mean_value": 0.028577271802418373,
+      "std_value": 0.002617790728592084,
+      "mean_score": 0.5085260059156478,
+      "std_score": 0.16815643774117725,
+      "pass_rate": 1.0,
+      "weight": 1.0,
+      "group": "TIME_SERIES"
+    },
+    "unemployment_pct_above_floor": {
+      "mean_value": 0.913136,
+      "std_value": 0.031376257010676076,
+      "mean_score": 0.8382366666666666,
+      "std_score": 0.10080901409210502,
+      "pass_rate": 0.969,
+      "weight": 1.5,
+      "group": "TIME_SERIES"
+    },
+    "unemployment_pct_below_ceiling": {
+      "mean_value": 0.981784,
+      "std_value": 0.015371185510558393,
+      "mean_score": 0.99873,
+      "std_score": 0.008440207343424669,
+      "pass_rate": 1.0,
+      "weight": 0.5,
+      "group": "TIME_SERIES"
+    },
+    "inflation_rate_mean": {
+      "mean_value": 0.010494984116882612,
+      "std_value": 0.0002908878486497238,
+      "mean_score": 0.012504452891320461,
+      "std_score": 0.007003419768657318,
+      "pass_rate": 1.0,
+      "weight": 1.5,
+      "group": "TIME_SERIES"
+    },
+    "inflation_non_degenerate": {
+      "mean_value": 0.010494984116882612,
+      "std_value": 0.0002908878486497238,
+      "mean_score": 0.8024749205844129,
+      "std_score": 0.0014544392432486188,
+      "pass_rate": 1.0,
+      "weight": 2.0,
+      "group": "TIME_SERIES"
+    },
+    "inflation_pct_in_bounds": {
+      "mean_value": 0.9984639999999999,
+      "std_value": 0.0021087209393374,
+      "mean_score": 1.0,
+      "std_score": 0.0,
+      "pass_rate": 1.0,
+      "weight": 1.0,
+      "group": "TIME_SERIES"
+    },
+    "inflation_std": {
+      "mean_value": 0.022799790646118926,
+      "std_value": 0.0011867006209728115,
+      "mean_score": 0.8885006241485626,
+      "std_score": 0.05648750389730006,
+      "pass_rate": 1.0,
+      "weight": 0.5,
+      "group": "TIME_SERIES"
+    },
+    "real_wage_mean": {
+      "mean_value": 0.3396246363263997,
+      "std_value": 0.002008989296499731,
+      "mean_score": 0.9729934162349678,
+      "std_score": 0.02075823692565264,
+      "pass_rate": 1.0,
+      "weight": 1.0,
+      "group": "TIME_SERIES"
+    },
+    "real_wage_std": {
+      "mean_value": 0.01570392220063009,
+      "std_value": 0.001757038563608445,
+      "mean_score": 0.6435048624606193,
+      "std_score": 0.1098149102255278,
+      "pass_rate": 1.0,
+      "weight": 0.5,
+      "group": "TIME_SERIES"
+    },
+    "productivity_flatness": {
+      "mean_value": 0.0,
+      "std_value": 0.0,
+      "mean_score": 1.0,
+      "std_score": 0.0,
+      "pass_rate": 1.0,
+      "weight": 2.0,
+      "group": "TIME_SERIES"
+    },
+    "wage_to_productivity_ratio": {
+      "mean_value": 0.6792492726527994,
+      "std_value": 0.004017978592999462,
+      "mean_score": 0.9481231816319987,
+      "std_score": 0.010044946482498655,
+      "pass_rate": 1.0,
+      "weight": 1.0,
+      "group": "TIME_SERIES"
+    },
+    "vacancy_rate_mean": {
+      "mean_value": 0.130878024,
+      "std_value": 0.0013977318996946442,
+      "mean_score": 0.9785786666666667,
+      "std_score": 0.017261356403506886,
+      "pass_rate": 1.0,
+      "weight": 0.5,
+      "group": "TIME_SERIES"
+    },
+    "vacancy_rate_pct_in_bounds": {
+      "mean_value": 0.995804,
+      "std_value": 0.005900642676861569,
+      "mean_score": 1.0,
+      "std_score": 0.0,
+      "pass_rate": 1.0,
+      "weight": 0.5,
+      "group": "TIME_SERIES"
+    },
+    "phillips_correlation": {
+      "mean_value": -0.4155334624878567,
+      "std_value": 0.029583674729217937,
+      "mean_score": 0.8437852460087247,
+      "std_score": 0.03312009461625343,
+      "pass_rate": 1.0,
+      "weight": 1.0,
+      "group": "CURVES"
+    },
+    "phillips_negative_sign": {
+      "mean_value": -0.4155334624878567,
+      "std_value": 0.029583674729217937,
+      "mean_score": 0.9577069151396372,
+      "std_score": 0.014619932128357313,
+      "pass_rate": 1.0,
+      "weight": 3.0,
+      "group": "CURVES"
+    },
+    "okun_correlation": {
+      "mean_value": -0.8719475555844783,
+      "std_value": 0.022312838221171333,
+      "mean_score": 0.9394936266718792,
+      "std_score": 0.034368056108009776,
+      "pass_rate": 1.0,
+      "weight": 1.5,
+      "group": "CURVES"
+    },
+    "okun_r_squared": {
+      "mean_value": 0.7607904024392311,
+      "std_value": 0.03880484590359357,
+      "mean_score": 0.968136397576473,
+      "std_score": 0.02463655192995988,
+      "pass_rate": 1.0,
+      "weight": 0.5,
+      "group": "CURVES"
+    },
+    "beveridge_correlation": {
+      "mean_value": -0.3286545035224511,
+      "std_value": 0.05917521420293802,
+      "mean_score": 0.9333010036106928,
+      "std_score": 0.04801664151142736,
+      "pass_rate": 1.0,
+      "weight": 2.0,
+      "group": "CURVES"
+    },
+    "beveridge_negative_sign": {
+      "mean_value": -0.3286545035224511,
+      "std_value": 0.05917521420293802,
+      "mean_score": 0.9143272517612256,
+      "std_score": 0.02958760710146901,
+      "pass_rate": 1.0,
+      "weight": 3.0,
+      "group": "CURVES"
+    },
+    "firm_size_skewness": {
+      "mean_value": 3.3909745593061698,
+      "std_value": 1.355201377690693,
+      "mean_score": 0.8763553171976132,
+      "std_score": 0.06655354942771041,
+      "pass_rate": 1.0,
+      "weight": 1.5,
+      "group": "DISTRIBUTION"
+    },
+    "firm_size_pct_below": {
+      "mean_value": 0.9674200000000001,
+      "std_value": 0.014196605228011389,
+      "mean_score": 0.6314666666666665,
+      "std_score": 0.08981996808431124,
+      "pass_rate": 1.0,
+      "weight": 1.0,
+      "group": "DISTRIBUTION"
+    },
+    "firm_size_tail_ratio": {
+      "mean_value": 4.576322222222222,
+      "std_value": 1.5661256882771195,
+      "mean_score": 0.8848413194444444,
+      "std_score": 0.06535109593308801,
+      "pass_rate": 1.0,
+      "weight": 0.75,
+      "group": "DISTRIBUTION"
+    },
+    "firm_size_pct_below_medium": {
+      "mean_value": 0.99537,
+      "std_value": 0.006005256031178027,
+      "mean_score": 0.9999583333333334,
+      "std_score": 0.0013169567191065948,
+      "pass_rate": 1.0,
+      "weight": 0.5,
+      "group": "DISTRIBUTION"
+    }
+  },
+  "group_display_names": {
+    "TIME_SERIES": "Time Series",
+    "CURVES": "Curves",
+    "DISTRIBUTION": "Distribution",
+    "GROWTH": "Growth",
+    "FINANCIAL": "Financial",
+    "GROWTH_RATE_DIST": "Growth Rate Distribution"
+  },
+  "failing_seeds": [
+    {
+      "seed": 69,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 111,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 127,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 133,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 175,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 203,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 251,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 283,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 289,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 299,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 334,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 344,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 377,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 387,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 437,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 449,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 527,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 579,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 584,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 655,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 772,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 784,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 791,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 792,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 838,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 839,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 889,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 890,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 913,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 917,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    },
+    {
+      "seed": 933,
+      "failed_metrics": [
+        "unemployment_pct_above_floor"
+      ]
+    }
+  ]
+}

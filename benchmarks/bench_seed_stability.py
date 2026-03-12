@@ -304,7 +304,9 @@ def run_scenario(
     # Write JSON
     output_dir.mkdir(parents=True, exist_ok=True)
     ts = metadata["timestamp"].replace(":", "").replace("-", "")[:15]
-    filename = f"{scenario}_{metadata['commit_short']}_{ts}.json"
+    label = metadata.get("tag") or metadata["commit_short"]
+    label = label.replace(".", "_")
+    filename = f"{scenario}_{label}_{ts}.json"
     filepath = output_dir / filename
     with open(filepath, "w") as f:
         json.dump(result, f, indent=2)
