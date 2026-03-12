@@ -6,13 +6,13 @@ JSON result files for the bamengine.org stability dashboard.
 
 Usage:
     # Current working tree
-    PYTHONPATH=src python benchmarks/run_stability.py
+    PYTHONPATH=src python benchmarks/bench_seed_stability.py
 
     # Single scenario
-    PYTHONPATH=src python benchmarks/run_stability.py --scenario baseline
+    PYTHONPATH=src python benchmarks/bench_seed_stability.py --scenario baseline
 
     # Historical commits (see --help for full options)
-    python benchmarks/run_stability.py --tags v0.5.0..v0.6.2
+    python benchmarks/bench_seed_stability.py --tags v0.5.0..v0.6.2
 """
 
 import argparse

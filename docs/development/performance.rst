@@ -235,6 +235,37 @@ ASV benchmarks complement these tests with cross-commit tracking and
 machine-specific baselines, but require separate invocation and do not
 integrate into ``pytest``.
 
+Seed Stability Benchmarking
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``benchmarks/bench_seed_stability.py`` script runs large-scale seed
+stability analysis: 3 scenarios × 1000 seeds parallelized across 10 workers,
+producing JSON result files for the
+`bamengine.org stability dashboard <https://bamengine.org/stability/>`_.
+
+.. code-block:: bash
+
+   # Current working tree (all scenarios)
+   PYTHONPATH=src python benchmarks/bench_seed_stability.py
+
+   # Single scenario
+   PYTHONPATH=src python benchmarks/bench_seed_stability.py --scenario baseline
+
+   # Customize seeds/workers
+   PYTHONPATH=src python benchmarks/bench_seed_stability.py --seeds 500 --workers 8
+
+   # Historical commits via git worktrees
+   python benchmarks/bench_seed_stability.py --tags v0.5.0..v0.6.2
+   python benchmarks/bench_seed_stability.py --commits HEAD~5..HEAD
+
+   # Preview without running
+   PYTHONPATH=src python benchmarks/bench_seed_stability.py --dry-run
+
+Results are saved as JSON in ``benchmarks/results/`` (git-ignored). Each file
+includes per-seed pass/fail data, per-metric statistics, and git metadata.
+Copy results to ``bamengine.org/data/stability/`` and run the manifest
+generator to update the dashboard.
+
 Architecture Performance Notes
 ------------------------------
 

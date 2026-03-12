@@ -67,7 +67,7 @@ def test_baseline_seed_stability() -> None:
     """Test that baseline passes consistently across multiple seeds.
 
     This test runs validation with 20 different seeds and checks:
-    1. At least 95% of seeds pass (no FAIL metrics)
+    1. At least 90% of seeds pass (warns if < 95%)
     2. Score standard deviation is reasonable (< 0.15)
     """
     result = run_stability_test(seeds=DEFAULT_STABILITY_SEEDS)

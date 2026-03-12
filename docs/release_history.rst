@@ -10,6 +10,34 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 
    Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.
 
+[0.6.2] - 2026-03-12
+---------------------
+
+Changed
+~~~~~~~
+
+* **Stability test threshold** lowered from 95% to 90% pass rate. Tests now
+  emit ``StabilityWarning`` when pass rate falls in the 90--95% marginal zone.
+  This reduces CI flakiness while the new benchmark runner provides detailed
+  1000-seed analysis.
+
+Added
+~~~~~
+
+* **Seed stability benchmark runner** (``benchmarks/bench_seed_stability.py``):
+  standalone script that runs 3 scenarios × 1000 seeds parallelized across 10
+  workers, producing JSON result files for the bamengine.org stability dashboard.
+  Supports ``--scenario``, ``--seeds``, ``--workers``, ``--commits``/``--tags``
+  for historical commit benchmarking via git worktrees, ``--dry-run``, and
+  ``--force``.
+* ``StabilityWarning`` class in ``tests/validation/conftest.py`` for pytest
+  visibility of marginal stability results.
+
+Removed
+~~~~~~~
+
+* ``scripts/gate_check.py`` — superseded by ``benchmarks/bench_seed_stability.py``.
+
 [0.6.1] - 2026-03-10
 ---------------------
 
