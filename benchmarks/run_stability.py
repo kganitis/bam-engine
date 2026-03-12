@@ -108,12 +108,14 @@ def _get_git_metadata() -> dict:
 # ---------------------------------------------------------------------------
 
 
-def _run_chunk(chunk_id: int, scenario: str, n_periods: int) -> dict:
+def _run_chunk(chunk_id: int, scenario: str, n_periods: int, n_seeds: int) -> dict:
     """Run a chunk of seeds for one scenario. Called in worker process."""
     import validation
 
     func = getattr(validation, SCENARIO_FUNCS[scenario])
-    seeds = list(range(chunk_id * SEEDS_PER_CHUNK, (chunk_id + 1) * SEEDS_PER_CHUNK))
+    start = chunk_id * SEEDS_PER_CHUNK
+    end = min((chunk_id + 1) * SEEDS_PER_CHUNK, n_seeds)
+    seeds = list(range(start, end))
     result = func(seeds=seeds, n_periods=n_periods)
 
     # Return serializable data — full per-seed results for proper aggregation
@@ -246,14 +248,15 @@ def run_scenario(
     t0 = time.time()
     all_seed_data: list[dict] = []
 
-    # Compute chunk count from n_seeds (must be multiple of SEEDS_PER_CHUNK)
+    # Compute chunk count from n_seeds
     n_chunks = n_seeds // SEEDS_PER_CHUNK
     if n_seeds % SEEDS_PER_CHUNK != 0:
-        n_chunks += 1  # partial last chunk handled by range in _run_chunk
+        n_chunks += 1  # last chunk clipped to n_seeds in _run_chunk
 
     with ProcessPoolExecutor(max_workers=n_workers) as pool:
         futures = {
-            pool.submit(_run_chunk, i, scenario, n_periods): i for i in range(n_chunks)
+            pool.submit(_run_chunk, i, scenario, n_periods, n_seeds): i
+            for i in range(n_chunks)
         }
         for future in as_completed(futures):
             chunk_id = futures[future]
