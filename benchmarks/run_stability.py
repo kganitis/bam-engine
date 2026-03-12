@@ -36,7 +36,7 @@ N_WORKERS = 10
 SEEDS_PER_CHUNK = 100
 N_CHUNKS = 10  # Total: 1000 seeds
 N_PERIODS = 1000
-OUTPUT_DIR = Path("benchmarks/results")
+OUTPUT_DIR = Path(__file__).parent / "results"
 
 ALL_SCENARIOS = ["baseline", "growth_plus", "buffer_stock"]
 
