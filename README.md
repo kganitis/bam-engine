@@ -26,19 +26,25 @@
   <a href="https://bam-engine.readthedocs.io/en/latest/auto_examples/index.html"><strong>Examples</strong></a>
 </p>
 
-[![Python](https://img.shields.io/pypi/pyversions/bamengine.svg)](https://pypi.org/project/bamengine/)
-[![PyPI version](https://img.shields.io/pypi/v/bamengine.svg?color=blue)](https://pypi.org/project/bamengine/)
-[![DOI](https://zenodo.org/badge/972128676.svg)](https://doi.org/10.5281/zenodo.17610305)
-[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+<p align="center">
+  <a href="https://pypi.org/project/bamengine/"><img src="https://img.shields.io/pypi/pyversions/bamengine.svg" alt="Python"></a>
+  <a href="https://pypi.org/project/bamengine/"><img src="https://img.shields.io/pypi/v/bamengine.svg?color=blue" alt="PyPI version"></a>
+  <a href="https://doi.org/10.5281/zenodo.17610305"><img src="https://zenodo.org/badge/972128676.svg" alt="DOI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License"></a>
+</p>
 
-[![Tests](https://github.com/kganitis/bam-engine/actions/workflows/test.yml/badge.svg)](https://github.com/kganitis/bam-engine/actions/workflows/test.yml)
-[![Repo-Review](https://github.com/kganitis/bam-engine/actions/workflows/repo-review.yml/badge.svg)](https://github.com/kganitis/bam-engine/actions/workflows/repo-review.yml)
-[![codecov](https://codecov.io/github/kganitis/bam-engine/graph/badge.svg?token=YIG31U3OR3?color=brightgreen)](https://codecov.io/github/kganitis/bam-engine)
-[![Benchmarks](https://img.shields.io/badge/benchmarks-asv-brightgreen)](https://kganitis.github.io/bam-engine/)
+<p align="center">
+  <a href="https://github.com/kganitis/bam-engine/actions/workflows/test.yml"><img src="https://github.com/kganitis/bam-engine/actions/workflows/test.yml/badge.svg" alt="Tests"></a>
+  <a href="https://github.com/kganitis/bam-engine/actions/workflows/repo-review.yml"><img src="https://github.com/kganitis/bam-engine/actions/workflows/repo-review.yml/badge.svg" alt="Repo-Review"></a>
+  <a href="https://codecov.io/github/kganitis/bam-engine"><img src="https://codecov.io/github/kganitis/bam-engine/graph/badge.svg?token=YIG31U3OR3?color=brightgreen" alt="codecov"></a>
+  <a href="https://kganitis.github.io/bam-engine/"><img src="https://img.shields.io/badge/benchmarks-asv-brightgreen" alt="Benchmarks"></a>
+</p>
 
-[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/kganitis/bam-engine/main.svg)](https://results.pre-commit.ci/latest/github/kganitis/bam-engine/main)
-[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Type Checked](https://img.shields.io/badge/type%20checked-mypy-black)](http://mypy-lang.org/)
+<p align="center">
+  <a href="https://results.pre-commit.ci/latest/github/kganitis/bam-engine/main"><img src="https://results.pre-commit.ci/badge/github/kganitis/bam-engine/main.svg" alt="pre-commit.ci status"></a>
+  <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff"></a>
+  <a href="http://mypy-lang.org/"><img src="https://img.shields.io/badge/type%20checked-mypy-black" alt="Type Checked"></a>
+</p>
 
 <p align="center">
   <a href="https://bamengine.org/benchmarks/validation/">
