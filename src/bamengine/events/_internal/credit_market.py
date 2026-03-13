@@ -569,7 +569,9 @@ def firms_fire_workers(
     victim_employers = firing_ids[group_idx[fire_mask]]
     total_fired = int(victims.size)
 
-    if victims.size == 0:
+    if (
+        victims.size == 0
+    ):  # pragma: no cover — defensive; unreachable when items.size > 0
         if info_enabled:
             log.info("  No workers fired.")
             log.info("--- Firms Firing Workers complete ---")

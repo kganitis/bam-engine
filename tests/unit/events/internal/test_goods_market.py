@@ -13,6 +13,7 @@ from bamengine.events._internal.goods_market import (
     consumers_decide_firms_to_visit,
     consumers_decide_income_to_spend,
     consumers_finalize_purchases,
+    goods_market_round,
 )
 from bamengine.roles import Consumer, Producer
 from tests.helpers.factories import mock_consumer, mock_producer
@@ -194,3 +195,32 @@ def test_pick_firms_with_no_firms() -> None:
     # All shopping queues should be cleared (-1)
     assert np.all(con.shop_visits_head == -1)
     assert np.all(con.shop_visits_targets == -1)
+
+
+# ============================================================================
+# goods_market_round edge cases
+# ============================================================================
+
+
+def test_goods_round_consumer_fewer_targets_than_max_z() -> None:
+    """Consumer has fewer valid targets than max_Z → inner loop breaks on t < 0."""
+    max_Z = 3
+    con = mock_consumer(
+        n=1,
+        queue_z=max_Z,
+        income_to_spend=np.array([10.0]),
+    )
+    # Only 1 valid target out of 3 slots
+    con.shop_visits_targets[0] = np.array([0, -1, -1])
+
+    prod = mock_producer(
+        n=1,
+        price=np.array([2.0]),
+        inventory=np.array([10.0]),
+    )
+
+    goods_market_round(con, prod, max_Z=max_Z, rng=make_rng(0))
+
+    # Consumer should have bought from firm 0, spending some budget
+    assert con.income_to_spend[0] < 10.0
+    assert prod.inventory[0] < 10.0
