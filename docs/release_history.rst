@@ -10,45 +10,55 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 
    Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.
 
-[0.6.2] - 2026-03-12
+[0.7.0] - 2026-03-13
 ---------------------
+
+This release replaces the v0.6.0 batch-sequential goods market with a pure
+sequential implementation.
 
 Changed
 ~~~~~~~
 
-* **Stability tests upgraded** to 100 seeds (from 20) with 10-worker parallel
-  execution and 95% hard threshold (from 90%). ``StabilityWarning`` now emits
-  at pass rates below 98% (marginal zone), recommending a 1000-seed benchmark
-  run for confirmation.
-* Benchmark results in ``benchmarks/results/`` are now tracked in git
-  (previously git-ignored) for the validation-status CI workflow.
+**Sequential Goods Market**
 
-Added
-~~~~~
+* ``goods_market_round`` now processes consumers **one at a time** using a
+  sequential Python-list loop, replacing the batch-sequential approach (~10
+  randomized consumer batches) from v0.6.0. Each consumer completes all shopping
+  visits before the next consumer starts, eliminating many "phantom goods"
+  overselling events per period caused by within-batch inventory collisions.
+  See :ref:`decision-sequential-shopping` for design rationale.
 
-* Parallel seed execution in ``stability_test()`` via ``n_workers`` parameter
-  (``ProcessPoolExecutor``). Default is sequential (``n_workers=1``) for
-  backward compatibility.
-* **Benchmark-driven validation status** CI workflow
-  (``validation-status.yml``): reads pre-computed 1000-seed benchmark JSON files
-  and checks that all three scenarios meet the 96.2% pass rate threshold.
-  No simulation runs in CI.
-* Model Validation badge in README.
-* **Seed stability benchmark runner** (``benchmarks/bench_seed_stability.py``):
-  standalone script that runs 3 scenarios × 1000 seeds parallelized across 10
-  workers, producing JSON result files for the bamengine.org stability dashboard.
-  Supports ``--scenario``, ``--seeds``, ``--workers``, ``--commits``/``--tags``
-  for historical commit benchmarking via git worktrees, ``--dry-run``, and
-  ``--force``.
-* ``StabilityWarning`` class in ``tests/validation/conftest.py`` for pytest
-  visibility of marginal stability results.
+**Validation Metrics**
+
+* ``price_ratio_floor`` (Growth+): changed from global minimum to 1st
+  percentile — filters transient demand surges at full employment while still
+  catching genuine deflationary spirals; weight also lowered from 3.0 to 2.0.
+
+Performance
+~~~~~~~~~~~
+
+* Sequential goods market is **6.5% faster** than batch-sequential for full
+  simulations. ``goods_market_round`` itself dropped **35%**.
 
 Removed
 ~~~~~~~
 
-* ``.github/workflows/validation.yml`` — replaced by benchmark-driven
-  ``validation-status.yml`` that reads pre-computed results.
-* ``scripts/gate_check.py`` — superseded by ``benchmarks/bench_seed_stability.py``.
+* ``n_batches`` config parameter — only needed for batch-sequential goods market.
+
+Development
+~~~~~~~~~~~
+
+**Seed-Stability Testing Overhaul**
+
+* Seed stability tests upgraded from 20 to **100 seeds** per scenario, with parallel
+  execution via new ``n_workers`` parameter.
+* New ``benchmarks/bench_seed_stability.py`` — parallelized 1000-seed benchmark
+  runner with JSON output, git-worktree support for historical commits, and CLI
+  (``--scenario``, ``--seeds``, ``--tags``, ``--commits``). Results committed to
+  ``benchmarks/results/``.
+* New ``.github/workflows/validation-status.yml`` replaces ``validation.yml`` and
+  ``growth-plus-stability.yml`` — reads pre-computed JSON in ``benchmarks/results/``
+  with **zero simulation** in CI.
 
 [0.6.1] - 2026-03-10
 ---------------------
@@ -97,11 +107,6 @@ Changed
   all Z visits before the next starts). Pipeline calls it once (handles visits internally).
   See :ref:`decision-batch-sequential-shopping` for design rationale.
 
-**Pipeline Syntax**
-
-* Removed interleave syntax (``<->``) from pipeline YAML. Only ``event x N`` repetition
-  remains.
-
 Performance
 ~~~~~~~~~~~
 
@@ -113,6 +118,8 @@ Removed
 
 * **Sequential event classes**: ``WorkersSendOneRound``, ``FirmsHireWorkers``,
   ``FirmsSendOneLoanApp``, ``BanksProvideLoans``, ``ConsumersShopSequential``.
+* **Interleave syntax (``<->``)** from pipeline YAML. Only ``event x N`` repetition
+  remains.
 
 [0.5.1] - 2026-03-04
 ---------------------
