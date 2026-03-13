@@ -95,9 +95,12 @@ def _get_git_metadata() -> dict:
     except ImportError:
         version = None
 
+    commit_date = _git("log", "-1", "--format=%aI", "HEAD")
+
     return {
         "commit": commit,
         "commit_short": commit_short,
+        "commit_date": commit_date,
         "branch": branch,
         "tag": tag,
         "version": version,
@@ -310,6 +313,7 @@ def run_scenario(
     filepath = output_dir / filename
     with open(filepath, "w") as f:
         json.dump(result, f, indent=2)
+        f.write("\n")
     print(f"    Saved: {filepath}")
 
     return result
@@ -496,9 +500,12 @@ def _run_with_worktree(
         except Exception:
             pass
 
+        commit_date = _git("log", "-1", "--format=%aI", commit["hash"])
+
         metadata = {
             "commit": commit["hash"],
             "commit_short": commit_short,
+            "commit_date": commit_date,
             "timestamp": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S"),
             "branch": "main",
             "tag": tag,
