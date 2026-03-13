@@ -20,6 +20,34 @@ from validation import StabilityResult, get_validation_func
 
 
 @dataclass
+class ScenarioResult:
+    """Per-scenario results for cross-scenario evaluation.
+
+    Attributes
+    ----------
+    mean_score : float
+        Mean score across seeds.
+    std_score : float
+        Standard deviation of scores across seeds.
+    combined_score : float
+        Combined score: mean * (1 - std).
+    pass_rate : float
+        Fraction of seeds with zero FAIL metrics.
+    n_fail : int
+        Total number of seed-level failures.
+    seed_scores : list[float]
+        Individual seed scores.
+    """
+
+    mean_score: float
+    std_score: float
+    combined_score: float
+    pass_rate: float
+    n_fail: int
+    seed_scores: list[float]
+
+
+@dataclass
 class CalibrationResult:
     """Result from calibration optimization.
 
@@ -49,6 +77,8 @@ class CalibrationResult:
         Individual seed scores (for incremental stability).
     seed_fails : list[int], optional
         Per-seed fail counts (for incremental stability).
+    scenario_results : dict[str, ScenarioResult], optional
+        Per-scenario results for cross-scenario evaluation.
     """
 
     params: dict[str, Any]
@@ -63,6 +93,43 @@ class CalibrationResult:
     stability_result: StabilityResult | None = None
     seed_scores: list[float] | None = None
     seed_fails: list[int] | None = None
+    scenario_results: dict[str, ScenarioResult] | None = None
+
+    @classmethod
+    def from_cross_eval(
+        cls,
+        params: dict[str, Any],
+        scenario_results: dict[str, ScenarioResult],
+    ) -> CalibrationResult:
+        """Create a CalibrationResult from cross-scenario evaluation data.
+
+        Computes aggregate fields from per-scenario results.
+
+        Parameters
+        ----------
+        params : dict
+            Parameter configuration.
+        scenario_results : dict[str, ScenarioResult]
+            Per-scenario evaluation results.
+
+        Returns
+        -------
+        CalibrationResult
+        """
+        all_scores = [sr.combined_score for sr in scenario_results.values()]
+        all_fails = sum(sr.n_fail for sr in scenario_results.values())
+        min_pass = min(sr.pass_rate for sr in scenario_results.values())
+        return cls(
+            params=params,
+            single_score=0.0,
+            n_pass=0,
+            n_warn=0,
+            n_fail=all_fails,
+            mean_score=sum(all_scores) / len(all_scores) if all_scores else 0.0,
+            pass_rate=min_pass,
+            combined_score=min(all_scores) if all_scores else 0.0,
+            scenario_results=scenario_results,
+        )
 
 
 @dataclass

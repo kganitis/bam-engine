@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from calibration.analysis import CalibrationResult
+from calibration.analysis import CalibrationResult, ScenarioResult
 from calibration.io import (
     create_run_dir,
     load_morris,
@@ -234,3 +234,59 @@ class TestPairwiseRoundtrip:
         assert len(loaded.interactions) == 1
         assert loaded.interactions[0].param_a == "beta"
         assert loaded.interactions[0].interaction_strength == pytest.approx(0.05)
+
+
+class TestStabilityScenarioResults:
+    """Tests for scenario_results in stability save/load."""
+
+    def test_save_load_with_scenario_results(self, tmp_path):
+        sr = ScenarioResult(
+            mean_score=0.85,
+            std_score=0.02,
+            combined_score=0.83,
+            pass_rate=0.95,
+            n_fail=1,
+            seed_scores=[0.84, 0.86],
+        )
+        results = [
+            CalibrationResult(
+                params={"beta": 5},
+                single_score=0.8,
+                n_pass=10,
+                n_warn=1,
+                n_fail=0,
+                mean_score=0.82,
+                std_score=0.03,
+                pass_rate=1.0,
+                combined_score=0.80,
+                seed_scores=[0.8, 0.84],
+                scenario_results={"baseline": sr},
+            )
+        ]
+        path = tmp_path / "stability.json"
+        save_stability(results, "test", path)
+        loaded = load_stability(path)
+        assert loaded[0].scenario_results is not None
+        assert loaded[0].scenario_results["baseline"].mean_score == 0.85
+        assert loaded[0].scenario_results["baseline"].n_fail == 1
+
+    def test_load_without_scenario_results_is_none(self, tmp_path):
+        """Backward compat: old files without scenario_results load as None."""
+        results = [
+            CalibrationResult(
+                params={"beta": 5},
+                single_score=0.8,
+                n_pass=10,
+                n_warn=1,
+                n_fail=0,
+                mean_score=0.82,
+                std_score=0.03,
+                pass_rate=1.0,
+                combined_score=0.80,
+                seed_scores=[0.8, 0.84],
+            )
+        ]
+        path = tmp_path / "stability.json"
+        save_stability(results, "test", path)
+        loaded = load_stability(path)
+        assert loaded[0].scenario_results is None

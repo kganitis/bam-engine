@@ -200,3 +200,41 @@ class TestGenerateCombinations:
         fixed = {"b": 5, "c": 6}
         with pytest.raises(ValueError, match="overlap"):
             list(generate_combinations(grid, fixed=fixed))
+
+
+class TestGenerateCombinationsConstraints:
+    """Tests for constraints in generate_combinations."""
+
+    def test_constraint_filters_combinations(self):
+        grid = {"a": [1, 2, 3], "b": [1, 2, 3]}
+        constraints = [lambda combo: combo["a"] <= combo["b"]]
+        combos = list(generate_combinations(grid, constraints=constraints))
+        # Valid: (1,1),(1,2),(1,3),(2,2),(2,3),(3,3) = 6
+        assert len(combos) == 6
+        for c in combos:
+            assert c["a"] <= c["b"]
+
+    def test_no_constraints_returns_all(self):
+        grid = {"a": [1, 2], "b": [10, 20]}
+        combos = list(generate_combinations(grid, constraints=None))
+        assert len(combos) == 4
+
+    def test_multiple_constraints_all_applied(self):
+        grid = {"a": [1, 2, 3], "b": [1, 2, 3]}
+        constraints = [
+            lambda combo: combo["a"] >= 2,
+            lambda combo: combo["b"] <= 2,
+        ]
+        combos = list(generate_combinations(grid, constraints=constraints))
+        # a >= 2 AND b <= 2: (2,1),(2,2),(3,1),(3,2) = 4
+        assert len(combos) == 4
+
+    def test_constraint_with_fixed_params(self):
+        grid = {"a": [1, 2, 3]}
+        fixed = {"b": 5}
+        constraints = [lambda combo: combo["a"] < combo["b"]]
+        combos = list(generate_combinations(grid, fixed=fixed, constraints=constraints))
+        # All a values (1,2,3) are < 5
+        assert len(combos) == 3
+        for c in combos:
+            assert c["b"] == 5

@@ -84,6 +84,46 @@ Auto-generated markdown reports.
    :undoc-members:
 
 
+Rescreen
+--------
+
+Second-pass Morris screening after locking optimized params.
+
+.. automodule:: calibration.rescreen
+   :members:
+   :undoc-members:
+
+
+Cost Analysis
+-------------
+
+Targeted cost analysis for parameter value substitutions.
+
+.. automodule:: calibration.cost
+   :members:
+   :undoc-members:
+
+
+Cross-Scenario Evaluation
+-------------------------
+
+Cross-scenario evaluation with multiple ranking strategies.
+
+.. automodule:: calibration.cross_eval
+   :members:
+   :undoc-members:
+
+
+Structured Sweep
+----------------
+
+Multi-stage parameter sweep with carry-forward winners.
+
+.. automodule:: calibration.sweep
+   :members:
+   :undoc-members:
+
+
 Parameter Space
 ---------------
 

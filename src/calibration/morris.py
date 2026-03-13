@@ -315,6 +315,7 @@ def run_morris_screening(
     n_seeds: int = 1,
     n_periods: int = 1000,
     n_workers: int = 10,
+    fixed_params: dict[str, Any] | None = None,
 ) -> MorrisResult:
     """Run Morris Method screening analysis.
 
@@ -339,6 +340,10 @@ def run_morris_screening(
         Number of simulation periods.
     n_workers : int
         Number of parallel workers.
+    fixed_params : dict, optional
+        Parameters to lock at specific values. These params will be included
+        in configs but not perturbed. Use for second-pass Morris screening
+        after locking optimized params from a previous calibration.
 
     Returns
     -------
@@ -348,6 +353,12 @@ def run_morris_screening(
     """
     if grid is None:
         grid = get_parameter_grid(scenario)
+    grid = dict(grid)  # Don't mutate the original
+
+    # Merge fixed_params as single-value grid entries (won't be perturbed)
+    if fixed_params:
+        for name, value in fixed_params.items():
+            grid[name] = [value]
 
     # Separate multi-value params (active) from single-value params (fixed)
     active_grid = {k: v for k, v in grid.items() if len(v) > 1}

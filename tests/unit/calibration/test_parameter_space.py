@@ -105,3 +105,51 @@ class TestBackwardsCompat:
 
     def test_default_values_alias(self):
         assert SCENARIO_OVERRIDES["baseline"] == DEFAULT_VALUES
+
+
+class TestParamGroups:
+    """Tests for PARAM_GROUPS constant."""
+
+    def test_param_groups_exists(self):
+        from calibration.parameter_space import PARAM_GROUPS
+
+        assert isinstance(PARAM_GROUPS, dict)
+        assert "entry" in PARAM_GROUPS
+        assert "behavioral" in PARAM_GROUPS
+        assert "initial_conditions" in PARAM_GROUPS
+        assert "credit" in PARAM_GROUPS
+
+    def test_all_group_params_exist_in_common_grid(self):
+        from calibration.parameter_space import PARAM_GROUPS, PARAMETER_GRIDS
+
+        baseline_grid = PARAMETER_GRIDS["baseline"]
+        for group_name, params in PARAM_GROUPS.items():
+            for param in params:
+                assert param in baseline_grid, (
+                    f"PARAM_GROUPS['{group_name}'] has '{param}' "
+                    f"which is not in baseline grid"
+                )
+
+    def test_groups_are_non_overlapping(self):
+        from calibration.parameter_space import PARAM_GROUPS
+
+        seen: set[str] = set()
+        for group_name, params in PARAM_GROUPS.items():
+            overlap = seen & set(params)
+            assert not overlap, (
+                f"PARAM_GROUPS['{group_name}'] overlaps with earlier groups: {overlap}"
+            )
+            seen.update(params)
+
+    def test_consumer_matching_in_grid(self):
+        from calibration.parameter_space import PARAMETER_GRIDS
+
+        grid = PARAMETER_GRIDS["baseline"]
+        assert "consumer_matching" in grid
+        assert "loyalty" in grid["consumer_matching"]
+        assert "random" in grid["consumer_matching"]
+
+    def test_param_groups_exported(self):
+        from calibration import PARAM_GROUPS
+
+        assert isinstance(PARAM_GROUPS, dict)

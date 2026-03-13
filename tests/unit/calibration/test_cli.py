@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from calibration.analysis import CalibrationResult
-from calibration.cli import main, print_results
+from calibration.cli import _build_parser, main, print_results
 
 
 class TestPrintResults:
@@ -227,3 +227,90 @@ class TestPhasePrerequisiteErrors:
         with patch("calibration.cli.OUTPUT_DIR", tmp_path):
             with pytest.raises(FileNotFoundError, match="[Ss]creening"):
                 _run_stability_phase(args, run_dir=tmp_path)
+
+
+class TestNewPhaseChoices:
+    """Tests for new --phase choices."""
+
+    def test_rescreen_is_valid_phase(self):
+        parser = _build_parser()
+        args = parser.parse_args(["--phase", "rescreen", "--scenario", "baseline"])
+        assert args.phase == "rescreen"
+
+    def test_cost_is_valid_phase(self):
+        parser = _build_parser()
+        args = parser.parse_args(["--phase", "cost", "--scenario", "baseline"])
+        assert args.phase == "cost"
+
+    def test_cross_eval_is_valid_phase(self):
+        parser = _build_parser()
+        args = parser.parse_args(["--phase", "cross-eval", "--scenario", "baseline"])
+        assert args.phase == "cross-eval"
+
+    def test_sweep_is_valid_phase(self):
+        parser = _build_parser()
+        args = parser.parse_args(["--phase", "sweep", "--scenario", "baseline"])
+        assert args.phase == "sweep"
+
+
+class TestSeedsAlias:
+    """Tests for --seeds alias."""
+
+    def test_seeds_alias_works(self):
+        parser = _build_parser()
+        args = parser.parse_args(["--seeds", "5"])
+        assert args.sensitivity_seeds == 5
+
+
+class TestNewFlags:
+    """Tests for new phase-specific flags."""
+
+    def test_fix_from_flag(self):
+        parser = _build_parser()
+        args = parser.parse_args(["--fix-from", "some_file.json"])
+        assert args.fix_from == "some_file.json"
+
+    def test_params_flag(self):
+        parser = _build_parser()
+        args = parser.parse_args(["--params", "entry"])
+        assert args.params == "entry"
+
+    def test_base_flag(self):
+        parser = _build_parser()
+        args = parser.parse_args(["--base", "config.yml"])
+        assert args.base == "config.yml"
+
+    def test_swaps_flag(self):
+        parser = _build_parser()
+        args = parser.parse_args(["--swaps", "beta=5.0,2.5", "max_M=2,4"])
+        assert args.swaps == ["beta=5.0,2.5", "max_M=2,4"]
+
+    def test_combo_grid_flag(self):
+        parser = _build_parser()
+        args = parser.parse_args(["--combo-grid"])
+        assert args.combo_grid is True
+
+    def test_scenarios_flag(self):
+        parser = _build_parser()
+        args = parser.parse_args(["--scenarios", "baseline,growth_plus"])
+        assert args.scenarios == "baseline,growth_plus"
+
+    def test_configs_flag(self):
+        parser = _build_parser()
+        args = parser.parse_args(["--configs", "results.json"])
+        assert args.configs == "results.json"
+
+    def test_stages_flag(self):
+        parser = _build_parser()
+        args = parser.parse_args(["--stages", "A:beta=0.5,1.0", "B:max_M=2,4"])
+        assert args.stages == ["A:beta=0.5,1.0", "B:max_M=2,4"]
+
+    def test_cross_scenario_flag(self):
+        parser = _build_parser()
+        args = parser.parse_args(["--cross-scenario", "growth_plus"])
+        assert args.cross_scenario == "growth_plus"
+
+    def test_rank_by_stability_first(self):
+        parser = _build_parser()
+        args = parser.parse_args(["--rank-by", "stability-first"])
+        assert args.rank_by == "stability-first"
