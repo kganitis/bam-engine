@@ -5,6 +5,7 @@ Labor-market events internal implementation unit tests.
 from __future__ import annotations
 
 from typing import cast
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -14,6 +15,7 @@ from bamengine.events._internal.labor_market import (
     adjust_minimum_wage,
     calc_inflation_rate,
     firms_decide_wage_offer,
+    labor_market_round,
     workers_decide_firms_to_apply,
 )
 from bamengine.roles import Employer, Worker
@@ -397,6 +399,66 @@ def test_prepare_applications_job_search_method_all_firms() -> None:
     assert valid_targets.size > 0
     # Targets can be any firm (0, 1, 2, or 3)
     assert np.all((valid_targets >= 0) & (valid_targets < 4))
+
+
+def test_prepare_applications_fewer_hiring_than_max_m() -> None:
+    """M_eff < max_M: trailing target slots must be padded with -1."""
+    max_M = 4
+    emp = mock_employer(
+        n=4,
+        queue_m=max_M,
+        wage_offer=np.array([1.0, 1.5, 1.2, 2.0]),
+        n_vacancies=np.array([1, 0, 1, 0]),  # only 2 hiring firms
+    )
+    wrk = mock_worker(
+        n=2,
+        queue_m=max_M,
+        employer=np.array([-1, -1], dtype=np.intp),  # both unemployed
+    )
+
+    workers_decide_firms_to_apply(wrk, emp, max_M=max_M, rng=make_rng(0))
+
+    # M_eff = min(4, 2) = 2 → first 2 cols valid, cols 2-3 must be -1
+    for w in range(2):
+        targets = wrk.job_apps_targets[w]
+        assert np.all(targets[:2] >= 0), "First 2 slots should be valid firm IDs"
+        assert np.all(targets[2:] == -1), "Trailing slots should be -1 sentinels"
+
+
+# ============================================================================
+# labor_market_round edge cases
+# ============================================================================
+
+
+def test_labor_round_no_hires_after_conflict_resolution() -> None:
+    """All valid applications are rejected by conflict resolution."""
+    M = 2
+    emp = mock_employer(
+        n=2,
+        queue_m=M,
+        wage_offer=np.array([1.0, 1.5]),
+        n_vacancies=np.array([1, 1]),
+        current_labor=np.array([0, 0], dtype=np.int64),
+    )
+    wrk = mock_worker(
+        n=2,
+        queue_m=M,
+        employer=np.array([-1, -1], dtype=np.intp),
+    )
+    # Set up valid application queues pointing at firms with vacancies
+    wrk.job_apps_targets[0] = np.array([0, 1])
+    wrk.job_apps_targets[1] = np.array([1, 0])
+    wrk.job_apps_head[:] = np.arange(2) * M
+
+    # Patch resolve_conflicts to reject all applicants
+    with patch(
+        "bamengine.events._internal.labor_market.resolve_conflicts",
+        return_value=np.array([False, False]),
+    ):
+        labor_market_round(emp, wrk, theta=8, rng=make_rng(0))
+
+    # Nobody should have been hired
+    assert np.all(wrk.employer == -1)
 
 
 def test_firms_calc_wage_bill_basic() -> None:

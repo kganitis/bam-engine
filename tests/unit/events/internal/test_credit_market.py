@@ -12,14 +12,22 @@ from bamengine import Rng, make_rng
 from bamengine.events._internal.credit_market import (
     banks_decide_credit_supply,
     banks_decide_interest_rate,
+    credit_market_round,
     firms_calc_financial_fragility,
     firms_decide_credit_demand,
+    firms_fire_workers,
     firms_prepare_loan_applications,
 )
 from bamengine.relationships import LoanBook
 from bamengine.roles import Borrower, Lender
 from bamengine.utils import select_top_k_indices_sorted
-from tests.helpers.factories import mock_borrower, mock_lender, mock_loanbook
+from tests.helpers.factories import (
+    mock_borrower,
+    mock_employer,
+    mock_lender,
+    mock_loanbook,
+    mock_worker,
+)
 
 CAP_FRAG = 1.0e-9
 
@@ -290,3 +298,104 @@ def test_prepare_applications_Heff_lt_H_and_sorted_by_rate() -> None:
         assert np.all(row[2:] == -1)
         # And the head is set to f_id * stride
         assert bor.loan_apps_head[f_id] == f_id * H
+
+
+# ============================================================================
+# credit_market_round edge cases
+# ============================================================================
+
+
+def test_credit_round_no_active_borrowers() -> None:
+    """All borrowers have exhausted application queues (head = -1)."""
+    H = 2
+    bor = mock_borrower(n=2, queue_h=H, credit_demand=np.array([5.0, 3.0]))
+    # Head pointers exhausted — no pending applications
+    bor.loan_apps_head[:] = -1
+    lend = mock_lender(n=1, queue_h=H, credit_supply=np.array([1000.0]))
+    lend.opex_shock = np.array([0.10])
+    lb = mock_loanbook()
+
+    credit_market_round(bor, lend, lb, r_bar=0.05)
+    assert lb.size == 0
+
+
+def test_credit_round_no_supply_at_targets() -> None:
+    """Borrowers have pending apps, but target banks have zero supply."""
+    H = 2
+    n_bor = 2
+    bor = mock_borrower(n=n_bor, queue_h=H, credit_demand=np.array([5.0, 3.0]))
+    # Set up valid head pointers pointing to bank 0
+    bor.loan_apps_targets[0, :] = np.array([0, 0])
+    bor.loan_apps_targets[1, :] = np.array([0, 0])
+    bor.loan_apps_head[:] = np.arange(n_bor) * H  # valid heads
+
+    lend = mock_lender(n=1, queue_h=H, credit_supply=np.array([0.0]))
+    lend.opex_shock = np.array([0.10])
+    lb = mock_loanbook()
+
+    credit_market_round(bor, lend, lb, r_bar=0.05)
+    assert lb.size == 0
+
+
+def test_credit_round_nw_cap_zeros_all_grants() -> None:
+    """Net-worth cap makes all grant amounts zero."""
+    H = 2
+    n_bor = 2
+    bor = mock_borrower(
+        n=n_bor,
+        queue_h=H,
+        credit_demand=np.array([5.0, 3.0]),
+        net_worth=np.array([0.0, 0.0]),  # zero NW → nw_cap = 0
+        projected_fragility=np.array([1.0, 1.0]),
+    )
+    bor.loan_apps_targets[0, :] = np.array([0, 0])
+    bor.loan_apps_targets[1, :] = np.array([0, 0])
+    bor.loan_apps_head[:] = np.arange(n_bor) * H
+
+    lend = mock_lender(n=1, queue_h=H, credit_supply=np.array([1000.0]))
+    lend.opex_shock = np.array([0.10])
+    lb = mock_loanbook()
+
+    credit_market_round(bor, lend, lb, r_bar=0.05, max_loan_to_net_worth=1.0)
+    assert lb.size == 0
+
+
+# ============================================================================
+# firms_fire_workers edge cases
+# ============================================================================
+
+
+def test_fire_workers_no_employed_workers() -> None:
+    """Firms have gaps but nobody is employed anywhere."""
+    emp = mock_employer(
+        n=2,
+        wage_bill=np.array([100.0, 50.0]),
+        total_funds=np.array([10.0, 5.0]),  # gaps exist
+    )
+    wrk = mock_worker(n=4)
+    # All workers unemployed (default employer=-1)
+
+    firms_fire_workers(emp, wrk, rng=make_rng(0))
+    # No crash, no state changes
+    assert np.all(wrk.employer == -1)
+
+
+def test_fire_workers_no_workers_at_gap_firms() -> None:
+    """Workers are employed, but only at firms without gaps."""
+    emp = mock_employer(
+        n=2,
+        wage_bill=np.array([100.0, 10.0]),
+        total_funds=np.array([10.0, 100.0]),  # firm 0 has gap, firm 1 does not
+        current_labor=np.array([0, 2], dtype=np.int64),
+    )
+    wrk = mock_worker(
+        n=3,
+        employer=np.array([1, 1, -1], dtype=np.intp),  # workers at firm 1 only
+        wage=np.array([5.0, 5.0, 0.0]),
+    )
+
+    labor_before = int(emp.current_labor[1])
+    firms_fire_workers(emp, wrk, rng=make_rng(0))
+    # Workers at firm 1 (no gap) should be unaffected
+    assert emp.current_labor[1] == labor_before
+    assert np.all(wrk.employer[:2] == 1)
