@@ -32,7 +32,6 @@
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 [![Tests](https://github.com/kganitis/bam-engine/actions/workflows/test.yml/badge.svg)](https://github.com/kganitis/bam-engine/actions/workflows/test.yml)
-[![Model Validation](https://github.com/kganitis/bam-engine/actions/workflows/validation-status.yml/badge.svg)](https://github.com/kganitis/bam-engine/actions/workflows/validation-status.yml)
 [![Repo-Review](https://github.com/kganitis/bam-engine/actions/workflows/repo-review.yml/badge.svg)](https://github.com/kganitis/bam-engine/actions/workflows/repo-review.yml)
 [![codecov](https://codecov.io/github/kganitis/bam-engine/graph/badge.svg?token=YIG31U3OR3?color=brightgreen)](https://codecov.io/github/kganitis/bam-engine)
 [![Benchmarks](https://img.shields.io/badge/benchmarks-asv-brightgreen)](https://kganitis.github.io/bam-engine/)
@@ -40,6 +39,16 @@
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/kganitis/bam-engine/main.svg)](https://results.pre-commit.ci/latest/github/kganitis/bam-engine/main)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Type Checked](https://img.shields.io/badge/type%20checked-mypy-black)](http://mypy-lang.org/)
+
+<p align="center">
+  <a href="https://bamengine.org/benchmarks/validation/">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://bamengine.org/images/validation-card-dark.svg">
+      <source media="(prefers-color-scheme: light)" srcset="https://bamengine.org/images/validation-card-light.svg">
+      <img alt="Model Validation" src="https://bamengine.org/images/validation-card-light.svg" width="476">
+    </picture>
+  </a>
+</p>
 
 > **Note**: This release is feature-complete for the core BAM model but APIs may change in future releases before v1.0.0.
 
