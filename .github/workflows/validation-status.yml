@@ -82,3 +82,51 @@ jobs:
             print(f"\nResult: VALIDATION FAILED")
             sys.exit(1)
         SCRIPT
+
+  publish-to-website:
+    needs: check-validation
+    runs-on: ubuntu-latest
+    concurrency:
+      group: publish-validation-results
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout bam-engine
+        uses: actions/checkout@v6
+        with:
+          path: bam-engine
+
+      - name: Checkout bamengine.org
+        uses: actions/checkout@v6
+        with:
+          repository: kganitis/bamengine.org
+          token: ${{ secrets.WEBSITE_DEPLOY_TOKEN }}
+          path: bamengine.org
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Copy tagged release results
+        run: |
+          cp bam-engine/benchmarks/results/*_v*_*.json \
+             bamengine.org/static/data/validation/
+
+      - name: Update manifest
+        run: |
+          cd bamengine.org
+          python scripts/update_manifest.py
+
+      - name: Commit and push
+        run: |
+          cd bamengine.org
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add static/data/validation/
+          if git diff --staged --quiet; then
+            echo "No changes to publish"
+          else
+            git commit -m "chore: update stability results from bam-engine"
+            git push
+          fi

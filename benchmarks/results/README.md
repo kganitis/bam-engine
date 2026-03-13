@@ -16,3 +16,6 @@ PYTHONPATH=src python benchmarks/bench_seed_stability.py
 `{scenario}_{commit_short}_{timestamp}.json`
 
 The workflow reads the most recent file per scenario (by reverse filename sort).
+
+Tagged release results (filenames matching `*_v*_*.json`) are automatically published
+to bamengine.org by the `validation-status` CI workflow after validation passes.
