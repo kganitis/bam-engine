@@ -503,8 +503,14 @@ def _parse_value(s: str) -> int | float | str:
 # =============================================================================
 
 
-def main() -> None:
-    """Main entry point for calibration CLI."""
+def _build_parser() -> argparse.ArgumentParser:
+    """Build the argument parser for the calibration CLI.
+
+    Returns
+    -------
+    argparse.ArgumentParser
+        Configured argument parser.
+    """
     parser = argparse.ArgumentParser(
         description="BAM Parameter Calibration",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -543,7 +549,18 @@ Examples:
     )
     parser.add_argument(
         "--phase",
-        choices=["sensitivity", "morris", "grid", "stability", "pairwise", "all"],
+        choices=[
+            "sensitivity",
+            "morris",
+            "grid",
+            "stability",
+            "pairwise",
+            "rescreen",
+            "cost",
+            "cross-eval",
+            "sweep",
+            "all",
+        ],
         default=None,
         help="Run a single phase (default: all phases sequentially)",
     )
@@ -590,9 +607,17 @@ Examples:
     # Ranking
     parser.add_argument(
         "--rank-by",
-        choices=["combined", "stability", "mean"],
+        choices=[
+            "combined",
+            "stability",
+            "mean",
+            "stability-first",
+            "score-first",
+            "balanced",
+        ],
         default="combined",
-        help='Ranking strategy for stability (default: "combined")',
+        help='Ranking strategy (default: "combined"). '
+        "Cross-scenario: stability-first, score-first, balanced",
     )
     parser.add_argument(
         "--k-factor",
@@ -627,6 +652,7 @@ Examples:
     )
     parser.add_argument(
         "--sensitivity-seeds",
+        "--seeds",
         type=int,
         default=3,
         help="Number of seeds per sensitivity evaluation (default: 3)",
@@ -647,6 +673,75 @@ Examples:
         help="Resume from checkpoint (grid/stability phases)",
     )
 
+    # Rescreen
+    parser.add_argument(
+        "--fix-from",
+        type=str,
+        default=None,
+        help="Load fixed params from stability result JSON (rescreen phase)",
+    )
+    parser.add_argument(
+        "--params",
+        type=str,
+        default=None,
+        help="Parameter group or comma-separated names (rescreen phase)",
+    )
+
+    # Cost
+    parser.add_argument(
+        "--base",
+        type=str,
+        default=None,
+        help="Base config from stability result JSON or YAML (cost phase)",
+    )
+    parser.add_argument(
+        "--swaps",
+        type=str,
+        nargs="+",
+        default=None,
+        help='Swap values: "param=v1,v2,v3" (repeatable, cost phase)',
+    )
+    parser.add_argument(
+        "--combo-grid",
+        action="store_true",
+        help="Run combo grid of cheap swaps (cost phase)",
+    )
+
+    # Cross-eval
+    parser.add_argument(
+        "--scenarios",
+        type=str,
+        default=None,
+        help="Comma-separated scenario list (cross-eval phase)",
+    )
+    parser.add_argument(
+        "--configs",
+        type=str,
+        default=None,
+        help="Configs from screening/stability result JSON (cross-eval phase)",
+    )
+
+    # Sweep
+    parser.add_argument(
+        "--stages",
+        type=str,
+        nargs="+",
+        default=None,
+        help='Stage definitions: "LABEL:param=v1,v2 param2=v3,v4" (sweep phase)',
+    )
+    parser.add_argument(
+        "--cross-scenario",
+        type=str,
+        default=None,
+        help="Cross-evaluate against this scenario at each stage (sweep phase)",
+    )
+
+    return parser
+
+
+def main() -> None:
+    """Main entry point for calibration CLI."""
+    parser = _build_parser()
     args = parser.parse_args()
 
     # Create timestamped run directory
@@ -668,6 +763,22 @@ Examples:
         _run_stability_phase(args, run_dir=run_dir)
     elif args.phase == "pairwise":
         _run_pairwise_phase(args, run_dir=run_dir)
+    elif args.phase == "rescreen":
+        from calibration.rescreen import run_rescreen_phase
+
+        run_rescreen_phase(args, run_dir)
+    elif args.phase == "cost":
+        from calibration.cost import run_cost_phase
+
+        run_cost_phase(args, run_dir)
+    elif args.phase == "cross-eval":
+        from calibration.cross_eval import run_cross_eval_phase
+
+        run_cross_eval_phase(args, run_dir)
+    elif args.phase == "sweep":
+        from calibration.sweep import run_sweep_phase
+
+        run_sweep_phase(args, run_dir)
     else:
         # Run all phases sequentially
         sensitivity = _run_sensitivity_phase(args, run_dir)

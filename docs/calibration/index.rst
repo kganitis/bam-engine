@@ -99,7 +99,8 @@ at least 10 seeds for tier 1 and 100+ for final selection.
 
 **Multi-pass workflow:** Run sensitivity → grid → stability for primary
 parameters, fix them at optimal values, then re-run the pipeline for
-previously fixed parameters.
+previously fixed parameters. See :doc:`recipe` for the full recommended
+workflow.
 
 
 .. toctree::
@@ -109,5 +110,10 @@ previously fixed parameters.
    sensitivity
    grid_search
    stability
+   rescreen
+   cost_analysis
+   cross_eval
+   sweep
+   recipe
    cli
    api

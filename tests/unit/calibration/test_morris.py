@@ -584,3 +584,44 @@ class TestPrintMorrisReport:
         print_morris_report(result)
         captured = capsys.readouterr()
         assert "(s)" in captured.out
+
+
+class TestMorrisFixedParams:
+    """Tests for fixed_params in run_morris_screening."""
+
+    @patch("calibration.morris._evaluate_config")
+    def test_fixed_params_excluded_from_trajectories(self, mock_eval):
+        """Fixed params should not be perturbed in Morris trajectories."""
+        mock_eval.side_effect = lambda cfg, scen, seeds, n: (cfg, 0.8, 0.1)
+
+        grid = {"a": [1, 2, 3], "b": [10, 20], "c": [100, 200]}
+        fixed = {"c": 100}
+
+        result = run_morris_screening(
+            scenario="baseline",
+            grid=grid,
+            n_trajectories=2,
+            n_workers=1,
+            n_seeds=1,
+            fixed_params=fixed,
+        )
+        # c should have zero elementary effects (it was overridden to single value)
+        c_effect = next(e for e in result.effects if e.name == "c")
+        assert c_effect.mu_star == 0.0
+        assert c_effect.elementary_effects == []
+
+    @patch("calibration.morris._evaluate_config")
+    def test_fixed_params_none_is_default(self, mock_eval):
+        """fixed_params=None should be the same as not passing it."""
+        mock_eval.side_effect = lambda cfg, scen, seeds, n: (cfg, 0.8, 0.1)
+
+        grid = {"a": [1, 2], "b": [10, 20]}
+        result = run_morris_screening(
+            scenario="baseline",
+            grid=grid,
+            n_trajectories=2,
+            n_workers=1,
+            n_seeds=1,
+            fixed_params=None,
+        )
+        assert len(result.effects) == 2

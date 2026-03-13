@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from calibration.analysis import CalibrationResult
+from calibration.analysis import CalibrationResult, ScenarioResult
 from calibration.morris import MorrisParameterEffect, MorrisResult
 from calibration.sensitivity import (
     PairInteraction,
@@ -278,6 +278,23 @@ def save_stability(
                     "pass_rate": r.pass_rate,
                     "seed_scores": r.seed_scores,
                     "single_score": r.single_score,
+                    **(
+                        {
+                            "scenario_results": {
+                                name: {
+                                    "mean_score": sr.mean_score,
+                                    "std_score": sr.std_score,
+                                    "combined_score": sr.combined_score,
+                                    "pass_rate": sr.pass_rate,
+                                    "n_fail": sr.n_fail,
+                                    "seed_scores": sr.seed_scores,
+                                }
+                                for name, sr in r.scenario_results.items()
+                            }
+                        }
+                        if r.scenario_results
+                        else {}
+                    ),
                 }
                 for i, r in enumerate(results)
             ],
@@ -290,21 +307,39 @@ def load_stability(path: Path) -> list[CalibrationResult]:
     """Load stability results from JSON."""
     data = _read_json(path)
 
-    return [
-        CalibrationResult(
-            params=r["params"],
-            single_score=r["single_score"],
-            n_pass=r.get("n_pass", 0),
-            n_warn=r.get("n_warn", 0),
-            n_fail=r.get("n_fail", 0),
-            mean_score=r.get("mean_score"),
-            std_score=r.get("std_score"),
-            pass_rate=r.get("pass_rate"),
-            combined_score=r.get("combined_score"),
-            seed_scores=r.get("seed_scores"),
+    results = []
+    for r in data["results"]:
+        # Load scenario_results if present (backward compat: may not exist)
+        scenario_results = None
+        if "scenario_results" in r:
+            scenario_results = {
+                name: ScenarioResult(
+                    mean_score=sr["mean_score"],
+                    std_score=sr["std_score"],
+                    combined_score=sr["combined_score"],
+                    pass_rate=sr["pass_rate"],
+                    n_fail=sr["n_fail"],
+                    seed_scores=sr["seed_scores"],
+                )
+                for name, sr in r["scenario_results"].items()
+            }
+
+        results.append(
+            CalibrationResult(
+                params=r["params"],
+                single_score=r["single_score"],
+                n_pass=r.get("n_pass", 0),
+                n_warn=r.get("n_warn", 0),
+                n_fail=r.get("n_fail", 0),
+                mean_score=r.get("mean_score"),
+                std_score=r.get("std_score"),
+                pass_rate=r.get("pass_rate"),
+                combined_score=r.get("combined_score"),
+                seed_scores=r.get("seed_scores"),
+                scenario_results=scenario_results,
+            )
         )
-        for r in data["results"]
-    ]
+    return results
 
 
 # =============================================================================

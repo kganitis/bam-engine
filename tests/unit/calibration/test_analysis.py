@@ -7,6 +7,7 @@ from unittest.mock import patch
 from calibration.analysis import (
     CalibrationResult,
     ComparisonResult,
+    ScenarioResult,
     analyze_parameter_patterns,
     compare_configs,
     export_best_config,
@@ -132,3 +133,66 @@ class TestPrintComparison:
         print_comparison(result)
         captured = capsys.readouterr()
         assert "BEFORE/AFTER" in captured.out
+
+
+class TestScenarioResult:
+    """Tests for ScenarioResult dataclass."""
+
+    def test_basic_creation(self):
+        sr = ScenarioResult(
+            mean_score=0.85,
+            std_score=0.02,
+            combined_score=0.83,
+            pass_rate=0.95,
+            n_fail=1,
+            seed_scores=[0.84, 0.86, 0.85],
+        )
+        assert sr.mean_score == 0.85
+        assert sr.n_fail == 1
+        assert len(sr.seed_scores) == 3
+
+
+class TestCalibrationResultScenarioResults:
+    """Tests for the scenario_results field on CalibrationResult."""
+
+    def test_default_is_none(self):
+        r = CalibrationResult(
+            params={"beta": 5}, single_score=0.8, n_pass=10, n_warn=1, n_fail=0
+        )
+        assert r.scenario_results is None
+
+    def test_can_set_scenario_results(self):
+        sr = ScenarioResult(
+            mean_score=0.85,
+            std_score=0.02,
+            combined_score=0.83,
+            pass_rate=0.95,
+            n_fail=1,
+            seed_scores=[0.84, 0.86],
+        )
+        r = CalibrationResult(
+            params={"beta": 5},
+            single_score=0.8,
+            n_pass=10,
+            n_warn=1,
+            n_fail=0,
+            scenario_results={"baseline": sr},
+        )
+        assert r.scenario_results["baseline"].mean_score == 0.85
+
+    def test_from_cross_eval_factory(self):
+        sr_bl = ScenarioResult(0.85, 0.02, 0.83, 1.0, 0, [0.85])
+        sr_gp = ScenarioResult(0.80, 0.03, 0.78, 0.9, 2, [0.80])
+        r = CalibrationResult.from_cross_eval(
+            params={"beta": 5},
+            scenario_results={"baseline": sr_bl, "growth_plus": sr_gp},
+        )
+        assert r.n_fail == 2  # total across scenarios
+        assert r.pass_rate == 0.9  # min pass rate
+        assert r.combined_score == 0.78  # min combined
+        assert r.scenario_results is not None
+
+    def test_exported_from_package(self):
+        from calibration import ScenarioResult as SR
+
+        assert SR is ScenarioResult

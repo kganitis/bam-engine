@@ -40,6 +40,7 @@ _COMMON_GRID: dict[str, list[Any]] = {
     "max_leverage": [0, 5, 10, 20],
     # Labor
     "job_search_method": ["vacancies_only", "all_firms"],
+    "consumer_matching": ["loyalty", "random"],
 }
 
 # =============================================================================
@@ -89,6 +90,28 @@ SCENARIO_OVERRIDES: dict[str, dict[str, Any]] = {
 # Keep old names for backwards compatibility with existing code
 PARAMETER_GRID: dict[str, list[Any]] = PARAMETER_GRIDS["baseline"]
 DEFAULT_VALUES: dict[str, Any] = SCENARIO_OVERRIDES["baseline"]
+
+# =============================================================================
+# Parameter groups (for rescreen and sweep tools)
+# =============================================================================
+
+PARAM_GROUPS: dict[str, list[str]] = {
+    "entry": [
+        "new_firm_size_factor",
+        "new_firm_production_factor",
+        "new_firm_wage_factor",
+        "new_firm_price_markup",
+    ],
+    "behavioral": ["beta", "max_M", "job_search_method", "consumer_matching"],
+    "initial_conditions": [
+        "price_init",
+        "min_wage_ratio",
+        "net_worth_ratio",
+        "equity_base_init",
+        "savings_init",
+    ],
+    "credit": ["max_loan_to_net_worth", "max_leverage"],
+}
 
 
 # =============================================================================

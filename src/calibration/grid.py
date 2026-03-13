@@ -168,6 +168,7 @@ def count_combinations(grid: dict[str, list[Any]]) -> int:
 def generate_combinations(
     grid: dict[str, list[Any]],
     fixed: dict[str, Any] | None = None,
+    constraints: list[Any] | None = None,
 ) -> Iterator[dict[str, Any]]:
     """Generate all parameter combinations, merged with fixed params.
 
@@ -177,6 +178,10 @@ def generate_combinations(
         Parameter grid to generate combinations from.
     fixed : dict, optional
         Fixed parameter values to merge into each combination.
+    constraints : list[callable], optional
+        List of callables that take a combo dict and return bool.
+        A combination is yielded only if ALL constraints return True.
+        Useful for coupled params (e.g., ``lambda c: c['nfpf'] >= c['nfsf']``).
 
     Yields
     ------
@@ -192,6 +197,9 @@ def generate_combinations(
     for values in product(*grid.values()):
         combo = dict(zip(keys, values, strict=True))
         if fixed:
-            yield {**fixed, **combo}
+            combo = {**fixed, **combo}
+        if constraints:
+            if all(fn(combo) for fn in constraints):
+                yield combo
         else:
             yield combo
