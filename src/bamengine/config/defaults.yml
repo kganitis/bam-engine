@@ -87,9 +87,9 @@ savings_init:         1.0        # Household savings at t=0 (money units)
 # entrants start "below the average size of incumbent firms".
 
 new_firm_size_factor: 0.5            # Core "size at entry" measure (as fraction of avg)
-new_firm_production_factor: 0.5      # Initial output capacity as fraction of avg output
+new_firm_production_factor: 0.6      # Initial output capacity as fraction of avg output
 new_firm_wage_factor: 0.5            # Initial wage offer as a fraction of avg wage
-new_firm_price_markup: 1.15          # Initial price markup over average market price
+new_firm_price_markup: 1.20          # Initial price markup over average market price
 
 # ── RANDOM NUMBER GENERATION ──────────────────────────────────────────────────
 # Seed for deterministic simulations.
