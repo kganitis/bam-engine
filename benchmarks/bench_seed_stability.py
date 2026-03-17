@@ -112,19 +112,10 @@ def _get_git_metadata() -> dict:
 # ---------------------------------------------------------------------------
 
 
-def _run_chunk(chunk_id: int, scenario: str, n_periods: int, n_seeds: int) -> dict:
-    """Run a chunk of seeds for one scenario. Called in worker process."""
-    import validation
-
-    func = getattr(validation, SCENARIO_FUNCS[scenario])
-    start = chunk_id * SEEDS_PER_CHUNK
-    end = min((chunk_id + 1) * SEEDS_PER_CHUNK, n_seeds)
-    seeds = list(range(start, end))
-    result = func(seeds=seeds, n_periods=n_periods)
-
-    # Return serializable data — full per-seed results for proper aggregation
+def _serialize_seed_results(seeds: list[int], seed_results: list) -> list[dict]:
+    """Serialize ValidationScore seed results to JSON-safe dicts."""
     seed_data = []
-    for seed_idx, vs in enumerate(result.seed_results):
+    for seed_idx, vs in enumerate(seed_results):
         seed_data.append(
             {
                 "seed": seeds[seed_idx],
@@ -143,13 +134,36 @@ def _run_chunk(chunk_id: int, scenario: str, n_periods: int, n_seeds: int) -> di
                 ],
             }
         )
+    return seed_data
 
-    return {
+
+def _run_chunk(chunk_id: int, scenario: str, n_periods: int, n_seeds: int) -> dict:
+    """Run a chunk of seeds for one scenario. Called in worker process."""
+    import validation
+
+    func = getattr(validation, SCENARIO_FUNCS[scenario])
+    start = chunk_id * SEEDS_PER_CHUNK
+    end = min((chunk_id + 1) * SEEDS_PER_CHUNK, n_seeds)
+    seeds = list(range(start, end))
+    result = func(seeds=seeds, n_periods=n_periods)
+
+    seed_data = _serialize_seed_results(seeds, result.seed_results)
+
+    chunk_result = {
         "chunk_id": chunk_id,
         "n_passed": sum(1 for vs in result.seed_results if vs.passed),
         "n_seeds": len(seeds),
         "seed_data": seed_data,
     }
+
+    # For growth_plus, also return raw ValidationScore objects so buffer_stock
+    # can reuse them instead of re-running Growth+ internally.
+    if scenario == "growth_plus":
+        chunk_result["raw_seed_results"] = {
+            seeds[i]: result.seed_results[i] for i in range(len(seeds))
+        }
+
+    return chunk_result
 
 
 # ---------------------------------------------------------------------------
@@ -243,39 +257,79 @@ def run_scenario(
     n_workers: int = N_WORKERS,
     n_periods: int = N_PERIODS,
     output_dir: Path = OUTPUT_DIR,
-) -> dict:
+    growth_plus_results: dict | None = None,
+) -> tuple[dict, dict | None]:
     """Run 1000-seed stability benchmark for one scenario.
 
-    Returns the result dict (also written to JSON file).
+    Parameters
+    ----------
+    growth_plus_results : dict or None
+        For buffer_stock only: pre-computed Growth+ ValidationScore objects
+        keyed by seed. If provided, buffer_stock reuses these instead of
+        re-running Growth+ internally.
+
+    Returns
+    -------
+    tuple[dict, dict | None]
+        (result_dict, raw_gp_results). raw_gp_results is a
+        {seed: ValidationScore} dict when scenario is growth_plus, else None.
     """
     print(f"\n  {scenario}:")
 
     t0 = time.time()
     all_seed_data: list[dict] = []
+    raw_gp_results: dict | None = None
 
     # Compute chunk count from n_seeds
     n_chunks = n_seeds // SEEDS_PER_CHUNK
     if n_seeds % SEEDS_PER_CHUNK != 0:
         n_chunks += 1  # last chunk clipped to n_seeds in _run_chunk
 
-    with ProcessPoolExecutor(max_workers=n_workers) as pool:
-        futures = {
-            pool.submit(_run_chunk, i, scenario, n_periods, n_seeds): i
-            for i in range(n_chunks)
-        }
-        for future in as_completed(futures):
-            chunk_id = futures[future]
-            try:
-                data = future.result()
-            except Exception as e:
-                print(f"    Chunk {chunk_id}: ERROR - {e}", file=sys.stderr)
-                continue
-            print(f"    Chunk {chunk_id}: {data['n_passed']}/{data['n_seeds']} passed")
-            all_seed_data.extend(data["seed_data"])
+    if scenario == "buffer_stock" and growth_plus_results:
+        # Special path: call run_buffer_stock_stability_test directly with
+        # pre-computed Growth+ results to avoid re-running Growth+.
+        import validation
+
+        print(f"    Reusing {len(growth_plus_results)} Growth+ results")
+        seeds = list(range(n_seeds))
+        result_obj = validation.run_buffer_stock_stability_test(
+            seeds=seeds,
+            n_periods=n_periods,
+            n_workers=n_workers,
+            growth_plus_results=growth_plus_results,
+        )
+        all_seed_data = _serialize_seed_results(seeds, result_obj.seed_results)
+    else:
+        # Normal chunk-based path
+        gp_collected: dict = {}
+
+        with ProcessPoolExecutor(max_workers=n_workers) as pool:
+            futures = {
+                pool.submit(_run_chunk, i, scenario, n_periods, n_seeds): i
+                for i in range(n_chunks)
+            }
+            for future in as_completed(futures):
+                chunk_id = futures[future]
+                try:
+                    data = future.result()
+                except Exception as e:
+                    print(f"    Chunk {chunk_id}: ERROR - {e}", file=sys.stderr)
+                    continue
+                print(
+                    f"    Chunk {chunk_id}: {data['n_passed']}/{data['n_seeds']} passed"
+                )
+                all_seed_data.extend(data["seed_data"])
+
+                # Collect raw Growth+ results for buffer_stock reuse
+                if data.get("raw_seed_results"):
+                    gp_collected.update(data["raw_seed_results"])
+
+        if gp_collected:
+            raw_gp_results = gp_collected
 
     if not all_seed_data:
         print(f"    ERROR: No seed data collected for {scenario}", file=sys.stderr)
-        return {}
+        return {}, None
 
     elapsed = time.time() - t0
     aggregated = _aggregate_results(all_seed_data)
@@ -316,7 +370,7 @@ def run_scenario(
         f.write("\n")
     print(f"    Saved: {filepath}")
 
-    return result
+    return result, raw_gp_results
 
 
 # ---------------------------------------------------------------------------
@@ -530,18 +584,22 @@ def _run_with_worktree(
             del sys.modules[m]
 
         results = []
+        gp_results = None
         for scenario in scenarios:
             try:
-                result = run_scenario(
+                result, raw_gp = run_scenario(
                     scenario,
                     metadata,
                     n_seeds,
                     n_workers,
                     n_periods,
                     output_dir,
+                    growth_plus_results=gp_results,
                 )
                 if result:
                     results.append(result)
+                if raw_gp:
+                    gp_results = raw_gp
             except Exception as e:
                 print(
                     f"    ERROR ({scenario}): {e}",
@@ -664,11 +722,20 @@ def main() -> None:
         )
         print(f"Commit: {metadata['commit_short']}{tag_str}")
 
+        gp_results = None
         for scenario in scenarios:
             try:
-                run_scenario(
-                    scenario, metadata, args.seeds, n_workers, N_PERIODS, output_dir
+                _, raw_gp = run_scenario(
+                    scenario,
+                    metadata,
+                    args.seeds,
+                    n_workers,
+                    N_PERIODS,
+                    output_dir,
+                    growth_plus_results=gp_results,
                 )
+                if raw_gp:
+                    gp_results = raw_gp
             except Exception as e:
                 print(f"    ERROR ({scenario}): {e}", file=sys.stderr)
                 continue

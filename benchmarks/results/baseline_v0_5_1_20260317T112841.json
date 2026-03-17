@@ -3,36 +3,36 @@
     "commit": "3efb68ecfd6412fa5900de8aa317854b47ae6974",
     "commit_short": "3efb68e",
     "commit_date": "2026-03-04T13:20:40+02:00",
-    "timestamp": "2026-03-12T12:08:58",
+    "timestamp": "2026-03-17T11:28:41",
     "branch": "main",
     "tag": "v0.5.1",
     "version": null,
     "n_seeds": 1000,
     "n_periods": 1000,
     "n_workers": 10,
-    "elapsed_seconds": 271
+    "elapsed_seconds": 241
   },
   "scenario": "baseline",
   "summary": {
     "n_passed": 969,
     "pass_rate": 0.969,
-    "mean_score": 0.8613181493852881,
-    "std_score": 0.010400342451147257,
-    "min_score": 0.8210363993328745,
-    "max_score": 0.8872264584663664
+    "mean_score": 0.888507231385925,
+    "std_score": 0.008399193307658079,
+    "min_score": 0.855481449413378,
+    "max_score": 0.9119830460416679
   },
   "metrics": {
     "unemployment_rate_mean": {
-      "mean_value": 0.057343184000000005,
-      "std_value": 0.0036846650830359034,
-      "mean_score": 0.8756000000000002,
-      "std_score": 0.086330141717067,
+      "mean_value": 0.057343184,
+      "std_value": 0.003684665083035904,
+      "mean_score": 0.8456812800000001,
+      "std_score": 0.07118404224516611,
       "pass_rate": 1.0,
       "weight": 1.5,
       "group": "TIME_SERIES"
     },
     "unemployment_absolute_ceiling": {
-      "mean_value": 0.13644800000000004,
+      "mean_value": 0.136448,
       "std_value": 0.012333340828826563,
       "mean_score": 1.0,
       "std_score": 0.0,
@@ -43,8 +43,8 @@
     "unemployment_std": {
       "mean_value": 0.028577271802418373,
       "std_value": 0.002617790728592084,
-      "mean_score": 0.5085260059156478,
-      "std_score": 0.16815643774117725,
+      "mean_score": 0.773311694781664,
+      "std_score": 0.08767223828140275,
       "pass_rate": 1.0,
       "weight": 1.0,
       "group": "TIME_SERIES"
@@ -59,7 +59,7 @@
       "group": "TIME_SERIES"
     },
     "unemployment_pct_below_ceiling": {
-      "mean_value": 0.981784,
+      "mean_value": 0.9817840000000001,
       "std_value": 0.015371185510558393,
       "mean_score": 0.99873,
       "std_score": 0.008440207343424669,
@@ -70,8 +70,8 @@
     "inflation_rate_mean": {
       "mean_value": 0.010494984116882612,
       "std_value": 0.0002908878486497238,
-      "mean_score": 0.012504452891320461,
-      "std_score": 0.007003419768657318,
+      "mean_score": 0.3415830686147101,
+      "std_score": 0.0048481308108287305,
       "pass_rate": 1.0,
       "weight": 1.5,
       "group": "TIME_SERIES"
@@ -79,7 +79,7 @@
     "inflation_non_degenerate": {
       "mean_value": 0.010494984116882612,
       "std_value": 0.0002908878486497238,
-      "mean_score": 0.8024749205844129,
+      "mean_score": 0.802474920584413,
       "std_score": 0.0014544392432486188,
       "pass_rate": 1.0,
       "weight": 2.0,
@@ -95,10 +95,10 @@
       "group": "TIME_SERIES"
     },
     "inflation_std": {
-      "mean_value": 0.022799790646118926,
+      "mean_value": 0.022799790646118923,
       "std_value": 0.0011867006209728115,
-      "mean_score": 0.8885006241485626,
-      "std_score": 0.05648750389730006,
+      "mean_score": 0.8596849610774728,
+      "std_score": 0.058561121206397365,
       "pass_rate": 1.0,
       "weight": 0.5,
       "group": "TIME_SERIES"
@@ -106,7 +106,7 @@
     "real_wage_mean": {
       "mean_value": 0.3396246363263997,
       "std_value": 0.002008989296499731,
-      "mean_score": 0.9729934162349678,
+      "mean_score": 0.9729934162349679,
       "std_score": 0.02075823692565264,
       "pass_rate": 1.0,
       "weight": 1.0,
@@ -115,8 +115,8 @@
     "real_wage_std": {
       "mean_value": 0.01570392220063009,
       "std_value": 0.001757038563608445,
-      "mean_score": 0.6435048624606193,
-      "std_score": 0.1098149102255278,
+      "mean_score": 0.8142806448844405,
+      "std_score": 0.08674031122425115,
       "pass_rate": 1.0,
       "weight": 0.5,
       "group": "TIME_SERIES"
@@ -133,8 +133,8 @@
     "wage_to_productivity_ratio": {
       "mean_value": 0.6792492726527994,
       "std_value": 0.004017978592999462,
-      "mean_score": 0.9481231816319987,
-      "std_score": 0.010044946482498655,
+      "mean_score": 0.8537536367360024,
+      "std_score": 0.020089892964997313,
       "pass_rate": 1.0,
       "weight": 1.0,
       "group": "TIME_SERIES"
@@ -150,7 +150,7 @@
     },
     "vacancy_rate_pct_in_bounds": {
       "mean_value": 0.995804,
-      "std_value": 0.005900642676861569,
+      "std_value": 0.00590064267686157,
       "mean_score": 1.0,
       "std_score": 0.0,
       "pass_rate": 1.0,
@@ -159,25 +159,25 @@
     },
     "phillips_correlation": {
       "mean_value": -0.4155334624878567,
-      "std_value": 0.029583674729217937,
+      "std_value": 0.029583674729217933,
       "mean_score": 0.8437852460087247,
-      "std_score": 0.03312009461625343,
+      "std_score": 0.03312009461625344,
       "pass_rate": 1.0,
       "weight": 1.0,
       "group": "CURVES"
     },
     "phillips_negative_sign": {
       "mean_value": -0.4155334624878567,
-      "std_value": 0.029583674729217937,
+      "std_value": 0.029583674729217933,
       "mean_score": 0.9577069151396372,
-      "std_score": 0.014619932128357313,
+      "std_score": 0.014619932128357315,
       "pass_rate": 1.0,
       "weight": 3.0,
       "group": "CURVES"
     },
     "okun_correlation": {
       "mean_value": -0.8719475555844783,
-      "std_value": 0.022312838221171333,
+      "std_value": 0.02231283822117133,
       "mean_score": 0.9394936266718792,
       "std_score": 0.034368056108009776,
       "pass_rate": 1.0,
@@ -185,27 +185,27 @@
       "group": "CURVES"
     },
     "okun_r_squared": {
-      "mean_value": 0.7607904024392311,
+      "mean_value": 0.760790402439231,
       "std_value": 0.03880484590359357,
       "mean_score": 0.968136397576473,
-      "std_score": 0.02463655192995988,
+      "std_score": 0.024636551929959876,
       "pass_rate": 1.0,
       "weight": 0.5,
       "group": "CURVES"
     },
     "beveridge_correlation": {
-      "mean_value": -0.3286545035224511,
+      "mean_value": -0.32865450352245107,
       "std_value": 0.05917521420293802,
-      "mean_score": 0.9333010036106928,
-      "std_score": 0.04801664151142736,
+      "mean_score": 0.9446612152992452,
+      "std_score": 0.04008389856458753,
       "pass_rate": 1.0,
       "weight": 2.0,
       "group": "CURVES"
     },
     "beveridge_negative_sign": {
-      "mean_value": -0.3286545035224511,
+      "mean_value": -0.32865450352245107,
       "std_value": 0.05917521420293802,
-      "mean_score": 0.9143272517612256,
+      "mean_score": 0.9143272517612254,
       "std_score": 0.02958760710146901,
       "pass_rate": 1.0,
       "weight": 3.0,
@@ -222,9 +222,9 @@
     },
     "firm_size_pct_below": {
       "mean_value": 0.9674200000000001,
-      "std_value": 0.014196605228011389,
-      "mean_score": 0.6314666666666665,
-      "std_score": 0.08981996808431124,
+      "std_value": 0.014196605228011387,
+      "mean_score": 0.8090526315789474,
+      "std_score": 0.03832056072086133,
       "pass_rate": 1.0,
       "weight": 1.0,
       "group": "DISTRIBUTION"
@@ -239,8 +239,8 @@
       "group": "DISTRIBUTION"
     },
     "firm_size_pct_below_medium": {
-      "mean_value": 0.99537,
-      "std_value": 0.006005256031178027,
+      "mean_value": 0.9953700000000001,
+      "std_value": 0.006005256031178028,
       "mean_score": 0.9999583333333334,
       "std_score": 0.0013169567191065948,
       "pass_rate": 1.0,

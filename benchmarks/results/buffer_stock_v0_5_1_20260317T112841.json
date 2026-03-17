@@ -1,0 +1,187 @@
+{
+  "metadata": {
+    "commit": "3efb68ecfd6412fa5900de8aa317854b47ae6974",
+    "commit_short": "3efb68e",
+    "commit_date": "2026-03-04T13:20:40+02:00",
+    "timestamp": "2026-03-17T11:28:41",
+    "branch": "main",
+    "tag": "v0.5.1",
+    "version": null,
+    "n_seeds": 1000,
+    "n_periods": 1000,
+    "n_workers": 10,
+    "elapsed_seconds": 272
+  },
+  "scenario": "buffer_stock",
+  "summary": {
+    "n_passed": 987,
+    "pass_rate": 0.987,
+    "mean_score": 0.8648390981856067,
+    "std_score": 0.03140255703750799,
+    "min_score": 0.7078852027371345,
+    "max_score": 0.9462763000117157
+  },
+  "metrics": {
+    "sm_ccdf_r2": {
+      "mean_value": 0.9384669413374604,
+      "std_value": 0.038734256918979096,
+      "mean_score": 0.8776104337143015,
+      "std_score": 0.06113192339712002,
+      "pass_rate": 1.0,
+      "weight": 3.0,
+      "group": "DISTRIBUTION"
+    },
+    "dagum_ccdf_r2": {
+      "mean_value": 0.9437257515170284,
+      "std_value": 0.03476948398207811,
+      "mean_score": 0.8727565795981725,
+      "std_score": 0.062279169125921775,
+      "pass_rate": 0.999,
+      "weight": 3.0,
+      "group": "DISTRIBUTION"
+    },
+    "gb2_ccdf_r2": {
+      "mean_value": 0.938467452584024,
+      "std_value": 0.06094040995025642,
+      "mean_score": 0.8363327442170471,
+      "std_score": 0.1164985076016179,
+      "pass_rate": 0.987,
+      "weight": 2.0,
+      "group": "DISTRIBUTION"
+    },
+    "best_r2": {
+      "mean_value": 0.9661328549394175,
+      "std_value": 0.017829744683682112,
+      "mean_score": 0.8606774818576296,
+      "std_score": 0.05404142294107443,
+      "pass_rate": 1.0,
+      "weight": 3.0,
+      "group": "DISTRIBUTION"
+    },
+    "wealth_gini": {
+      "mean_value": 0.2600194501049226,
+      "std_value": 0.038976405773911885,
+      "mean_score": 0.7998717393733189,
+      "std_score": 0.03278822822358599,
+      "pass_rate": 1.0,
+      "weight": 2.0,
+      "group": "DISTRIBUTION"
+    },
+    "wealth_skewness": {
+      "mean_value": 1.923712426834802,
+      "std_value": 0.8796552825939837,
+      "mean_score": 0.8242783143904951,
+      "std_score": 0.043752012342522247,
+      "pass_rate": 1.0,
+      "weight": 1.0,
+      "group": "DISTRIBUTION"
+    },
+    "mean_mpc": {
+      "mean_value": 0.9902948393538481,
+      "std_value": 0.029340743536290667,
+      "mean_score": 0.9316340520535595,
+      "std_score": 0.049455279765248654,
+      "pass_rate": 1.0,
+      "weight": 1.5,
+      "group": "FINANCIAL"
+    },
+    "pct_dissaving": {
+      "mean_value": 0.3200789014198102,
+      "std_value": 0.06718074220295503,
+      "mean_score": 0.9425732749006338,
+      "std_score": 0.040231649848448785,
+      "pass_rate": 1.0,
+      "weight": 1.0,
+      "group": "FINANCIAL"
+    }
+  },
+  "group_display_names": {
+    "TIME_SERIES": "Time Series",
+    "CURVES": "Curves",
+    "DISTRIBUTION": "Distribution",
+    "GROWTH": "Growth",
+    "FINANCIAL": "Financial",
+    "GROWTH_RATE_DIST": "Growth Rate Distribution"
+  },
+  "failing_seeds": [
+    {
+      "seed": 157,
+      "failed_metrics": [
+        "gb2_ccdf_r2"
+      ]
+    },
+    {
+      "seed": 237,
+      "failed_metrics": [
+        "gb2_ccdf_r2"
+      ]
+    },
+    {
+      "seed": 568,
+      "failed_metrics": [
+        "gb2_ccdf_r2"
+      ]
+    },
+    {
+      "seed": 576,
+      "failed_metrics": [
+        "gb2_ccdf_r2"
+      ]
+    },
+    {
+      "seed": 609,
+      "failed_metrics": [
+        "dagum_ccdf_r2",
+        "gb2_ccdf_r2"
+      ]
+    },
+    {
+      "seed": 680,
+      "failed_metrics": [
+        "gb2_ccdf_r2"
+      ]
+    },
+    {
+      "seed": 697,
+      "failed_metrics": [
+        "gb2_ccdf_r2"
+      ]
+    },
+    {
+      "seed": 781,
+      "failed_metrics": [
+        "gb2_ccdf_r2"
+      ]
+    },
+    {
+      "seed": 818,
+      "failed_metrics": [
+        "gb2_ccdf_r2"
+      ]
+    },
+    {
+      "seed": 831,
+      "failed_metrics": [
+        "gb2_ccdf_r2"
+      ]
+    },
+    {
+      "seed": 840,
+      "failed_metrics": [
+        "gb2_ccdf_r2"
+      ]
+    },
+    {
+      "seed": 897,
+      "failed_metrics": [
+        "gb2_ccdf_r2"
+      ]
+    },
+    {
+      "seed": 982,
+      "failed_metrics": [
+        "gb2_ccdf_r2"
+      ]
+    }
+  ]
+}
