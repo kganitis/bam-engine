@@ -158,7 +158,7 @@ class GrowthPlusMetrics:
         float  # Detrended counter-cyclical correlation with GDP
     )
     price_dispersion_mean: float
-    price_dispersion_cv: float  # Coefficient of variation (std/mean)
+    price_dispersion_std: float  # Temporal std (not CV — CV inflates when mean is low)
     price_dispersion_gdp_correlation: (
         float  # Detrended pro-cyclical correlation with GDP
     )
@@ -676,8 +676,8 @@ def compute_growth_plus_metrics(
 
     price_disp_ss = price_dispersion[burn_in:]
 
-    # Price dispersion CV and pro-cyclicality
-    price_dispersion_cv = _compute_cv(price_disp_ss)
+    # Price dispersion std (not CV — CV mechanically inflates when mean is low)
+    price_dispersion_std = float(np.std(price_disp_ss))
     price_dispersion_gdp_correlation = _compute_gdp_cyclicality(
         price_disp_ss, log_gdp_ss
     )
@@ -795,7 +795,7 @@ def compute_growth_plus_metrics(
         price_ratio_p5=price_ratio_p5_val,
         price_ratio_gdp_correlation=price_ratio_gdp_corr,
         price_dispersion_mean=float(np.mean(price_disp_ss)),
-        price_dispersion_cv=price_dispersion_cv,
+        price_dispersion_std=price_dispersion_std,
         price_dispersion_gdp_correlation=price_dispersion_gdp_correlation,
         equity_dispersion_mean=float(np.mean(equity_disp_ss)),
         equity_dispersion_cv=equity_dispersion_cv,
@@ -1113,7 +1113,7 @@ METRIC_SPECS = [
     MetricSpec(
         name="wage_productivity_ratio_mean",
         field="wage_productivity_ratio_mean",
-        check_type=CheckType.MEAN_TOLERANCE,
+        check_type=CheckType.RANGE,
         target_path="metrics.wage_productivity_ratio_mean",
         weight=1.5,  # IMPORTANT
         group=MetricGroup.GROWTH,
@@ -1262,10 +1262,10 @@ METRIC_SPECS = [
         group=MetricGroup.FINANCIAL,
     ),
     MetricSpec(
-        name="price_dispersion_cv",
-        field="price_dispersion_cv",
+        name="price_dispersion_std",
+        field="price_dispersion_std",
         check_type=CheckType.MEAN_TOLERANCE,
-        target_path="metrics.price_dispersion_cv",
+        target_path="metrics.price_dispersion_std",
         weight=1.0,
         group=MetricGroup.FINANCIAL,
     ),

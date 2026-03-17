@@ -92,6 +92,7 @@ Module Structure
    :hidden:
 
    scenarios
+   targets
    scoring
    cli
    robustness/index

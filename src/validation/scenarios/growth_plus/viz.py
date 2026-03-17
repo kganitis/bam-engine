@@ -1156,11 +1156,17 @@ def visualize_financial_dynamics(
     ax.legend(fontsize=8, loc="upper right")
     ax.grid(True, linestyle="--", alpha=0.3)
 
-    _add_cv_cyclicality_box(
-        ax,
-        metrics.price_dispersion_mean,
-        metrics.price_dispersion_cv,
-        metrics.price_dispersion_gdp_correlation,
+    ax.text(
+        0.02,
+        0.97,
+        f"mu = {metrics.price_dispersion_mean:.3f}\n"
+        f"std = {metrics.price_dispersion_std:.4f}\n"
+        f"pro-cyc r = {metrics.price_dispersion_gdp_correlation:.2f}",
+        transform=ax.transAxes,
+        fontsize=8,
+        verticalalignment="top",
+        horizontalalignment="left",
+        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
     )
     _shade_beyond_extreme(ax, pd_extreme_min, pd_extreme_max)
 
