@@ -34,7 +34,7 @@ Key Concepts
   Households are Worker + Consumer. Banks are Lender.
 
 **Event Pipeline**
-  Each period executes 39 events in fixed order: Planning → Labor Market →
+  Each period executes 37 events in fixed order: Planning → Labor Market →
   Credit Market → Production → Goods Market → Revenue → Bankruptcy → Entry.
 
 **Vectorized Operations**
@@ -137,7 +137,7 @@ Module Organization
   - `bamengine.simulation` : Simulation implementation
   - `bamengine.core` : ECS infrastructure (registry, pipeline)
   - `bamengine.roles` : Built-in role implementations (Producer, Worker, etc.)
-  - `bamengine.events` : Built-in event implementations (39 events)
+  - `bamengine.events` : Built-in event implementations (37 events)
   - `bamengine.relationships` : Built-in relationships (LoanBook)
   - `bamengine.economy` : Economy-wide state, scalars and time-series
   - `bamengine.config` : Configuration and validation

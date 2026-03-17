@@ -125,7 +125,7 @@ def firms_decide_credit_demand(bor: Borrower) -> None:
         log.info("--- Borrowers Deciding Credit Demand ---")
         log.info(
             f"  Inputs: Total Wage Bill={bor.wage_bill.sum():,.2f}  |"
-            f"  Total Net Worth={bor.total_funds.sum():,.2f}"
+            f"  Total Funds={bor.total_funds.sum():,.2f}"
         )
 
     # Core Rule

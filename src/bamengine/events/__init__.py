@@ -12,13 +12,12 @@ Events are organized by economic phase:
 1. **Planning** (6 events): Firms plan production targets, breakeven price, price adjustment
 2. **Labor Market** (6 events): Wage setting, job applications, matching
 3. **Credit Market** (7 events): Credit supply/demand, loan matching, layoffs
-4. **Production** (4 events): Wage payments, production, contracts
+4. **Production** (5 events): Wage payments, production, price update, contracts
 5. **Goods Market** (5 events): Consumption decisions, shopping
 6. **Revenue** (3 events): Revenue collection, debt repayment, dividends
 7. **Bankruptcy** (5 events): Insolvency detection, agent replacement
-8. **Economy Stats** (1 event): Aggregate metrics (prices)
 
-Total: 37 events across 8 modules (1 stat event is not in default pipeline)
+Total: 37 events across 7 modules
 
 Event Execution
 ---------------

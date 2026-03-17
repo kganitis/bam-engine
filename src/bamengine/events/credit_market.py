@@ -250,7 +250,7 @@ class FirmsDecideCreditDemand:
 
     - :math:`B_i`: credit demand (amount firm needs to borrow)
     - :math:`W_i`: wage bill (total wages owed to workers)
-    - :math:`A_i`: net worth (firm's current funds/assets)
+    - :math:`A_i`: total funds (firm's current cash balance)
 
     Firms with :math:`A_i \\geq W_i` have zero credit demand (self-financed).
 
@@ -282,7 +282,7 @@ class FirmsDecideCreditDemand:
 
     Verify credit demand formula:
 
-    >>> shortfall = np.maximum(sim.bor.wage_bill - sim.bor.net_worth, 0)
+    >>> shortfall = np.maximum(sim.bor.wage_bill - sim.bor.total_funds, 0)
     >>> np.allclose(sim.bor.credit_demand, shortfall)
     True
 
@@ -323,8 +323,8 @@ class FirmsCalcFinancialFragility:
     ---------
     For each firm i:
 
-    1. Calculate leverage: :math:`l_i = B_i / A_i` (if :math:`A_i > 0`, else :math:`l_i = 0`)
-    2. Cap leverage at :math:`B_i` to prevent explosion for small :math:`A_i`
+    1. Pre-fill fragility with ``max_leverage`` (worst-case for firms with :math:`A_i \\leq 0`)
+    2. For firms with :math:`A_i > 0`: :math:`f_i = B_i / A_i` (uncapped)
 
     Mathematical Notation
     ---------------------
@@ -363,13 +363,11 @@ class FirmsCalcFinancialFragility:
 
     Verify fragility calculation:
 
-    >>> # For firms with positive net worth
+    >>> # For firms with positive net worth: fragility = credit_demand / net_worth
     >>> pos_net_worth = sim.bor.net_worth > 0
-    >>> leverage = (
+    >>> expected_fragility = (
     ...     sim.bor.credit_demand[pos_net_worth] / sim.bor.net_worth[pos_net_worth]
     ... )
-    >>> # Fragility is capped at credit_demand
-    >>> expected_fragility = np.minimum(leverage, sim.bor.credit_demand[pos_net_worth])
     >>> actual_fragility = sim.bor.projected_fragility[pos_net_worth]
     >>> np.allclose(actual_fragility, expected_fragility)
     True
