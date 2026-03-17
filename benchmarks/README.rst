@@ -111,7 +111,9 @@ Workflow
 1. Run the benchmark: ``PYTHONPATH=src python benchmarks/bench_seed_stability.py``
 2. Commit the JSON results: ``git add benchmarks/results/*.json && git commit``
 3. Push to main — the ``validation-status`` CI workflow checks pass rates automatically
-4. Tagged release results are automatically published to bamengine.org by the ``validation-status`` CI workflow
+4. Tagged release results are automatically published to bamengine.org by the
+   ``validation-status`` CI workflow (clears stale results before copying, so
+   this directory is the single source of truth)
 
 See Also
 --------
