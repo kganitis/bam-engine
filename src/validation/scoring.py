@@ -224,6 +224,66 @@ def check_outlier_penalty(
 
 
 # =============================================================================
+# Improvement Scoring (buffer-stock vs growth_plus)
+# =============================================================================
+
+
+def check_improvement(
+    delta: float,
+    weight: float,
+    max_degradation_base: float = 0.10,
+) -> Status:
+    """Check if a metric's score delta indicates acceptable change.
+
+    Uses a weight-aware degradation threshold: high-weight metrics tolerate
+    less degradation than low-weight ones.
+
+    Parameters
+    ----------
+    delta : float
+        Score delta (buffer_stock_score - growth_plus_score).
+        Positive means improvement, negative means degradation.
+    weight : float
+        Metric weight (from the Growth+ metric spec).
+    max_degradation_base : float
+        Base degradation threshold. Actual threshold = base / weight.
+
+    Returns
+    -------
+    Status
+        PASS if delta >= 0 (improved or same).
+        WARN if degradation within threshold.
+        FAIL if degradation exceeds threshold.
+    """
+    if delta >= 0:
+        return "PASS"
+    threshold = max_degradation_base / max(weight, 0.1)
+    if abs(delta) <= threshold:
+        return "WARN"
+    return "FAIL"
+
+
+def score_improvement(delta: float) -> float:
+    """Score from 0-1 based on improvement delta.
+
+    Returns ``max(0, min(1, 1 + delta))``.
+    Improvement (delta > 0) yields score close to 1.0.
+    Degradation (delta < 0) penalizes toward 0.0.
+
+    Parameters
+    ----------
+    delta : float
+        Score delta (buffer_stock_score - growth_plus_score).
+
+    Returns
+    -------
+    float
+        Score in [0.0, 1.0].
+    """
+    return max(0.0, min(1.0, 1.0 + delta))
+
+
+# =============================================================================
 # Aggregate Score Functions
 # =============================================================================
 

@@ -82,6 +82,36 @@ Metric Types
      - Binary pass/fail check (e.g., "economy did not collapse")
 
 
+Improvement Scoring (Buffer-Stock)
+-----------------------------------
+
+The buffer-stock scenario uses additional scoring functions to measure
+improvement over the Growth+ baseline. For each Growth+ metric, the
+buffer-stock score delta is computed:
+
+.. math::
+
+   \Delta = s_{\text{buffer-stock}} - s_{\text{growth+}}
+
+The improvement check uses a **weight-aware degradation threshold**:
+
+.. math::
+
+   t = \frac{b}{w}
+
+where :math:`b` is the base degradation threshold (default 0.25) and :math:`w`
+is the metric weight. High-weight metrics tolerate less degradation (stricter),
+while low-weight metrics are more lenient.
+
+This check is applied at the **aggregate level** (mean delta across all seeds
+in a stability test), not per seed. Averaging across seeds eliminates
+per-seed noise, allowing a strict threshold without false positives.
+
+- **PASS**: :math:`\Delta \geq 0` (improved or unchanged)
+- **WARN**: :math:`|\Delta| \leq t` (minor degradation within threshold)
+- **FAIL**: :math:`|\Delta| > t` (significant degradation)
+
+
 API Reference
 -------------
 

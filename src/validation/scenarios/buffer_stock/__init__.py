@@ -1,13 +1,16 @@
 """Buffer-stock consumption scenario definition (Section 3.9.4).
 
 This module defines the buffer-stock validation scenario from Delli Gatti et al.
-(2011). It contains the metrics dataclass, computation function, and scenario
-configuration.
+(2011). It validates the buffer-stock extension by measuring:
 
-The buffer-stock scenario replaces the baseline mean-field MPC with an
-individual adaptive rule based on buffer-stock saving theory. Validation
-focuses on reproducing the wealth distribution (Figure 3.8) fitted with
-Singh-Maddala, Dagum, and GB2 distributions.
+1. **Unique metrics** (Figure 3.8): Wealth distribution fitted with
+   Singh-Maddala, Dagum, and GB2 distributions, plus MPC behavioral metrics.
+2. **Improvement over Growth+**: Per-metric comparison showing how the
+   buffer-stock extension changes Growth+ macro dynamics (per-seed pairing).
+
+The validation runs Growth+ first as a baseline (same seed), then runs the
+buffer-stock simulation and computes improvement deltas for each Growth+ metric.
+The total score is a weighted blend of unique metric scores and improvement scores.
 
 For visualization, see viz.py (in this package).
 """
@@ -24,13 +27,18 @@ from numpy.typing import NDArray
 from scipy import stats
 
 import bamengine as bam
-from bamengine import SimulationResults, ops
-from validation.scenarios._utils import (
-    adjust_burn_in,
-    compute_real_interest_rate,
-    filter_outliers_iqr,
+from bamengine import SimulationResults
+from validation.scenarios._utils import adjust_burn_in
+from validation.types import (
+    BufferStockValidationScore,
+    CheckType,
+    MetricFormat,
+    MetricGroup,
+    MetricResult,
+    MetricSpec,
+    Scenario,
+    ValidationScore,
 )
-from validation.types import CheckType, MetricFormat, MetricGroup, MetricSpec, Scenario
 
 # =============================================================================
 # Metrics Dataclass
@@ -39,57 +47,19 @@ from validation.types import CheckType, MetricFormat, MetricGroup, MetricSpec, S
 
 @dataclass
 class BufferStockMetrics:
-    """All computed metrics from a buffer-stock simulation run.
+    """Composed metrics: Growth+ metrics + buffer-stock unique fields.
 
-    Includes baseline macro metrics, distribution fitting results,
-    and buffer-stock specific metrics.
+    The Growth+ fields are computed on the buffer-stock simulation (not
+    copied from the baseline). This allows comparing how the same metrics
+    behave with vs without buffer-stock consumption.
     """
 
-    # Time series (full, for visualization)
-    unemployment: NDArray[np.floating]
-    inflation: NDArray[np.floating]
-    log_gdp: NDArray[np.floating]
-    real_wage: NDArray[np.floating]
-    vacancy_rate: NDArray[np.floating]
+    # Growth+ metrics computed on the buffer-stock simulation
+    growth_plus: Any  # GrowthPlusMetrics (avoid circular import)
 
-    # Curve data
-    wage_inflation: NDArray[np.floating]
-    gdp_growth: NDArray[np.floating]
-    unemployment_growth: NDArray[np.floating]
-
-    # Distribution data
-    final_production: NDArray[np.floating]
+    # Buffer-stock unique: distribution data
     final_savings: NDArray[np.floating]
     final_propensity: NDArray[np.floating]
-
-    # Summary statistics
-    unemployment_mean: float
-    unemployment_std: float
-    unemployment_max: float
-    unemployment_pct_above_floor: float
-    unemployment_pct_below_ceiling: float
-    inflation_mean: float
-    inflation_std: float
-    inflation_max: float
-    inflation_min: float
-    inflation_pct_in_bounds: float
-    log_gdp_mean: float
-    log_gdp_std: float
-    real_wage_mean: float
-    real_wage_std: float
-    vacancy_rate_mean: float
-    vacancy_rate_pct_in_bounds: float
-
-    # Correlations
-    phillips_corr: float
-    okun_corr: float
-    beveridge_corr: float
-
-    # Distribution metrics (firm size)
-    firm_size_skewness: float
-    firm_size_pct_below_threshold: float
-    firm_size_tail_ratio: float
-    firm_size_pct_below_medium: float
 
     # Distribution fitting (Singh-Maddala)
     sm_params: tuple
@@ -116,12 +86,6 @@ class BufferStockMetrics:
     mean_mpc: float
     std_mpc: float
     pct_dissaving: float
-
-    # Financial dynamics (subset)
-    n_firm_bankruptcies: NDArray[np.int_]
-    bankruptcies_mean: float
-    real_interest_rate: NDArray[np.floating]
-    real_interest_rate_mean: float
 
 
 # =============================================================================
@@ -271,98 +235,69 @@ def compute_buffer_stock_metrics(
     sim: bam.Simulation,
     results: SimulationResults,
     burn_in: int = 500,
-    firm_size_threshold: float = 150.0,
-    firm_size_threshold_medium: float = 100.0,
-    unemployment_floor: float = 0.02,
-    unemployment_ceiling: float = 0.15,
-    inflation_bounds: tuple[float, float] = (-0.02, 0.10),
-    vacancy_rate_bounds: tuple[float, float] = (0.08, 0.20),
 ) -> BufferStockMetrics:
-    """Compute all validation metrics from buffer-stock simulation results."""
-    # Extract raw data
-    inflation = results.economy_data["inflation"]
-    avg_price = results.economy_data["avg_price"]
-    production = results.role_data["Producer"]["production"]
-    wages = results.role_data["Worker"]["wage"]
+    """Compute buffer-stock validation metrics.
+
+    Delegates Growth+ macro metric computation to
+    :func:`~validation.scenarios.growth_plus.compute_growth_plus_metrics`,
+    then computes buffer-stock-unique metrics (wealth distribution fitting,
+    MPC, Gini).
+
+    Parameters
+    ----------
+    sim : Simulation
+        The simulation instance (with buffer-stock + R&D extensions active).
+    results : SimulationResults
+        Collected simulation results.
+    burn_in : int
+        Number of burn-in periods to exclude.
+
+    Returns
+    -------
+    BufferStockMetrics
+        Composed metrics with Growth+ fields + buffer-stock unique fields.
+    """
+    from validation.scenarios.growth_plus import (
+        GrowthPlusMetrics,
+        compute_growth_plus_metrics,
+    )
+
+    # Load Growth+ targets for parameter extraction
+    gp_targets_path = Path(__file__).parents[1] / "growth_plus" / "targets.yaml"
+    with open(gp_targets_path) as f:
+        gp_targets_yaml = yaml.safe_load(f)
+
+    gp_metrics_yaml = gp_targets_yaml["metrics"]
+    gp_infl = gp_metrics_yaml["inflation_pct_in_bounds"]
+    gp_vac = gp_metrics_yaml["vacancy_rate_pct_in_bounds"]
+    gp_rir = gp_metrics_yaml["real_interest_rate_pct_in_bounds"]
+
+    # Step 1: Compute Growth+ metrics on the buffer-stock simulation
+    gp_metrics: GrowthPlusMetrics = compute_growth_plus_metrics(
+        sim,
+        results,
+        burn_in=burn_in,
+        firm_size_threshold=gp_metrics_yaml["firm_size_pct_below"]["threshold"],
+        firm_size_threshold_medium=gp_metrics_yaml["firm_size_pct_below_medium"][
+            "threshold"
+        ],
+        unemployment_floor=gp_metrics_yaml["unemployment_pct_above_floor"]["floor"],
+        unemployment_ceiling=gp_metrics_yaml["unemployment_pct_below_ceiling"][
+            "ceiling"
+        ],
+        inflation_bounds=(gp_infl["bounds_min"], gp_infl["bounds_max"]),
+        vacancy_rate_bounds=(gp_vac["bounds_min"], gp_vac["bounds_max"]),
+        real_interest_rate_bounds=(gp_rir["bounds_min"], gp_rir["bounds_max"]),
+    )
+
+    # Step 2: Compute buffer-stock unique metrics
     employed = results.role_data["Worker"]["employed"]
-    n_vacancies = results.role_data["Employer"]["n_vacancies"]
     consumer_savings = results.role_data["Consumer"]["savings"]
     buf_propensity = results.role_data["BufferStock"]["propensity"]
-    n_firm_bankruptcies = np.array(
-        results.economy_data["n_firm_bankruptcies"], dtype=np.int_
-    )
-
-    loan_principals = results.relationship_data["LoanBook"]["principal"]
-    loan_rates = results.relationship_data["LoanBook"]["rate"]
-
-    # Compute time series
-    unemployment = 1 - ops.mean(employed.astype(float), axis=1)
-    gdp = ops.sum(production, axis=1)
-    log_gdp = ops.log(gdp)
-
-    employed_wages_sum = ops.sum(ops.where(employed, wages, 0.0), axis=1)
-    employed_count = ops.sum(employed, axis=1)
-    avg_employed_wage = ops.where(
-        ops.greater(employed_count, 0),
-        ops.divide(employed_wages_sum, employed_count),
-        0.0,
-    )
-    real_wage = ops.divide(avg_employed_wage, avg_price)
-
-    total_vacancies = ops.sum(n_vacancies, axis=1)
-    vacancy_rate = ops.divide(total_vacancies, sim.n_households)
-
-    # Curve data
-    wage_inflation = ops.divide(
-        avg_employed_wage[1:] - avg_employed_wage[:-1],
-        ops.where(ops.greater(avg_employed_wage[:-1], 0), avg_employed_wage[:-1], 1.0),
-    )
-    gdp_growth = ops.divide(gdp[1:] - gdp[:-1], gdp[:-1])
-    unemployment_growth = ops.divide(
-        unemployment[1:] - unemployment[:-1],
-        ops.where(ops.greater(unemployment[:-1], 0), unemployment[:-1], 1.0),
-    )
-
-    # Apply burn-in
-    unemployment_ss = unemployment[burn_in:]
-    log_gdp_ss = log_gdp[burn_in:]
-    real_wage_ss = real_wage[burn_in:]
-    vacancy_rate_ss = vacancy_rate[burn_in:]
-    inflation_ss = inflation[burn_in:]
-
-    wage_inflation_ss = wage_inflation[burn_in - 1 :]
-    gdp_growth_ss = gdp_growth[burn_in - 1 :]
-    unemployment_growth_ss = unemployment_growth[burn_in - 1 :]
-
-    # Correlations
-    phillips_corr = float(np.corrcoef(unemployment_ss, wage_inflation_ss)[0, 1])
-    unemp_filtered, gdp_filtered = filter_outliers_iqr(
-        unemployment_growth_ss, gdp_growth_ss
-    )
-    okun_corr = float(np.corrcoef(unemp_filtered, gdp_filtered)[0, 1])
-    beveridge_corr = float(np.corrcoef(unemployment_ss, vacancy_rate_ss)[0, 1])
-
-    # Firm size distribution
-    final_production_arr = production[-1]
-    firm_size_skewness = float(stats.skew(final_production_arr))
-    firm_size_pct_below = float(
-        np.sum(final_production_arr < firm_size_threshold) / len(final_production_arr)
-    )
-    median_production = float(np.median(final_production_arr))
-    firm_size_tail_ratio = (
-        float(np.max(final_production_arr) / median_production)
-        if median_production > 0
-        else 0.0
-    )
-    firm_size_pct_below_medium = float(
-        np.sum(final_production_arr < firm_size_threshold_medium)
-        / len(final_production_arr)
-    )
+    wages = results.role_data["Worker"]["wage"]
+    shareholder_dividends = results.role_data["Shareholder"]["dividends"]
 
     # Wealth distribution fitting — exclude unemployed households.
-    # Unemployed households have c=1/h (gradual savings drawdown) and converge to a
-    # dividend-floor equilibrium, creating a spurious point mass that distorts
-    # the heavy-tail shape the fitted distributions are meant to capture.
     final_employed = employed[-1].astype(bool)
     final_savings_arr = consumer_savings[-1][final_employed]
     dist_fits = _fit_distributions(final_savings_arr)
@@ -373,22 +308,17 @@ def compute_buffer_stock_metrics(
 
     # Determine best fit
     fits = {"SM": sm_r2, "D": dagum_r2, "GB2": gb2_r2}
-    best_fit = max(fits, key=fits.get)
+    best_fit = max(fits, key=lambda k: fits[k])
     best_r2 = fits[best_fit]
 
-    # Buffer-stock specific metrics (employed only)
+    # Wealth distribution stats
     wealth_gini = _compute_gini(final_savings_arr)
     wealth_skewness = float(stats.skew(final_savings_arr))
 
-    # MPC statistics from final period (employed only — unemployed have
-    # a fixed c=1/h that doesn't reflect the buffer-stock formula)
+    # MPC statistics (employed only)
     final_propensity = buf_propensity[-1][final_employed]
 
-    # Adjust MPC for the dividend artifact: dividends inflate savings above
-    # the labor-income buffer target S* = h*W, causing the formula to produce
-    # c > 1 to drain the surplus. Subtracting D/W isolates the labor-income
-    # component of the MPC. See plan context for detailed derivation.
-    shareholder_dividends = results.role_data["Shareholder"]["dividends"]
+    # Adjust MPC for the dividend artifact
     final_dividends = shareholder_dividends[-1][final_employed]
     final_wages = wages[-1][final_employed]
     adjustment = np.where(final_wages > 0, final_dividends / final_wages, 0.0)
@@ -398,62 +328,10 @@ def compute_buffer_stock_metrics(
     std_mpc = float(np.std(adjusted_propensity))
     pct_dissaving = float(np.sum(adjusted_propensity > 1.0) / len(adjusted_propensity))
 
-    # Financial dynamics (subset)
-    real_interest_rate = compute_real_interest_rate(
-        loan_principals, loan_rates, inflation, sim.r_bar
-    )
-
-    bankruptcies_ss = n_firm_bankruptcies[burn_in:]
-
     return BufferStockMetrics(
-        unemployment=unemployment,
-        inflation=inflation,
-        log_gdp=log_gdp,
-        real_wage=real_wage,
-        vacancy_rate=vacancy_rate,
-        wage_inflation=wage_inflation,
-        gdp_growth=gdp_growth,
-        unemployment_growth=unemployment_growth,
-        final_production=final_production_arr,
+        growth_plus=gp_metrics,
         final_savings=final_savings_arr,
         final_propensity=final_propensity,
-        unemployment_mean=float(np.mean(unemployment_ss)),
-        unemployment_std=float(np.std(unemployment_ss)),
-        unemployment_max=float(np.max(unemployment_ss)),
-        unemployment_pct_above_floor=float(
-            np.mean(unemployment_ss >= unemployment_floor)
-        ),
-        unemployment_pct_below_ceiling=float(
-            np.mean(unemployment_ss <= unemployment_ceiling)
-        ),
-        inflation_mean=float(np.mean(inflation_ss)),
-        inflation_std=float(np.std(inflation_ss)),
-        inflation_max=float(np.max(inflation_ss)),
-        inflation_min=float(np.min(inflation_ss)),
-        inflation_pct_in_bounds=float(
-            np.mean(
-                (inflation_ss >= inflation_bounds[0])
-                & (inflation_ss <= inflation_bounds[1])
-            )
-        ),
-        log_gdp_mean=float(np.mean(log_gdp_ss)),
-        log_gdp_std=float(np.std(log_gdp_ss)),
-        real_wage_mean=float(np.mean(real_wage_ss)),
-        real_wage_std=float(np.std(real_wage_ss)),
-        vacancy_rate_mean=float(np.mean(vacancy_rate_ss)),
-        vacancy_rate_pct_in_bounds=float(
-            np.mean(
-                (vacancy_rate_ss >= vacancy_rate_bounds[0])
-                & (vacancy_rate_ss <= vacancy_rate_bounds[1])
-            )
-        ),
-        phillips_corr=phillips_corr,
-        okun_corr=okun_corr,
-        beveridge_corr=beveridge_corr,
-        firm_size_skewness=firm_size_skewness,
-        firm_size_pct_below_threshold=firm_size_pct_below,
-        firm_size_tail_ratio=firm_size_tail_ratio,
-        firm_size_pct_below_medium=firm_size_pct_below_medium,
         sm_params=sm_params,
         sm_ks_stat=sm_ks_stat,
         sm_ccdf_r2=sm_r2,
@@ -470,38 +348,47 @@ def compute_buffer_stock_metrics(
         mean_mpc=mean_mpc,
         std_mpc=std_mpc,
         pct_dissaving=pct_dissaving,
-        n_firm_bankruptcies=n_firm_bankruptcies,
-        bankruptcies_mean=float(np.mean(bankruptcies_ss)),
-        real_interest_rate=real_interest_rate,
-        real_interest_rate_mean=float(np.mean(real_interest_rate[burn_in:])),
     )
 
 
 # =============================================================================
-# Collection Configuration
+# Collection Configuration (superset of Growth+ + buffer-stock fields)
 # =============================================================================
 
 COLLECT_CONFIG = {
-    "Producer": ["production"],
+    # From Growth+ (needed for compute_growth_plus_metrics)
+    "Producer": ["production", "labor_productivity", "price", "inventory"],
     "Worker": ["wage", "employed"],
     "Employer": ["n_vacancies"],
-    "Borrower": ["net_worth"],
-    "Consumer": ["savings"],
+    "Borrower": ["net_worth", "gross_profit", "total_funds"],
+    "Consumer": ["savings", "income_to_spend"],
+    # Buffer-stock unique
     "BufferStock": ["propensity"],
     "Shareholder": ["dividends"],
-    "LoanBook": ["principal", "rate"],
+    # Shared
+    "LoanBook": ["principal", "rate", "source_ids"],
     "Economy": True,
     "capture_timing": {
+        # Growth+ timings
+        "Producer.labor_productivity": "firms_apply_productivity_growth",
+        "Producer.price": "firms_adjust_price",
+        "Producer.production": "firms_run_production",
+        "Producer.inventory": "consumers_finalize_purchases",
+        "Borrower.gross_profit": "firms_collect_revenue",
+        "Borrower.total_funds": "firms_collect_revenue",
+        "Consumer.income_to_spend": "consumers_decide_buffer_stock_spending",
+        # Buffer-stock timings
+        "BufferStock.propensity": "consumers_calc_buffer_stock_propensity",
+        "Shareholder.dividends": "consumers_calc_buffer_stock_propensity",
+        # Shared timings
         "Worker.wage": "firms_run_production",
         "Worker.employed": "firms_run_production",
-        "Producer.production": "firms_run_production",
         "Employer.n_vacancies": "firms_decide_vacancies",
         "Borrower.net_worth": "firms_run_production",
         "Consumer.savings": None,  # end of period
-        "BufferStock.propensity": "consumers_calc_buffer_stock_propensity",
-        "Shareholder.dividends": "consumers_calc_buffer_stock_propensity",
         "LoanBook.principal": "credit_market_round",
         "LoanBook.rate": "credit_market_round",
+        "LoanBook.source_ids": "credit_market_round",
     },
 }
 
@@ -512,198 +399,11 @@ COLLECT_CONFIG = {
 DEFAULT_CONFIG: dict[str, Any] = {}
 
 # =============================================================================
-# Metric Specifications
+# Unique Metric Specifications (8 buffer-stock-specific metrics)
 # =============================================================================
 
-METRIC_SPECS = [
-    # === Time series metrics ===
-    MetricSpec(
-        name="unemployment_rate_mean",
-        field="unemployment_mean",
-        check_type=CheckType.MEAN_TOLERANCE,
-        target_path="metrics.unemployment_rate_mean",
-        weight=1.5,
-        group=MetricGroup.TIME_SERIES,
-    ),
-    MetricSpec(
-        name="unemployment_absolute_ceiling",
-        field="unemployment_max",
-        check_type=CheckType.BOOLEAN,
-        target_path="metrics.unemployment_absolute_ceiling",
-        weight=3.0,
-        group=MetricGroup.TIME_SERIES,
-        threshold=0.20,
-        invert=True,
-        target_desc="< 20% (model collapse gate)",
-    ),
-    MetricSpec(
-        name="unemployment_std",
-        field="unemployment_std",
-        check_type=CheckType.RANGE,
-        target_path="metrics.unemployment_std",
-        weight=1.0,
-        group=MetricGroup.TIME_SERIES,
-    ),
-    MetricSpec(
-        name="unemployment_pct_above_floor",
-        field="unemployment_pct_above_floor",
-        check_type=CheckType.PCT_WITHIN,
-        target_path="metrics.unemployment_pct_above_floor",
-        weight=1.5,
-        group=MetricGroup.TIME_SERIES,
-        format=MetricFormat.PERCENT,
-    ),
-    MetricSpec(
-        name="unemployment_pct_below_ceiling",
-        field="unemployment_pct_below_ceiling",
-        check_type=CheckType.PCT_WITHIN,
-        target_path="metrics.unemployment_pct_below_ceiling",
-        weight=0.5,
-        group=MetricGroup.TIME_SERIES,
-        format=MetricFormat.PERCENT,
-    ),
-    MetricSpec(
-        name="inflation_rate_mean",
-        field="inflation_mean",
-        check_type=CheckType.MEAN_TOLERANCE,
-        target_path="metrics.inflation_rate_mean",
-        weight=1.5,
-        group=MetricGroup.TIME_SERIES,
-    ),
-    MetricSpec(
-        name="inflation_hard_ceiling_upper",
-        field="inflation_max",
-        check_type=CheckType.BOOLEAN,
-        target_path="metrics.inflation_hard_ceiling_upper",
-        weight=3.0,
-        group=MetricGroup.TIME_SERIES,
-        threshold=0.25,
-        invert=True,
-        target_desc="< 25% (model stability)",
-    ),
-    MetricSpec(
-        name="inflation_hard_floor",
-        field="inflation_min",
-        check_type=CheckType.BOOLEAN,
-        target_path="metrics.inflation_hard_floor",
-        weight=3.0,
-        group=MetricGroup.TIME_SERIES,
-        threshold=-0.15,
-        invert=False,
-        target_desc="> -15% (model stability)",
-    ),
-    MetricSpec(
-        name="inflation_non_degenerate",
-        field="inflation_mean",
-        check_type=CheckType.RANGE,
-        target_path="metrics.inflation_non_degenerate",
-        weight=2.0,
-        group=MetricGroup.TIME_SERIES,
-    ),
-    MetricSpec(
-        name="inflation_pct_in_bounds",
-        field="inflation_pct_in_bounds",
-        check_type=CheckType.PCT_WITHIN,
-        target_path="metrics.inflation_pct_in_bounds",
-        weight=1.5,
-        group=MetricGroup.TIME_SERIES,
-        format=MetricFormat.PERCENT,
-    ),
-    MetricSpec(
-        name="log_gdp_mean",
-        field="log_gdp_mean",
-        check_type=CheckType.MEAN_TOLERANCE,
-        target_path="metrics.log_gdp_mean",
-        weight=1.0,
-        group=MetricGroup.TIME_SERIES,
-    ),
-    MetricSpec(
-        name="vacancy_rate_mean",
-        field="vacancy_rate_mean",
-        check_type=CheckType.MEAN_TOLERANCE,
-        target_path="metrics.vacancy_rate_mean",
-        weight=0.5,
-        group=MetricGroup.TIME_SERIES,
-    ),
-    MetricSpec(
-        name="vacancy_rate_pct_in_bounds",
-        field="vacancy_rate_pct_in_bounds",
-        check_type=CheckType.PCT_WITHIN,
-        target_path="metrics.vacancy_rate_pct_in_bounds",
-        weight=0.5,
-        group=MetricGroup.TIME_SERIES,
-        format=MetricFormat.PERCENT,
-    ),
-    # === Curve correlations ===
-    MetricSpec(
-        name="phillips_correlation",
-        field="phillips_corr",
-        check_type=CheckType.RANGE,
-        target_path="metrics.phillips_correlation",
-        weight=1.5,
-        group=MetricGroup.CURVES,
-    ),
-    MetricSpec(
-        name="phillips_negative_sign",
-        field="phillips_corr",
-        check_type=CheckType.RANGE,
-        target_path="metrics.phillips_negative_sign",
-        weight=3.0,
-        group=MetricGroup.CURVES,
-        target_desc="correlation must be < 0",
-    ),
-    MetricSpec(
-        name="okun_correlation",
-        field="okun_corr",
-        check_type=CheckType.RANGE,
-        target_path="metrics.okun_correlation",
-        weight=3.0,
-        group=MetricGroup.CURVES,
-    ),
-    MetricSpec(
-        name="beveridge_correlation",
-        field="beveridge_corr",
-        check_type=CheckType.RANGE,
-        target_path="metrics.beveridge_correlation",
-        weight=2.0,
-        group=MetricGroup.CURVES,
-    ),
-    MetricSpec(
-        name="beveridge_negative_sign",
-        field="beveridge_corr",
-        check_type=CheckType.RANGE,
-        target_path="metrics.beveridge_negative_sign",
-        weight=3.0,
-        group=MetricGroup.CURVES,
-        target_desc="correlation must be < 0",
-    ),
-    # === Distribution metrics (firm size) ===
-    MetricSpec(
-        name="firm_size_skewness",
-        field="firm_size_skewness",
-        check_type=CheckType.MEAN_TOLERANCE,
-        target_path="metrics.firm_size_skewness",
-        weight=1.0,
-        group=MetricGroup.DISTRIBUTION,
-    ),
-    MetricSpec(
-        name="firm_size_pct_below",
-        field="firm_size_pct_below_threshold",
-        check_type=CheckType.RANGE,
-        target_path="metrics.firm_size_pct_below",
-        weight=0.5,
-        group=MetricGroup.DISTRIBUTION,
-        format=MetricFormat.PERCENT,
-    ),
-    MetricSpec(
-        name="firm_size_tail_ratio",
-        field="firm_size_tail_ratio",
-        check_type=CheckType.RANGE,
-        target_path="metrics.firm_size_tail_ratio",
-        weight=0.5,
-        group=MetricGroup.DISTRIBUTION,
-    ),
-    # === Wealth distribution fitting ===
+UNIQUE_METRIC_SPECS = [
+    # === Wealth distribution fitting (Figure 3.8) ===
     MetricSpec(
         name="sm_ccdf_r2",
         field="sm_ccdf_r2",
@@ -752,7 +452,7 @@ METRIC_SPECS = [
         weight=1.0,
         group=MetricGroup.DISTRIBUTION,
     ),
-    # === Buffer-stock specific ===
+    # === Buffer-stock behavioral ===
     MetricSpec(
         name="mean_mpc",
         field="mean_mpc",
@@ -769,23 +469,6 @@ METRIC_SPECS = [
         weight=1.0,
         group=MetricGroup.FINANCIAL,
         format=MetricFormat.PERCENT,
-    ),
-    # === Financial dynamics ===
-    MetricSpec(
-        name="bankruptcies_mean",
-        field="bankruptcies_mean",
-        check_type=CheckType.MEAN_TOLERANCE,
-        target_path="metrics.bankruptcies_mean",
-        weight=1.0,
-        group=MetricGroup.FINANCIAL,
-    ),
-    MetricSpec(
-        name="real_interest_rate_mean",
-        field="real_interest_rate_mean",
-        check_type=CheckType.MEAN_TOLERANCE,
-        target_path="metrics.real_interest_rate_mean",
-        weight=0.5,
-        group=MetricGroup.FINANCIAL,
     ),
 ]
 
@@ -818,41 +501,188 @@ def _setup_buffer_stock(sim: bam.Simulation | None) -> None:
 
 
 # =============================================================================
-# Compute Metrics Wrapper
+# Compute Metrics Wrapper (for Scenario dataclass compatibility)
 # =============================================================================
 
 
 def _compute_metrics_wrapper(
     sim: bam.Simulation, results: SimulationResults, burn_in: int
 ) -> BufferStockMetrics:
-    """Wrapper for compute_buffer_stock_metrics that loads params from YAML."""
+    """Wrapper for compute_buffer_stock_metrics."""
+    return compute_buffer_stock_metrics(sim, results, burn_in=burn_in)
+
+
+# =============================================================================
+# Core Validation Flow
+# =============================================================================
+
+
+def validate_buffer_stock(
+    *,
+    seed: int = 0,
+    n_periods: int = 1000,
+    growth_plus_result: ValidationScore | None = None,
+    **config_overrides: Any,
+) -> BufferStockValidationScore:
+    """Run buffer-stock validation for a single seed.
+
+    Per-seed PASS/FAIL is determined by the 8 unique buffer-stock metrics
+    only (wealth distribution fits, MPC, dissaving). Improvement deltas
+    vs Growth+ are computed and stored for informational/aggregate use
+    but do not affect ``passed`` or ``total_score``.
+
+    Parameters
+    ----------
+    seed : int
+        Random seed for reproducibility.
+    n_periods : int
+        Number of simulation periods.
+    growth_plus_result : ValidationScore or None
+        Optional pre-computed Growth+ validation result for the same seed.
+        If ``None``, Growth+ validation is run internally.
+    **config_overrides
+        Simulation config overrides.
+
+    Returns
+    -------
+    BufferStockValidationScore
+        Result with 8 unique metrics (PASS/FAIL) and improvement deltas
+        (informational).
+    """
+    from validation.engine import evaluate_metric, load_targets, validate
+    from validation.scenarios import get_scenario
+
+    # Step 1: Get Growth+ baseline
+    if growth_plus_result is None:
+        gp_scenario = get_scenario("growth_plus")
+        growth_plus_result = validate(
+            gp_scenario, seed=seed, n_periods=n_periods, **config_overrides
+        )
+
+    # Handle collapsed baseline: if GP failed catastrophically, propagate
+    if _is_collapsed(growth_plus_result):
+        return _make_collapsed_result(
+            growth_plus_result, seed, n_periods, config_overrides
+        )
+
+    # Step 2: Load buffer-stock targets
     with open(Path(__file__).parent / "targets.yaml") as f:
-        targets = yaml.safe_load(f)
+        bs_targets = yaml.safe_load(f)
 
-    metrics = targets["metrics"]
+    improvement_config = bs_targets.get("improvement", {})
+    blend_alpha = improvement_config.get("blend_alpha", 0.6)  # informational only
 
-    infl_bounds = metrics["inflation_pct_in_bounds"]
-    vac_bounds = metrics["vacancy_rate_pct_in_bounds"]
+    # Step 3: Run buffer-stock simulation
+    config = {
+        **DEFAULT_CONFIG,
+        "n_periods": n_periods,
+        "seed": seed,
+        "logging": {"default_level": "ERROR"},
+        **config_overrides,
+    }
 
-    return compute_buffer_stock_metrics(
-        sim,
-        results,
-        burn_in=burn_in,
-        firm_size_threshold=metrics["firm_size_pct_below"]["threshold"],
-        unemployment_floor=metrics["unemployment_pct_above_floor"]["floor"],
-        unemployment_ceiling=metrics["unemployment_pct_below_ceiling"]["ceiling"],
-        inflation_bounds=(infl_bounds["bounds_min"], infl_bounds["bounds_max"]),
-        vacancy_rate_bounds=(vac_bounds["bounds_min"], vac_bounds["bounds_max"]),
+    _setup_buffer_stock(None)  # Pre-import
+    sim = bam.Simulation.init(**config)
+    _setup_buffer_stock(sim)  # Attach extensions
+
+    results = sim.run(collect=COLLECT_CONFIG)
+
+    # Step 4: Compute composed metrics
+    burn_in = bs_targets["metadata"]["validation"]["burn_in_periods"]
+    burn_in = adjust_burn_in(burn_in, n_periods)
+
+    bs_metrics = compute_buffer_stock_metrics(sim, results, burn_in=burn_in)
+
+    # Step 5: Evaluate unique metrics (these determine per-seed PASS/FAIL)
+    unique_results: list[MetricResult] = []
+    for spec in UNIQUE_METRIC_SPECS:
+        mr = evaluate_metric(spec, bs_metrics, bs_targets)
+        unique_results.append(mr)
+
+    # Step 6: Compute improvement deltas (informational — not used for PASS/FAIL)
+    # Improvement is assessed at the aggregate level in stability testing,
+    # not per seed, because per-seed variance is too high.
+    gp_scenario = get_scenario("growth_plus")
+    gp_targets = load_targets(gp_scenario)
+
+    gp_on_bs_results: list[MetricResult] = []
+    for spec in gp_scenario.metric_specs:
+        mr = evaluate_metric(spec, bs_metrics.growth_plus, gp_targets)
+        gp_on_bs_results.append(mr)
+
+    deltas: dict[str, float] = {}
+    for bs_mr, gp_mr in zip(
+        gp_on_bs_results, growth_plus_result.metric_results, strict=True
+    ):
+        deltas[gp_mr.name] = bs_mr.score - gp_mr.score
+
+    # Step 7: Score from unique metrics only
+    total_weight = sum(r.weight for r in unique_results)
+    total_score = (
+        sum(r.score * r.weight for r in unique_results) / total_weight
+        if total_weight > 0
+        else 0.0
+    )
+
+    n_pass = sum(1 for r in unique_results if r.status == "PASS")
+    n_warn = sum(1 for r in unique_results if r.status == "WARN")
+    n_fail = sum(1 for r in unique_results if r.status == "FAIL")
+
+    return BufferStockValidationScore(
+        metric_results=unique_results,
+        total_score=total_score,
+        n_pass=n_pass,
+        n_warn=n_warn,
+        n_fail=n_fail,
+        config=config,
+        baseline_score=growth_plus_result,
+        improvement_deltas=deltas,
+        degraded_metrics=[],  # Populated at aggregate level in stability test
+        blend_alpha=blend_alpha,
+    )
+
+
+def _is_collapsed(result: ValidationScore) -> bool:
+    """Check if a validation result indicates a collapsed simulation.
+
+    A collapsed simulation has very low total score and many failures,
+    typically from the economy dying (unemployment > 80%).
+    """
+    return result.total_score < 0.1 and result.n_fail > result.n_pass
+
+
+def _make_collapsed_result(
+    baseline: ValidationScore,
+    seed: int,
+    n_periods: int,
+    config_overrides: dict[str, Any],
+) -> BufferStockValidationScore:
+    """Create a non-evaluable result when the Growth+ baseline collapsed."""
+    return BufferStockValidationScore(
+        metric_results=[],
+        total_score=float("nan"),
+        n_pass=0,
+        n_warn=0,
+        n_fail=0,
+        config={"seed": seed, "n_periods": n_periods, **config_overrides},
+        baseline_score=baseline,
+        improvement_deltas={},
+        degraded_metrics=[],
+        blend_alpha=0.6,
     )
 
 
 # =============================================================================
-# Scenario Definition
+# Scenario Definition (for registry compatibility)
 # =============================================================================
 
+# The Scenario object is used by the generic engine and registry.
+# Buffer-stock validation should use validate_buffer_stock() directly,
+# but the Scenario is needed for get_scenario("buffer_stock") lookups
+# and for BUFFER_STOCK_WEIGHTS derivation.
 SCENARIO = Scenario(
     name="buffer_stock",
-    metric_specs=METRIC_SPECS,
+    metric_specs=UNIQUE_METRIC_SPECS,
     collect_config=COLLECT_CONFIG,
     targets_path=Path(__file__).parent / "targets.yaml",
     default_config=DEFAULT_CONFIG,
@@ -873,27 +703,10 @@ def load_buffer_stock_targets() -> dict[str, Any]:
     with open(Path(__file__).parent / "targets.yaml") as f:
         data = yaml.safe_load(f)
 
-    viz = data["metadata"]["visualization"]
-    ts = viz["time_series"]
-    curves = viz["curves"]
-    dist = viz["distributions"]
-
-    def _transform_curve_targets(raw: dict[str, Any]) -> dict[str, Any]:
-        return {
-            "target": raw.get("correlation_target"),
-            "min": raw.get("correlation_min"),
-            "max": raw.get("correlation_max"),
-        }
+    viz = data.get("metadata", {}).get("visualization", {})
+    dist = viz.get("distributions", {})
 
     return {
-        "log_gdp": ts["log_gdp"]["targets"],
-        "unemployment": ts["unemployment_rate"]["targets"],
-        "inflation": ts["inflation_rate"]["targets"],
-        "real_wage": ts["real_wage"]["targets"],
-        "phillips_corr": _transform_curve_targets(curves["phillips"]["targets"]),
-        "okun_corr": _transform_curve_targets(curves["okun"]["targets"]),
-        "beveridge_corr": _transform_curve_targets(curves["beveridge"]["targets"]),
-        "firm_size": dist["firm_size"]["targets"],
         "wealth_distribution": dist.get("wealth", {}).get("targets", {}),
     }
 
@@ -909,8 +722,8 @@ def run_scenario(
     n_periods: int = 1000,
     burn_in: int = 500,
     show_plot: bool = True,
-) -> BufferStockMetrics:
-    """Run buffer-stock scenario simulation with optional visualization.
+) -> BufferStockValidationScore:
+    """Run buffer-stock scenario with improvement comparison and visualization.
 
     Parameters
     ----------
@@ -925,54 +738,35 @@ def run_scenario(
 
     Returns
     -------
-    BufferStockMetrics
-        Computed metrics from the simulation.
+    BufferStockValidationScore
+        Validation result with unique metrics and improvement deltas.
     """
-    from extensions.buffer_stock import (
-        BUFFER_STOCK_CONFIG,
-        BUFFER_STOCK_EVENTS,
-        BufferStock,
-    )
-    from extensions.rnd import RND_CONFIG, RND_EVENTS, RnD
+    from validation import print_buffer_stock_report, run_growth_plus_validation
 
-    sim = bam.Simulation.init(
-        n_periods=n_periods, seed=seed, logging={"default_level": "ERROR"}
-    )
-    sim.use_role(BufferStock, n_agents=sim.n_households)
-    sim.use_role(RnD)
-    sim.use_events(*RND_EVENTS, *BUFFER_STOCK_EVENTS)
-    sim.use_config(RND_CONFIG)
-    sim.use_config(BUFFER_STOCK_CONFIG)
-
-    print("Buffer-stock simulation initialized:")
-    print(f"  - {sim.n_firms} firms")
-    print(f"  - {sim.n_households} households")
-    print(f"  - {sim.n_banks} banks")
-    print(f"  - buffer_stock_h={sim.buffer_stock_h}")
-    print(f"  - R&D enabled (sigma=[{sim.sigma_min}, {sim.sigma_max}])")
-
-    results = sim.run(collect=COLLECT_CONFIG)
-
-    print(f"\nSimulation completed: {results.metadata['n_periods']} periods")
-    print(f"Runtime: {results.metadata['runtime_seconds']:.2f} seconds")
-
-    burn_in = adjust_burn_in(burn_in, n_periods, verbose=True)
-
-    metrics = _compute_metrics_wrapper(sim, results, burn_in)
-
+    # Section 1: Growth+ baseline
+    print("=" * 70)
+    print("SECTION 1: GROWTH+ BASELINE")
+    print("=" * 70)
+    gp_result = run_growth_plus_validation(seed=seed, n_periods=n_periods)
     print(
-        f"\nComputed metrics for {len(metrics.unemployment) - burn_in} "
-        "periods (after burn-in)"
+        f"Growth+ score: {gp_result.total_score:.3f}, "
+        f"passed: {gp_result.passed} "
+        f"(pass={gp_result.n_pass}, warn={gp_result.n_warn}, fail={gp_result.n_fail})"
     )
-    print(f"  Best distribution fit: {metrics.best_fit} (R²={metrics.best_r2:.4f})")
-    print(f"  Wealth Gini: {metrics.wealth_gini:.4f}")
-    print(f"  Mean MPC: {metrics.mean_mpc:.4f}")
-    print(f"  % dissaving: {metrics.pct_dissaving * 100:.1f}%")
 
-    if show_plot:
+    # Section 2: Buffer-stock with improvement comparison
+    print(f"\n{'=' * 70}")
+    print("SECTION 2: BUFFER-STOCK IMPROVEMENT")
+    print("=" * 70)
+    bs_result = validate_buffer_stock(
+        seed=seed, n_periods=n_periods, growth_plus_result=gp_result
+    )
+
+    print_buffer_stock_report(bs_result)
+
+    if show_plot and not np.isnan(bs_result.total_score):
         from validation.scenarios.buffer_stock.viz import visualize_buffer_stock_results
 
-        bounds = load_buffer_stock_targets()
-        visualize_buffer_stock_results(metrics, bounds, burn_in=burn_in)
+        visualize_buffer_stock_results(bs_result)
 
-    return metrics
+    return bs_result
