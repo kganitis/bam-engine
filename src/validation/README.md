@@ -83,3 +83,18 @@ validation/
 ├── rnd/                     # R&D extension (Growth+ scenario)
 └── buffer_stock/            # Buffer-stock consumption extension
 ```
+
+## Validation Targets
+
+Each scenario's `targets.yaml` contains two sections:
+
+- **`metrics:`** — Standardized metric targets used by the scoring engine for pass/fail/score decisions
+- **`metadata.visualization:`** — Reference values used by `viz.py` for plot annotations and visual comparison bands
+
+Targets are calibrated from three evidence sources:
+
+1. **Extracted book figures** — Precise values extracted from the original MATLAB plots using pixel-level analysis (see `notes/BAM/figures/reproduced/`)
+1. **Economic theory** — Established regularities (Kaldor's facts, Phillips/Okun/Beveridge curves, Laplace growth distributions etc.)
+1. **Multi-seed model behavior** — Statistical properties across 100-seed stability tests
+
+See the [Sphinx docs — Validation Targets](https://kganitis.github.io/bam-engine/validation/targets.html) for the full methodology of figure reproduction and target calibration.
