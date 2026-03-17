@@ -59,8 +59,8 @@ def fail_escalation_multiplier(weight: float) -> float:
 def score_mean_tolerance(actual: float, target: float, tolerance: float) -> float:
     """Score from 0-1 based on distance from target.
 
-    Returns 1.0 if exactly on target, decreasing linearly.
-    Returns 0.0 if distance >= 2 * tolerance.
+    Returns 1.0 if exactly on target, 0.5 at distance == tolerance,
+    and 0.0 at distance >= 2 * tolerance (linear decay throughout).
     """
     distance = abs(actual - target) / tolerance
     return max(0.0, 1.0 - distance / 2.0)
@@ -121,6 +121,8 @@ def score_outlier_penalty(
     """
     if outlier_pct <= max_outlier_pct:
         return 1.0
+    if max_outlier_pct == 0.0:
+        return 0.0
     excess = outlier_pct - max_outlier_pct
     return max(0.0, math.exp(-penalty_weight * excess / max_outlier_pct))
 

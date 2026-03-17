@@ -323,8 +323,8 @@ class WorkersDecideFirmsToApply:
 
     The ``job_search_method`` config parameter controls which firms are sampled:
 
-    - ``"vacancies_only"`` (default): Sample only from firms with open vacancies.
-    - ``"all_firms"``: Sample from ALL firms. Applications to firms without
+    - ``"vacancies_only"``: Sample only from firms with open vacancies.
+    - ``"all_firms"`` (default): Sample from ALL firms. Applications to firms without
       vacancies are "wasted" (the firm simply doesn't hire).
 
     Algorithm

@@ -611,6 +611,9 @@ def validate_buffer_stock(
         gp_on_bs_results.append(mr)
 
     deltas: dict[str, float] = {}
+    assert [r.name for r in gp_on_bs_results] == [
+        r.name for r in growth_plus_result.metric_results
+    ], "Growth+ metric ordering mismatch — result may be from a different code version"
     for bs_mr, gp_mr in zip(
         gp_on_bs_results, growth_plus_result.metric_results, strict=True
     ):
@@ -663,7 +666,7 @@ def _make_collapsed_result(
         total_score=float("nan"),
         n_pass=0,
         n_warn=0,
-        n_fail=0,
+        n_fail=1,
         config={"seed": seed, "n_periods": n_periods, **config_overrides},
         baseline_score=baseline,
         improvement_deltas={},

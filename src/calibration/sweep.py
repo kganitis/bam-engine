@@ -90,8 +90,6 @@ class StageResult:
         Winner's pass rate.
     n_candidates : int
         Number of grid combinations tested.
-    improved : bool
-        Whether the stage found an improvement over the base.
     """
 
     label: str
@@ -100,7 +98,6 @@ class StageResult:
     mean_score: float
     pass_rate: float
     n_candidates: int
-    improved: bool
 
 
 def run_sweep(
@@ -212,7 +209,6 @@ def run_sweep(
                     mean_score=winner.mean_score or 0.0,
                     pass_rate=winner.pass_rate or 0.0,
                     n_candidates=n_combos,
-                    improved=True,
                 )
             )
         else:
@@ -224,10 +220,9 @@ def run_sweep(
                     mean_score=0.0,
                     pass_rate=0.0,
                     n_candidates=n_combos,
-                    improved=False,
                 )
             )
-            print(f"\n  Stage {label}: no improvement found, keeping base")
+            print(f"\n  Stage {label}: no candidates survived, keeping base")
 
     return stage_results
 
@@ -282,10 +277,9 @@ def run_sweep_phase(args: argparse.Namespace, run_dir: Path | None = None) -> No
     print("SWEEP SUMMARY")
     print(f"{'=' * 70}")
     for sr in stage_results:
-        status = "improved" if sr.improved else "no change"
         print(
             f"  {sr.label}: combined={sr.combined_score:.4f} "
-            f"pass={sr.pass_rate:.0%} ({status}, {sr.n_candidates} combos)"
+            f"pass={sr.pass_rate:.0%} ({sr.n_candidates} combos)"
         )
 
     # Save per-stage results and final winner

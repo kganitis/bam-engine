@@ -199,8 +199,8 @@ class StabilityResult:
 
     @property
     def is_stable(self) -> bool:
-        """True if pass_rate >= 80% and std_score <= 0.1."""
-        return self.pass_rate >= 0.8 and self.std_score <= 0.1
+        """True if pass_rate >= 90% and std_score <= 0.15."""
+        return self.pass_rate >= 0.9 and self.std_score <= 0.15
 
     def __str__(self) -> str:
         return (

@@ -108,7 +108,7 @@ class TestRunSweep:
         )
 
         assert len(results) == 1
-        assert not results[0].improved
+        assert results[0].combined_score == 0.0
         assert results[0].winner_params["beta"] == 2.5
 
     @patch("calibration.sweep.run_tiered_stability")
