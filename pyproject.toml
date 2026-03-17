@@ -287,6 +287,11 @@ module = [
 ]
 disable_error_code = ["arg-type", "index", "union-attr", "operator", "no-any-return", "type-arg", "assignment"]
 
+# Calibration output scripts are ad-hoc campaign runners, not library code
+[[tool.mypy.overrides]]
+module = "calibration.output.*"
+ignore_errors = true
+
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
