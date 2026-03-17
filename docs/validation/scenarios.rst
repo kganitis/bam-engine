@@ -64,8 +64,14 @@ categories:
 Buffer-Stock (Section 3.9.4)
 ------------------------------
 
-Buffer-stock consumption with individual adaptive MPC — ~30 metrics across 4
-categories:
+Buffer-stock consumption with individual adaptive MPC. Uses a **two-layer
+validation** approach:
+
+1. **Unique metrics** (8, per-seed): Wealth distribution fitting (Figure 3.8)
+   and MPC behavioral metrics. These determine per-seed PASS/FAIL.
+2. **Improvement over Growth+** (aggregate): Mean score deltas across all seeds
+   checked after stability testing. Catches systematic degradation without
+   being affected by per-seed noise.
 
 .. list-table::
    :header-rows: 1
@@ -74,24 +80,34 @@ categories:
    * - Category
      - Count
      - Key Metrics
-   * - TIME_SERIES
-     - 10
-     - Unemployment, inflation, GDP trend/growth, vacancy rates
-   * - CURVES
-     - 3
-     - Phillips, Okun, Beveridge correlations
    * - DISTRIBUTION
-     - 12
-     - Wealth CCDF fitting (Singh-Maddala, Dagum, GB2), Gini, MPC stats
+     - 6
+     - Wealth CCDF fitting (Singh-Maddala, Dagum, GB2 R²), Gini, skewness
    * - FINANCIAL
-     - 5
-     - Interest rates, fragility, price ratio
+     - 2
+     - Mean MPC, percent dissaving
 
 .. code-block:: python
 
    from validation import run_buffer_stock_validation
 
+   # Automatic: runs Growth+ internally as baseline
    result = run_buffer_stock_validation(seed=42, n_periods=1000)
+
+   # With reuse: pass pre-computed Growth+ result
+   from validation import run_growth_plus_validation
+
+   gp = run_growth_plus_validation(seed=42, n_periods=1000)
+   result = run_buffer_stock_validation(seed=42, growth_plus_result=gp)
+
+   # Access improvement data
+   print(result.improvement_deltas)  # dict of metric -> delta
+   print(result.degraded_metrics)  # metrics that degraded beyond threshold
+   print(result.baseline_score)  # Growth+ ValidationScore
+
+.. autoclass:: validation.types.BufferStockValidationScore
+   :members:
+   :undoc-members:
 
 
 Target File Structure

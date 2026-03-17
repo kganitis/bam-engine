@@ -86,6 +86,7 @@ def print_report(result: ValidationScore, title: str = "VALIDATION") -> None:
         MetricGroup.GROWTH: "GROWTH METRICS",
         MetricGroup.FINANCIAL: "FINANCIAL DYNAMICS",
         MetricGroup.GROWTH_RATE_DIST: "GROWTH RATE DISTRIBUTIONS",
+        MetricGroup.IMPROVEMENT: "IMPROVEMENT vs GROWTH+",
     }
 
     group_order = [
@@ -95,6 +96,7 @@ def print_report(result: ValidationScore, title: str = "VALIDATION") -> None:
         MetricGroup.GROWTH,
         MetricGroup.FINANCIAL,
         MetricGroup.GROWTH_RATE_DIST,
+        MetricGroup.IMPROVEMENT,
     ]
 
     for group in group_order:

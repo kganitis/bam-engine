@@ -51,6 +51,7 @@ class MetricGroup(Enum):
     GROWTH = auto()
     FINANCIAL = auto()
     GROWTH_RATE_DIST = auto()
+    IMPROVEMENT = auto()  # Improvement over baseline scenario
 
 
 class MetricFormat(Enum):
@@ -137,6 +138,32 @@ class ValidationScore:
             f"ValidationScore(total={self.total_score:.3f}, "
             f"pass={self.n_pass}, warn={self.n_warn}, fail={self.n_fail})"
         )
+
+
+@dataclass
+class BufferStockValidationScore(ValidationScore):
+    """Buffer-stock validation result with improvement tracking over Growth+.
+
+    Per-seed PASS/FAIL is determined solely by the 8 unique buffer-stock
+    metrics (wealth distribution fits, MPC, dissaving). Improvement over
+    Growth+ is assessed at the aggregate level after stability testing.
+
+    The ``improvement_deltas`` are computed per seed (informational) but
+    do not affect ``passed`` or ``total_score``.
+    """
+
+    baseline_score: ValidationScore | None = None
+    """Growth+ baseline result used for comparison (same seed)."""
+
+    improvement_deltas: dict[str, float] = field(default_factory=dict)
+    """Per-metric score deltas: ``bs_score - gp_score`` (informational)."""
+
+    degraded_metrics: list[str] = field(default_factory=list)
+    """Growth+ metrics with systematic degradation (populated at aggregate level
+    by :func:`~validation.run_buffer_stock_stability_test`, not per seed)."""
+
+    blend_alpha: float = 0.6
+    """Informational only. Not used in score computation."""
 
 
 @dataclass

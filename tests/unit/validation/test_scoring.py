@@ -3,11 +3,13 @@
 import pytest
 
 from validation.scoring import (
+    check_improvement,
     check_mean_tolerance,
     check_outlier_penalty,
     check_pct_within_target,
     check_range,
     fail_escalation_multiplier,
+    score_improvement,
 )
 
 # =============================================================================
@@ -252,3 +254,73 @@ class TestEvaluateMetricBoundaryEscalation:
         result = evaluate_metric(spec, metrics, targets)
         # Genuine FAIL within bounds → softened to WARN
         assert result.status == "WARN"
+
+
+# =============================================================================
+# check_improvement (buffer-stock vs Growth+)
+# =============================================================================
+
+
+class TestCheckImprovement:
+    """Test weight-aware improvement checking."""
+
+    def test_positive_delta_passes(self) -> None:
+        assert check_improvement(0.05, weight=2.0) == "PASS"
+
+    def test_zero_delta_passes(self) -> None:
+        assert check_improvement(0.0, weight=2.0) == "PASS"
+
+    def test_small_degradation_warns(self) -> None:
+        # weight=2.0 → threshold = 0.10/2.0 = 0.05
+        assert check_improvement(-0.03, weight=2.0) == "WARN"
+
+    def test_large_degradation_fails(self) -> None:
+        # weight=2.0 → threshold = 0.05, delta=-0.06 exceeds it
+        assert check_improvement(-0.06, weight=2.0) == "FAIL"
+
+    def test_high_weight_stricter(self) -> None:
+        # weight=3.0 → threshold = 0.10/3.0 ≈ 0.033
+        assert check_improvement(-0.02, weight=3.0) == "WARN"
+        assert check_improvement(-0.04, weight=3.0) == "FAIL"
+
+    def test_low_weight_more_lenient(self) -> None:
+        # weight=0.5 → threshold = 0.10/0.5 = 0.20
+        assert check_improvement(-0.15, weight=0.5) == "WARN"
+        assert check_improvement(-0.25, weight=0.5) == "FAIL"
+
+    def test_custom_max_degradation_base(self) -> None:
+        # base=0.20, weight=2.0 → threshold = 0.10
+        assert check_improvement(-0.08, weight=2.0, max_degradation_base=0.20) == "WARN"
+        assert check_improvement(-0.12, weight=2.0, max_degradation_base=0.20) == "FAIL"
+
+    def test_near_zero_weight_no_division_error(self) -> None:
+        # weight=0.0 → clamped to 0.1 → threshold = 1.0
+        result = check_improvement(-0.5, weight=0.0)
+        assert result == "WARN"
+
+
+# =============================================================================
+# score_improvement
+# =============================================================================
+
+
+class TestScoreImprovement:
+    """Test improvement delta scoring."""
+
+    def test_positive_delta_capped(self) -> None:
+        assert score_improvement(0.5) == 1.0
+
+    def test_zero_delta_perfect(self) -> None:
+        assert score_improvement(0.0) == 1.0
+
+    def test_small_negative_delta(self) -> None:
+        assert score_improvement(-0.3) == pytest.approx(0.7)
+
+    def test_large_negative_delta_floored(self) -> None:
+        assert score_improvement(-1.5) == 0.0
+
+    def test_exact_minus_one(self) -> None:
+        assert score_improvement(-1.0) == 0.0
+
+    def test_linear_interpolation(self) -> None:
+        assert score_improvement(-0.5) == pytest.approx(0.5)
