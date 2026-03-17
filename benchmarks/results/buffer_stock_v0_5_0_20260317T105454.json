@@ -1,0 +1,139 @@
+{
+  "metadata": {
+    "commit": "34d1286ea127b58cce14d8f3508e80d76dbb2c97",
+    "commit_short": "34d1286",
+    "commit_date": "2026-03-04T10:15:36+02:00",
+    "timestamp": "2026-03-17T10:54:54",
+    "branch": "main",
+    "tag": "v0.5.0",
+    "version": null,
+    "n_seeds": 1000,
+    "n_periods": 1000,
+    "n_workers": 10,
+    "elapsed_seconds": 616
+  },
+  "scenario": "buffer_stock",
+  "summary": {
+    "n_passed": 995,
+    "pass_rate": 0.995,
+    "mean_score": 0.8663559226631602,
+    "std_score": 0.030353909653581968,
+    "min_score": 0.6755452040031399,
+    "max_score": 0.9505384265403215
+  },
+  "metrics": {
+    "sm_ccdf_r2": {
+      "mean_value": 0.9373058006327096,
+      "std_value": 0.03937023588127708,
+      "mean_score": 0.8789814329122115,
+      "std_score": 0.061257925630443626,
+      "pass_rate": 1.0,
+      "weight": 3.0,
+      "group": "DISTRIBUTION"
+    },
+    "dagum_ccdf_r2": {
+      "mean_value": 0.9449826217883923,
+      "std_value": 0.03233776279453358,
+      "mean_score": 0.8745881326220838,
+      "std_score": 0.06391360135522957,
+      "pass_rate": 0.999,
+      "weight": 3.0,
+      "group": "DISTRIBUTION"
+    },
+    "gb2_ccdf_r2": {
+      "mean_value": 0.940489367867286,
+      "std_value": 0.0554555505400681,
+      "mean_score": 0.8440740551557382,
+      "std_score": 0.09413363974945485,
+      "pass_rate": 0.995,
+      "weight": 2.0,
+      "group": "DISTRIBUTION"
+    },
+    "best_r2": {
+      "mean_value": 0.9663065608303277,
+      "std_value": 0.017935879033765964,
+      "mean_score": 0.8596461166491494,
+      "std_score": 0.05322891788134118,
+      "pass_rate": 1.0,
+      "weight": 3.0,
+      "group": "DISTRIBUTION"
+    },
+    "wealth_gini": {
+      "mean_value": 0.2594163321810504,
+      "std_value": 0.03820931209103461,
+      "mean_score": 0.7993948341718804,
+      "std_score": 0.03207970401361397,
+      "pass_rate": 1.0,
+      "weight": 2.0,
+      "group": "DISTRIBUTION"
+    },
+    "wealth_skewness": {
+      "mean_value": 1.9087460238381406,
+      "std_value": 0.8725899621470403,
+      "mean_score": 0.8237800311477195,
+      "std_score": 0.044602979274544347,
+      "pass_rate": 1.0,
+      "weight": 1.0,
+      "group": "DISTRIBUTION"
+    },
+    "mean_mpc": {
+      "mean_value": 0.9892755853262221,
+      "std_value": 0.027156922450829374,
+      "mean_score": 0.9338622771229018,
+      "std_score": 0.04561688760359715,
+      "pass_rate": 1.0,
+      "weight": 1.5,
+      "group": "FINANCIAL"
+    },
+    "pct_dissaving": {
+      "mean_value": 0.3241739683688571,
+      "std_value": 0.06585599100650603,
+      "mean_score": 0.9437144519045012,
+      "std_score": 0.041872776045263585,
+      "pass_rate": 1.0,
+      "weight": 1.0,
+      "group": "FINANCIAL"
+    }
+  },
+  "group_display_names": {
+    "TIME_SERIES": "Time Series",
+    "CURVES": "Curves",
+    "DISTRIBUTION": "Distribution",
+    "GROWTH": "Growth",
+    "FINANCIAL": "Financial",
+    "GROWTH_RATE_DIST": "Growth Rate Distribution"
+  },
+  "failing_seeds": [
+    {
+      "seed": 95,
+      "failed_metrics": [
+        "gb2_ccdf_r2"
+      ]
+    },
+    {
+      "seed": 427,
+      "failed_metrics": [
+        "gb2_ccdf_r2"
+      ]
+    },
+    {
+      "seed": 475,
+      "failed_metrics": [
+        "gb2_ccdf_r2"
+      ]
+    },
+    {
+      "seed": 610,
+      "failed_metrics": [
+        "gb2_ccdf_r2"
+      ]
+    },
+    {
+      "seed": 827,
+      "failed_metrics": [
+        "dagum_ccdf_r2",
+        "gb2_ccdf_r2"
+      ]
+    }
+  ]
+}
