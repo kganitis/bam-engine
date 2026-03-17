@@ -237,7 +237,7 @@ attributes scaled from the trimmed mean (90th percentile) of survivors.
      - 0.50
      - Wage offer of new firm as fraction of survivor average.
    * - ``new_firm_price_markup``
-     - 1.15
+     - 1.20
      - Price of new firm as markup over average market price.
 
 Implementation Variants

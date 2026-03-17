@@ -10,6 +10,48 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 
    Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.
 
+[0.8.0] - 2026-03-17
+---------------------
+
+This release extends the calibration toolkit with four new composable tools,
+recalibrates all validation targets from extracted book figure data,
+and redesigns buffer-stock validation around aggregate improvement over Growth+.
+
+Added
+~~~~~
+
+**Calibration Tools**
+
+* Four new composable CLI tools for multi-scenario calibration workflows:
+  :doc:`rescreen </calibration/rescreen>` (second-pass Morris screening with locked parameters),
+  :doc:`cost </calibration/cost_analysis>` (budget-aware cost classification),
+  :doc:`cross-eval </calibration/cross_eval>` (cross-scenario ranking with harmonic/geometric/min strategies),
+  and :doc:`sweep </calibration/sweep>` (multi-stage parameter sweep with carry-forward winners).
+
+Changed
+~~~~~~~
+
+**Validation Targets**
+
+* All three scenarios recalibrated from pixel-level extraction of book figures
+  (see :doc:`/validation/targets`).
+
+**Buffer-Stock Validation**
+
+* Replaced the duplicated 30-metric system with a focused two-layer approach:
+  8 unique buffer-stock metrics (wealth fits, Gini, MPC, dissaving) for per-seed
+  validation, plus aggregate improvement over Growth+ assessed at stability level.
+
+**Calibrated Defaults**
+
+* ``new_firm_price_markup``: 1.15 → 1.20.
+
+Fixed
+~~~~~
+
+* Division-by-zero in ``score_outlier_penalty`` when ``max_outlier_pct=0``.
+* Collapsed buffer-stock result incorrectly reporting ``passed=True``.
+
 [0.7.0] - 2026-03-13
 ---------------------
 
