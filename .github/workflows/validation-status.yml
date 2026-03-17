@@ -110,6 +110,7 @@ jobs:
 
       - name: Copy tagged release results
         run: |
+          rm -f bamengine.org/static/data/validation/*_v*_*.json
           cp bam-engine/benchmarks/results/*_v*_*.json \
              bamengine.org/static/data/validation/
 
