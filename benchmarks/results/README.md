@@ -19,3 +19,6 @@ The workflow reads the most recent file per scenario (by reverse filename sort).
 
 Tagged release results (filenames matching `*_v*_*.json`) are automatically published
 to bamengine.org by the `validation-status` CI workflow after validation passes.
+The workflow clears all existing tagged results on the website before copying,
+so this directory is always the single source of truth — re-running historical
+benchmarks with new filenames won't create duplicates on the dashboard.
