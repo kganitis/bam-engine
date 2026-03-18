@@ -73,7 +73,7 @@ Changed
 **Validation Metrics**
 
 * ``price_ratio_floor`` (Growth+): changed from global minimum to 1st
-  percentile — filters transient demand surges at full employment while still
+  percentile, which filters transient demand surges at full employment while still
   catching genuine deflationary spirals; weight also lowered from 3.0 to 2.0.
 
 Performance
@@ -85,7 +85,7 @@ Performance
 Removed
 ~~~~~~~
 
-* ``n_batches`` config parameter — only needed for batch-sequential goods market.
+* ``n_batches`` config parameter (only needed for batch-sequential goods market).
 
 Development
 ~~~~~~~~~~~
@@ -94,12 +94,12 @@ Development
 
 * Seed stability tests upgraded from 20 to **100 seeds** per scenario, with parallel
   execution via new ``n_workers`` parameter.
-* New ``benchmarks/bench_seed_stability.py`` — parallelized 1000-seed benchmark
+* New ``benchmarks/bench_seed_stability.py``, a parallelized 1000-seed benchmark
   runner with JSON output, git-worktree support for historical commits, and CLI
   (``--scenario``, ``--seeds``, ``--tags``, ``--commits``). Results committed to
   ``benchmarks/results/``.
 * New ``.github/workflows/validation-status.yml`` replaces ``validation.yml`` and
-  ``growth-plus-stability.yml`` — reads pre-computed JSON in ``benchmarks/results/``
+  ``growth-plus-stability.yml``; reads pre-computed JSON in ``benchmarks/results/``
   with **zero simulation** in CI.
 
 [0.6.1] - 2026-03-10
@@ -113,13 +113,13 @@ vectorized random-priority + lexsort pattern.
 Performance
 ~~~~~~~~~~~
 
-* **Vectorized** ``resolve_conflicts`` — replaced per-target Python loop +
+* **Vectorized** ``resolve_conflicts``: replaced per-target Python loop +
   ``rng.choice`` with ``rng.random()`` + ``np.lexsort`` + grouped rank
   comparison. **3.4x faster** (0.100s → 0.029s, 7.5% → 2.3% of runtime).
-* **Vectorized** ``firms_fire_excess_workers`` — replaced per-firm
+* **Vectorized** ``firms_fire_excess_workers``: replaced per-firm
   ``rng.permutation`` loop with ``_flatten_and_shuffle_groups`` helper +
   rank threshold.
-* **Vectorized** ``firms_fire_workers`` — replaced per-firm cumsum loop with
+* **Vectorized** ``firms_fire_workers``: replaced per-firm cumsum loop with
   ``_flatten_and_shuffle_groups`` + ``grouped_cumsum`` +
   ``np.minimum.reduceat``.
 * New shared helper ``_flatten_and_shuffle_groups`` extracts items from ragged
@@ -169,7 +169,7 @@ Removed
 Performance
 ~~~~~~~~~~~
 
-* Vectorized ``workers_decide_firms_to_apply`` — replaced three Python for-loops
+* Vectorized ``workers_decide_firms_to_apply``: replaced three Python for-loops
   (per-worker ``rng.choice()``, per-loyal-worker move-to-front, per-worker buffer
   write) with batch NumPy operations (random priorities + ``argpartition``, vectorized
   loyalty shift, slice assignment). ~3.5x faster event execution.
@@ -182,14 +182,14 @@ Added
 
 **Extension Bundles**
 
-* :class:`~bamengine.Extension` dataclass — bundles roles, events, relationships,
+* :class:`~bamengine.Extension` dataclass: bundles roles, events, relationships,
   and config into a single object.
-* :meth:`~bamengine.Simulation.use` — one-call extension activation
+* :meth:`~bamengine.Simulation.use`: one-call extension activation
   (replaces the manual ``use_role``/``use_events``/``use_config`` pattern).
 * Pre-built bundles: ``RND``, ``BUFFER_STOCK``, ``TAXATION`` in their
   respective ``extensions.*`` packages.
 * Collect-config dicts: ``BASELINE_COLLECT``, ``RND_COLLECT``,
-  ``BUFFER_STOCK_COLLECT`` — suggested data-collection configs for
+  ``BUFFER_STOCK_COLLECT``, suggested data-collection configs for
   ``sim.run(collect=...)``.
 
 **Documentation**
@@ -337,16 +337,16 @@ Added
   * 8-panel visualization with CCDF plot (Figure 3.8 replica)
   * Example: ``examples/extensions/example_buffer_stock.py``
 
-* ``Shareholder`` role — built-in household role tracking per-period dividends, used to
+* ``Shareholder`` role: built-in household role tracking per-period dividends, used to
   adjust buffer-stock MPC metrics for the dividend artifact
 
 **Composable Extension API**
 
-* ``Simulation.use_config(config)`` — apply extension default configuration with "don't overwrite"
+* ``Simulation.use_config(config)``: apply extension default configuration with "don't overwrite"
   semantics (user kwargs and earlier ``use_config()`` calls take precedence)
-* ``Simulation.use_events(*event_classes)`` — explicitly apply pipeline hooks from event classes
-* ``Simulation.use_role(cls, n_agents=N)`` — ``n_agents`` parameter for non-firm roles
-* ``Pipeline.apply_hooks(*event_classes)`` — read hook metadata from classes and apply to pipeline
+* ``Simulation.use_events(*event_classes)``: explicitly apply pipeline hooks from event classes
+* ``Simulation.use_role(cls, n_agents=N)``: ``n_agents`` parameter for non-firm roles
+* ``Pipeline.apply_hooks(*event_classes)``: read hook metadata from classes and apply to pipeline
 
 Changed
 ~~~~~~~
@@ -365,7 +365,7 @@ Changed
 
 **Scenario Validation**
 
-* Weight-based fail escalation for validation status checks — high-weight metrics
+* Weight-based fail escalation for validation status checks: high-weight metrics
   fail more easily, low-weight metrics are more lenient. New ``escalation``
   parameter on status check functions. This also resolves the growth+ seed stability
   test failures in v0.2.2 by widening the WARN zone for lower-weight metrics.

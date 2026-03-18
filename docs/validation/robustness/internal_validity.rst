@@ -96,12 +96,12 @@ Result Structure
 
 ``InternalValidityResult`` contains:
 
-- ``seed_analyses`` — Per-seed results (co-movements, AR coefficients, statistics)
-- ``mean_comovements`` / ``std_comovements`` — Cross-seed aggregates
-- ``mean_ar_coeffs``, ``mean_ar_r_squared`` — Mean AR parameters
-- ``mean_irf`` — Mean impulse-response function
-- ``cross_sim_stats`` — Summary statistics with CV across seeds
-- ``n_collapsed``, ``n_degenerate`` — Problematic simulation counts
+- ``seed_analyses``: Per-seed results (co-movements, AR coefficients, statistics)
+- ``mean_comovements`` / ``std_comovements``: Cross-seed aggregates
+- ``mean_ar_coeffs``, ``mean_ar_r_squared``: Mean AR parameters
+- ``mean_irf``: Mean impulse-response function
+- ``cross_sim_stats``: Summary statistics with CV across seeds
+- ``n_collapsed``, ``n_degenerate``: Problematic simulation counts
 
 Each ``SeedAnalysis`` contains co-movement correlations (5 variables × 9 lags),
 AR coefficients, IRF, summary statistics, empirical curve correlations, and

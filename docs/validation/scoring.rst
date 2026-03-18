@@ -10,9 +10,9 @@ Two-Layer Validation
 
 **Status checks** (categorical):
 
-- **PASS** — Metric is within acceptable range
-- **WARN** — Metric is borderline (outside target but within tolerance)
-- **FAIL** — Metric significantly deviates from target
+- **PASS**: Metric is within acceptable range
+- **WARN**: Metric is borderline (outside target but within tolerance)
+- **FAIL**: Metric significantly deviates from target
 
 **Scores** (continuous, 0 to 1):
 
@@ -57,7 +57,7 @@ WARN→FAIL boundary in each check function.
      - 4.0
      - FAIL at 8× tolerance (lenient)
 
-BOOLEAN checks are exempt from escalation — they always have natural PASS/FAIL
+BOOLEAN checks are exempt from escalation; they always have natural PASS/FAIL
 behavior.
 
 

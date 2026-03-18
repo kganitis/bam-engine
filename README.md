@@ -19,6 +19,16 @@
 </p>
 
 <p align="center">
+  <em>Traditional economics models economies from the top down, assuming
+  markets automatically reach equilibrium. BAM Engine takes a different approach:
+  it simulates individual workers, firms, and banks making decisions and
+  interacting in markets, letting macroeconomic patterns emerge from the
+  bottom up.</em>
+</p>
+
+<p align="center">
+  <a href="https://bamengine.org"><strong>bamengine.org</strong></a>
+  &bull;
   <a href="https://bam-engine.readthedocs.io"><strong>Documentation</strong></a>
   &bull;
   <a href="https://bam-engine.readthedocs.io/en/latest/quickstart.html"><strong>Getting Started</strong></a>
@@ -125,7 +135,7 @@ pytest
 ruff format . && ruff check --fix . && mypy
 ```
 
-This project was developed as part of MSc thesis research at the University of Piraeus, Greece. External contributions are not currently accepted during thesis work. For bug reports and feature requests, please open an issue on the [issue tracker](https://github.com/kganitis/bam-engine/issues).
+This project is part of ongoing MSc thesis research at the University of Piraeus, Greece. Code contributions will be welcome after thesis submission. In the meantime, bug reports, feedback, and documentation suggestions are appreciated via the [issue tracker](https://github.com/kganitis/bam-engine/issues).
 
 See the [Development Guide](https://bam-engine.readthedocs.io/en/latest/development/index.html) for more on testing, linting, benchmarking, and contributing.
 

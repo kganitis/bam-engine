@@ -21,8 +21,8 @@ activates all components in a single call:
    sim = bam.Simulation.init(seed=42)
    sim.use(RND)  # registers role, events, and config
 
-For finer control, each extension also exports individual components — a role
-class, an event list (``*_EVENTS``), and a config dictionary (``*_CONFIG``) —
+For finer control, each extension also exports individual components (a role
+class, an event list (``*_EVENTS``), and a config dictionary (``*_CONFIG``))
 that can be activated manually:
 
 .. code-block:: python
@@ -47,15 +47,15 @@ Built-in Extensions
 
 BAM Engine ships with three extensions:
 
-- **Growth+ (R&D)** — Endogenous productivity growth via R&D investment
+- **Growth+ (R&D)**: Endogenous productivity growth via R&D investment
   (Section 3.8). Firms invest profits in R&D, producing stochastic
   productivity gains.
 
-- **Buffer-Stock Consumption** — Target savings-to-income ratio mechanism
+- **Buffer-Stock Consumption**: Target savings-to-income ratio mechanism
   (Section 3.9.4). Households adjust spending based on a savings buffer
   target.
 
-- **Taxation** — Profit taxation without redistribution (Section 3.10.2).
+- **Taxation**: Profit taxation without redistribution (Section 3.10.2).
   Designed for structural experiments on entry dynamics.
 
 .. seealso::
@@ -63,9 +63,9 @@ BAM Engine ships with three extensions:
    Full reference for each extension, including role fields, events,
    configuration parameters, and autodoc API:
 
-   - :doc:`/extensions/rnd` — Growth+ (R&D)
-   - :doc:`/extensions/buffer_stock` — Buffer-Stock Consumption
-   - :doc:`/extensions/taxation` — Taxation
+   - :doc:`/extensions/rnd`: Growth+ (R&D)
+   - :doc:`/extensions/buffer_stock`: Buffer-Stock Consumption
+   - :doc:`/extensions/taxation`: Taxation
 
 
 Combining Extensions

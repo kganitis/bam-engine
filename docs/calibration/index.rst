@@ -87,10 +87,10 @@ Calibration Guide
 
 **Morris vs OAT:** Morris Method catches interaction effects that single-baseline
 OAT misses. Mean sigma/mu* ratio of ~1.58 indicates pervasive interactions in
-the BAM model — Morris is strongly recommended for production calibration.
+the BAM model; Morris is strongly recommended for production calibration.
 
 **Parameter importance:** Economy-wide params (``beta``, ``max_M``) are
-consistently the most important. Initial conditions are largely irrelevant —
+consistently the most important. Initial conditions are largely irrelevant;
 the Kalecki attractor erases them in ~50 periods.
 
 **Multi-seed stability:** Single-seed screening overfits to the specific random

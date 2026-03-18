@@ -36,7 +36,7 @@ The ``ops`` module exists for several reasons:
 - **Self-documenting**: Using ``ops.divide`` signals intent more clearly than
   raw ``a / b`` in economic model code
 
-The ``ops`` functions are thin wrappers around NumPy — there is no performance
+The ``ops`` functions are thin wrappers around NumPy; there is no performance
 overhead compared to using NumPy directly.
 
 
@@ -144,7 +144,7 @@ correct way to update role fields:
 Conditional
 ~~~~~~~~~~~
 
-``ops.where`` is the vectorized if-then-else — the workhorse for conditional
+``ops.where`` is the vectorized if-then-else, the workhorse for conditional
 logic in events:
 
 .. code-block:: python

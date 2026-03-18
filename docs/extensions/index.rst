@@ -21,7 +21,7 @@ all its components in a single call:
    results = sim.run(n_periods=1000, collect=True)
 
 Individual components (roles, events, config) are also available for manual
-activation — see :doc:`/user_guide/extensions` for the manual pattern.
+activation; see :doc:`/user_guide/extensions` for the manual pattern.
 
 
 Available Extensions

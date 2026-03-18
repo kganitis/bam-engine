@@ -69,10 +69,10 @@ Relationships store edges as parallel arrays in COO (Coordinate) format:
 
 Key attributes:
 
-- ``source_ids`` — array of source agent IDs
-- ``target_ids`` — array of target agent IDs
-- ``size`` — number of active edges (valid entries in the arrays)
-- ``capacity`` — allocated array length (grows dynamically via doubling)
+- ``source_ids``: array of source agent IDs
+- ``target_ids``: array of target agent IDs
+- ``size``: number of active edges (valid entries in the arrays)
+- ``capacity``: allocated array length (grows dynamically via doubling)
 
 Only indices ``0`` through ``size - 1`` contain valid data.
 

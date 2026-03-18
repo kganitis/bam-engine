@@ -24,10 +24,10 @@ The simplest way to validate is with ``run_validation()``:
 
 The result object contains:
 
-- ``total_score`` — Weighted score from 0.0 (worst) to 1.0 (perfect)
-- ``passed`` — ``True`` if zero FAIL-status metrics
-- ``n_pass``, ``n_warn``, ``n_fail`` — Count of metrics by status
-- ``metric_results`` — Detailed per-metric breakdown
+- ``total_score``: Weighted score from 0.0 (worst) to 1.0 (perfect)
+- ``passed``: ``True`` if zero FAIL-status metrics
+- ``n_pass``, ``n_warn``, ``n_fail``: Count of metrics by status
+- ``metric_results``: Detailed per-metric breakdown
 
 
 Validation Scenarios
@@ -75,9 +75,9 @@ Validation uses a **two-layer system**:
 
 **Status checks** (categorical):
 
-- **PASS** — Metric is within acceptable range
-- **WARN** — Metric is borderline (outside target but within tolerance)
-- **FAIL** — Metric significantly deviates from target
+- **PASS**: Metric is within acceptable range
+- **WARN**: Metric is borderline (outside target but within tolerance)
+- **FAIL**: Metric significantly deviates from target
 
 **Scores** (continuous, 0 to 1):
 
@@ -153,7 +153,7 @@ testing.
 Visualization
 -------------
 
-**Scenario plots** — Run a scenario with visualization:
+**Scenario plots.** Run a scenario with visualization:
 
 .. code-block:: python
 
@@ -161,7 +161,7 @@ Visualization
 
    run_scenario(seed=0, show_plot=True)
 
-**Diagnostic dashboards** — Comprehensive multi-figure analysis:
+**Diagnostic dashboards.** Comprehensive multi-figure analysis:
 
 .. code-block:: bash
 

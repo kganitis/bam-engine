@@ -10,13 +10,13 @@ Scenario Visualization
 
 .. code-block:: bash
 
-   # Baseline scenario (Section 3.9.1) — 8-panel figure
+   # Baseline scenario (Section 3.9.1), 8-panel figure
    python -m validation.scenarios.baseline
 
-   # Growth+ scenario (Section 3.9.2) — 16-panel figure
+   # Growth+ scenario (Section 3.9.2), 16-panel figure
    python -m validation.scenarios.growth_plus
 
-   # Buffer-stock scenario (Section 3.9.4) — 8-panel figure + CCDF
+   # Buffer-stock scenario (Section 3.9.4), 8-panel figure + CCDF
    python -m validation.scenarios.buffer_stock
 
 Each scenario generates multi-panel visualizations with target bounds,

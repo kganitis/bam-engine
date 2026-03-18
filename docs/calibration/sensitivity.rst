@@ -14,14 +14,14 @@ parameter:
 
 - **mu*** (mean absolute elementary effect): Average importance across
   different parameter contexts
-- **sigma** (std of elementary effects): Interaction/nonlinearity indicator —
+- **sigma** (std of elementary effects): Interaction/nonlinearity indicator;
   how much the effect varies depending on other parameters
 
 **Dual-threshold classification:**
 
-- ``INCLUDE``: mu* > threshold **or** sigma > threshold — important or
-  interaction-prone
-- ``FIX``: mu* ≤ threshold **and** sigma ≤ threshold — truly unimportant
+- ``INCLUDE``: mu* > threshold **or** sigma > threshold (important or
+  interaction-prone)
+- ``FIX``: mu* ≤ threshold **and** sigma ≤ threshold (truly unimportant)
 
 .. code-block:: python
 
@@ -43,7 +43,7 @@ OAT (One-at-a-Time)
 --------------------
 
 Traditional OAT tests each parameter while holding others at defaults. Faster
-but sensitive to baseline choice — parameter rankings can change depending on
+but sensitive to baseline choice; parameter rankings can change depending on
 which defaults are used.
 
 .. code-block:: python

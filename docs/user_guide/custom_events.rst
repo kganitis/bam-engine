@@ -1,7 +1,7 @@
 Custom Events
 =============
 
-Events are the behavioral rules of the simulation — the "systems" in BAM Engine's
+Events are the behavioral rules of the simulation, the "systems" in BAM Engine's
 ECS architecture. Each event reads role data, performs calculations, and writes
 results back. Custom events let you add new economic behaviors or modify existing
 ones.
@@ -82,7 +82,7 @@ Every event must implement an ``execute`` method:
    def execute(self, sim: Simulation) -> None: ...
 
 The ``sim`` parameter provides access to all simulation state. The method should
-not return a value — all effects happen through mutations via ``ops.assign()``
+not return a value; all effects happen through mutations via ``ops.assign()``
 or relationship methods.
 
 
@@ -91,7 +91,7 @@ Accessing Simulation State
 
 Inside ``execute()``, the ``sim`` object exposes:
 
-**Roles** — agent data arrays:
+**Roles** (agent data arrays):
 
 .. code-block:: python
 
@@ -103,7 +103,7 @@ Inside ``execute()``, the ``sim`` object exposes:
    sh = sim.get_role("Shareholder")  # or sim.sh
    lend = sim.get_role("Lender")  # or sim.lend
 
-**Economy** — aggregate state:
+**Economy** (aggregate state):
 
 .. code-block:: python
 
@@ -111,7 +111,7 @@ Inside ``execute()``, the ``sim`` object exposes:
    sim.ec.min_wage  # Current minimum wage
    sim.ec.collapsed  # Whether the economy has collapsed
 
-**Configuration** — model parameters:
+**Configuration** (model parameters):
 
 .. code-block:: python
 
@@ -120,20 +120,20 @@ Inside ``execute()``, the ``sim`` object exposes:
    sim.h_rho  # Production shock width
    sim.n_firms  # Number of firms
 
-**RNG** — random number generator:
+**RNG** (random number generator):
 
 .. code-block:: python
 
    shock = sim.rng.uniform(0, 0.1, size=sim.n_firms)
    # or: shock = ops.uniform(sim.rng, 0, 0.1, size=sim.n_firms)
 
-**Relationships** — loan data:
+**Relationships** (loan data):
 
 .. code-block:: python
 
    loans = sim.get_relationship("LoanBook")  # or sim.lb
 
-**Extension parameters** — custom parameters passed at init:
+**Extension parameters** (custom parameters passed at init):
 
 .. code-block:: python
 
@@ -175,7 +175,7 @@ hook as class metadata but does **not** modify the pipeline. You must call
 Worked Example: Inventory Carrying Cost
 ----------------------------------------
 
-This complete example adds an inventory carrying cost to firms — a charge for
+This complete example adds an inventory carrying cost to firms, a charge for
 holding unsold goods. It demonstrates the full workflow: define a role, define
 an event, hook it into the pipeline, and run.
 
@@ -225,7 +225,7 @@ Built-in Events
 ---------------
 
 BAM Engine includes 37 built-in events organized in 8 phases. Below is a
-summary — see :doc:`bam_model` for the economic logic of each phase.
+summary; see :doc:`bam_model` for the economic logic of each phase.
 
 **Phase 1: Planning**
 
@@ -353,13 +353,13 @@ summary — see :doc:`bam_model` for the economic logic of each phase.
 Tips
 ----
 
-- **Always use ``ops.assign()``** for role mutations — direct assignment
+- **Always use ``ops.assign()``** for role mutations; direct assignment
   (``role.field = value``) silently fails to update the shared array
-- **Always use ``sim.rng``** for randomness — never ``numpy.random`` directly
+- **Always use ``sim.rng``** for randomness; never ``numpy.random`` directly
 - **Events are stateless**: Don't store state on ``self``. If you need
   state that persists across periods, use a role field.
 - **Hook activation is explicit**: Call ``sim.use_events(MyEvent)`` after
-  ``Simulation.init()`` — hooks declared in ``@event(after=...)`` are just
+  ``Simulation.init()``; hooks declared in ``@event(after=...)`` are just
   metadata until activated
 
 

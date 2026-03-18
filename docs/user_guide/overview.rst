@@ -10,8 +10,8 @@ part of the **CATS (Complex Adaptive Trivial Systems)** family of models origina
 described in *Macroeconomics from the Bottom-up* by Delli Gatti, Gaffeo, Gallegati,
 Giulioni, and Palestrini (2011).
 
-The model simulates an economy populated by three types of agents — firms,
-households, and banks — interacting through decentralized markets for labor,
+The model simulates an economy populated by three types of agents (firms,
+households, and banks) interacting through decentralized markets for labor,
 credit, and consumption goods. Unlike traditional DSGE models, BAM uses
 **bounded rationality** and **adaptive behavior**: agents follow simple heuristic
 rules rather than solving optimization problems, and macroeconomic patterns
@@ -46,10 +46,10 @@ adapted for agent-based economic modeling:
    * - System
      - Event
      - A function that reads and modifies role data each simulation period (e.g., ``FirmsAdjustPrice``)
-   * - —
+   * -
      - Relationship
      - A sparse many-to-many connection between agents with edge data (e.g., ``LoanBook``)
-   * - —
+   * -
      - Pipeline
      - An ordered sequence of events executed each period
 
@@ -103,8 +103,8 @@ by agent ID. They hold all agent state:
 .. code-block:: python
 
    prod = sim.get_role("Producer")
-   prod.price  # shape (n_firms,) — current price per firm
-   prod.inventory  # shape (n_firms,) — unsold goods per firm
+   prod.price  # shape (n_firms,) -- current price per firm
+   prod.inventory  # shape (n_firms,) -- unsold goods per firm
 
 Roles are defined with the ``@role`` decorator and type annotations:
 
@@ -126,7 +126,7 @@ Events
 ~~~~~~
 
 Events are the **behavioral rules** of the simulation. Each event reads role
-data, performs calculations, and writes results back — typically using the
+data, performs calculations, and writes results back, typically using the
 :mod:`~bamengine.ops` module for safe, vectorized operations:
 
 .. code-block:: python
@@ -182,14 +182,14 @@ The Simulation Loop
 
 Each call to ``sim.step()`` executes one period of the economy:
 
-1. **Planning** — Firms set production targets and labor needs
-2. **Labor Market** — Workers search for jobs, firms hire
-3. **Credit Market** — Firms borrow from banks to finance production
-4. **Production** — Firms pay wages and produce goods
-5. **Goods Market** — Households shop for consumption goods
-6. **Revenue** — Firms collect revenue, repay debts, pay dividends
-7. **Bankruptcy** — Insolvent firms and banks exit
-8. **Entry** — Replacement firms and banks are created
+1. **Planning**: Firms set production targets and labor needs
+2. **Labor Market**: Workers search for jobs, firms hire
+3. **Credit Market**: Firms borrow from banks to finance production
+4. **Production**: Firms pay wages and produce goods
+5. **Goods Market**: Households shop for consumption goods
+6. **Revenue**: Firms collect revenue, repay debts, pay dividends
+7. **Bankruptcy**: Insolvent firms and banks exit
+8. **Entry**: Replacement firms and banks are created
 
 See :doc:`bam_model` for the full economic detail of each phase.
 
@@ -216,7 +216,7 @@ importing a module is enough to make its components available:
    evt_cls = get_event("firms_adjust_price")
    LoanBook = get_relationship("LoanBook")
 
-This means extensions just need to be imported before ``sim.run()`` — no
+This means extensions just need to be imported before ``sim.run()``; no
 explicit registration calls needed. However, **pipeline hooks** (``after=``,
 ``before=``, ``replace=``) still require explicit activation via
 :meth:`~bamengine.Simulation.use_events`.
@@ -239,10 +239,10 @@ events should always use ``sim.rng`` rather than ``numpy.random`` directly:
 
 .. code-block:: python
 
-   # Correct — deterministic
+   # Correct: deterministic
    shock = sim.rng.uniform(0, 0.1, size=sim.n_firms)
 
-   # Wrong — breaks reproducibility
+   # Wrong: breaks reproducibility
    shock = np.random.uniform(0, 0.1, size=sim.n_firms)
 
 

@@ -70,13 +70,13 @@ Result Structures
 
 ``PAExperimentResult``:
 
-- ``pa_off_validity`` — Internal validity with PA off
-- ``pa_off_z_sweep`` — Z-sweep sensitivity with PA off
-- ``baseline_validity`` — Optional PA-on baseline for comparison
+- ``pa_off_validity``: Internal validity with PA off
+- ``pa_off_z_sweep``: Z-sweep sensitivity with PA off
+- ``baseline_validity``: Optional PA-on baseline for comparison
 
 ``EntryExperimentResult``:
 
-- ``tax_sweep`` — Tax rate sweep results
+- ``tax_sweep``: Tax rate sweep results
 
 
 API Reference
