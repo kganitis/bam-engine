@@ -12,8 +12,8 @@ with centralized validation.
 Classes
 -------
 
-- :class:`~schema.Config` — Immutable simulation parameter dataclass
-- :class:`~validator.ConfigValidator` — Centralized configuration validation
+- :class:`~schema.Config`: Immutable simulation parameter dataclass
+- :class:`~validator.ConfigValidator`: Centralized configuration validation
 
 Config Submodules
 -----------------

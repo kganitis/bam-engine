@@ -2,7 +2,7 @@ Parameter Calibration
 =====================
 
 Calibrating an agent-based model means finding parameter values that reproduce
-empirical targets — in BAM Engine's case, the results from Delli Gatti et al.
+empirical targets; in BAM Engine's case, the results from Delli Gatti et al.
 (2011). With 40+ parameters and nonlinear interactions, brute-force search is
 impractical. BAM Engine's calibration package uses a multi-phase pipeline:
 screen for important parameters, search a reduced grid, then stress-test the
@@ -12,16 +12,16 @@ best candidates.
 Calibration Concepts
 --------------------
 
-**Objective function.** Calibration maximizes the validation score — a weighted
+**Objective function.** Calibration maximizes the validation score, a weighted
 average of metric-level scores (0 to 1) comparing simulation output to
 reference targets. See :doc:`validation` for details on the scoring system.
 
 **The multi-phase approach:**
 
-1. **Screening** — Identify which parameters significantly affect the score
+1. **Screening**: Identify which parameters significantly affect the score
    (typically 5-8 out of 40+)
-2. **Grid search** — Exhaustively search combinations of important parameters
-3. **Stability testing** — Verify that top candidates perform consistently
+2. **Grid search**: Exhaustively search combinations of important parameters
+3. **Stability testing**: Verify that top candidates perform consistently
    across many random seeds
 
 This pipeline reduces the search space by orders of magnitude while
@@ -100,11 +100,11 @@ Tips
    Full calibration reference with detailed phase documentation, CLI options,
    and complete API:
 
-   - :doc:`/calibration/index` — Calibration overview and guide
-   - :doc:`/calibration/sensitivity` — Morris Method and OAT details
-   - :doc:`/calibration/grid_search` — Grid building and screening
-   - :doc:`/calibration/stability` — Tiered stability and ranking
-   - :doc:`/calibration/cli` — Full CLI reference
+   - :doc:`/calibration/index`: Calibration overview and guide
+   - :doc:`/calibration/sensitivity`: Morris Method and OAT details
+   - :doc:`/calibration/grid_search`: Grid building and screening
+   - :doc:`/calibration/stability`: Tiered stability and ranking
+   - :doc:`/calibration/cli`: Full CLI reference
    - :doc:`validation` for understanding validation scores
    - :doc:`extensions` for extension parameter definitions
    - :doc:`configuration` for all parameter descriptions

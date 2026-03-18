@@ -12,10 +12,10 @@ BAM-ECS architecture.
 Classes
 -------
 
-- :class:`~role.Role` — Base class for agent components
-- :class:`~event.Event` — Base class for simulation events
-- :class:`~relationship.Relationship` — Base class for agent relationships
-- :class:`~Pipeline` — Event execution sequence
+- :class:`~role.Role`: Base class for agent components
+- :class:`~event.Event`: Base class for simulation events
+- :class:`~relationship.Relationship`: Base class for agent relationships
+- :class:`~Pipeline`: Event execution sequence
 
 Submodules
 ----------

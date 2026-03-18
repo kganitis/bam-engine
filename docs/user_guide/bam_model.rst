@@ -5,7 +5,7 @@ The BAM (Bottom-Up Adaptive Macroeconomics) model is an agent-based macroeconomi
 model from the CATS (Complex Adaptive Trivial Systems) family, originally described
 in *Macroeconomics from the Bottom-up* by Delli Gatti, Gaffeo, Gallegati, Giulioni,
 and Palestrini (2011), Chapter 3. This page describes the economic rules implemented
-by BAM Engine — the behavioral equations, market mechanisms, and institutional
+by BAM Engine: the behavioral equations, market mechanisms, and institutional
 structures that generate emergent macroeconomic dynamics.
 
 .. contents:: On this page
@@ -165,7 +165,7 @@ effect**: small production decreases may not reduce the workforce at all. For a
 firm with :math:`L` workers and shock width :math:`h_\rho`, the probability that
 a decrease actually reduces workforce is
 :math:`\max(0, 1 - 1/(L \times h_\rho))`. With the default :math:`h_\rho = 0.10`
-and typical firm size :math:`L \approx 5`, this probability is zero — firms
+and typical firm size :math:`L \approx 5`, this probability is zero; firms
 effectively cannot shrink through this channel alone.
 
 **Vacancies and firing.** If :math:`L^d_{i,t} > L^{current}_{i,t}`, the firm
@@ -247,7 +247,7 @@ unemployed workers apply to :math:`M` random firms.
 each of :math:`M` rounds, all applications are processed simultaneously using
 vectorized operations. When multiple workers target the same firm, a conflict
 resolution step randomly selects winners based on available vacancies. Workers
-apply to their highest-wage firm first, so matching favors high-wage firms — a
+apply to their highest-wage firm first, so matching favors high-wage firms, a
 form of **preferential attachment**.
 
 **Contracts.** Hired workers sign contracts of length :math:`\theta` periods
@@ -299,7 +299,7 @@ prioritize loan applications:
    \ell_{i,t} = \frac{B_{i,t}}{A_{i,t}}
 
 This metric is capped at ``max_leverage`` (default: 10) for firms with very low
-net worth. Banks process applications in **ascending fragility order** — the
+net worth. Banks process applications in **ascending fragility order**: the
 least leveraged firms get served first.
 
 **Matching.** Credit market matching mirrors the labor market: :math:`H`
@@ -473,7 +473,7 @@ that young firms are smaller than incumbents.
 Market Matching
 ---------------
 
-All three markets use **decentralized matching** with search frictions — a key
+All three markets use **decentralized matching** with search frictions, a key
 departure from Walrasian general equilibrium models where a central auctioneer
 clears markets instantaneously.
 
@@ -512,15 +512,15 @@ for the economic interpretation of each phase.
      - Default
      - Description
    * - ``n_firms``
-     - —
+     -
      - 100
      - Number of firms in the economy
    * - ``n_households``
-     - —
+     -
      - 500
      - Number of households (recommended: :math:`\geq 5 \times` ``n_firms``)
    * - ``n_banks``
-     - —
+     -
      - 10
      - Number of banks
    * - ``labor_productivity``

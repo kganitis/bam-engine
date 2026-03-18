@@ -11,9 +11,9 @@ Configuration Precedence
 
 Parameters are resolved in order of increasing priority:
 
-1. **Package defaults** — built-in values from ``bamengine/config/defaults.yml``
-2. **User YAML file** — custom configuration file (if provided)
-3. **Keyword arguments** — passed directly to ``Simulation.init()`` (highest priority)
+1. **Package defaults**: built-in values from ``bamengine/config/defaults.yml``
+2. **User YAML file**: custom configuration file (if provided)
+3. **Keyword arguments**: passed directly to ``Simulation.init()`` (highest priority)
 
 .. code-block:: python
 
@@ -58,7 +58,7 @@ Pass the file path to ``Simulation.init()``:
 
    sim = bam.Simulation.init(config="my_config.yml", seed=42)
 
-Only include parameters you want to change — omitted parameters use defaults.
+Only include parameters you want to change; omitted parameters use defaults.
 
 
 Parameter Reference
@@ -304,12 +304,12 @@ Control log verbosity globally or per-event:
 
 Available log levels (from most to least verbose):
 
-- ``TRACE`` (5) — Very detailed internal state
-- ``DEBUG`` (10) — Diagnostic information
-- ``INFO`` (20) — General progress (default)
-- ``WARNING`` (30) — Potential issues
-- ``ERROR`` (40) — Errors only
-- ``CRITICAL`` (50) — Fatal errors only
+- ``TRACE`` (5): Very detailed internal state
+- ``DEBUG`` (10): Diagnostic information
+- ``INFO`` (20): General progress (default)
+- ``WARNING`` (30): Potential issues
+- ``ERROR`` (40): Errors only
+- ``CRITICAL`` (50): Fatal errors only
 
 .. tip::
 

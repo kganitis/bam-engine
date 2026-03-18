@@ -7,11 +7,11 @@ The robustness package tests whether model results are stable across random
 seeds, parameter variations, and structural mechanism changes. It consists
 of three parts:
 
-1. **Internal Validity** (3.10.1, Part 1) — Multiple random seeds verify
+1. **Internal Validity** (3.10.1, Part 1): Multiple random seeds verify
    results are robust to stochastic variation
-2. **Sensitivity Analysis** (3.10.1, Part 2) — Parameter sweeps assess how
+2. **Sensitivity Analysis** (3.10.1, Part 2): Parameter sweeps assess how
    input changes alter outputs
-3. **Structural Experiments** (3.10.2) — Mechanism toggles test model
+3. **Structural Experiments** (3.10.2): Mechanism toggles test model
    properties (consumer loyalty, entry neutrality)
 
 

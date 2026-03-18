@@ -70,16 +70,16 @@ Role fields must use BAM Engine's type aliases, which map to NumPy dtypes:
      - Typical Use
    * - ``Float``
      - ``np.float64``
-     - Prices, wages, production, net worth — any continuous value
+     - Prices, wages, production, net worth (any continuous value)
    * - ``Int``
      - ``np.int64``
-     - Contract duration, vacancy count — discrete quantities
+     - Contract duration, vacancy count (discrete quantities)
    * - ``Bool``
      - ``np.bool_``
-     - Employment status, bankruptcy flags — binary state
+     - Employment status, bankruptcy flags (binary state)
    * - ``AgentId``
      - ``np.intp``
-     - Employer ID, bank ID — references to other agents
+     - Employer ID, bank ID (references to other agents)
 
 Import from ``bamengine.typing``:
 
@@ -121,9 +121,9 @@ Retrieve a role by name and access its fields as NumPy arrays:
 
    rnd = sim.get_role("RnDCapability")
 
-   rnd.rd_intensity  # shape (n_firms,) — array of floats
-   rnd.patents_held  # shape (n_firms,) — array of floats
-   rnd.rd_intensity[0]  # scalar — first firm's R&D intensity
+   rnd.rd_intensity  # shape (n_firms,) -- array of floats
+   rnd.patents_held  # shape (n_firms,) -- array of floats
+   rnd.rd_intensity[0]  # scalar -- first firm's R&D intensity
 
 Built-in roles have shortcut attributes (see :doc:`running_simulations`):
 

@@ -12,7 +12,7 @@ Target Structure
 
 A ``targets.yaml`` file contains two sections:
 
-**metrics:** — Standardized targets used by the scoring engine for pass/fail
+**metrics:** Standardized targets used by the scoring engine for pass/fail
 decisions. Each metric has a ``check_type`` (see :doc:`scoring`) and
 corresponding parameters:
 
@@ -30,7 +30,7 @@ corresponding parameters:
      inflation_hard_ceiling_upper:
        threshold: 0.25    # BOOLEAN: max inflation < 25%
 
-**metadata.visualization:** — Reference values used by ``viz.py`` for plot
+**metadata.visualization:** Reference values used by ``viz.py`` for plot
 annotations and visual comparison bands. These do not affect scoring:
 
 .. code-block:: yaml
@@ -50,15 +50,15 @@ Evidence Sources
 
 Every target value is grounded in one or more of three evidence types:
 
-1. **Extracted book values** — Precise numbers from the author's simulation
+1. **Extracted book values**: Precise numbers from the author's simulation
    figures, obtained through pixel-level analysis of the original MATLAB plots.
    Example: ``log_gdp_mean: 8.91`` extracted from Figure 3.4a.
 
-2. **Economic theory** — Established empirical regularities from the
+2. **Economic theory**: Established empirical regularities from the
    macroeconomics literature. Example: labor share (wage/productivity ratio)
    of 0.60--0.70 from Kaldor's stylized facts.
 
-3. **Multi-seed model behavior** — Statistical properties of the BAM Engine
+3. **Multi-seed model behavior**: Statistical properties of the BAM Engine
    model across 100+ seeds. Ranges are set wide enough that 95%+ of seeds
    pass while still being economically meaningful. Example:
    ``phillips_correlation min: -0.50`` gives 2-sigma headroom below the model
@@ -112,12 +112,12 @@ This means:
 
 When targets should **not** be changed:
 
-- **Structural gates** — BOOLEAN checks (``threshold``) and wide RANGE checks
+- **Structural gates**: BOOLEAN checks (``threshold``) and wide RANGE checks
   that serve as sanity checks (e.g., ``inflation_hard_ceiling < 25%``). These
   are intentionally loose for multi-seed robustness.
-- **Unreliable extraction** — When dense dot overlap makes the extracted value
+- **Unreliable extraction**: When dense dot overlap makes the extracted value
   unreliable (e.g., Okun's curve where only 97 of ~250 dots could be resolved).
-- **Already aligned** — Current target already matches the book value.
+- **Already aligned**: Current target already matches the book value.
 
 
 Figure Reproduction Pipeline
@@ -126,7 +126,7 @@ Figure Reproduction Pipeline
 Validation targets for the Growth+ scenario (Section 3.9.2) are calibrated
 from 16 book figures using a two-phase extraction and update process.
 
-**Phase 1 — Reproduce figure:**
+**Phase 1, Reproduce figure:**
 
 ::
 
@@ -138,7 +138,7 @@ converts pixel coordinates to data coordinates, and saves the result as a
 NumPy ``.npz`` file. The reproduce script generates a side-by-side comparison
 image for visual verification.
 
-**Phase 2 — Update targets:**
+**Phase 2, Update targets:**
 
 ::
 
@@ -154,28 +154,28 @@ Extraction Methods
 
 Different figure types require different extraction approaches:
 
-**Smooth time series** (Figures 3.4a, 3.4d) — Column scanning: for each
+**Smooth time series** (Figures 3.4a, 3.4d): Column scanning: for each
 x-pixel column, find blue pixels and take their mean y-position. Works well
 because the line is mostly horizontal.
 
-**Volatile time series** (Figures 3.4b, 3.4c, 3.6c--d, 3.7a--b) —
+**Volatile time series** (Figures 3.4b, 3.4c, 3.6c--d, 3.7a--b):
 Dual-envelope extraction: at sharp transitions, the plotted line creates a
 tall vertical streak of blue pixels. The method records upper (min y-pixel)
 and lower (max y-pixel) per column, then selects the envelope value furthest
 from the local running mean at transition columns.
 
-**Scatter plots** (Figures 3.5a--c) — Connected component labeling
+**Scatter plots** (Figures 3.5a--c): Connected component labeling
 (``scipy.ndimage.label``) to find dot clusters, with centroid extraction.
 For dense overlapping regions (e.g., Okun's curve), distance transform +
 local maxima detection (``distance_transform_edt`` + ``maximum_filter``)
 recovers additional dot centers.
 
-**Log-rank distribution plots** (Figures 3.6a--b) — Two-color detection
+**Log-rank distribution plots** (Figures 3.6a--b): Two-color detection
 (blue for negative, red for positive growth rates) on a logarithmic y-axis.
 Tent shape quality (Laplace R\ :sup:`2`) is computed from linear regression
 on log\ :sub:`10`\ (rank) vs growth rate per side.
 
-**Histograms** (Figure 3.5d) — Connected component labeling to find
+**Histograms** (Figure 3.5d): Connected component labeling to find
 individual bars; bar height gives count, bar position gives bin center.
 
 
@@ -244,22 +244,22 @@ Practical Lessons
 
 Several insights emerged from the calibration process:
 
-- **RGBA images require explicit conversion** — Always use
+- **RGBA images require explicit conversion.** Always use
   ``.convert("RGB")`` before pixel analysis. The alpha channel can cause
   boolean mask operations to silently produce empty results.
 
-- **Dense scatter clusters are unresolvable** — When MATLAB dots overlap into
+- **Dense scatter clusters are unresolvable.** When MATLAB dots overlap into
   a continuous mass (e.g., Okun's curve), no morphological technique can
   recover individual dot positions. Accept the limitation and note it for
   affected metrics.
 
-- **Book text values take precedence** — When the book explicitly states a
+- **Book text values take precedence.** When the book explicitly states a
   number (e.g., Phillips r = -0.19), prefer it over the pixel extraction
   which has scatter noise.
 
-- **Cross-figure data reuse** — Some metrics lack dedicated figures. The
+- **Cross-figure data reuse.** Some metrics lack dedicated figures. The
   vacancy rate mean is derived from the Beveridge curve's y-axis (Figure 3.5c).
 
-- **Widening ranges never causes regressions** — Making a RANGE ``min`` more
+- **Widening ranges never causes regressions.** Making a RANGE ``min`` more
   negative or ``max`` more positive can only help pass rates. Only tightening
   or shifting centers risks regression.

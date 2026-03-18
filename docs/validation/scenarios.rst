@@ -8,7 +8,7 @@ reference book.
 Baseline (Section 3.9.1)
 -------------------------
 
-Standard BAM model behavior — 25 metrics across 3 categories:
+Standard BAM model behavior, 25 metrics across 3 categories:
 
 - **TIME_SERIES** (10): Unemployment, inflation, GDP trend/growth, vacancy rates
 - **CURVES** (6): Phillips, Okun, Beveridge curve correlations
@@ -25,7 +25,7 @@ Standard BAM model behavior — 25 metrics across 3 categories:
 Growth+ (Section 3.9.2)
 -------------------------
 
-Endogenous productivity growth via R&D investment — 65 metrics across 6
+Endogenous productivity growth via R&D investment, 65 metrics across 6
 categories:
 
 .. list-table::

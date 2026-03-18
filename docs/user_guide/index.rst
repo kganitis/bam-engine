@@ -1,7 +1,7 @@
 User Guide
 ==========
 
-This guide walks you through using BAM Engine — from understanding the underlying
+This guide walks you through using BAM Engine, from understanding the underlying
 economic model to writing your own extensions and validating results against the
 reference literature.
 

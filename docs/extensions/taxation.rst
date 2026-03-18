@@ -4,7 +4,7 @@ Taxation Extension
 *Used in Section 3.10.2 structural experiments of Delli Gatti et al. (2011)*
 
 The taxation extension adds **profit taxation** to firms. Tax revenue is
-removed from the economy (no redistribution) — this is designed for structural
+removed from the economy (no redistribution); this is designed for structural
 experiments testing the role of automatic stabilizers and entry dynamics.
 
 
@@ -23,7 +23,7 @@ Quick Start
 
 .. note::
 
-   The taxation extension has no role — it operates directly on the existing
+   The taxation extension has no role; it operates directly on the existing
    ``Borrower`` role fields (``net_profit`` and ``total_funds``).
 
 

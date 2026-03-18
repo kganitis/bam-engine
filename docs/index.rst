@@ -10,7 +10,7 @@ BAM Engine
 
 A Python implementation of the BAM (Bottom-Up Adaptive Macroeconomics) model
 by Delli Gatti et al. (2011). Simulate households, firms, and banks
-interacting across labor, credit, and goods markets — macroeconomic dynamics
+interacting across labor, credit, and goods markets; macroeconomic dynamics
 emerge from individual agent decisions.
 
 For researchers, students, and practitioners in computational economics.
@@ -94,19 +94,19 @@ For researchers, students, and practitioners in computational economics.
 
    .. grid-item::
 
-      :doc:`roadmap`
-
-   .. grid-item::
-
       :doc:`glossary`
 
    .. grid-item::
 
-      :doc:`about`
+      `About <https://bamengine.org/about/>`__
 
    .. grid-item::
 
-      :doc:`related_projects`
+      `Community <https://bamengine.org/community/>`__
+
+   .. grid-item::
+
+      `Roadmap <https://bamengine.org/roadmap/>`__
 
 .. toctree::
    :maxdepth: 2
@@ -171,7 +171,4 @@ For researchers, students, and practitioners in computational economics.
    :hidden:
    :caption: Project
 
-   related_projects
-   roadmap
    glossary
-   about

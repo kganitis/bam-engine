@@ -131,7 +131,7 @@ Extension Best Practices
 Activation Order
 ~~~~~~~~~~~~~~~~
 
-Always activate extensions in the correct order — role, events, config:
+Always activate extensions in the correct order (role, events, config):
 
 .. code-block:: python
 

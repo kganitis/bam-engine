@@ -2,7 +2,7 @@ Pipeline Customization
 ======================
 
 The pipeline manages event execution order during each simulation period.
-BAM Engine uses **explicit ordering** — events run in the exact order listed,
+BAM Engine uses **explicit ordering**: events run in the exact order listed,
 with no automatic dependency resolution. This matches the original BAM model
 specification and makes the execution flow predictable and debuggable.
 
@@ -123,9 +123,9 @@ Declare where your custom event should be inserted directly in the decorator:
 
 **Hook types:**
 
-- ``after="event_name"`` — Insert immediately after the target event
-- ``before="event_name"`` — Insert immediately before the target event
-- ``replace="event_name"`` — Replace the target event entirely
+- ``after="event_name"``: Insert immediately after the target event
+- ``before="event_name"``: Insert immediately before the target event
+- ``replace="event_name"``: Replace the target event entirely
 
 **Key points:**
 
@@ -133,7 +133,7 @@ Declare where your custom event should be inserted directly in the decorator:
 - Call ``sim.use_events(*event_classes)`` to apply hooks to the pipeline
 - Multiple events targeting the same point are inserted in the order passed
   to ``use_events()``
-- No import ordering constraints — import extensions anywhere before calling
+- No import ordering constraints: import extensions anywhere before calling
   ``use_events()``
 
 
@@ -176,21 +176,21 @@ For full control over the event sequence, create a custom pipeline YAML file:
 .. code-block:: yaml
 
    events:
-     # Simple event — execute once per period
+     # Simple event: execute once per period
      - firms_decide_desired_production
 
-     # Repeated event — execute N times
+     # Repeated event: execute N times
      - labor_market_round x 4
 
-     # Parameter substitution — use config values
+     # Parameter substitution: use config values
      - labor_market_round x {max_M}
      - credit_market_round x {max_H}
 
 **Parameter substitution** replaces ``{param_name}`` with the corresponding
 configuration value at pipeline load time. Available substitutions:
 
-- ``{max_M}`` — Number of labor market matching rounds
-- ``{max_H}`` — Number of credit market matching rounds
+- ``{max_M}``: Number of labor market matching rounds
+- ``{max_H}``: Number of credit market matching rounds
 
 
 Planning-Phase Pricing (Alternative)
@@ -199,8 +199,8 @@ Planning-Phase Pricing (Alternative)
 BAM Engine provides an alternative pair of pricing events that run during the
 planning phase instead of the production phase:
 
-- ``firms_plan_breakeven_price`` — Breakeven from previous period's costs / desired production
-- ``firms_plan_price`` — Price adjustment with breakeven floor
+- ``firms_plan_breakeven_price``: Breakeven from previous period's costs / desired production
+- ``firms_plan_price``: Price adjustment with breakeven floor
 
 These are **mutually exclusive** with the production-phase pair
 (``firms_calc_breakeven_price``, ``firms_adjust_price``). The default pipeline
@@ -210,7 +210,7 @@ custom pipeline that moves the pricing events:
 .. code-block:: yaml
 
    events:
-     # Planning — no pricing events
+     # Planning (no pricing events)
      - firms_decide_desired_production
      - firms_decide_desired_labor
      - firms_decide_vacancies
@@ -218,7 +218,7 @@ custom pipeline that moves the pricing events:
 
      # ... labor and credit market phases ...
 
-     # Production — pricing moved here
+     # Production (pricing moved here)
      - firms_pay_wages
      - workers_receive_wage
      - firms_calc_breakeven_price
@@ -254,7 +254,7 @@ Tips
   topological sorting. The execution order is a core part of the model
   specification.
 - **Hook activation is explicit**: Always call ``sim.use_events()`` after
-  init — declaring ``@event(after=...)`` alone does nothing.
+  init; declaring ``@event(after=...)`` alone does nothing.
 - **Modify before running**: Pipeline changes should happen between
   ``Simulation.init()`` and ``sim.run()``, not during execution.
 - **Batch matching**: Labor and credit markets use vectorized batch

@@ -69,7 +69,7 @@ In dict form, the following keys are recognized:
   (all variables) or a list of variable names.
 * **"Economy"**: Treated as a pseudo-role for economy metrics.
 * **"aggregate"**: How to aggregate across agents. Options:
-  ``None`` (default — full per-agent data), ``"mean"``, ``"median"``,
+  ``None`` (default, full per-agent data), ``"mean"``, ``"median"``,
   ``"sum"``, or ``"std"``. Note: ``collect=True`` and list-form
   ``collect`` always aggregate with ``"mean"``.
 
@@ -221,7 +221,7 @@ Export collected data to pandas DataFrames or files for external analysis:
 .. tip::
 
    For long simulations or parameter sweeps, saving to Parquet format is
-   recommended — it is compressed, fast to read, and preserves column types.
+   recommended: it is compressed, fast to read, and preserves column types.
 
 .. seealso::
 

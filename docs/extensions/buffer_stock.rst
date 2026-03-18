@@ -42,7 +42,7 @@ Role Fields
    * - ``prev_income``
      - Previous period's income (used to detect income changes)
    * - ``propensity``
-     - Buffer-stock MPC — may exceed 1.0 when households dissave
+     - Buffer-stock MPC (may exceed 1.0 when households dissave)
 
 
 Events
