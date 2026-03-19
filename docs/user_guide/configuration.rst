@@ -286,7 +286,13 @@ Other
 Logging Configuration
 ---------------------
 
-Control log verbosity globally or per-event:
+Set the global log level with the ``log_level`` parameter:
+
+.. code-block:: python
+
+   sim = bam.Simulation.init(log_level="WARNING", seed=42)
+
+For advanced configuration (per-event levels, file output), use the ``logging`` dict:
 
 .. code-block:: python
 
@@ -302,6 +308,11 @@ Control log verbosity globally or per-event:
        seed=42,
    )
 
+.. note::
+
+   ``log_level`` and ``logging`` cannot be used together. Use ``log_level`` for
+   simple level setting, or ``logging`` for advanced configuration.
+
 Available log levels (from most to least verbose):
 
 - ``TRACE`` (5): Very detailed internal state
@@ -313,7 +324,7 @@ Available log levels (from most to least verbose):
 
 .. tip::
 
-   Setting ``default_level`` to ``"ERROR"`` or ``"WARNING"`` for production runs
+   Setting ``log_level`` to ``"ERROR"`` or ``"WARNING"`` for production runs
    provides a 10-20% speedup by avoiding log message formatting overhead.
 
 YAML logging configuration:

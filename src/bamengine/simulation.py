@@ -514,7 +514,8 @@ class Simulation:
             - n_banks : int (default: 10)
             - seed : int or None (default: 0)
             - pipeline_path : str or None (default: None)
-            - logging : dict (default: {"default_level": "INFO"})
+            - log_level : str, e.g. "WARNING" (simple global log level)
+            - logging : dict (advanced per-event/file configuration)
             See config/defaults.yml for all parameters.
 
         Returns
@@ -562,7 +563,11 @@ class Simulation:
         ...     pipeline_path="custom_pipeline.yml", seed=42
         ... )  # doctest: +SKIP
 
-        Configure logging:
+        Configure log level:
+
+        >>> sim = bam.Simulation.init(log_level="WARNING", seed=42)
+
+        Advanced logging (per-event levels, file output):
 
         >>> log_config = {
         ...     "default_level": "DEBUG",
@@ -572,14 +577,6 @@ class Simulation:
         ...     },
         ... }
         >>> sim = bam.Simulation.init(logging=log_config, seed=42)
-
-        Configure logging with file output:
-
-        >>> log_config = {
-        ...     "default_level": "DEBUG",
-        ...     "log_file": "simulation.log",
-        ... }
-        >>> sim = bam.Simulation.init(logging=log_config, seed=42)  # doctest: +SKIP
 
         Notes
         -----
@@ -598,6 +595,16 @@ class Simulation:
         cfg_dict: dict[str, Any] = _package_defaults()
         cfg_dict.update(_read_yaml(config))
         cfg_dict.update(overrides)
+
+        # log_level sugar: convert to logging dict
+        if "log_level" in overrides:
+            if "logging" in overrides:
+                raise ValueError(
+                    "Cannot specify both 'log_level' and 'logging'. "
+                    "Use 'log_level' for simple level setting, or 'logging' "
+                    "for advanced configuration (per-event levels, log files)."
+                )
+            cfg_dict["logging"] = {"default_level": cfg_dict.pop("log_level")}
 
         # Validate configuration (centralized validation)
         from bamengine.config import ConfigValidator
@@ -942,6 +949,7 @@ class Simulation:
             "savings_init",
             "equity_base_init",
             "pipeline_path",
+            "log_level",
             "logging",
             "min_wage",
             "min_wage_rev_period",

@@ -17,7 +17,7 @@ def profile_full_simulation():
         n_firms=100,
         n_households=500,
         seed=42,
-        logging={"default_level": "ERROR"},
+        log_level="ERROR",
     )
     sim.run(1000, collect=False)
 

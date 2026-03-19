@@ -34,7 +34,7 @@ For production runs, disable verbose logging to improve performance:
 
 .. code-block:: python
 
-   sim = bam.Simulation.init(logging={"default_level": "ERROR"}, seed=42)
+   sim = bam.Simulation.init(log_level="ERROR", seed=42)
 
 This can provide 10-20% speedup for long simulations by avoiding log message
 formatting overhead.

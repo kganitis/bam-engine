@@ -203,6 +203,61 @@ logging:
             Path(yaml_path).unlink()
 
 
+class TestLogLevelKwarg:
+    """Test the log_level convenience kwarg."""
+
+    def test_log_level_sets_default_level(self):
+        """log_level='WARNING' should set the bamengine logger to WARNING."""
+        Simulation.init(
+            n_firms=10, n_households=10, n_banks=2, seed=42, log_level="WARNING"
+        )
+
+        logger = logging.getLogger("bamengine")
+        assert logger.level == logging.WARNING
+
+    def test_log_level_debug(self):
+        """log_level='DEBUG' should set DEBUG level."""
+        Simulation.init(
+            n_firms=10, n_households=10, n_banks=2, seed=42, log_level="DEBUG"
+        )
+
+        logger = logging.getLogger("bamengine")
+        assert logger.level == logging.DEBUG
+
+    def test_log_level_trace(self):
+        """log_level='TRACE' should set TRACE level."""
+        Simulation.init(
+            n_firms=10, n_households=10, n_banks=2, seed=42, log_level="TRACE"
+        )
+
+        logger = logging.getLogger("bamengine")
+        assert logger.level == TRACE
+
+    def test_log_level_and_logging_raises(self):
+        """Passing both log_level and logging should raise ValueError."""
+        import pytest
+
+        with pytest.raises(ValueError, match="Cannot specify both"):
+            Simulation.init(
+                n_firms=10,
+                n_households=10,
+                n_banks=2,
+                seed=42,
+                log_level="WARNING",
+                logging={"default_level": "DEBUG"},
+            )
+
+    def test_logging_dict_still_works(self):
+        """The logging dict param should continue to work."""
+        log_config = {"default_level": "ERROR", "events": {}}
+        Simulation.init(
+            n_firms=10, n_households=10, n_banks=2, logging=log_config, seed=42
+        )
+
+        logger = logging.getLogger("bamengine")
+        assert logger.level == logging.ERROR
+
+
 class TestEventGetLogger:
     """Test Event.get_logger() method."""
 

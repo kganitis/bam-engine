@@ -31,17 +31,13 @@ pytest.importorskip("pytest_benchmark")
 @pytest.fixture
 def sim():
     """Create a small simulation for benchmarking."""
-    return Simulation.init(
-        n_firms=50, n_households=250, seed=42, logging={"default_level": "ERROR"}
-    )
+    return Simulation.init(n_firms=50, n_households=250, seed=42, log_level="ERROR")
 
 
 @pytest.fixture
 def sim_steady_state():
     """Create a simulation in steady state for event benchmarks."""
-    sim = Simulation.init(
-        n_firms=50, n_households=250, seed=42, logging={"default_level": "ERROR"}
-    )
+    sim = Simulation.init(n_firms=50, n_households=250, seed=42, log_level="ERROR")
     sim.run(10, collect=False)  # Reach steady state
     return sim
 
@@ -67,7 +63,7 @@ def test_init_small(benchmark):
         n_firms=50,
         n_households=250,
         seed=42,
-        logging={"default_level": "ERROR"},
+        log_level="ERROR",
     )
 
 
@@ -79,7 +75,7 @@ def test_init_medium(benchmark):
         n_firms=100,
         n_households=500,
         seed=42,
-        logging={"default_level": "ERROR"},
+        log_level="ERROR",
     )
 
 

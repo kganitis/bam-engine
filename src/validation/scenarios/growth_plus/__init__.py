@@ -1586,9 +1586,7 @@ def run_scenario(
     from extensions.rnd import RND_CONFIG, RND_EVENTS, RnD
 
     # Initialize simulation with Growth+ default parameters
-    sim = bam.Simulation.init(
-        n_periods=n_periods, seed=seed, logging={"default_level": "ERROR"}
-    )
+    sim = bam.Simulation.init(n_periods=n_periods, seed=seed, log_level="ERROR")
 
     # Attach custom RnD role, events, and config
     rnd = sim.use_role(RnD)

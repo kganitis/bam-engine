@@ -26,7 +26,7 @@ def small_sim():
         sigma_min=0.0,
         sigma_max=0.1,
         sigma_decay=-1.0,
-        logging={"default_level": "ERROR"},
+        log_level="ERROR",
     )
     sim.use_role(RnD)
     sim.use_events(*RND_EVENTS)
@@ -266,7 +266,7 @@ class TestFirmsApplyProductivityGrowth:
                 sigma_min=0.0,
                 sigma_max=0.1,
                 sigma_decay=-1.0,
-                logging={"default_level": "ERROR"},
+                log_level="ERROR",
             )
             sim.use_role(RnD)
             sim.use_events(*RND_EVENTS)

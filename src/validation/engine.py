@@ -233,7 +233,7 @@ def validate(
         **scenario.default_config,
         "n_periods": n_periods,
         "seed": seed,
-        "logging": {"default_level": "ERROR"},
+        "log_level": "ERROR",
         **config_overrides,
     }
 

@@ -25,7 +25,7 @@ def rnd_sim():
         sigma_min=0.0,
         sigma_max=0.1,
         sigma_decay=-1.0,
-        logging={"default_level": "ERROR"},
+        log_level="ERROR",
     )
     sim.use_role(RnD)
     sim.use_events(*RND_EVENTS)
@@ -47,7 +47,7 @@ class TestRnDIntegration:
             sigma_min=0.0,
             sigma_max=0.1,
             sigma_decay=-1.0,
-            logging={"default_level": "ERROR"},
+            log_level="ERROR",
         )
         rnd = sim.use_role(RnD)
         sim.use_events(*RND_EVENTS)
@@ -90,7 +90,7 @@ class TestRnDIntegration:
             sigma_min=0.0,
             sigma_max=0.1,
             sigma_decay=-1.0,
-            logging={"default_level": "ERROR"},
+            log_level="ERROR",
         )
         sim.use_role(RnD)
         sim.use_events(*RND_EVENTS)
@@ -117,7 +117,7 @@ class TestRnDIntegration:
                 sigma_min=0.0,
                 sigma_max=0.1,
                 sigma_decay=-1.0,
-                logging={"default_level": "ERROR"},
+                log_level="ERROR",
             )
             sim.use_role(RnD)
             sim.use_events(*RND_EVENTS)
@@ -141,7 +141,7 @@ class TestRnDIntegration:
             sigma_max=0.1,
             sigma_decay=-1.0,
             buffer_stock_h=1.0,
-            logging={"default_level": "ERROR"},
+            log_level="ERROR",
         )
         sim.use_role(RnD)
         sim.use_role(BufferStock, n_agents=sim.n_households)
@@ -164,7 +164,7 @@ class TestRnDIntegration:
             n_households=50,
             n_banks=3,
             seed=42,
-            logging={"default_level": "ERROR"},
+            log_level="ERROR",
         )
         sim.use_role(RnD)
         sim.use_role(BufferStock, n_agents=sim.n_households)
@@ -197,7 +197,7 @@ class TestRnDIntegration:
             seed=42,
             buffer_stock_h=3.0,  # Override default of 2.0
             sigma_max=0.05,  # Override default of 0.1
-            logging={"default_level": "ERROR"},
+            log_level="ERROR",
         )
         sim.use_role(RnD)
         sim.use_role(BufferStock, n_agents=sim.n_households)

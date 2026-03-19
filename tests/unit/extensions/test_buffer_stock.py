@@ -23,7 +23,7 @@ def small_sim():
         n_banks=2,
         seed=42,
         buffer_stock_h=1.0,
-        logging={"default_level": "ERROR"},
+        log_level="ERROR",
     )
     sim.use_role(BufferStock, n_agents=sim.n_households)
     sim.use_events(*BUFFER_STOCK_EVENTS)

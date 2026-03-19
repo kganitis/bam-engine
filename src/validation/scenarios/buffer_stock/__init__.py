@@ -576,7 +576,7 @@ def validate_buffer_stock(
         **DEFAULT_CONFIG,
         "n_periods": n_periods,
         "seed": seed,
-        "logging": {"default_level": "ERROR"},
+        "log_level": "ERROR",
         **config_overrides,
     }
 

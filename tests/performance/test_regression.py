@@ -69,7 +69,7 @@ def benchmark_configuration(n_firms, n_households, n_periods, seed=42):
         n_firms=n_firms,
         n_households=n_households,
         seed=seed,
-        logging={"default_level": "ERROR"},  # Disable logging for performance tests
+        log_level="ERROR",  # Disable logging for performance tests
     )
 
     start = time.perf_counter()

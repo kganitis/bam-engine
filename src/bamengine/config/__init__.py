@@ -42,7 +42,11 @@ Custom pipeline:
 
 >>> sim = be.Simulation.init(n_firms=100, pipeline_path="custom_pipeline.yml", seed=42)
 
-Custom logging:
+Set log level:
+
+>>> sim = be.Simulation.init(log_level="WARNING")
+
+Advanced logging (per-event levels):
 
 >>> log_config = {
 ...     "default_level": "DEBUG",

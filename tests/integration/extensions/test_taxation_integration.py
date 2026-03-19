@@ -23,7 +23,7 @@ def taxation_sim():
         n_banks=3,
         seed=42,
         profit_tax_rate=0.5,
-        logging={"default_level": "ERROR"},
+        log_level="ERROR",
     )
     sim.use_events(*TAXATION_EVENTS)
     sim.use_config(TAXATION_CONFIG)
@@ -62,7 +62,7 @@ class TestTaxationIntegration:
             n_banks=3,
             seed=42,
             profit_tax_rate=0.9,
-            logging={"default_level": "ERROR"},
+            log_level="ERROR",
         )
         sim_tax.use_events(*TAXATION_EVENTS)
         sim_tax.use_config(TAXATION_CONFIG)
@@ -76,7 +76,7 @@ class TestTaxationIntegration:
             n_banks=3,
             seed=42,
             profit_tax_rate=0.0,
-            logging={"default_level": "ERROR"},
+            log_level="ERROR",
         )
         sim_notax.use_events(*TAXATION_EVENTS)
         sim_notax.use_config(TAXATION_CONFIG)
@@ -98,7 +98,7 @@ class TestTaxationIntegration:
                 n_banks=3,
                 seed=42,
                 profit_tax_rate=0.5,
-                logging={"default_level": "ERROR"},
+                log_level="ERROR",
             )
             sim.use_events(*TAXATION_EVENTS)
             sim.use_config(TAXATION_CONFIG)
@@ -122,7 +122,7 @@ class TestTaxationIntegration:
             sigma_min=0.0,
             sigma_max=0.1,
             sigma_decay=-1.0,
-            logging={"default_level": "ERROR"},
+            log_level="ERROR",
         )
         sim.use_role(RnD)
         sim.use_events(*RND_EVENTS, *TAXATION_EVENTS)
@@ -143,7 +143,7 @@ class TestTaxationIntegration:
             seed=42,
             profit_tax_rate=0.5,
             buffer_stock_h=1.0,
-            logging={"default_level": "ERROR"},
+            log_level="ERROR",
         )
         sim.use_role(BufferStock, n_agents=sim.n_households)
         sim.use_events(*BUFFER_STOCK_EVENTS, *TAXATION_EVENTS)
@@ -167,7 +167,7 @@ class TestTaxationIntegration:
             n_households=50,
             n_banks=3,
             seed=42,
-            logging={"default_level": "ERROR"},
+            log_level="ERROR",
         )
         sim.use_role(RnD)
         sim.use_role(BufferStock, n_agents=sim.n_households)
@@ -196,7 +196,7 @@ class TestTaxationIntegration:
             n_banks=3,
             seed=42,
             profit_tax_rate=0.9,  # Override default of 0.0
-            logging={"default_level": "ERROR"},
+            log_level="ERROR",
         )
         sim.use_events(*TAXATION_EVENTS)
         sim.use_config(TAXATION_CONFIG)

@@ -569,7 +569,7 @@ def _run_seed(
     sim = bam.Simulation.init(
         seed=seed,
         n_periods=n_periods,
-        logging={"default_level": "ERROR"},
+        log_level="ERROR",
         **config,
     )
     if setup_hook is not None:
