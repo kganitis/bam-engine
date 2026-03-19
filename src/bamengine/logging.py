@@ -24,9 +24,13 @@ Use logger in events:
 >>> logger.debug("Detailed debug info")
 >>> logger.trace("Very verbose output")
 
-Configure per-event log levels:
+Set log level:
 
 >>> import bamengine as be
+>>> sim = be.Simulation.init(log_level="WARNING")
+
+Configure per-event log levels (advanced):
+
 >>> log_config = {
 ...     "default_level": "INFO",
 ...     "events": {"firms_adjust_price": "DEBUG", "labor_market_round": "WARNING"},

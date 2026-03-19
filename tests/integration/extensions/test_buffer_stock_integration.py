@@ -23,7 +23,7 @@ def buffer_stock_sim():
         n_banks=3,
         seed=42,
         buffer_stock_h=1.0,
-        logging={"default_level": "ERROR"},
+        log_level="ERROR",
     )
     sim.use_role(BufferStock, n_agents=sim.n_households)
     sim.use_events(*BUFFER_STOCK_EVENTS)
@@ -43,7 +43,7 @@ class TestBufferStockIntegration:
             n_banks=2,
             seed=0,
             buffer_stock_h=1.0,
-            logging={"default_level": "ERROR"},
+            log_level="ERROR",
         )
         buf = sim.use_role(BufferStock, n_agents=sim.n_households)
         sim.use_events(*BUFFER_STOCK_EVENTS)
@@ -88,7 +88,7 @@ class TestBufferStockIntegration:
                 n_banks=3,
                 seed=42,
                 buffer_stock_h=1.0,
-                logging={"default_level": "ERROR"},
+                log_level="ERROR",
             )
             sim.use_role(BufferStock, n_agents=sim.n_households)
             sim.use_events(*BUFFER_STOCK_EVENTS)
@@ -112,7 +112,7 @@ class TestBufferStockIntegration:
             sigma_min=0.0,
             sigma_max=0.1,
             sigma_decay=-1.0,
-            logging={"default_level": "ERROR"},
+            log_level="ERROR",
         )
         sim.use_role(RnD)
         sim.use_role(BufferStock, n_agents=sim.n_households)
@@ -135,7 +135,7 @@ class TestBufferStockIntegration:
             n_households=50,
             n_banks=3,
             seed=42,
-            logging={"default_level": "ERROR"},
+            log_level="ERROR",
         )
         sim.use_role(RnD)
         sim.use_role(BufferStock, n_agents=sim.n_households)
@@ -168,7 +168,7 @@ class TestBufferStockIntegration:
             seed=42,
             buffer_stock_h=3.0,  # Override default of 2.0
             sigma_max=0.05,  # Override default of 0.1
-            logging={"default_level": "ERROR"},
+            log_level="ERROR",
         )
         sim.use_role(RnD)
         sim.use_role(BufferStock, n_agents=sim.n_households)

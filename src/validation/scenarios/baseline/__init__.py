@@ -621,7 +621,7 @@ def run_scenario(
     sim = bam.Simulation.init(
         n_periods=n_periods,
         seed=seed,
-        logging={"default_level": "ERROR"},
+        log_level="ERROR",
     )
 
     print("Initialized baseline scenario with:")

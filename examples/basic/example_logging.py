@@ -57,14 +57,14 @@ print(f"  TRACE:    {logging.TRACE}")
 # Setting Global Log Level
 # ------------------------
 #
-# Configure logging via the ``logging`` parameter at initialization.
+# Configure logging via the ``log_level`` parameter at initialization.
 
 # Set to WARNING to reduce output (only warnings and above)
 sim_quiet = bam.Simulation.init(
     n_firms=50,
     n_households=250,
     seed=42,
-    logging={"default_level": "WARNING"},
+    log_level="WARNING",
 )
 
 print("\nRunning with WARNING level (quiet mode)...")
@@ -76,7 +76,7 @@ sim_debug = bam.Simulation.init(
     n_firms=50,
     n_households=250,
     seed=42,
-    logging={"default_level": "DEBUG"},
+    log_level="DEBUG",
 )
 
 print("\nRunning with DEBUG level (verbose mode)...")

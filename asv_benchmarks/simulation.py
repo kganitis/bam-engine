@@ -33,7 +33,7 @@ class SimulationSuite:
             n_households=cfg["n_households"],
             n_banks=cfg["n_banks"],
             seed=42,
-            logging={"default_level": "ERROR"},
+            log_level="ERROR",
         )
 
     def time_simulation_100_periods(self, config):
@@ -55,7 +55,7 @@ class PipelineSuite:
             n_households=500,
             n_banks=10,
             seed=42,
-            logging={"default_level": "ERROR"},
+            log_level="ERROR",
         )
 
     def time_single_step(self):
@@ -76,7 +76,7 @@ class MemorySuite:
             n_households=n_firms * 5,
             n_banks=max(2, n_firms // 10),
             seed=42,
-            logging={"default_level": "ERROR"},
+            log_level="ERROR",
         )
         return sim
 
@@ -87,7 +87,7 @@ class MemorySuite:
             n_households=n_firms * 5,
             n_banks=max(2, n_firms // 10),
             seed=42,
-            logging={"default_level": "ERROR"},
+            log_level="ERROR",
         )
         sim.run(n_periods=100, collect=False)
 
@@ -107,7 +107,7 @@ class CriticalEventSuite:
             n_households=500,
             n_banks=10,
             seed=42,
-            logging={"default_level": "ERROR"},
+            log_level="ERROR",
         )
         # Run a few periods to reach steady state
         self.sim.run(10, collect=False)
@@ -155,7 +155,7 @@ class InitSuite:
             n_households=n_firms * 5,
             n_banks=max(2, n_firms // 10),
             seed=42,
-            logging={"default_level": "ERROR"},
+            log_level="ERROR",
         )
 
 
@@ -224,7 +224,7 @@ class ScalingSuite:
             n_households=n_firms * 5,
             n_banks=max(2, n_firms // 10),
             seed=42,
-            logging={"default_level": "ERROR"},
+            log_level="ERROR",
         )
 
     def time_100_periods(self, n_firms):
