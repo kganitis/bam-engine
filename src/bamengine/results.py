@@ -958,14 +958,14 @@ class SimulationResults:
             combined[rel_name] = rel_dict
         return combined
 
-    def get_array(
+    def get(
         self,
         name: str,
         variable_name: str,
         aggregate: str | None = None,
     ) -> NDArray[Any] | list[NDArray[Any]]:
         """
-        Get a variable as a numpy array directly.
+        Get a variable as a numpy array.
 
         This provides a convenient way to access simulation data without
         needing to navigate nested dictionaries.
@@ -994,12 +994,10 @@ class SimulationResults:
 
         Examples
         --------
-        >>> productivity = results.get_array("Producer", "labor_productivity")
-        >>> avg_prod = results.get_array(
-        ...     "Producer", "labor_productivity", aggregate="mean"
-        ... )
-        >>> unemployment = results.get_array("Economy", "unemployment_rate")
-        >>> total_principal = results.get_array("LoanBook", "principal")
+        >>> productivity = results.get("Producer", "labor_productivity")
+        >>> avg_prod = results.get("Producer", "labor_productivity", aggregate="mean")
+        >>> unemployment = results.get("Economy", "unemployment_rate")
+        >>> total_principal = results.get("LoanBook", "principal")
         """
         # Handle Economy data specially
         if name == "Economy":
@@ -1060,6 +1058,22 @@ class SimulationResults:
         raise KeyError(
             f"Role '{name}' not found. Available: {available_roles + available_rels}"
         )
+
+    def get_array(
+        self,
+        name: str,
+        variable_name: str,
+        aggregate: str | None = None,
+    ) -> NDArray[Any] | list[NDArray[Any]]:
+        """Deprecated: use ``get()`` instead."""
+        import warnings
+
+        warnings.warn(
+            "get_array() is deprecated, use get() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.get(name, variable_name, aggregate=aggregate)
 
     @property
     def summary(self) -> DataFrame:
@@ -1231,3 +1245,27 @@ class SimulationResults:
         attrs = list(super().__dir__())
         attrs.extend(self._all_names())
         return sorted(set(attrs))
+
+    def available(self) -> list[str]:
+        """List all collected data as 'Name.variable' strings.
+
+        Returns
+        -------
+        list[str]
+            Sorted list of available data keys.
+
+        Examples
+        --------
+        >>> results.available()
+        ['Economy.avg_price', 'Economy.inflation', 'Producer.production', ...]
+        """
+        keys: list[str] = []
+        for role_name, role_vars in self.role_data.items():
+            for var_name in role_vars:
+                keys.append(f"{role_name}.{var_name}")
+        for metric_name in self.economy_data:
+            keys.append(f"Economy.{metric_name}")
+        for rel_name, rel_vars in self.relationship_data.items():
+            for var_name in rel_vars:
+                keys.append(f"{rel_name}.{var_name}")
+        return sorted(keys)
