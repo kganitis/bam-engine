@@ -554,8 +554,8 @@ class TestRunWithRelationshipCollect:
         assert isinstance(df, pd.DataFrame)
         assert "LoanBook.principal" in df.columns
 
-    def test_relationship_get_array(self):
-        """Test get_array method with relationship data."""
+    def test_relationship_get(self):
+        """Test get method with relationship data."""
         sim = Simulation.init(n_firms=10, n_households=50, seed=42)
         loans = sim.get_relationship("LoanBook")
         loans.append_loans_for_lender(
@@ -573,7 +573,7 @@ class TestRunWithRelationshipCollect:
             },
         )
 
-        arr = results.get_array("LoanBook", "principal")
+        arr = results.get("LoanBook", "principal")
         assert isinstance(arr, np.ndarray)
         assert arr.shape == (5,)
 
