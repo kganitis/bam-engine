@@ -45,7 +45,6 @@ ROBUSTNESS_COLLECT_CONFIG: dict[str, Any] = {
     "Employer": ["n_vacancies"],
     "Borrower": ["net_worth"],
     "LoanBook": ["principal", "rate"],
-    "Economy": True,
     "capture_timing": {
         "Worker.wage": "workers_receive_wage",
         "Worker.employed": "firms_run_production",

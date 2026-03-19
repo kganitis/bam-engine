@@ -817,7 +817,6 @@ COLLECT_CONFIG = {
     "Borrower": ["net_worth", "gross_profit", "total_funds"],
     "Consumer": ["income_to_spend"],
     "LoanBook": ["principal", "rate", "source_ids"],
-    "Economy": True,
     "capture_timing": {
         "Worker.wage": "firms_run_production",
         "Worker.employed": "firms_run_production",

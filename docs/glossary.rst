@@ -298,16 +298,17 @@ Framework Concepts
       (e.g., ``ops.divide()`` handles division by zero).
 
    results
-      The ``SimulationResults`` object returned by ``sim.run(collect=True)``.
+      The ``SimulationResults`` object returned by ``sim.run()``.
       Contains per-period role data, economy data, and relationship snapshots.
+      Access via ``results["Producer.production"]`` or ``results.Producer.production``.
 
    economy data
-      Time series of aggregate variables (GDP, unemployment, inflation, etc.)
-      stored in ``results.economy_data``. Accessed by key name.
+      Time series of aggregate variables (GDP, unemployment, inflation, etc.),
+      always collected automatically. Access via ``results["Economy.inflation"]``.
 
    collect flag
-      The ``collect=True`` parameter passed to ``sim.run()`` to enable data
-      recording. Without it, the simulation runs but does not store results.
+      The ``collect`` parameter of ``sim.run()`` (defaults to ``True``).
+      Pass ``collect=False`` to skip data recording for benchmarks or profiling.
 
    extension
       A package that adds new roles, events, and configuration to the base
