@@ -41,11 +41,14 @@ COLLECT_CONFIG = {
     "Producer": ["production", "labor_productivity"],
     "Worker": ["wage", "employed"],
     "Employer": ["n_vacancies"],
-    "Economy": True,
     "capture_timing": {
+        # Capture wages after workers receive them (not stale previous-period value)
         "Worker.wage": "workers_receive_wage",
+        # Capture employment after production (steady-state, before bankruptcy resets)
         "Worker.employed": "firms_run_production",
+        # Capture production after it happens
         "Producer.production": "firms_run_production",
+        # Capture vacancies right after firms decide them
         "Employer.n_vacancies": "firms_decide_vacancies",
     },
 }
@@ -67,12 +70,12 @@ burn_in = 500
 n_periods = sim.n_periods
 
 # Extract raw data from results
-avg_price = results.economy_data["avg_price"]
-production = results.get_array("Producer", "production")
-productivity = results.get_array("Producer", "labor_productivity")
-wages = results.get_array("Worker", "wage")
-employed_arr = results.get_array("Worker", "employed")
-n_vacancies = results.get_array("Employer", "n_vacancies")
+avg_price = results["Economy.avg_price"]
+production = results.get("Producer", "production")
+productivity = results.get("Producer", "labor_productivity")
+wages = results.get("Worker", "wage")
+employed_arr = results.get("Worker", "employed")
+n_vacancies = results.get("Employer", "n_vacancies")
 
 # Compute total production (GDP)
 total_production = ops.sum(production, axis=1)
@@ -83,11 +86,8 @@ unemployment = 1 - ops.mean(employed_arr.astype(float), axis=1)
 # Log GDP
 log_gdp = ops.log(total_production + 1e-10)
 
-# Annual inflation rate (use economy_data if available, else compute)
-inflation = results.economy_data.get(
-    "inflation",
-    np.zeros(n_periods),  # fallback
-)
+# Annual inflation rate
+inflation = results["Economy.inflation"]
 
 # Average wage for employed workers
 employed_wages_sum = ops.sum(ops.where(employed_arr, wages, 0.0), axis=1)

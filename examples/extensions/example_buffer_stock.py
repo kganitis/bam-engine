@@ -188,7 +188,7 @@ attach_extensions(sim)
 print(f"Buffer-stock simulation: {sim.n_firms} firms, {sim.n_households} households")
 print(f"  buffer_stock_h = {sim.buffer_stock_h}")
 
-results = sim.run(collect={"Consumer": ["savings"]})
+results = sim.run()
 print(f"Completed: {results.metadata['runtime_seconds']:.2f}s")
 
 # %%
@@ -205,7 +205,7 @@ print(f"Completed: {results.metadata['runtime_seconds']:.2f}s")
 import numpy as np
 from scipy import stats as sp_stats
 
-savings = results.get_array("Consumer", "savings")
+savings = results["Consumer.savings"]
 last_period_savings = savings[-1]
 
 fit_scale = float(np.median(last_period_savings))

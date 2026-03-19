@@ -163,17 +163,26 @@ COLLECT_CONFIG = {
     "Borrower": ["net_worth"],
     "Consumer": ["income_to_spend"],
     "LoanBook": ["principal", "rate", "source_ids"],
-    "Economy": True,
     "capture_timing": {
+        # Capture wages after workers receive them
         "Worker.wage": "firms_run_production",
+        # Employment status after production completes
         "Worker.employed": "firms_run_production",
+        # Production output after firms run production
         "Producer.production": "firms_run_production",
+        # Productivity after R&D growth is applied (captures the increment)
         "Producer.labor_productivity": "firms_apply_productivity_growth",
+        # Price after planning phase sets it
         "Producer.price": "firms_plan_price",
+        # Inventory after consumers finish purchasing
         "Producer.inventory": "consumers_finalize_purchases",
+        # Vacancies right after firms decide them
         "Employer.n_vacancies": "firms_decide_vacancies",
+        # Net worth after production (before bankruptcy may reset it)
         "Borrower.net_worth": "firms_run_production",
+        # Consumer budget after it's decided
         "Consumer.income_to_spend": "consumers_decide_income_to_spend",
+        # Loan data after credit market matching
         "LoanBook.principal": "credit_market_round",
         "LoanBook.rate": "credit_market_round",
         "LoanBook.source_ids": "credit_market_round",
@@ -195,19 +204,19 @@ n_periods = sim.n_periods
 EPS = 1e-9
 
 # Extract raw data from results
-avg_price = results.economy_data["avg_price"]
-production = results.get_array("Producer", "production")
-productivity = results.get_array("Producer", "labor_productivity")
-prices = results.get_array("Producer", "price")
-inventory = results.get_array("Producer", "inventory")
-wages = results.get_array("Worker", "wage")
-employed_arr = results.get_array("Worker", "employed")
-n_vacancies = results.get_array("Employer", "n_vacancies")
-net_worth = results.get_array("Borrower", "net_worth")
-consumer_budget = results.get_array("Consumer", "income_to_spend")
-loan_principals = results.relationship_data["LoanBook"]["principal"]
-loan_rates = results.relationship_data["LoanBook"]["rate"]
-bankruptcies = np.array(results.economy_data["n_firm_bankruptcies"])
+avg_price = results["Economy.avg_price"]
+production = results.get("Producer", "production")
+productivity = results.get("Producer", "labor_productivity")
+prices = results.get("Producer", "price")
+inventory = results.get("Producer", "inventory")
+wages = results.get("Worker", "wage")
+employed_arr = results.get("Worker", "employed")
+n_vacancies = results.get("Employer", "n_vacancies")
+net_worth = results.get("Borrower", "net_worth")
+consumer_budget = results.get("Consumer", "income_to_spend")
+loan_principals = results["LoanBook.principal"]
+loan_rates = results["LoanBook.rate"]
+bankruptcies = np.array(results["Economy.n_firm_bankruptcies"])
 
 # Compute total production (GDP)
 gdp = ops.sum(production, axis=1)
@@ -219,7 +228,7 @@ unemployment = 1 - ops.mean(employed_arr.astype(float), axis=1)
 log_gdp = ops.log(gdp + 1e-10)
 
 # Inflation
-inflation = results.economy_data.get("inflation", np.zeros(n_periods))
+inflation = results["Economy.inflation"]
 
 # Average wage for employed workers
 employed_wages_sum = ops.sum(ops.where(employed_arr, wages, 0.0), axis=1)

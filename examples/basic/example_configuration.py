@@ -103,6 +103,7 @@ baseline_results = sim_baseline.run(
     n_periods=100,
     collect={
         "Worker": ["employed"],
+        # Capture employment after production (steady-state, before bankruptcy resets)
         "capture_timing": {"Worker.employed": "firms_run_production"},
     },
 )
@@ -119,6 +120,7 @@ lowfric_results = sim_low_friction_run.run(
     n_periods=100,
     collect={
         "Worker": ["employed"],
+        # Capture employment after production (steady-state, before bankruptcy resets)
         "capture_timing": {"Worker.employed": "firms_run_production"},
     },
 )
@@ -139,8 +141,8 @@ def calc_unemployment(employed: np.ndarray) -> np.ndarray:
 import matplotlib.pyplot as plt
 
 # Calculate unemployment rates from Worker.employed data
-baseline_employed = baseline_results.role_data["Worker"]["employed"]
-lowfric_employed = lowfric_results.role_data["Worker"]["employed"]
+baseline_employed = baseline_results["Worker.employed"]
+lowfric_employed = lowfric_results["Worker.employed"]
 
 baseline_unemp = calc_unemployment(baseline_employed) * 100
 lowfric_unemp = calc_unemployment(lowfric_employed) * 100

@@ -207,13 +207,16 @@ COLLECT_CONFIG = {
     "Producer": ["production", "labor_productivity"],
     "Worker": ["wage", "employed"],
     "Employer": ["n_vacancies"],
-    "Economy": True,
     "capture_timing": {
+        # Capture wages after workers receive them (not stale previous-period value)
         "Worker.wage": "workers_receive_wage",
+        # Capture employment after production (steady-state, before bankruptcy resets)
         "Worker.employed": "firms_run_production",
+        # Capture production after it happens
         "Producer.production": "firms_run_production",
-        # Capture productivity *after* R&D growth is applied
+        # Capture productivity after R&D growth is applied (captures the increment)
         "Producer.labor_productivity": "firms_apply_productivity_growth",
+        # Capture vacancies right after firms decide them
         "Employer.n_vacancies": "firms_decide_vacancies",
     },
 }
@@ -238,12 +241,12 @@ def setup_growth_plus(sim):
 
 def extract_series(results, n_periods):
     """Extract macro time series from simulation results."""
-    production = results.get_array("Producer", "production")
-    productivity = results.get_array("Producer", "labor_productivity")
-    wages = results.get_array("Worker", "wage")
-    employed = results.get_array("Worker", "employed")
-    avg_price = results.economy_data["avg_price"]
-    inflation = results.economy_data.get("inflation", np.zeros(n_periods))
+    production = results.get("Producer", "production")
+    productivity = results.get("Producer", "labor_productivity")
+    wages = results.get("Worker", "wage")
+    employed = results.get("Worker", "employed")
+    avg_price = results["Economy.avg_price"]
+    inflation = results["Economy.inflation"]
 
     gdp = ops.sum(production, axis=1)
     unemployment = 1 - ops.mean(employed.astype(float), axis=1)
@@ -367,7 +370,7 @@ from scipy import stats as sp_stats
 sim0 = bam.Simulation.init(seed=0)
 setup_growth_plus(sim0)
 res0 = sim0.run(collect=COLLECT_CONFIG)
-prod0 = res0.get_array("Producer", "production")[-1]
+prod0 = res0.get("Producer", "production")[-1]
 prod0_pos = prod0[prod0 > 0]
 if len(prod0_pos) > 3:
     kurt = sp_stats.kurtosis(prod0_pos)
