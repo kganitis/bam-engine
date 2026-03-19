@@ -7,7 +7,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from bamengine.results import SimulationResults, _DataCollector, _import_pandas
+from bamengine.results import (
+    SimulationResults,
+    _DataCollector,
+    _import_pandas,
+    _Namespace,
+)
 
 
 class TestSimulationResults:
@@ -1480,3 +1485,33 @@ class TestToDataFrameRelationships:
         )
         assert "LoanBook.rate" in df.columns
         assert "LoanBook.principal" not in df.columns
+
+
+class TestNamespace:
+    """Tests for _Namespace proxy."""
+
+    def test_getattr_returns_array(self):
+        data = {"production": np.array([1.0, 2.0]), "price": np.array([3.0, 4.0])}
+        ns = _Namespace(data, "Producer")
+        assert np.array_equal(ns.production, data["production"])
+        assert np.array_equal(ns.price, data["price"])
+
+    def test_getattr_missing_raises(self):
+        data = {"production": np.array([1.0])}
+        ns = _Namespace(data, "Producer")
+        with pytest.raises(AttributeError, match="not found in Producer"):
+            _ = ns.nonexistent
+
+    def test_dir_lists_variables(self):
+        data = {"production": np.array([1.0]), "price": np.array([2.0])}
+        ns = _Namespace(data, "Producer")
+        d = dir(ns)
+        assert "production" in d
+        assert "price" in d
+
+    def test_repr(self):
+        data = {"production": np.array([1.0]), "price": np.array([2.0])}
+        ns = _Namespace(data, "Producer")
+        r = repr(ns)
+        assert "Producer" in r
+        assert "production" in r
