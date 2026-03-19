@@ -1545,6 +1545,54 @@ class Simulation:
         for key, value in config.items():
             self.extra_params.setdefault(key, value)
 
+    def collectables(self) -> list[str]:
+        """List all variables available for collection.
+
+        Returns a sorted list of 'Name.variable' strings based on currently
+        active roles, registered relationships, and economy metrics.
+        Extension roles appear automatically after ``sim.use()``.
+
+        Returns
+        -------
+        list[str]
+            Available collection keys.
+
+        Examples
+        --------
+        >>> sim = Simulation.init(seed=42)
+        >>> "Producer.production" in sim.collectables()
+        True
+        """
+        from bamengine.core.registry import list_relationships
+        from bamengine.results import _DataCollector
+
+        keys: list[str] = []
+
+        # Active roles (instance-level)
+        for role_name, role_instance in self._role_instances.items():
+            fields = getattr(role_instance, "__dataclass_fields__", {})
+            for field_name in fields:
+                if not field_name.startswith("_"):
+                    keys.append(f"{role_name}.{field_name}")
+
+        # Economy metrics
+        for metric in _DataCollector.ECONOMY_METRICS:
+            keys.append(f"Economy.{metric}")
+
+        # Relationships
+        for rel_name in list_relationships():
+            try:
+                rel = self.get_relationship(rel_name)
+                base_fields = {"source_ids", "target_ids", "size", "capacity"}
+                fields = getattr(rel, "__dataclass_fields__", {})
+                for field_name in fields:
+                    if field_name not in base_fields and not field_name.startswith("_"):
+                        keys.append(f"{rel_name}.{field_name}")
+            except KeyError:
+                pass
+
+        return sorted(keys)
+
     def _create_role_instance(self, role_cls: type, n_agents: int) -> Any:
         """
         Create a role instance with zeroed arrays.
