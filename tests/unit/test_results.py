@@ -1601,3 +1601,65 @@ class TestSimulationResultsGetattr:
     def test_private_attrs_not_intercepted(self, results):
         with pytest.raises(AttributeError):
             _ = results._nonexistent
+
+
+class TestSimulationResultsGet:
+    """Tests for results.get() and get_array deprecation."""
+
+    @pytest.fixture
+    def results(self):
+        return SimulationResults(
+            role_data={"Producer": {"production": np.array([[1, 2], [3, 4]])}},
+            economy_data={"inflation": np.array([0.01, 0.02])},
+        )
+
+    def test_get_role_data(self, results):
+        arr = results.get("Producer", "production")
+        assert np.array_equal(arr, np.array([[1, 2], [3, 4]]))
+
+    def test_get_economy_data(self, results):
+        arr = results.get("Economy", "inflation")
+        assert np.array_equal(arr, np.array([0.01, 0.02]))
+
+    def test_get_with_aggregate(self, results):
+        arr = results.get("Producer", "production", aggregate="mean")
+        assert np.array_equal(arr, np.array([1.5, 3.5]))
+
+    def test_get_array_emits_deprecation(self, results):
+        with pytest.warns(DeprecationWarning, match="get_array.*deprecated"):
+            results.get_array("Producer", "production")
+
+
+class TestSimulationResultsAvailable:
+    """Tests for results.available()."""
+
+    def test_available_lists_all(self):
+        results = SimulationResults(
+            role_data={
+                "Producer": {"production": np.array([1]), "price": np.array([2])},
+                "Worker": {"wage": np.array([3])},
+            },
+            economy_data={"inflation": np.array([0.01])},
+            relationship_data={"LoanBook": {"principal": np.array([100])}},
+        )
+        avail = results.available()
+        assert "Economy.inflation" in avail
+        assert "Producer.price" in avail
+        assert "Producer.production" in avail
+        assert "Worker.wage" in avail
+        assert "LoanBook.principal" in avail
+
+    def test_available_sorted(self):
+        results = SimulationResults(
+            role_data={
+                "Worker": {"wage": np.array([1])},
+                "Producer": {"price": np.array([2])},
+            },
+            economy_data={"inflation": np.array([0.01])},
+        )
+        avail = results.available()
+        assert avail == sorted(avail)
+
+    def test_available_empty(self):
+        results = SimulationResults()
+        assert results.available() == []
