@@ -66,7 +66,7 @@ with :meth:`~bamengine.Simulation.step`:
    for period in range(100):
        sim.step()
        # Inspect state after each period
-       print(f"Period {period}: unemployment = {sim.ec.unemp_rate_history[-1]:.2%}")
+       print(f"Period {period}: unemployment = {np.mean(~sim.wrk.employed):.2%}")
 
 This is useful when you need to:
 
@@ -169,7 +169,7 @@ For custom stopping conditions, use single-step execution:
        sim.step()
 
        # Stop if unemployment exceeds threshold
-       if sim.ec.unemp_rate_history[-1] > 0.5:
+       if np.mean(~sim.wrk.employed) > 0.5:
            print(f"High unemployment at period {period}")
            break
 

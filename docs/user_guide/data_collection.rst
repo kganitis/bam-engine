@@ -98,8 +98,8 @@ These are also available directly on the economy object during simulation:
 
    sim.ec.avg_mkt_price  # Current average price (scalar)
    sim.ec.avg_mkt_price_history  # Full time series (array)
-   sim.ec.unemp_rate_history  # Full unemployment time series
    sim.ec.inflation_history  # Full inflation time series
+   np.mean(~sim.wrk.employed)  # Current unemployment rate
 
 Full Per-Agent Data
 -------------------

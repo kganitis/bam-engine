@@ -38,7 +38,6 @@ def _economy_defaults() -> dict[str, Any]:
         min_wage=1.0,
         min_wage_rev_period=4,
         avg_mkt_price_history=[1.0, 1.05, 1.10, 1.15],
-        unemp_rate_history=[0.1, 0.1, 0.1, 0.1],
         inflation_history=[0.0, 0.0, 0.0, 0.0],
     )
 

@@ -14,7 +14,7 @@ Basic simulation with default configuration:
 >>> import bamengine as bam
 >>> sim = bam.Simulation.init(seed=42)
 >>> sim.run(n_periods=100)
->>> unemployment = sim.ec.unemp_rate_history[-1]
+>>> unemployment = np.mean(~sim.wrk.employed)
 >>> print(f"Final unemployment: {unemployment:.2%}")
 
 Custom configuration via kwargs:
@@ -121,7 +121,7 @@ Step through simulation manually:
 >>> for period in range(10):
 ...     sim.step()
 ...     if period % 5 == 0:
-...         unemp = sim.ec.unemp_rate_history[-1]
+...         unemp = np.mean(~sim.wrk.employed)
 ...         print(f"Period {period}: Unemployment = {unemp:.2%}")
 
 Module Organization
