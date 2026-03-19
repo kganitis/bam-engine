@@ -42,7 +42,7 @@ def sim_steady_state():
     sim = Simulation.init(
         n_firms=50, n_households=250, seed=42, logging={"default_level": "ERROR"}
     )
-    sim.run(10)  # Reach steady state
+    sim.run(10, collect=False)  # Reach steady state
     return sim
 
 
@@ -56,7 +56,7 @@ def test_single_step(benchmark, sim):
 @pytest.mark.benchmark(group="core")
 def test_10_periods(benchmark, sim):
     """Benchmark 10 simulation periods."""
-    benchmark(sim.run, n_periods=10)
+    benchmark(sim.run, n_periods=10, collect=False)
 
 
 @pytest.mark.benchmark(group="init")

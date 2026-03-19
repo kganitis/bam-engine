@@ -73,7 +73,7 @@ def benchmark_configuration(n_firms, n_households, n_periods, seed=42):
     )
 
     start = time.perf_counter()
-    sim.run(n_periods)
+    sim.run(n_periods, collect=False)
     elapsed = time.perf_counter() - start
 
     return elapsed

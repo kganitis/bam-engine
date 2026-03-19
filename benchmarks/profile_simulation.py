@@ -19,7 +19,7 @@ def profile_full_simulation():
         seed=42,
         logging={"default_level": "ERROR"},
     )
-    sim.run(1000)
+    sim.run(1000, collect=False)
 
 
 if __name__ == "__main__":

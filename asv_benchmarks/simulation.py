@@ -38,11 +38,11 @@ class SimulationSuite:
 
     def time_simulation_100_periods(self, config):
         """Benchmark 100 simulation periods."""
-        self.sim.run(n_periods=100)
+        self.sim.run(n_periods=100, collect=False)
 
     def time_simulation_1000_periods(self, config):
         """Benchmark 1000 simulation periods (full baseline)."""
-        self.sim.run(n_periods=1000)
+        self.sim.run(n_periods=1000, collect=False)
 
 
 class PipelineSuite:
@@ -89,7 +89,7 @@ class MemorySuite:
             seed=42,
             logging={"default_level": "ERROR"},
         )
-        sim.run(n_periods=100)
+        sim.run(n_periods=100, collect=False)
 
 
 class CriticalEventSuite:
@@ -110,7 +110,7 @@ class CriticalEventSuite:
             logging={"default_level": "ERROR"},
         )
         # Run a few periods to reach steady state
-        self.sim.run(10)
+        self.sim.run(10, collect=False)
 
     # Goods market events
     def time_consumers_decide_firms_to_visit(self):
@@ -229,7 +229,7 @@ class ScalingSuite:
 
     def time_100_periods(self, n_firms):
         """Track how 100-period runtime scales with agent count."""
-        self.sim.run(n_periods=100)
+        self.sim.run(n_periods=100, collect=False)
 
     def time_single_step(self, n_firms):
         """Track how single-step runtime scales."""
