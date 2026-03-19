@@ -253,7 +253,6 @@ BASELINE_COLLECT: dict[str, Any] = {
     "Producer": ["production", "labor_productivity"],
     "Worker": ["wage", "employed"],
     "Employer": ["n_vacancies"],
-    "Economy": True,
     "capture_timing": {
         "Worker.wage": "workers_receive_wage",
         "Worker.employed": "firms_run_production",

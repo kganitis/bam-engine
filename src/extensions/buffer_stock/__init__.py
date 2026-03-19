@@ -132,7 +132,6 @@ BUFFER_STOCK_COLLECT: dict[str, Any] = {
     "BufferStock": ["propensity"],
     "Shareholder": ["dividends"],
     "LoanBook": ["principal", "rate"],
-    "Economy": True,
     "capture_timing": {
         "Worker.wage": "firms_run_production",
         "Worker.employed": "firms_run_production",
