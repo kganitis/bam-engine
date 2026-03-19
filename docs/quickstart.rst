@@ -37,7 +37,7 @@ Once initialized, run the simulation for a number of periods using
 
 .. code-block:: python
 
-   >>> results = sim.run(n_periods=100, collect=True)
+   >>> results = sim.run(n_periods=100)
    >>> import numpy as np
    >>> print(f"Final unemployment rate: {np.mean(~sim.wrk.employed):.2%}")
    Final unemployment rate: 4.20%
@@ -51,14 +51,14 @@ Collecting and analyzing results
 --------------------------------
 
 The :meth:`~bamengine.Simulation.run` method returns a
-:class:`~bamengine.SimulationResults` object containing time series data
-collected during the simulation:
+:class:`~bamengine.SimulationResults` object by default, containing time series
+data collected during the simulation:
 
 .. code-block:: python
 
    >>> results.n_periods
    100
-   >>> results.economy_data["unemployment_rate"]  # array of unemployment rates
+   >>> results["Economy.unemployment_rate"]  # array of unemployment rates
    array([0.052, 0.048, 0.044, ...])
 
 If you have ``pandas`` installed, you can export results to DataFrames for

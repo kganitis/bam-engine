@@ -1,9 +1,9 @@
 Data Collection
 ===============
 
-BAM Engine provides ``SimulationResults`` for collecting simulation data
-during runs. The ``collect`` parameter in ``sim.run()`` controls what data
-is captured and how it's aggregated.
+``sim.run()`` returns a :class:`~bamengine.SimulationResults` object by default,
+containing time series data collected during the simulation. The ``collect``
+parameter controls what data is captured.
 
 Quick Example
 -------------
@@ -12,13 +12,15 @@ Quick Example
 
    import bamengine as bam
 
-   # Run simulation and collect all data (collect=True aggregates with mean)
    sim = bam.Simulation.init(seed=42)
-   results = sim.run(n_periods=100, collect=True)
+   results = sim.run(n_periods=100)
 
-   # Access economy-wide time series
-   unemployment = results.economy_data["unemployment_rate"]
-   inflation = results.economy_data["inflation"]
+   # Access data via bracket syntax
+   unemployment = results["Economy.unemployment_rate"]
+   inflation = results["Economy.inflation"]
+
+   # Or via attribute-style access
+   prices = results.Producer.price  # shape: (n_periods, n_firms)
 
    # Export to pandas DataFrame (requires pandas)
    df = results.to_dataframe()
@@ -32,17 +34,21 @@ The ``collect`` parameter accepts three forms:
 
 .. code-block:: python
 
-   # Collect all roles and economy (aggregated with mean)
-   results = sim.run(n_periods=100, collect=True)
+   # Collect all roles unaggregated + economy metrics (the default)
+   results = sim.run(n_periods=100)
+
+   # Skip collection for benchmarks or when only final state is needed
+   sim.run(n_periods=100, collect=False)
 
 **List** (select roles):
 
 .. code-block:: python
 
    # Collect specific roles with all their variables
+   # Economy metrics are always included automatically
    results = sim.run(
        n_periods=100,
-       collect=["Producer", "Worker", "Economy"],
+       collect=["Producer", "Worker"],
    )
 
 **Dict** (full control):
@@ -50,12 +56,12 @@ The ``collect`` parameter accepts three forms:
 .. code-block:: python
 
    # Specify exactly what to collect (full per-agent data by default)
+   # Economy metrics are always included automatically
    results = sim.run(
        n_periods=100,
        collect={
            "Producer": ["price", "inventory"],  # Specific variables
            "Worker": True,  # All Worker variables
-           "Economy": True,  # All economy metrics
            "aggregate": "mean",  # Explicit aggregation (default: None)
        },
    )
@@ -67,17 +73,38 @@ In dict form, the following keys are recognized:
 
 * **Role names** (e.g., "Producer", "Worker"): Values are either ``True``
   (all variables) or a list of variable names.
-* **"Economy"**: Treated as a pseudo-role for economy metrics.
 * **"aggregate"**: How to aggregate across agents. Options:
   ``None`` (default, full per-agent data), ``"mean"``, ``"median"``,
-  ``"sum"``, or ``"std"``. Note: ``collect=True`` and list-form
-  ``collect`` always aggregate with ``"mean"``.
+  ``"sum"``, or ``"std"``.
+
+Economy metrics (``avg_price``, ``unemployment_rate``, ``inflation``) are
+always collected regardless of the ``collect`` form used.
+
+Discoverability
+---------------
+
+Use ``sim.collectables()`` before running to see all available variables,
+and ``results.available()`` after running to see what was collected:
+
+.. code-block:: python
+
+   sim = bam.Simulation.init(seed=42)
+
+   # Before running: see what can be collected
+   sim.collectables()
+   # ['Consumer.income', 'Economy.avg_price', 'Economy.inflation',
+   #  'Economy.unemployment_rate', 'Producer.price', 'Producer.production', ...]
+
+   results = sim.run(n_periods=100)
+
+   # After running: see what was collected
+   results.available()
+   # ['Consumer.income', 'Economy.avg_price', 'Economy.inflation', ...]
 
 Economy Metrics
 ---------------
 
-The ``"Economy"`` pseudo-role provides access to aggregate time series tracked
-each period:
+Economy metrics are 1D arrays (one value per period) and are always collected:
 
 .. list-table::
    :header-rows: 1
@@ -104,25 +131,25 @@ These are also available directly on the economy object during simulation:
 Full Per-Agent Data
 -------------------
 
-Dict-form ``collect`` returns full per-agent arrays by default:
+By default (``collect=True``), role data is unaggregated: each variable is a
+2D array of shape ``(n_periods, n_agents)``.
 
 .. code-block:: python
 
-   results = sim.run(
-       n_periods=100,
-       collect={
-           "Producer": ["price"],
-       },
-   )
+   results = sim.run(n_periods=100)
 
    # Shape: (n_periods, n_firms)
-   prices = results.role_data["Producer"]["price"]
+   prices = results["Producer.price"]
+   prices = results.Producer.price  # equivalent
+
+   # Aggregate on access if needed
+   avg_prices = results.get("Producer", "price", aggregate="mean")
 
 Relationship Data Collection
 ----------------------------
 
 Relationships (like ``LoanBook``) can also be collected. Unlike roles,
-relationships are **opt-in only** - they are NOT included when using
+relationships are **opt-in only**: they are NOT included when using
 ``collect=True``.
 
 .. code-block:: python
@@ -133,14 +160,13 @@ relationships are **opt-in only** - they are NOT included when using
        collect={
            "Producer": ["price"],
            "LoanBook": ["principal", "rate"],  # Relationship fields
-           "Economy": True,
            "aggregate": "sum",  # Sum across all active loans
        },
    )
 
    # Access relationship data
-   total_principal = results.relationship_data["LoanBook"]["principal"]
-   avg_rate = results.get_array("LoanBook", "rate")
+   total_principal = results["LoanBook.principal"]
+   avg_rate = results.get("LoanBook", "rate")
 
 **Available aggregations for relationships:**
 
@@ -181,20 +207,25 @@ Accessing Results
 
 .. code-block:: python
 
+   # Bracket syntax (flat "Name.variable" key)
+   results["Producer.price"]
+   results["Economy.unemployment_rate"]
+   results["LoanBook.principal"]  # if collected
+
+   # Attribute-style access
+   results.Producer.price
+   results.Economy.unemployment_rate
+
+   # get() method (supports on-the-fly aggregation)
+   results.get("Producer", "price")
+   results.get("Producer", "price", aggregate="mean")
+   results.get("Economy", "unemployment_rate")
+   results.get("LoanBook", "principal")  # if collected
+
    # Direct access to nested dicts
    results.role_data["Producer"]["price"]
    results.economy_data["unemployment_rate"]
    results.relationship_data["LoanBook"]["principal"]  # if collected
-
-   # Cleaner access via get_array()
-   results.get_array("Producer", "price")
-   results.get_array("Economy", "unemployment_rate")
-   results.get_array("LoanBook", "principal")  # if collected
-
-   # Unified access via data property
-   results.data["Producer"]["price"]
-   results.data["Economy"]["unemployment_rate"]
-   results.data["LoanBook"]["principal"]  # if collected
 
    # Get role/relationship as DataFrame
    prod_df = results.get_role_data("Producer")

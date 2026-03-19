@@ -1026,82 +1026,98 @@ class Simulation:
         ----------
         n_periods : int, optional
             Number of periods to simulate. If None (default), uses the n_periods
-            value passed at initialization via `Simulation.init()`.
-        collect : bool, list, or dict, default=False
-            Whether to collect and return simulation results.
+            value passed at initialization via ``Simulation.init()``.
+        collect : bool, list, or dict, default=True
+            Controls data collection during the simulation.
 
-            - False: No collection, returns None (default)
-            - True: Collect all roles and economy with all variables (aggregated
-              with mean)
-            - list[str]: Collect specified roles/economy with all their variables
-              (aggregated with mean).
-              Example: ``["Producer", "Worker", "Economy"]``
-            - dict: Specify variables per role/economy:
-                - Keys: role names ('Producer', 'Worker', etc.) or 'Economy'
-                - Values: ``True`` for all variables, or list of variable names
-                - Optional 'aggregate' key: 'mean', 'median', 'sum', 'std', or
-                  None (default: None — full per-agent data)
+            - True: Collect all roles and economy metrics with unaggregated
+              per-agent data (2D arrays of shape ``(n_periods, n_agents)``).
+              Relationships are opt-in only and not included by default.
+            - False: No collection, returns None. Use this for benchmarks or
+              when only final state is needed.
+            - list[str]: Collect specified roles with all their variables.
+              Economy metrics are always included.
+              Example: ``["Producer", "Worker"]``
+            - dict: Specify variables per role:
+
+              - Keys: role names (``"Producer"``, ``"Worker"``, etc.)
+              - Values: ``True`` for all variables, or list of variable names
+              - Optional ``"aggregate"`` key: ``"mean"``, ``"median"``,
+                ``"sum"``, ``"std"``, or ``None`` (default: ``None``, full
+                per-agent data)
+              - Economy metrics are always collected regardless of dict contents
+
         progress : bool, default=False
-            If True, log period progress egardless of log level.
+            If True, log period progress regardless of log level.
 
         Returns
         -------
         SimulationResults or None
-            Results object if collect is truthy, None otherwise.
+            Results object containing collected data, or None if
+            ``collect=False``.
 
         Examples
         --------
-        Run simulation for 100 periods using default configuration:
+        Run and collect results (the default):
 
         >>> import bamengine as be
         >>> sim = be.Simulation.init(seed=42)
-        >>> sim.run(n_periods=100)
-        >>> unemployment = np.mean(~sim.wrk.employed)
-        >>> print(f"Final unemployment rate: {unemployment:.2%}")
-        Final unemployment rate: 4.32%
+        >>> results = sim.run(n_periods=100)
+
+        Access data via bracket syntax or attribute access:
+
+        >>> results["Economy.unemployment_rate"]
+        array([0.052, 0.048, ...])
+        >>> results.Producer.price  # attribute-style access
+        array([[1.02, 0.98, ...], ...])
+
+        Discover what was collected:
+
+        >>> results.available()
+        ['Economy.avg_price', 'Economy.inflation', 'Producer.price', ...]
+
+        Skip collection for performance-sensitive runs:
+
+        >>> sim.run(n_periods=100, collect=False)
 
         Use n_periods from initialization:
 
         >>> sim = be.Simulation.init(n_periods=50, seed=42)
-        >>> sim.run()  # Runs for 50 periods
-
-        Collect all data with default settings:
-
-        >>> sim = be.Simulation.init(seed=42)
-        >>> results = sim.run(n_periods=100, collect=True)
-        >>> df = results.to_dataframe()
-        >>> results.economy_metrics.plot()
+        >>> results = sim.run()  # Runs for 50 periods
 
         Collect specific roles with all their variables:
 
         >>> results = sim.run(
         ...     n_periods=100,
-        ...     collect=["Producer", "Worker", "Economy"],
+        ...     collect=["Producer", "Worker"],
         ... )
 
-        Custom data collection with specific variables (full per-agent data):
+        Custom data collection with specific variables:
 
         >>> results = sim.run(
         ...     n_periods=100,
         ...     collect={
-        ...         "Producer": ["price", "inventory"],  # Specific variables
-        ...         "Worker": True,  # All Worker variables
-        ...         "Economy": True,  # All economy metrics
+        ...         "Producer": ["price", "inventory"],
+        ...         "Worker": True,
         ...     },
         ... )
 
         Notes
         -----
         - Each period corresponds to one execution of the full event pipeline
-        - State is mutated in-place regardless of collect parameter
-        - Simulation halts early if economy is collapsed (all firms/banks bankrupt)
-        - For step-by-step execution with custom logic, use `step()` instead
-        - Available economy metrics: 'avg_price', 'unemployment_rate', 'inflation'
+        - State is mutated in-place regardless of the ``collect`` parameter
+        - Simulation halts early if the economy collapses (all firms/banks
+          bankrupt); ``results.metadata["actual_periods"]`` records how many
+          periods actually ran
+        - For step-by-step execution with custom logic, use ``step()`` instead
+        - Use ``sim.collectables()`` to list all variables available for
+          collection before running
 
         See Also
         --------
         step : Execute a single simulation period
         init : Initialize simulation with configuration
+        collectables : List all collectable variables
         :class:`~bamengine.SimulationResults` : Container for collected simulation data
         """
         n = n_periods if n_periods is not None else self.n_periods
