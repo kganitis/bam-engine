@@ -394,7 +394,7 @@ class TestGetArray:
         results = SimulationResults(
             role_data={"Producer": {"price": data_2d}},
         )
-        arr = results.get_array("Producer", "price")
+        arr = results.get("Producer", "price")
         np.testing.assert_array_equal(arr, data_2d)
 
     def test_get_array_economy_data(self):
@@ -403,7 +403,7 @@ class TestGetArray:
         results = SimulationResults(
             economy_data={"unemployment_rate": unemp},
         )
-        arr = results.get_array("Economy", "unemployment_rate")
+        arr = results.get("Economy", "unemployment_rate")
         np.testing.assert_array_equal(arr, unemp)
 
     def test_get_array_with_aggregation_mean(self):
@@ -412,7 +412,7 @@ class TestGetArray:
         results = SimulationResults(
             role_data={"Producer": {"price": data_2d}},
         )
-        arr = results.get_array("Producer", "price", aggregate="mean")
+        arr = results.get("Producer", "price", aggregate="mean")
         np.testing.assert_array_almost_equal(arr, [2.0, 5.0])
 
     def test_get_array_with_aggregation_sum(self):
@@ -421,7 +421,7 @@ class TestGetArray:
         results = SimulationResults(
             role_data={"Producer": {"price": data_2d}},
         )
-        arr = results.get_array("Producer", "price", aggregate="sum")
+        arr = results.get("Producer", "price", aggregate="sum")
         np.testing.assert_array_almost_equal(arr, [6.0, 15.0])
 
     def test_get_array_with_aggregation_std(self):
@@ -430,7 +430,7 @@ class TestGetArray:
         results = SimulationResults(
             role_data={"Producer": {"price": data_2d}},
         )
-        arr = results.get_array("Producer", "price", aggregate="std")
+        arr = results.get("Producer", "price", aggregate="std")
         expected = np.std(data_2d, axis=1)
         np.testing.assert_array_almost_equal(arr, expected)
 
@@ -440,7 +440,7 @@ class TestGetArray:
         results = SimulationResults(
             role_data={"Producer": {"price": data_2d}},
         )
-        arr = results.get_array("Producer", "price", aggregate="median")
+        arr = results.get("Producer", "price", aggregate="median")
         np.testing.assert_array_almost_equal(arr, [2.0, 5.0])
 
     def test_get_array_role_not_found(self):
@@ -449,7 +449,7 @@ class TestGetArray:
             role_data={"Producer": {"price": np.array([1.0, 2.0])}},
         )
         with pytest.raises(KeyError, match="Role 'Worker' not found"):
-            results.get_array("Worker", "wage")
+            results.get("Worker", "wage")
 
     def test_get_array_variable_not_found(self):
         """Test get_array raises KeyError for missing variable."""
@@ -457,7 +457,7 @@ class TestGetArray:
             role_data={"Producer": {"price": np.array([1.0, 2.0])}},
         )
         with pytest.raises(KeyError, match="'inventory' not found in Producer"):
-            results.get_array("Producer", "inventory")
+            results.get("Producer", "inventory")
 
     def test_get_array_economy_variable_not_found(self):
         """Test get_array raises KeyError for missing economy variable."""
@@ -465,7 +465,7 @@ class TestGetArray:
             economy_data={"unemployment_rate": np.array([0.05])},
         )
         with pytest.raises(KeyError, match="'inflation' not found in Economy"):
-            results.get_array("Economy", "inflation")
+            results.get("Economy", "inflation")
 
     def test_get_array_invalid_aggregation(self):
         """Test get_array raises ValueError for invalid aggregation."""
@@ -474,7 +474,7 @@ class TestGetArray:
             role_data={"Producer": {"price": data_2d}},
         )
         with pytest.raises(ValueError, match="Unknown aggregation 'invalid'"):
-            results.get_array("Producer", "price", aggregate="invalid")
+            results.get("Producer", "price", aggregate="invalid")
 
     def test_get_array_aggregation_on_1d_data(self):
         """Test get_array with aggregation on 1D data returns as-is."""
@@ -483,7 +483,7 @@ class TestGetArray:
             role_data={"Producer": {"price": data_1d}},
         )
         # Aggregation on 1D data should return the data unchanged
-        arr = results.get_array("Producer", "price", aggregate="mean")
+        arr = results.get("Producer", "price", aggregate="mean")
         np.testing.assert_array_equal(arr, data_1d)
 
 
@@ -1380,7 +1380,7 @@ class TestGetArrayRelationship:
                 "LoanBook": {"principal": np.array([100.0, 150.0, 200.0])}
             }
         )
-        arr = results.get_array("LoanBook", "principal")
+        arr = results.get("LoanBook", "principal")
         np.testing.assert_array_equal(arr, [100.0, 150.0, 200.0])
 
     def test_get_array_relationship_list_data(self):
@@ -1395,7 +1395,7 @@ class TestGetArrayRelationship:
                 }
             }
         )
-        arr = results.get_array("LoanBook", "principal")
+        arr = results.get("LoanBook", "principal")
         assert isinstance(arr, list)
         assert len(arr) == 2
 
@@ -1405,7 +1405,7 @@ class TestGetArrayRelationship:
             relationship_data={"LoanBook": {"principal": np.array([100.0])}}
         )
         with pytest.raises(KeyError, match="'rate' not found in LoanBook"):
-            results.get_array("LoanBook", "rate")
+            results.get("LoanBook", "rate")
 
 
 class TestToDataFrameRelationships:
