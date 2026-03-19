@@ -121,7 +121,7 @@ class TestRnDIntegration:
             )
             sim.use_role(RnD)
             sim.use_events(*RND_EVENTS)
-            sim.run(n_periods=50)
+            sim.run(n_periods=50, collect=False)
             prod = sim.get_role("Producer")
             productivity_runs.append(prod.labor_productivity.copy())
 

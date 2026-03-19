@@ -92,7 +92,7 @@ class TestBufferStockIntegration:
             )
             sim.use_role(BufferStock, n_agents=sim.n_households)
             sim.use_events(*BUFFER_STOCK_EVENTS)
-            sim.run(n_periods=50)
+            sim.run(n_periods=50, collect=False)
             con = sim.get_role("Consumer")
             savings_runs.append(con.savings.copy())
 

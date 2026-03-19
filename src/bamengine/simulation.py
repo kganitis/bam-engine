@@ -1012,7 +1012,7 @@ class Simulation:
     def run(
         self,
         n_periods: int | None = None,
-        collect: bool | list[str] | dict[str, Any] = False,
+        collect: bool | list[str] | dict[str, Any] = True,
         progress: bool = False,
     ) -> SimulationResults | None:
         """
@@ -1118,10 +1118,12 @@ class Simulation:
 
         # Run simulation
         start_time = time.time()
+        actual_periods = 0
         for t in range(int(n)):
             msg = f"{'=' * 40} Period {t + 1} / {n} {'=' * 40}"
             log.log(level=100 if progress else logging.INFO, msg=msg)
             self.step()
+            actual_periods += 1
             if collector:
                 if use_timed_capture:
                     # Callbacks captured at specific events during step()
@@ -1130,6 +1132,8 @@ class Simulation:
                 else:
                     # Non-timed capture: capture all at end of period
                     collector.capture(self)
+            if self.ec.collapsed:
+                break
 
         # Clear callbacks after run (so pipeline can be reused)
         if use_timed_capture:
@@ -1140,6 +1144,7 @@ class Simulation:
             elapsed = time.time() - start_time
             metadata = {
                 "n_periods": int(n),
+                "actual_periods": actual_periods,
                 "n_firms": self.n_firms,
                 "n_households": self.n_households,
                 "n_banks": self.n_banks,
@@ -1207,39 +1212,22 @@ class Simulation:
         """
         from bamengine.results import _DataCollector
 
-        # All available role names
-        all_roles = [
-            "Producer",
-            "Worker",
-            "Employer",
-            "Borrower",
-            "Lender",
-            "Consumer",
-            "Shareholder",
-        ]
-
-        # Default capture timing - there are 2 options (comment/uncomment one)
-        # OPTION 1: Capture data after net worth is updated but
-        # before bankruptcy processing, ensuring accurate data for bankrupt firms
-        # default_capture_after = "firms_update_net_worth"
-        # OPTION 2: Capture data at the very end of the period, but then new spawned
-        # firms will appear with initial values, skewing averages.
         default_capture_after = None
 
         if collect is True:
-            # Default: all roles + Economy with all variables, aggregated
+            # Default: all active roles + Economy, unaggregated
             variables: dict[str, list[str] | Literal[True]] = {
-                role: True for role in all_roles
+                name: True for name in self._role_instances
             }
             variables["Economy"] = True
             return _DataCollector(
                 variables=variables,
-                aggregate="mean",
+                aggregate=None,
                 capture_after=default_capture_after,
             )
 
         if isinstance(collect, list):
-            # List form: specified roles with all their variables
+            # List form: specified roles/relationships with all their variables
             list_vars: dict[str, list[str] | Literal[True]] = {
                 name: True for name in collect if name != "Economy"
             }
@@ -1247,7 +1235,7 @@ class Simulation:
             list_vars["Economy"] = True
             return _DataCollector(
                 variables=list_vars,
-                aggregate="mean",
+                aggregate=None,
                 capture_after=default_capture_after,
             )
 

@@ -757,6 +757,9 @@ class SimulationResults:
                     df = pd.DataFrame({f"{role_name}.{var_name}": data})
                     dfs.append(df)
                 elif aggregate:
+                    if data.ndim > 2:
+                        # Skip 3D+ data — can't aggregate to 1D column
+                        continue
                     # 2D data, aggregate across agents (axis=1)
                     if aggregate == "mean":
                         agg_data = np.mean(data, axis=1)
@@ -772,14 +775,16 @@ class SimulationResults:
                     df = pd.DataFrame({f"{role_name}.{var_name}.{aggregate}": agg_data})
                     dfs.append(df)
                 else:
-                    # 2D data, return all agents
-                    _n_periods, n_agents = data.shape
-                    columns = {
-                        f"{role_name}.{var_name}.{i}": data[:, i]
-                        for i in range(n_agents)
-                    }
-                    df = pd.DataFrame(columns)
-                    dfs.append(df)
+                    if data.ndim == 2:
+                        # 2D data, return all agents
+                        _n_periods, n_agents = data.shape
+                        columns = {
+                            f"{role_name}.{var_name}.{i}": data[:, i]
+                            for i in range(n_agents)
+                        }
+                        df = pd.DataFrame(columns)
+                        dfs.append(df)
+                    # Skip 3D+ data (e.g. job_apps_targets) — not DataFrame-friendly
 
         # Add relationship data
         if relationships is None:
