@@ -81,7 +81,11 @@ import bamengine as bam
 
 # Initialize and run simulation
 sim = bam.Simulation.init(n_firms=100, n_households=500, seed=42)
-results = sim.run(n_periods=100, collect=True)
+results = sim.run(n_periods=100)
+
+# Access results
+results["Economy.inflation"]  # 1D array (n_periods,)
+results.Producer.price  # 2D array (n_periods, n_firms)
 
 # Export to pandas DataFrame
 df = results.to_dataframe()
@@ -91,7 +95,7 @@ from extensions.rnd import RND
 
 sim = bam.Simulation.init(seed=42)
 sim.use(RND)
-results = sim.run(n_periods=1000, collect=True)
+results = sim.run(n_periods=1000)
 ```
 
 See the [Getting Started guide](https://bam-engine.readthedocs.io/en/latest/quickstart.html) for a complete walkthrough.
