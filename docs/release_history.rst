@@ -10,6 +10,19 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 
    Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.
 
+[0.9.1] - 2026-03-19
+---------------------
+
+This patch adds a convenience ``log_level`` parameter to ``Simulation.init()``
+for simpler logging configuration.
+
+Added
+~~~~~
+
+* ``log_level`` keyword argument on ``Simulation.init()``: shorthand for
+  ``logging={"default_level": "..."}``
+  (e.g., ``Simulation.init(seed=42, log_level="WARNING")``).
+
 [0.9.0] - 2026-03-19
 ---------------------
 
