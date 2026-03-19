@@ -591,6 +591,39 @@ class _DataCollector:
         )
 
 
+class _Namespace:
+    """Lightweight read-only proxy for attribute-style access to results data.
+
+    Returned by ``SimulationResults.__getattr__`` for role, economy, and
+    relationship namespaces. Supports tab-completion in IPython/Jupyter.
+    """
+
+    __slots__ = ("_data", "_name")
+
+    def __init__(self, data: dict[str, Any], name: str) -> None:
+        object.__setattr__(self, "_data", data)
+        object.__setattr__(self, "_name", name)
+
+    def __getattr__(self, var_name: str) -> Any:
+        data = object.__getattribute__(self, "_data")
+        if var_name in data:
+            return data[var_name]
+        name = object.__getattribute__(self, "_name")
+        available = sorted(data.keys())
+        raise AttributeError(
+            f"'{var_name}' not found in {name}. Available: {', '.join(available)}"
+        )
+
+    def __dir__(self) -> list[str]:
+        return sorted(object.__getattribute__(self, "_data").keys())
+
+    def __repr__(self) -> str:
+        name = object.__getattribute__(self, "_name")
+        data = object.__getattribute__(self, "_data")
+        vars_str = ", ".join(sorted(data.keys()))
+        return f"Namespace({name}: {vars_str})"
+
+
 @dataclass
 class SimulationResults:
     """
