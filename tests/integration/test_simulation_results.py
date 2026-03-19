@@ -646,3 +646,34 @@ class TestRunWithRelationshipCollect:
 
         repr_str = repr(results)
         assert "LoanBook" in repr_str
+
+
+class TestCollectables:
+    """Tests for sim.collectables()."""
+
+    def test_collectables_lists_roles_and_economy(self):
+        sim = Simulation.init(seed=42)
+        c = sim.collectables()
+        assert "Producer.production" in c
+        assert "Worker.wage" in c
+        assert "Economy.avg_price" in c
+        assert "Economy.inflation" in c
+
+    def test_collectables_includes_relationships(self):
+        sim = Simulation.init(seed=42)
+        c = sim.collectables()
+        assert "LoanBook.principal" in c
+
+    def test_collectables_includes_extension_roles(self):
+        from extensions.rnd import RND
+
+        sim = Simulation.init(seed=42)
+        sim.use(RND)
+        c = sim.collectables()
+        assert "RnD.sigma" in c
+        assert "RnD.rnd_intensity" in c
+
+    def test_collectables_sorted(self):
+        sim = Simulation.init(seed=42)
+        c = sim.collectables()
+        assert c == sorted(c)
