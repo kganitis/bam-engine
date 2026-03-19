@@ -13,10 +13,10 @@
 <p align="center">
   A Python implementation of the BAM (Bottom-Up Adaptive Macroeconomics) model
   from <a href="https://doi.org/10.1007/978-88-470-1971-3"><em>Macroeconomics from the Bottom-up</em></a>
-  (Delli Gatti et al., 2011). Instead of assuming markets reach equilibrium,
-  BAM Engine simulates individual workers, firms, and banks making decisions
-  and interacting across labor, credit, and goods markets, letting
-  macroeconomic patterns emerge from the bottom up.
+  (Delli Gatti et al., 2011). It runs simulations of individual workers, firms, and
+  banks making decisions and interacting in labor, credit and goods markets, letting
+  macroeconomic patterns (growth, unemployment, inflation, business cycles) <b>emerge
+  from the bottom up</b>, instead of assuming them with aggregate equations.
 </p>
 
 <p align="center">
