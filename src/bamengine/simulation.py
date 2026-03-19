@@ -34,7 +34,7 @@ Basic simulation with default configuration:
 >>> import bamengine as bam
 >>> sim = bam.Simulation.init(seed=42)
 >>> sim.run(n_periods=100)
->>> unemployment = sim.ec.unemp_rate_history[-1]
+>>> unemployment = np.mean(~sim.wrk.employed)
 
 Custom configuration via YAML file:
 
@@ -52,9 +52,7 @@ Step-by-step execution with intermediate analysis:
 >>> for period in range(100):
 ...     sim.step()
 ...     if period % 10 == 0:
-...         print(
-...             f"Period {period}: Unemployment = {sim.ec.unemp_rate_history[-1]:.2%}"
-...         )
+...         print(f"Period {period}: Unemployment = {np.mean(~sim.wrk.employed):.2%}")
 """
 
 from __future__ import annotations
@@ -257,7 +255,7 @@ class Simulation:
     >>> import bamengine as bam
     >>> sim = bam.Simulation.init(seed=42)
     >>> sim.run(n_periods=100)
-    >>> unemployment = sim.ec.unemp_rate_history[-1]
+    >>> unemployment = np.mean(~sim.wrk.employed)
     >>> print(f"Final unemployment: {unemployment:.2%}")
     Final unemployment: 0.04%
 
@@ -830,7 +828,6 @@ class Simulation:
         # economy level scalars & time-series
         avg_mkt_price = price.mean()
         avg_mkt_price_history = [float(avg_mkt_price)]
-        unemp_rate_history = [1.0]
         inflation_history = [0.0]
 
         # Wrap into components
@@ -840,7 +837,6 @@ class Simulation:
             min_wage=wage_offer_init * p["min_wage_ratio"],
             min_wage_rev_period=p["min_wage_rev_period"],
             avg_mkt_price_history=avg_mkt_price_history,
-            unemp_rate_history=unemp_rate_history,
             inflation_history=inflation_history,
         )
         prod = Producer(
@@ -1060,7 +1056,7 @@ class Simulation:
         >>> import bamengine as be
         >>> sim = be.Simulation.init(seed=42)
         >>> sim.run(n_periods=100)
-        >>> unemployment = sim.ec.unemp_rate_history[-1]
+        >>> unemployment = np.mean(~sim.wrk.employed)
         >>> print(f"Final unemployment rate: {unemployment:.2%}")
         Final unemployment rate: 4.32%
 
@@ -1297,7 +1293,7 @@ class Simulation:
         >>> for period in range(100):
         ...     sim.step()
         ...     if period % 10 == 0:
-        ...         unemployment = sim.ec.unemp_rate_history[-1]
+        ...         unemployment = np.mean(~sim.wrk.employed)
         ...         print(f"Period {period}: Unemployment = {unemployment:.2%}")
         Period 0: Unemployment = 8.40%
         Period 10: Unemployment = 5.20%

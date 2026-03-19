@@ -24,6 +24,8 @@ If you're new to YAML, start with keyword arguments instead
 import tempfile
 from pathlib import Path
 
+import numpy as np
+
 import bamengine as bam
 
 # Create a sample config file programmatically
@@ -92,9 +94,7 @@ print(f"  Banks: {sim.n_banks}")
 
 # Run a short simulation to verify it works
 sim.run(n_periods=20)
-print(
-    f"\nSimulation completed! Final unemployment: {sim.ec.unemp_rate_history[-1]:.2%}"
-)
+print(f"\nSimulation completed! Final unemployment: {np.mean(~sim.wrk.employed):.2%}")
 
 # %%
 # Configuration Precedence

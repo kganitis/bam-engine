@@ -51,9 +51,6 @@ class Economy:
         Period when min wage was last revised.
     avg_mkt_price_history : Float1D
         Time series of average market prices, shape (t+1,).
-    unemp_rate_history : Float1D
-        Time series of raw unemployment rates, shape (t+1,).
-        Apply rolling mean for smoothing if needed.
     inflation_history : Float1D
         Time series of inflation rates, shape (t+1,).
     exiting_firms : Idx1D
@@ -81,9 +78,6 @@ class Economy:
     >>> sim.run(n_periods=10)
     >>> len(sim.ec.avg_mkt_price_history)
     11
-    >>> sim.ec.unemp_rate_history[-1]  # Latest unemployment rate
-    0.0...
-
     Notes
     -----
     Economy is not a Role - it doesn't inherit from the Role base class
@@ -106,8 +100,6 @@ class Economy:
     # time-series (Python lists for O(1) amortized append)
     avg_mkt_price_history: list[float]
     """Time series of average market prices, length ``t + 1``."""
-    unemp_rate_history: list[float]
-    """Time series of raw unemployment rates, length ``t + 1``."""
     inflation_history: list[float]
     """Time series of inflation rates, length ``t + 1``."""
 

@@ -589,9 +589,10 @@ BAM Engine tracks several economy-wide metrics each period:
 - **Inflation rate**: year-over-year change in average market price
   (:math:`\pi_t = (\bar{P}_t - \bar{P}_{t-4}) / \bar{P}_{t-4}`)
 
-These are stored in ``sim.ec`` (the :class:`~bamengine.economy.Economy` object)
-and accessible as time series via ``sim.ec.avg_mkt_price_history``,
-``sim.ec.unemp_rate_history``, and ``sim.ec.inflation_history``.
+Price and inflation histories are stored in ``sim.ec`` (the :class:`~bamengine.economy.Economy` object)
+and accessible as time series via ``sim.ec.avg_mkt_price_history``
+and ``sim.ec.inflation_history``. Unemployment rate is calculated on-demand
+from ``Worker.employed``: ``np.mean(~sim.wrk.employed)``.
 
 
 Further Reading

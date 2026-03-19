@@ -38,7 +38,8 @@ Once initialized, run the simulation for a number of periods using
 .. code-block:: python
 
    >>> results = sim.run(n_periods=100, collect=True)
-   >>> print(f"Final unemployment rate: {sim.ec.unemp_rate_history[-1]:.2%}")
+   >>> import numpy as np
+   >>> print(f"Final unemployment rate: {np.mean(~sim.wrk.employed):.2%}")
    Final unemployment rate: 4.20%
 
 The simulation executes a sequence of events each period: firms plan production,
@@ -153,8 +154,8 @@ Economy-wide metrics are available through ``sim.ec``:
 
 .. code-block:: python
 
-   >>> sim.ec.avg_mkt_price      # average market price
-   >>> sim.ec.unemp_rate_history # unemployment rate time series
+   >>> sim.ec.avg_mkt_price          # average market price
+   >>> np.mean(~sim.wrk.employed)    # unemployment rate (from Worker.employed)
 
 
 .. _next_steps_quickstart:
