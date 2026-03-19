@@ -367,7 +367,6 @@ COLLECT_CONFIG = {
     "Shareholder": ["dividends"],
     # Shared
     "LoanBook": ["principal", "rate", "source_ids"],
-    "Economy": True,
     "capture_timing": {
         # Growth+ timings
         "Producer.labor_productivity": "firms_apply_productivity_growth",
