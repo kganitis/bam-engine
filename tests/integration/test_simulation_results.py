@@ -142,15 +142,17 @@ class TestRunWithCollect:
             )
             assert results.role_data["Producer"]["price"].shape == (3,)
 
-    def test_run_collect_no_economy(self):
-        """Test collecting without economy by not including Economy key."""
+    def test_collect_dict_always_includes_economy(self):
+        """Economy metrics are always collected, even without 'Economy' key."""
         sim = Simulation.init(n_firms=10, n_households=50, seed=42)
         results = sim.run(
             n_periods=5,
             collect={"Producer": True, "aggregate": "mean"},
         )
-
-        assert results.economy_data == {}
+        # Economy is always collected regardless of dict keys
+        assert "avg_price" in results.economy_data
+        assert "inflation" in results.economy_data
+        assert len(results.economy_data["avg_price"]) == 5
 
     def test_run_collect_mixed_true_and_list(self):
         """Test mixing True and list values in collect dict."""
@@ -178,19 +180,19 @@ class TestRunWithCollect:
         assert "avg_price" in results.economy_data
         assert "inflation" in results.economy_data
 
-    def test_run_collect_specific_economy_metrics(self):
-        """Test collecting specific economy metrics."""
+    def test_run_collect_economy_key_ignored(self):
+        """'Economy' key in collect dict is silently ignored; all metrics collected."""
         sim = Simulation.init(n_firms=10, n_households=50, seed=42)
         results = sim.run(
             n_periods=5,
             collect={
-                "Economy": ["avg_price"],  # Only this metric
+                "Economy": ["avg_price"],  # Ignored, all metrics collected anyway
                 "aggregate": "mean",
             },
         )
-
+        # All economy metrics present regardless of what was specified
         assert "avg_price" in results.economy_data
-        assert "inflation" not in results.economy_data
+        assert "inflation" in results.economy_data
 
     def test_run_collect_config_in_results(self):
         """Test that config is stored in results."""

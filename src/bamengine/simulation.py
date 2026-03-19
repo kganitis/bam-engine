@@ -1241,8 +1241,10 @@ class Simulation:
         if isinstance(collect, list):
             # List form: specified roles with all their variables
             list_vars: dict[str, list[str] | Literal[True]] = {
-                name: True for name in collect
+                name: True for name in collect if name != "Economy"
             }
+            # Economy is always collected
+            list_vars["Economy"] = True
             return _DataCollector(
                 variables=list_vars,
                 aggregate="mean",
@@ -1255,11 +1257,13 @@ class Simulation:
         capture_after = collect.get("capture_after", default_capture_after)
         capture_timing = collect.get("capture_timing")
 
-        # Build variables dict (exclude option keys)
-        option_keys = {"aggregate", "capture_after", "capture_timing"}
+        # Build variables dict (exclude option keys and Economy)
+        option_keys = {"aggregate", "capture_after", "capture_timing", "Economy"}
         dict_vars: dict[str, list[str] | Literal[True]] = {
             k: v for k, v in collect.items() if k not in option_keys
         }
+        # Economy is always collected (user's "Economy" key silently ignored)
+        dict_vars["Economy"] = True
 
         return _DataCollector(
             variables=dict_vars,
