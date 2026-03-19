@@ -1515,3 +1515,89 @@ class TestNamespace:
         r = repr(ns)
         assert "Producer" in r
         assert "production" in r
+
+
+class TestSimulationResultsGetitem:
+    """Tests for results['Role.variable'] access."""
+
+    @pytest.fixture
+    def results(self):
+        return SimulationResults(
+            role_data={"Producer": {"production": np.array([[1, 2], [3, 4]])}},
+            economy_data={"inflation": np.array([0.01, 0.02])},
+            relationship_data={"LoanBook": {"principal": np.array([100, 200])}},
+        )
+
+    def test_role_data(self, results):
+        arr = results["Producer.production"]
+        assert np.array_equal(arr, np.array([[1, 2], [3, 4]]))
+
+    def test_economy_data(self, results):
+        arr = results["Economy.inflation"]
+        assert np.array_equal(arr, np.array([0.01, 0.02]))
+
+    def test_relationship_data(self, results):
+        arr = results["LoanBook.principal"]
+        assert np.array_equal(arr, np.array([100, 200]))
+
+    def test_missing_role_raises(self, results):
+        with pytest.raises(KeyError, match="not found"):
+            results["Worker.wage"]
+
+    def test_missing_variable_raises(self, results):
+        with pytest.raises(KeyError, match="not found in Producer"):
+            results["Producer.nonexistent"]
+
+    def test_no_dot_raises_with_hint(self, results):
+        with pytest.raises(KeyError, match="Use.*format"):
+            results["Producer"]
+
+    def test_economy_missing_variable_raises(self, results):
+        with pytest.raises(KeyError, match="not found in Economy"):
+            results["Economy.gdp"]
+
+
+class TestSimulationResultsGetattr:
+    """Tests for results.Producer.production attribute access."""
+
+    @pytest.fixture
+    def results(self):
+        return SimulationResults(
+            role_data={
+                "Producer": {"production": np.array([1, 2]), "price": np.array([3, 4])},
+            },
+            economy_data={"inflation": np.array([0.01, 0.02])},
+            relationship_data={"LoanBook": {"principal": np.array([100, 200])}},
+        )
+
+    def test_role_attr_returns_namespace(self, results):
+        ns = results.Producer
+        assert isinstance(ns, _Namespace)
+
+    def test_role_attr_variable_access(self, results):
+        assert np.array_equal(results.Producer.production, np.array([1, 2]))
+
+    def test_economy_attr(self, results):
+        assert np.array_equal(results.Economy.inflation, np.array([0.01, 0.02]))
+
+    def test_relationship_attr(self, results):
+        assert np.array_equal(results.LoanBook.principal, np.array([100, 200]))
+
+    def test_missing_role_raises(self, results):
+        with pytest.raises(AttributeError, match="not collected"):
+            _ = results.Worker
+
+    def test_real_attrs_not_intercepted(self, results):
+        assert isinstance(results.role_data, dict)
+        assert isinstance(results.config, dict)
+        assert isinstance(results.metadata, dict)
+
+    def test_dir_lists_roles(self, results):
+        d = dir(results)
+        assert "Producer" in d
+        assert "Economy" in d
+        assert "LoanBook" in d
+
+    def test_private_attrs_not_intercepted(self, results):
+        with pytest.raises(AttributeError):
+            _ = results._nonexistent

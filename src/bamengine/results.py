@@ -1153,3 +1153,81 @@ class SimulationResults:
             f"roles=[{roles_str}], "
             f"relationships=[{rels_str}])"
         )
+
+    def _all_names(self) -> list[str]:
+        """Return sorted list of all available names (roles, Economy, relationships)."""
+        names = sorted(self.role_data.keys())
+        if self.economy_data:
+            names.append("Economy")
+        names.extend(sorted(self.relationship_data.keys()))
+        return names
+
+    def __getitem__(self, key: str) -> Any:
+        """Access data via flat 'Name.variable' key."""
+        if "." not in key:
+            available_fn = getattr(self.__class__, "available", None)
+            available = available_fn(self) if available_fn is not None else []
+            matching = [k for k in available if k.startswith(f"{key}.")]
+            if matching:
+                raise KeyError(
+                    f"Use '{key}.variable_name' format. "
+                    f"Available: {', '.join(matching)}"
+                )
+            raise KeyError(
+                f"'{key}' not found. Use 'Name.variable' format. "
+                f"Available names: {', '.join(self._all_names())}"
+            )
+
+        name, var_name = key.split(".", 1)
+
+        if name in self.role_data:
+            if var_name in self.role_data[name]:
+                return self.role_data[name][var_name]
+            available = sorted(self.role_data[name].keys())
+            raise KeyError(
+                f"'{var_name}' not found in {name}. Available: {', '.join(available)}"
+            )
+
+        if name == "Economy":
+            if var_name in self.economy_data:
+                return self.economy_data[var_name]
+            available = sorted(self.economy_data.keys())
+            raise KeyError(
+                f"'{var_name}' not found in Economy. Available: {', '.join(available)}"
+            )
+
+        if name in self.relationship_data:
+            if var_name in self.relationship_data[name]:
+                return self.relationship_data[name][var_name]
+            available = sorted(self.relationship_data[name].keys())
+            raise KeyError(
+                f"'{var_name}' not found in {name}. Available: {', '.join(available)}"
+            )
+
+        raise KeyError(f"'{name}' not found. Available: {', '.join(self._all_names())}")
+
+    def __getattr__(self, name: str) -> _Namespace:
+        """Attribute-style access to collected data namespaces."""
+        # Guard: don't intercept private attrs or dataclass fields during init
+        if name.startswith("_") or name in self.__dataclass_fields__:
+            raise AttributeError(name)
+
+        if name in self.role_data:
+            return _Namespace(self.role_data[name], name)
+
+        if name == "Economy" and self.economy_data:
+            return _Namespace(self.economy_data, "Economy")
+
+        if name in self.relationship_data:
+            return _Namespace(self.relationship_data[name], name)
+
+        available = self._all_names()
+        raise AttributeError(
+            f"'{name}' was not collected. Available: {', '.join(available)}"
+        )
+
+    def __dir__(self) -> list[str]:
+        """List available attributes including collected data names."""
+        attrs = list(super().__dir__())
+        attrs.extend(self._all_names())
+        return sorted(set(attrs))
