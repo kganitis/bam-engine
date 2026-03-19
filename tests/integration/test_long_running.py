@@ -22,7 +22,7 @@ class TestLongRunningStability:
         )
 
         # Run 100 periods
-        sim.run(n_periods=100)
+        sim.run(n_periods=100, collect=False)
 
         # Economy should not be collapsed
         assert not sim.ec.collapsed, "Economy was collapsed before 100 periods"
@@ -66,7 +66,7 @@ class TestLongRunningStability:
         initial_avg_wage = sim.emp.wage_offer.mean()
 
         # Run 100 periods
-        sim.run(n_periods=100)
+        sim.run(n_periods=100, collect=False)
 
         # Prices should not explode (max 100x growth)
         final_avg_price = sim.ec.avg_mkt_price
@@ -85,7 +85,7 @@ class TestLongRunningStability:
         )
 
         # Run 100 periods
-        sim.run(n_periods=100)
+        sim.run(n_periods=100, collect=False)
 
         # Should still have active firms
         active_firms = (sim.prod.production > 0).sum()
@@ -107,7 +107,7 @@ class TestLongRunningStability:
         )
 
         # Run 100 periods
-        sim.run(n_periods=100)
+        sim.run(n_periods=100, collect=False)
 
         # Average price should be reasonable (0.1 to 10)
         avg_price = sim.ec.avg_mkt_price
@@ -135,7 +135,7 @@ class TestLongRunningStability:
         )
 
         # Run 500 periods
-        sim.run(n_periods=500)
+        sim.run(n_periods=500, collect=False)
 
         # Basic stability checks
         assert not sim.ec.collapsed, "Economy collapsed"
@@ -160,7 +160,7 @@ class TestCumulativeErrors:
         initial_total_equity = sim.lend.equity_base.sum()
 
         # Run for 50 periods
-        sim.run(n_periods=50)
+        sim.run(n_periods=50, collect=False)
 
         # Bank equity should not drift to unreasonable values
         final_total_equity = sim.lend.equity_base.sum()
@@ -209,7 +209,7 @@ class TestStressConditions:
         )
 
         # Run for 50 periods with high shocks
-        sim.run(n_periods=50)
+        sim.run(n_periods=50, collect=False)
 
         # Should still be stable
         assert not sim.ec.collapsed, "Economy collapsed under high shocks"
@@ -227,7 +227,7 @@ class TestStressConditions:
         )
 
         # Run for 50 periods
-        sim.run(n_periods=50)
+        sim.run(n_periods=50, collect=False)
 
         # Should still function (economy not collapsed)
         # Note: With very low frictions, employment may be low but economy survives
@@ -245,7 +245,7 @@ class TestStressConditions:
         )
 
         # Run for 50 periods
-        sim.run(n_periods=50)
+        sim.run(n_periods=50, collect=False)
 
         # Should still function
         assert not sim.ec.collapsed, "Economy collapsed with high frictions"
@@ -272,7 +272,7 @@ class TestMemoryUsage:
         )
 
         # Run for 100 periods
-        sim.run(n_periods=100)
+        sim.run(n_periods=100, collect=False)
 
         # Get final size estimate
         final_size = sum(
@@ -292,13 +292,13 @@ class TestDeterminism:
         """Same seed should produce identical results over 100 periods."""
         # Run simulation 1
         sim1 = Simulation.init(n_firms=50, n_households=250, seed=777)
-        sim1.run(n_periods=100)
+        sim1.run(n_periods=100, collect=False)
         final_production1 = sim1.prod.production.sum()
         final_prices1 = sim1.prod.price.copy()
 
         # Run simulation 2 with same seed
         sim2 = Simulation.init(n_firms=50, n_households=250, seed=777)
-        sim2.run(n_periods=100)
+        sim2.run(n_periods=100, collect=False)
         final_production2 = sim2.prod.production.sum()
         final_prices2 = sim2.prod.price.copy()
 
@@ -323,7 +323,7 @@ class TestExcessLaborFiring:
         )
 
         # Run a few periods to establish employment
-        sim.run(n_periods=10)
+        sim.run(n_periods=10, collect=False)
 
         # Track some firms with workers
         initial_employment = sim.emp.current_labor.copy()
@@ -333,7 +333,7 @@ class TestExcessLaborFiring:
         assert len(firms_with_workers) > 0, "No firms with workers after 10 periods"
 
         # Run more periods - some firms may reduce production and fire workers
-        sim.run(n_periods=20)
+        sim.run(n_periods=20, collect=False)
 
         # Employment accounting should still be consistent
         total_employed = sim.wrk.employed.sum()
@@ -356,10 +356,10 @@ class TestExcessLaborFiring:
         )
 
         # Run for some periods
-        sim.run(n_periods=20)
+        sim.run(n_periods=20, collect=False)
 
         # Run more periods - fired workers should be able to find jobs
-        sim.run(n_periods=30)
+        sim.run(n_periods=30, collect=False)
 
         # Check that some previously fired workers may now be employed
         # (We can't guarantee all get rehired, but the mechanism should work)

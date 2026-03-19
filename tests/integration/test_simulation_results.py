@@ -11,9 +11,9 @@ class TestRunWithCollect:
     """Tests for Simulation.run() with collect parameter."""
 
     def test_run_without_collect_returns_none(self):
-        """Test that run() without collect returns None (backward compatible)."""
+        """Test that run(collect=False) returns None."""
         sim = Simulation.init(n_firms=10, n_households=50, seed=42)
-        result = sim.run(n_periods=5)
+        result = sim.run(n_periods=5, collect=False)
         assert result is None
 
     def test_run_collect_false_returns_none(self):
@@ -64,17 +64,23 @@ class TestRunWithCollect:
     def test_run_collect_true_correct_shapes(self):
         """Test that collected data has correct shapes."""
         n_periods = 10
-        sim = Simulation.init(n_firms=10, n_households=50, seed=42)
+        n_firms = 10
+        n_households = 50
+        sim = Simulation.init(n_firms=n_firms, n_households=n_households, seed=42)
         results = sim.run(n_periods=n_periods, collect=True)
 
-        # With collect=True (aggregate='mean'), role data should be 1D arrays
+        # With collect=True (no aggregation), role data should be at least 2D
+        # (most are 2D, but multi-dimensional fields like job_apps_targets are 3D+)
         for role_name, role_vars in results.role_data.items():
             for var_name, data in role_vars.items():
-                assert data.shape == (n_periods,), (
-                    f"{role_name}.{var_name} has wrong shape: {data.shape}"
+                assert data.ndim >= 2, (
+                    f"{role_name}.{var_name} should be >=2D, got shape {data.shape}"
+                )
+                assert data.shape[0] == n_periods, (
+                    f"{role_name}.{var_name} has wrong period count: {data.shape[0]}"
                 )
 
-        # Economy data should also be 1D
+        # Economy data should still be 1D
         for metric_name, data in results.economy_data.items():
             assert data.shape == (n_periods,), (
                 f"Economy {metric_name} has wrong shape: {data.shape}"
@@ -85,7 +91,7 @@ class TestRunWithCollect:
         sim = Simulation.init(n_firms=10, n_households=50, seed=42)
         results = sim.run(
             n_periods=5,
-            collect=["Producer", "Worker", "Economy"],
+            collect=["Producer", "Worker"],
         )
 
         assert "Producer" in results.role_data

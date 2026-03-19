@@ -102,7 +102,7 @@ class TestTaxationIntegration:
             )
             sim.use_events(*TAXATION_EVENTS)
             sim.use_config(TAXATION_CONFIG)
-            sim.run(n_periods=50)
+            sim.run(n_periods=50, collect=False)
             bor = sim.get_role("Borrower")
             profit_runs.append(bor.net_profit.copy())
 
