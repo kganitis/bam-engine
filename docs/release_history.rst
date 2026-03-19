@@ -10,6 +10,50 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 
    Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.
 
+[0.9.0] - 2026-03-19
+---------------------
+
+This release redesigns the results collection API with intuitive access patterns,
+automatic economy collection, and unaggregated data by default.
+
+Added
+~~~~~
+
+**Results API**
+
+* String-key access: ``results["Producer.production"]``,
+  ``results["Economy.inflation"]``.
+* Attribute access: ``results.Producer.production``,
+  ``results.Economy.inflation``.
+* ``results.get("Producer", "production", aggregate="mean")`` for on-demand
+  aggregation, replacing the deprecated ``get_array()`` method.
+* ``results.available()`` lists all collected data fields.
+* ``sim.collectables()`` lists what data can be collected before calling ``run()``.
+
+Changed
+~~~~~~~
+
+**Results Collection Defaults**
+
+* ``sim.run()`` now returns results by default (``collect=True``).
+* ``collect=True`` and list-form ``collect`` now produce **unaggregated 2D
+  arrays** with shape ``(n_periods, n_agents)`` instead of mean-aggregated 1D
+  arrays. Use ``results.get(..., aggregate="mean")`` for the previous behavior.
+* Economy metrics (average price, inflation, etc.) are always collected automatically
+  when collection is active.
+
+Deprecated
+~~~~~~~~~~
+
+* ``SimulationResults.get_array()`` is deprecated in favor of
+  ``SimulationResults.get()``.
+
+Removed
+~~~~~~~
+
+* Dead ``unemp_rate_history`` field from ``Economy`` (was never updated after
+  the ``CalcUnemploymentRate`` event was removed in v0.5.0).
+
 [0.8.0] - 2026-03-17
 ---------------------
 
