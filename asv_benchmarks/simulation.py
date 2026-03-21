@@ -7,6 +7,35 @@ baselines, solving the CI runner variability issue.
 import bamengine as bam
 
 
+def _run(sim, n_periods):
+    """Run simulation without result collection (backward compatible).
+
+    The ``collect`` parameter was added in v0.1.2. For earlier versions,
+    fall back to plain ``run()`` which had no collection by default.
+    """
+    try:
+        sim.run(n_periods=n_periods, collect=False)
+    except TypeError:
+        sim.run(n_periods=n_periods)
+
+
+def _try_get_event(sim, name):
+    """Look up a pipeline event, returning None if missing."""
+    try:
+        return sim.get_event(name)
+    except KeyError:
+        return None
+
+
+def _require_event(event, name):
+    """Raise NotImplementedError if event was not resolved.
+
+    ASV treats NotImplementedError as "skip this benchmark for this version".
+    """
+    if event is None:
+        raise NotImplementedError(f"Event '{name}' not available in this version")
+
+
 class SimulationSuite:
     """Benchmark suite for full simulation runs."""
 
@@ -27,7 +56,6 @@ class SimulationSuite:
     def setup(self, config):
         """Setup simulation before each benchmark run."""
         cfg = self.configs[config]
-        # Disable logging for performance benchmarks
         self.sim = bam.Simulation.init(
             n_firms=cfg["n_firms"],
             n_households=cfg["n_households"],
@@ -38,11 +66,11 @@ class SimulationSuite:
 
     def time_simulation_100_periods(self, config):
         """Benchmark 100 simulation periods."""
-        self.sim.run(n_periods=100, collect=False)
+        _run(self.sim, 100)
 
     def time_simulation_1000_periods(self, config):
         """Benchmark 1000 simulation periods (full baseline)."""
-        self.sim.run(n_periods=1000, collect=False)
+        _run(self.sim, 1000)
 
 
 class PipelineSuite:
@@ -59,7 +87,7 @@ class PipelineSuite:
         )
 
     def time_single_step(self):
-        """Benchmark a single simulation step (all 39 events)."""
+        """Benchmark a single simulation step (all 37 events)."""
         self.sim.step()
 
 
@@ -89,19 +117,26 @@ class MemorySuite:
             seed=42,
             log_level="ERROR",
         )
-        sim.run(n_periods=100, collect=False)
+        _run(sim, 100)
 
 
 class CriticalEventSuite:
     """Benchmark critical path events (goods/labor/credit markets).
 
     These events are the primary bottlenecks identified in profiling.
+    Individual benchmarks are skipped for versions where the event
+    does not exist (e.g., market round events added in v0.6.0).
     """
 
     timeout = 60
 
     def setup(self):
-        """Setup simulation in steady state."""
+        """Setup simulation in steady state.
+
+        Events are resolved here so the lookup cost is excluded from
+        timed methods. Missing events are stored as None and their
+        benchmarks raise NotImplementedError (ASV skip).
+        """
         self.sim = bam.Simulation.init(
             n_firms=100,
             n_households=500,
@@ -109,36 +144,42 @@ class CriticalEventSuite:
             seed=42,
             log_level="ERROR",
         )
-        # Run a few periods to reach steady state
-        self.sim.run(10, collect=False)
+        _run(self.sim, 10)
+        self._consumers_decide = _try_get_event(
+            self.sim, "consumers_decide_firms_to_visit"
+        )
+        self._goods_round = _try_get_event(self.sim, "goods_market_round")
+        self._workers_decide = _try_get_event(self.sim, "workers_decide_firms_to_apply")
+        self._labor_round = _try_get_event(self.sim, "labor_market_round")
+        self._credit_round = _try_get_event(self.sim, "credit_market_round")
 
     # Goods market events
     def time_consumers_decide_firms_to_visit(self):
         """Benchmark firm selection for shopping."""
-        event = self.sim.get_event("consumers_decide_firms_to_visit")
-        event.execute(self.sim)
+        _require_event(self._consumers_decide, "consumers_decide_firms_to_visit")
+        self._consumers_decide.execute(self.sim)
 
     def time_goods_market_round(self):
         """Benchmark goods market matching (one round)."""
-        event = self.sim.get_event("goods_market_round")
-        event.execute(self.sim)
+        _require_event(self._goods_round, "goods_market_round")
+        self._goods_round.execute(self.sim)
 
     # Labor market events
     def time_workers_decide_firms_to_apply(self):
         """Benchmark firm selection for job applications."""
-        event = self.sim.get_event("workers_decide_firms_to_apply")
-        event.execute(self.sim)
+        _require_event(self._workers_decide, "workers_decide_firms_to_apply")
+        self._workers_decide.execute(self.sim)
 
     def time_labor_market_round(self):
         """Benchmark labor market matching (one round)."""
-        event = self.sim.get_event("labor_market_round")
-        event.execute(self.sim)
+        _require_event(self._labor_round, "labor_market_round")
+        self._labor_round.execute(self.sim)
 
     # Credit market events
     def time_credit_market_round(self):
         """Benchmark credit market matching (one round)."""
-        event = self.sim.get_event("credit_market_round")
-        event.execute(self.sim)
+        _require_event(self._credit_round, "credit_market_round")
+        self._credit_round.execute(self.sim)
 
 
 class InitSuite:
@@ -229,7 +270,7 @@ class ScalingSuite:
 
     def time_100_periods(self, n_firms):
         """Track how 100-period runtime scales with agent count."""
-        self.sim.run(n_periods=100, collect=False)
+        _run(self.sim, 100)
 
     def time_single_step(self, n_firms):
         """Track how single-step runtime scales."""
