@@ -47,7 +47,7 @@ jobs:
         pytest -m "not slow and not regression and not validation"
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v6
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
       with:
         files: ./.coverage_cache/coverage.xml
