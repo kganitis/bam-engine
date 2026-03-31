@@ -353,7 +353,7 @@ def plot_pa_gdp_comparison(
             "PA GDP comparison requires baseline; re-run with include_baseline=True"
         )
 
-    fig, ax = plt.subplots(1, 1, figsize=(12, 5))
+    fig, ax = plt.subplots(1, 1, figsize=(8, 6))
     periods = np.arange(len(log_gdp_on))
     ax.plot(periods, log_gdp_on, "b-", linewidth=1, alpha=0.8, label="PA on")
     ax.plot(
@@ -507,7 +507,7 @@ def plot_entry_comparison(
     ]
     collapse_rates = [vr.collapse_rate for vr in vrs]
 
-    fig, axes = plt.subplots(1, 3, figsize=(14, 5))
+    fig, axes = plt.subplots(1, 3, figsize=(10, 7))
     fig.suptitle(
         "Entry Neutrality: Impact of Profit Taxation (Section 3.10.2)",
         fontsize=13,
