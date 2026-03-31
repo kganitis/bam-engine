@@ -345,16 +345,17 @@ def plot_pa_gdp_comparison(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Use log_gdp from the PA-off seed analysis and baseline for comparison
-    log_gdp_off = pa_result.pa_off_validity.seed_analyses[seed].log_gdp
+    burn_in = pa_result.pa_off_validity.burn_in
+    log_gdp_off = pa_result.pa_off_validity.seed_analyses[seed].log_gdp[burn_in:]
     if pa_result.baseline_validity is not None:
-        log_gdp_on = pa_result.baseline_validity.seed_analyses[seed].log_gdp
+        log_gdp_on = pa_result.baseline_validity.seed_analyses[seed].log_gdp[burn_in:]
     else:
         raise ValueError(
             "PA GDP comparison requires baseline; re-run with include_baseline=True"
         )
 
     fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-    periods = np.arange(len(log_gdp_on))
+    periods = np.arange(burn_in, burn_in + len(log_gdp_on))
     ax.plot(periods, log_gdp_on, "b-", linewidth=1, alpha=0.8, label="PA on")
     ax.plot(
         periods[: len(log_gdp_off)],

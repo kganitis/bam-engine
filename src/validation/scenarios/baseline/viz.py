@@ -22,6 +22,7 @@ import numpy as np
 from scipy.stats import skew
 
 from bamengine import ops
+from validation.scenarios._utils import shade_beyond_extreme
 from validation.scenarios.baseline import BaselineMetrics
 from validation.scoring import STATUS_COLORS, check_range
 
@@ -174,7 +175,6 @@ def visualize_baseline_results(
         bounds["log_gdp"]["normal_min"],
         alpha=0.1,
         color="red",
-        label="Extreme zone",
     )
     ax.axhspan(
         bounds["log_gdp"]["normal_max"],
@@ -207,7 +207,7 @@ def visualize_baseline_results(
     ax.set_ylabel("Log output")
     ax.set_xlabel("t")
     ax.grid(True, linestyle="--", alpha=0.3)
-    ax.legend(loc="upper left", fontsize=7)
+    ax.legend(loc="lower left", fontsize=7)
     # Stats box at lower right to avoid legend overlap
     b = bounds["log_gdp"]
     actual_mean = np.mean(log_gdp)
@@ -225,6 +225,7 @@ def visualize_baseline_results(
         horizontalalignment="right",
         bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
     )
+    shade_beyond_extreme(ax, b["extreme_min"], b["extreme_max"])
 
     # Panel (0,1): Unemployment Rate
     ax = axes[0, 1]
@@ -269,6 +270,11 @@ def visualize_baseline_results(
     ax.grid(True, linestyle="--", alpha=0.3)
     ax.set_ylim(bottom=0)
     add_stats_box(ax, unemployment_pct, "unemployment", is_pct=True)
+    shade_beyond_extreme(
+        ax,
+        bounds["unemployment"]["extreme_min"] * 100,
+        bounds["unemployment"]["extreme_max"] * 100,
+    )
 
     # Panel (1,0): Annual Inflation Rate
     # NOTE: Unlike other panels, inflation shows ALL periods (no burn-in) with x-axis in years,
@@ -319,6 +325,11 @@ def visualize_baseline_results(
     ax.grid(True, linestyle="--", alpha=0.3)
     # Stats box uses full-period data (matching the plot and validation metrics)
     add_stats_box(ax, inflation_full_pct, "inflation", is_pct=True)
+    shade_beyond_extreme(
+        ax,
+        bounds["inflation"]["extreme_min"] * 100,
+        bounds["inflation"]["extreme_max"] * 100,
+    )
 
     # Panel (1,1): Productivity and Real Wage Co-movement (two-line plot)
     ax = axes[1, 1]
@@ -377,6 +388,7 @@ def visualize_baseline_results(
         horizontalalignment="left",
         bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
     )
+    shade_beyond_extreme(ax, b["extreme_min"], b["extreme_max"])
 
     # Bottom 2x2: Macroeconomic curves
     # --------------------------------
