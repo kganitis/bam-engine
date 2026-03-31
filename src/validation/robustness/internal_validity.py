@@ -330,8 +330,34 @@ def _analyze_seed(
 ) -> SeedAnalysis:
     """Compute co-movements, AR fit, and summary stats for one seed."""
     if ts.collapsed:
-        # Return a minimal result for collapsed simulations
+        # Compute basic scalar stats from pre-collapse data when enough
+        # post-burn-in data exists.  This lets entry-experiment figures
+        # show degradation even when most/all seeds collapse.
         n_lags = 2 * max_lag + 1
+        bi = burn_in
+        post_bi_len = len(ts.unemployment) - bi
+
+        if post_bi_len >= 10:
+            unemp_ss = ts.unemployment[bi:]
+            gdp_growth_ss = ts.gdp_growth[max(bi - 1, 0) :]
+            unemployment_mean = float(np.nanmean(unemp_ss))
+            unemployment_std = float(np.nanstd(unemp_ss))
+            inflation_mean = float(np.nanmean(ts.inflation[bi:]))
+            inflation_std = float(np.nanstd(ts.inflation[bi:]))
+            gdp_growth_mean = float(np.nanmean(gdp_growth_ss))
+            gdp_growth_std = float(np.nanstd(gdp_growth_ss))
+            real_wage_mean = float(np.nanmean(ts.real_wage[bi:]))
+            productivity_mean = float(np.nanmean(ts.avg_productivity[bi:]))
+        else:
+            unemployment_mean = np.nan
+            unemployment_std = np.nan
+            inflation_mean = np.nan
+            inflation_std = np.nan
+            gdp_growth_mean = np.nan
+            gdp_growth_std = np.nan
+            real_wage_mean = np.nan
+            productivity_mean = np.nan
+
         return SeedAnalysis(
             seed=ts.seed,
             collapsed=True,
@@ -340,14 +366,14 @@ def _analyze_seed(
             ar_order=ar_order,
             ar_r_squared=0.0,
             irf=np.zeros(irf_periods),
-            unemployment_mean=np.nan,
-            unemployment_std=np.nan,
-            inflation_mean=np.nan,
-            inflation_std=np.nan,
-            gdp_growth_mean=np.nan,
-            gdp_growth_std=np.nan,
-            real_wage_mean=np.nan,
-            productivity_mean=np.nan,
+            unemployment_mean=unemployment_mean,
+            unemployment_std=unemployment_std,
+            inflation_mean=inflation_mean,
+            inflation_std=inflation_std,
+            gdp_growth_mean=gdp_growth_mean,
+            gdp_growth_std=gdp_growth_std,
+            real_wage_mean=real_wage_mean,
+            productivity_mean=productivity_mean,
             phillips_corr=np.nan,
             okun_corr=np.nan,
             beveridge_corr=np.nan,

@@ -174,8 +174,13 @@ def _aggregate_seed_analyses(
 
     stats_dict: dict[str, dict[str, float]] = {}
     for attr_name in stat_fields:
+        # Use all seeds (not just valid) so that collapsed/degenerate
+        # seeds with pre-collapse data contribute to scalar stats.
+        # The NaN filter handles seeds that have no usable data.
         values = [
-            getattr(a, attr_name) for a in valid if not np.isnan(getattr(a, attr_name))
+            getattr(a, attr_name)
+            for a in seed_analyses
+            if not np.isnan(getattr(a, attr_name))
         ]
         if values:
             mean_val = float(np.mean(values))
