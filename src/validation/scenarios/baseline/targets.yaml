@@ -34,10 +34,10 @@ metadata:
     time_series:
       unemployment_rate:
         targets:
-          normal_min: 0.03
-          normal_max: 0.08
-          extreme_min: 0.02
-          extreme_max: 0.12
+          normal_min: 0.02
+          normal_max: 0.12
+          extreme_min: 0.00
+          extreme_max: 0.15
           mean_target: 0.065     # Book Figure 3.2b extracted
 
       inflation_rate:
@@ -50,10 +50,10 @@ metadata:
 
       log_gdp:
         targets:
-          normal_min: 5.438
-          normal_max: 5.491
-          extreme_min: 5.394
-          extreme_max: 5.501
+          normal_min: 5.394
+          normal_max: 5.501
+          extreme_min: 5.359
+          extreme_max: 5.521
           mean_target: 5.460
 
       real_wage:

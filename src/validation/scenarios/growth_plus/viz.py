@@ -22,6 +22,7 @@ import numpy as np
 from scipy.stats import skew
 
 from bamengine import ops
+from validation.scenarios._utils import shade_beyond_extreme
 from validation.scenarios.growth_plus import GrowthPlusMetrics
 from validation.scoring import (
     STATUS_COLORS,
@@ -75,34 +76,6 @@ def _save_panels(fig, axes, output_dir, panel_names, dpi=150):
 
     fig.savefig(output_dir / "combined.png", bbox_inches="tight", dpi=dpi)
     print(f"Saved {len(panel_names)} panels + combined figure to {output_dir}/")
-
-
-def _shade_beyond_extreme(ax, extreme_min, extreme_max, axis="y"):
-    """Shade areas beyond extreme bounds darker than the transition zone.
-
-    Creates a visual hierarchy:
-    - Normal zone (white): within normal bounds
-    - Transition zone (alpha=0.1 red): between extreme and normal bounds
-    - Beyond extreme (alpha=0.25 red): outside extreme bounds — clearly dangerous
-
-    Must be called AFTER all data is plotted so axis limits are set by the data.
-    """
-    alpha = 0.25
-    color = "red"
-    if axis == "y":
-        ymin, ymax = ax.get_ylim()
-        if ymin < extreme_min:
-            ax.axhspan(ymin, extreme_min, alpha=alpha, color=color, zorder=0)
-        if ymax > extreme_max:
-            ax.axhspan(extreme_max, ymax, alpha=alpha, color=color, zorder=0)
-        ax.set_ylim(ymin, ymax)
-    else:
-        xmin, xmax = ax.get_xlim()
-        if xmin < extreme_min:
-            ax.axvspan(xmin, extreme_min, alpha=alpha, color=color, zorder=0)
-        if xmax > extreme_max:
-            ax.axvspan(extreme_max, xmax, alpha=alpha, color=color, zorder=0)
-        ax.set_xlim(xmin, xmax)
 
 
 def _add_cv_cyclicality_box(ax, mean, cv, cyclicality_corr, label="pro-cyc"):
@@ -308,7 +281,7 @@ def visualize_growth_plus_results(
         horizontalalignment="right",
         bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
     )
-    _shade_beyond_extreme(ax, b["extreme_min"], b["extreme_max"])
+    shade_beyond_extreme(ax, b["extreme_min"], b["extreme_max"])
 
     # Panel (0,1): Unemployment Rate
     ax = axes[0, 1]
@@ -353,7 +326,7 @@ def visualize_growth_plus_results(
     ax.grid(True, linestyle="--", alpha=0.3)
     ax.set_ylim(bottom=0)
     add_stats_box(ax, unemployment_pct, "unemployment", is_pct=True)
-    _shade_beyond_extreme(
+    shade_beyond_extreme(
         ax,
         bounds["unemployment"]["extreme_min"] * 100,
         bounds["unemployment"]["extreme_max"] * 100,
@@ -409,7 +382,7 @@ def visualize_growth_plus_results(
     # Stats box uses post-burn-in data (matching validation metrics)
     inflation_ss_pct = metrics.inflation[burn_in:] * 100
     add_stats_box(ax, inflation_ss_pct, "inflation", is_pct=True)
-    _shade_beyond_extreme(
+    shade_beyond_extreme(
         ax,
         bounds["inflation"]["extreme_min"] * 100,
         bounds["inflation"]["extreme_max"] * 100,
@@ -787,7 +760,7 @@ def visualize_financial_dynamics(
             verticalalignment="top",
             bbox=dict(boxstyle="round", facecolor=box_color, alpha=0.7),
         )
-        _shade_beyond_extreme(ax, extreme_min, extreme_max, axis="x")
+        shade_beyond_extreme(ax, extreme_min, extreme_max, axis="x")
     ax.set_title("Output Growth Rate Distribution", fontsize=12, fontweight="bold")
     ax.set_xlabel("Output growth rate")
     ax.set_ylabel("Log-rank")
@@ -884,7 +857,7 @@ def visualize_financial_dynamics(
             verticalalignment="top",
             bbox=dict(boxstyle="round", facecolor=box_color, alpha=0.7),
         )
-        _shade_beyond_extreme(ax, extreme_min, extreme_max, axis="x")
+        shade_beyond_extreme(ax, extreme_min, extreme_max, axis="x")
     ax.set_title(
         "Firms' Asset Growth Rate Distribution", fontsize=12, fontweight="bold"
     )
@@ -966,7 +939,7 @@ def visualize_financial_dynamics(
         horizontalalignment="left",
         bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
     )
-    _shade_beyond_extreme(ax, extreme_min * 100, extreme_max * 100)
+    shade_beyond_extreme(ax, extreme_min * 100, extreme_max * 100)
 
     # Figure 3.6d: Number of Bankruptcies
     ax = axes[1, 1]
@@ -1064,7 +1037,7 @@ def visualize_financial_dynamics(
         metrics.financial_fragility_cv,
         metrics.fragility_gdp_correlation,
     )
-    _shade_beyond_extreme(ax, extreme_min, extreme_max)
+    shade_beyond_extreme(ax, extreme_min, extreme_max)
 
     # Figure 3.7b: Price Ratio (Market Price / Clearing Price)
     ax = axes[2, 1]
@@ -1114,7 +1087,7 @@ def visualize_financial_dynamics(
         metrics.price_ratio_gdp_correlation,
         label="counter-cyc",
     )
-    _shade_beyond_extreme(ax, pr_extreme_min, pr_extreme_max)
+    shade_beyond_extreme(ax, pr_extreme_min, pr_extreme_max)
 
     # Figure 3.7c: Price Dispersion
     ax = axes[3, 0]
@@ -1168,7 +1141,7 @@ def visualize_financial_dynamics(
         horizontalalignment="left",
         bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
     )
-    _shade_beyond_extreme(ax, pd_extreme_min, pd_extreme_max)
+    shade_beyond_extreme(ax, pd_extreme_min, pd_extreme_max)
 
     # Figure 3.7d: Equity and Sales Dispersion
     ax = axes[3, 1]
@@ -1224,7 +1197,7 @@ def visualize_financial_dynamics(
         horizontalalignment="left",
         bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
     )
-    _shade_beyond_extreme(ax, es_extreme_min, es_extreme_max)
+    shade_beyond_extreme(ax, es_extreme_min, es_extreme_max)
 
     plt.tight_layout()
     _save_panels(fig, axes, _OUTPUT_DIR, _FINANCIAL_PANEL_NAMES)

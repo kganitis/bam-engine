@@ -2,8 +2,52 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 from numpy.typing import NDArray
+
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+
+
+def shade_beyond_extreme(
+    ax: Axes, extreme_min: float, extreme_max: float, axis: str = "y"
+) -> None:
+    """Shade areas beyond extreme bounds darker than the transition zone.
+
+    Creates a visual hierarchy:
+    - Normal zone (white): within normal bounds
+    - Transition zone (alpha=0.1 red): between extreme and normal bounds
+    - Beyond extreme (alpha=0.25 red): outside extreme bounds
+
+    Must be called AFTER all data is plotted so axis limits are set by the data.
+
+    Parameters
+    ----------
+    ax : Axes
+        Matplotlib axes to shade.
+    extreme_min, extreme_max : float
+        Extreme bound values.
+    axis : str
+        ``"y"`` for horizontal bands, ``"x"`` for vertical bands.
+    """
+    alpha = 0.25
+    color = "red"
+    if axis == "y":
+        ymin, ymax = ax.get_ylim()
+        if ymin < extreme_min:
+            ax.axhspan(ymin, extreme_min, alpha=alpha, color=color, zorder=0)
+        if ymax > extreme_max:
+            ax.axhspan(extreme_max, ymax, alpha=alpha, color=color, zorder=0)
+        ax.set_ylim(ymin, ymax)
+    else:
+        xmin, xmax = ax.get_xlim()
+        if xmin < extreme_min:
+            ax.axvspan(xmin, extreme_min, alpha=alpha, color=color, zorder=0)
+        if xmax > extreme_max:
+            ax.axvspan(extreme_max, xmax, alpha=alpha, color=color, zorder=0)
+        ax.set_xlim(xmin, xmax)
 
 
 def compute_detrended_correlation(
