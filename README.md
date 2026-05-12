@@ -95,17 +95,16 @@ See the [Getting Started guide](https://bam-engine.readthedocs.io/en/latest/quic
 
 ## Features
 
-- **Complete BAM Model:** Full Chapter 3 implementation: firms, households, and banks interacting across labor, credit, and goods markets
-- **ECS Architecture:** Entity-Component-System design separates data (Roles) from behavior (Events) for clean extensibility
-- **Vectorized Performance:** All agent operations use NumPy arrays; no Python loops over agents
-- **Built-in Extensions:** R&D / Growth+, buffer-stock consumption, and taxation modules
-- **Validation Framework:** Three scenario validators with scoring and robustness analysis
-- **Calibration Pipeline:** Morris screening, grid search, and tiered stability testing
-- **Easy Configuration:** All parameters configurable without code changes via YAML files
+- **Complete BAM Implementation:** Baseline model from *Macroeconomics from the Bottom-up*, Chapter 3 (firms, households, and banks across labor, credit, and goods markets), three built-in extensions (R&D / Growth+, buffer-stock consumption, taxation), and a robustness analysis suite (internal validity, sensitivity, structural experiments).
+- **Vectorized Performance:** Agent state lives in parallel NumPy arrays and behavior is expressed as array transformations, not Python loops over agent objects. Simulations scale to large populations and long horizons.
+- **Pluggable Extension System:** Add custom roles, events, and pipeline hooks via decorators without modifying the engine. The same mechanism powers the built-in extensions.
+- **Parameter Calibration:** Automated pipeline for tuning model parameters against validation targets.
 
 ## Architecture
 
-BAM Engine uses an ECS (Entity-Component-System) architecture: agents are lightweight entities, state lives in Role components stored as NumPy arrays, and behavior is defined by Event systems executed via a YAML-configurable pipeline. Custom roles, events, and relationships can be added without modifying core code.
+BAM Engine uses an ECS (Entity-Component-System) architecture: agents are lightweight entities, state lives in **Role** components stored as parallel NumPy arrays, and behavior is defined by **Event** systems composed into a YAML-configurable pipeline. New roles, events, and relationships can be added through decorators, without modifying core code.
+
+The trade-off is a mindset shift: you write agent rules as systems that transform whole arrays of state at once, not as methods on per-agent objects. ECS itself does not demand vectorization, but BAM Engine treats it as the default. Every built-in system processes all agents at once, with the goods market's sequential matching rounds as the deliberate exception where strict per-agent ordering matters.
 
 See the [User Guide](https://bam-engine.readthedocs.io/en/latest/user_guide/index.html) for a full walkthrough of the model and its architecture.
 
