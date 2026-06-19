@@ -1,0 +1,10 @@
+{
+  "run_id": "bamengine__s2000__rep0",
+  "framework": "bamengine",
+  "status": "timeout",
+  "error": "wall budget exceeded",
+  "process": {
+    "wall_seconds": 120.06295024999417
+  },
+  "environment_id": "ec8da0cb068e"
+}
