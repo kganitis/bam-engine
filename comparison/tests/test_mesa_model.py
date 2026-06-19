@@ -70,3 +70,34 @@ def test_fire_excess_reduces_labor():
     assert f.current_labor == 1 and len(f.employees) == 1  # noqa: PT018
     fired = [h for h in hs if h.employer is None]
     assert len(fired) == 2 and all(h.fired and h.employer_prev is f for h in fired)  # noqa: PT018
+
+
+def test_labor_round_hires_up_to_vacancies_with_contract_theta():
+    m = _model(n_firms=2, n_households=5, n_banks=1, seed=3)
+    from comparison.runners.mesa.markets import run_labor_market
+
+    firms = list(m.firms)
+    a, b = firms
+    a.n_vacancies = 1
+    a.wage_offer = 1.0
+    b.n_vacancies = 1
+    b.wage_offer = 0.5
+    for h in m.households:  # all unemployed apply to both, A ranked first (higher wage)
+        h.job_apps = [a, b]
+    run_labor_market(m)
+    hired_a = [h for h in m.households if h.employer is a]
+    hired_b = [h for h in m.households if h.employer is b]
+    assert len(hired_a) == 1 and len(hired_b) == 1  # noqa: PT018
+    assert all(h.periods_left == m.p["theta"] for h in hired_a + hired_b)
+    assert a.current_labor == 1 and b.current_labor == 1  # noqa: PT018
+
+
+def test_wage_bill_sums_employee_wages():
+    m = _model(n_firms=1, n_households=3, n_banks=1)
+    f = next(iter(m.firms))
+    for h, w in zip(list(m.households), [1.0, 2.0, 3.0], strict=True):
+        h.employer = f
+        h.wage = w
+        f.employees.add(h)
+    f.calc_wage_bill()
+    assert f.wage_bill == 6.0

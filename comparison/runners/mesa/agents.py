@@ -136,6 +136,23 @@ class Firm(mesa.Agent):
             self.employees.discard(h)
             self.current_labor -= 1
 
+    # ------------------------------------------------------------------
+    # Labor market methods (events 9, 12)
+    # ------------------------------------------------------------------
+
+    def decide_wage_offer(self) -> None:
+        """Event 9: set wage offer with random markup (zero if no vacancies)."""
+        model = self.model
+        h_xi = model.p["h_xi"]
+
+        shock = model.random.uniform(0, h_xi) if self.n_vacancies > 0 else 0.0
+        self.wage_offer *= 1.0 + shock
+        self.wage_offer = max(self.wage_offer, model.min_wage)
+
+    def calc_wage_bill(self) -> None:
+        """Event 12: sum wages of all employees."""
+        self.wage_bill = sum(w.wage for w in self.employees)
+
 
 class Household(mesa.Agent):
     """Household agent (Worker + Consumer + Shareholder roles)."""
@@ -164,6 +181,46 @@ class Household(mesa.Agent):
     def employed(self) -> bool:
         """Derived property: whether this household is employed."""
         return self.employer is not None
+
+    # ------------------------------------------------------------------
+    # Labor market methods (event 10)
+    # ------------------------------------------------------------------
+
+    def decide_firms_to_apply(self) -> None:
+        """Event 10: build ranked application queue for unemployed workers.
+
+        Only unemployed workers participate.  Samples min(max_M, |pool|) firms
+        without replacement, sorts by wage_offer DESC, and applies the loyalty
+        rule (previous employer to front if contract expired without being fired
+        and employer_prev is still in the pool).
+        """
+        if self.employed:
+            return
+
+        model = self.model
+        max_M = model.p["max_M"]
+
+        pool = list(model.firms)
+        M_eff = min(max_M, len(pool))
+        sample = model.random.sample(pool, M_eff)
+
+        # Sort by wage_offer DESC.
+        sample.sort(key=lambda f: f.wage_offer, reverse=True)
+
+        # Loyalty: move employer_prev to front if eligible.
+        if self.contract_expired and not self.fired and self.employer_prev in pool:
+            prev = self.employer_prev
+            if prev in sample:
+                sample.remove(prev)
+            else:
+                # Drop last to keep M_eff length.
+                if len(sample) == M_eff:
+                    sample = sample[: M_eff - 1]
+            sample.insert(0, prev)
+
+        self.job_apps = sample
+        self.contract_expired = False
+        self.fired = False
 
 
 class Bank(mesa.Agent):

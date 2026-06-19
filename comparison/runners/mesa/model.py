@@ -5,6 +5,7 @@ from __future__ import annotations
 import mesa
 
 from comparison.runners.mesa.agents import Bank, Firm, Household
+from comparison.runners.mesa.markets import run_labor_market
 
 EPS = 1e-9
 
@@ -72,9 +73,47 @@ class BamModel(mesa.Model):
         self.firms.do("decide_vacancies")
         self.firms.do("fire_excess_workers")
 
+    def _calc_inflation(self) -> None:
+        """Event 7: YoY inflation rate appended to inflation_history."""
+        hist = self.avg_mkt_price_history
+        if len(hist) <= 4:
+            self.inflation_history.append(0.0)
+            return
+        p_now = hist[-1]
+        p_prev = hist[-5]
+        if p_prev <= 0:
+            self.inflation_history.append(0.0)
+        else:
+            self.inflation_history.append((p_now - p_prev) / p_prev)
+
+    def _adjust_min_wage(self) -> None:
+        """Event 8: periodically index minimum wage to inflation."""
+        m = self.min_wage_rev_period
+        hist_len = len(self.avg_mkt_price_history)
+        if hist_len <= m:
+            return
+        if (hist_len - 1) % m != 0:
+            return
+        inflation = self.inflation_history[-1]
+        self.min_wage *= 1.0 + inflation
+        # Bump employed workers below the new floor.
+        for h in self.households:
+            if h.employed and h.wage < self.min_wage:
+                h.wage = self.min_wage
+
+    def _labor_market(self) -> None:
+        """Phase 2: labor market (events 7-12)."""
+        self._calc_inflation()
+        self._adjust_min_wage()
+        self.firms.do("decide_wage_offer")
+        self.households.do("decide_firms_to_apply")
+        run_labor_market(self)
+        self.firms.do("calc_wage_bill")
+
     def step(self):
         """Execute one simulation period."""
         if self.collapsed:
             return
         self.period += 1
         self._planning()
+        self._labor_market()
