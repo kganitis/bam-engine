@@ -1,3 +1,6 @@
+import math
+import warnings
+
 from comparison.equivalence.gate import bamengine_stats, evaluate_gate, tolerances
 from comparison.equivalence.metrics import METRIC_KEYS
 
@@ -28,3 +31,14 @@ def test_netlogo_non_blocking():
     by = {"bamengine": _rows(0.07), "netlogo": _rows(0.5)}
     report = evaluate_gate(by)
     assert report["frameworks"]["netlogo"]["blocking"] is False
+
+
+def test_all_nan_metric_no_warning():
+    """All-NaN column for a metric must return nan mean/std with no RuntimeWarning."""
+    nan_rows = [{m: float("nan") for m in METRIC_KEYS} for _ in range(5)]
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")  # any warning becomes an error
+        stats = bamengine_stats(nan_rows)
+    for m in METRIC_KEYS:
+        assert math.isnan(stats[m]["mean"]), f"{m}: expected nan mean"
+        assert math.isnan(stats[m]["std"]), f"{m}: expected nan std"

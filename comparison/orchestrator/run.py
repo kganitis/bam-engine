@@ -17,7 +17,6 @@ import json
 import os
 import sys
 import tempfile
-import warnings
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
@@ -135,6 +134,7 @@ def run_benchmark(
     quick: bool = False,
     gate_workers: int = 10,
     budget_s: float = 120.0,
+    sizes: list[int] | None = None,
 ) -> dict:
     """Run the full benchmark pipeline (phases A and B).
 
@@ -158,6 +158,9 @@ def run_benchmark(
         Number of parallel workers for Phase A.
     budget_s : float
         Per-job wall-clock budget in seconds.
+    sizes : list[int] or None
+        If provided, restrict Phase B timing to these firm counts (intersected
+        with ``matrix.SCALE_FIRMS``). When ``None``, all sizes are used.
 
     Returns
     -------
@@ -206,13 +209,7 @@ def run_benchmark(
             )
 
     if by_fw.get("bamengine"):
-        # Suppress "Mean of empty slice" RuntimeWarning that arises when all
-        # seeds produce NaN for a metric (e.g. okun_corr with very short runs
-        # in quick mode). The gate still functions correctly; the affected metric
-        # will have mean=NaN and be within tolerance by convention.
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", RuntimeWarning)
-            gate = evaluate_gate(by_fw)
+        gate = evaluate_gate(by_fw)
     else:
         gate = {"frameworks": {fw: {} for fw in frameworks}}
 
@@ -225,13 +222,18 @@ def run_benchmark(
         or not gate["frameworks"].get(fw, {}).get("blocking", True)
     ]
 
-    sizes = matrix.SCALE_FIRMS[:2] if quick else matrix.SCALE_FIRMS
+    if quick:
+        allowed_sizes = set(matrix.SCALE_FIRMS[:2])
+    elif sizes is not None:
+        allowed_sizes = set(matrix.SCALE_FIRMS) & set(sizes)
+    else:
+        allowed_sizes = set(matrix.SCALE_FIRMS)
     skips: dict[str, str] = {}
 
     for fw in passing:
         capped_at: int | None = None
         for req in matrix.timing_jobs([fw]):
-            if req.population["n_firms"] not in sizes:
+            if req.population["n_firms"] not in allowed_sizes:
                 continue
             if capped_at is not None and req.population["n_firms"] >= capped_at:
                 skips[req.run_id] = f"skipped: {fw} capped at {capped_at} firms"
@@ -277,17 +279,27 @@ def main(argv: list[str] | None = None) -> None:
         help="Shrink periods/seeds/sizes for a fast smoke-test run",
     )
     p.add_argument(
+        "--sizes",
+        default=None,
+        help=(
+            "Comma-separated firm counts to restrict Phase B timing "
+            "(e.g. --sizes 100,1000); must be values in matrix.SCALE_FIRMS"
+        ),
+    )
+    p.add_argument(
         "--results-dir",
         default="comparison/results",
         help="Root directory for output (default: comparison/results)",
     )
     a = p.parse_args(argv)
+    sizes = [int(s) for s in a.sizes.split(",")] if a.sizes else None
     run_benchmark(
         frameworks=a.frameworks.split(","),
         results_dir=a.results_dir,
         quick=a.quick,
         gate_workers=a.gate_workers,
         budget_s=a.budget,
+        sizes=sizes,
     )
 
 
