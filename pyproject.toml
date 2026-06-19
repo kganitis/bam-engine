@@ -180,6 +180,7 @@ line-length = 88
 include = [
     "src/**/*.py",
     "tests/**/*.py",
+    "comparison/**/*.py",
     "diagnostics/**/*.py",
     "benchmarks/**/*.py",
     "examples/**/*.py",
