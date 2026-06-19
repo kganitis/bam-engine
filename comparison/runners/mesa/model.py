@@ -14,6 +14,17 @@ from comparison.runners.mesa.markets import (
 EPS = 1e-9
 
 
+def trim_mean(values, pct=0.05):
+    """Compute trimmed mean, removing pct from each tail."""
+    if not values:
+        return 0.0
+    sorted_vals = sorted(values)
+    n = len(sorted_vals)
+    k = int(n * pct)
+    trimmed = sorted_vals[k : n - k] if n - 2 * k > 0 else sorted_vals
+    return sum(trimmed) / len(trimmed)
+
+
 class BamModel(mesa.Model):
     """The baseline BAM agent-based macroeconomic model in Mesa 3.x."""
 
@@ -172,6 +183,129 @@ class BamModel(mesa.Model):
         run_goods_market(self)
         self.households.do("finalize_purchases")
 
+    def _pay_dividends(self) -> None:
+        """Event 32: distribute dividends from profitable firms to all households."""
+        delta = self.p["delta"]
+        total_dividends = 0.0
+        for f in self.firms:
+            retained = f.net_profit
+            if f.net_profit > 0:
+                retained *= 1.0 - delta
+            dividends_paid = f.net_profit - retained
+            f.total_funds -= dividends_paid
+            f.retained_profit = retained
+            total_dividends += dividends_paid
+
+        n_households = len(self.households)
+        div_per_hh = total_dividends / n_households if n_households > 0 else 0.0
+        for h in self.households:
+            h.savings += div_per_hh
+            h.dividends = div_per_hh
+
+    def _mark_bankrupt_and_replace(self) -> None:
+        """Events 34-37: detect and replace bankrupt firms and banks."""
+        eps = self.EPS
+
+        # Identify exiting firms: insolvent OR ghost (production_prev <= 0).
+        exiting_firms = [
+            f for f in self.firms if f.net_worth < eps or f.production_prev <= eps
+        ]
+
+        # Fire all employees of exiting firms and clear their loans.
+        for f in exiting_firms:
+            for h in list(f.employees):
+                h.employer = None
+                h.employer_prev = None
+                h.wage = 0.0
+                h.periods_left = 0
+                h.contract_expired = False
+                h.fired = False
+            f.employees.clear()
+            f.current_labor = 0
+            f.wage_bill = 0.0
+            f.loans = []
+
+        # Identify exiting banks: negative equity.
+        exiting_banks = [b for b in self.banks if b.equity_base < eps]
+
+        # Drop loans issued by exiting banks (from surviving firms).
+        if exiting_banks:
+            exiting_bank_set = set(exiting_banks)
+            for f in self.firms:
+                f.loans = [
+                    loan for loan in f.loans if loan.lender not in exiting_bank_set
+                ]
+
+        # Collapse check: all firms or all banks exiting.
+        if len(exiting_firms) == len(self.firms) or len(exiting_banks) == len(
+            self.banks
+        ):
+            self.collapsed = True
+            return
+
+        # Compute survivor statistics for firm replacement.
+        survivor_firms = [f for f in self.firms if f not in set(exiting_firms)]
+        survivor_net_worths = [f.net_worth for f in survivor_firms]
+        # Use production_prev (last period's actual output) as the production signal.
+        # At replacement time (post production event 22), production is the current
+        # period's output; production_prev holds the same value. Using production_prev
+        # ensures a non-zero reference even in unit-test contexts where production
+        # has not been set explicitly.
+        survivor_productions = [f.production_prev for f in survivor_firms]
+
+        employed_wages = [h.wage for h in self.households if h.employed and h.wage > 0]
+
+        mean_net = trim_mean(survivor_net_worths)
+        mean_prod = trim_mean(survivor_productions)
+        mean_wage = trim_mean(employed_wages)
+
+        avg_price = self.avg_mkt_price
+        min_wage = self.min_wage
+
+        # Replace each exiting firm in place.
+        for f in exiting_firms:
+            nw_val = mean_net * self.p["new_firm_size_factor"]
+            f.net_worth = nw_val
+            f.total_funds = nw_val
+            f.gross_profit = 0.0
+            f.net_profit = 0.0
+            f.retained_profit = 0.0
+            f.credit_demand = 0.0
+            f.projected_fragility = 0.0
+            prod_val = mean_prod * self.p["new_firm_production_factor"]
+            f.production = prod_val
+            f.production_prev = prod_val
+            f.inventory = 0.0
+            f.expected_demand = 0.0
+            f.desired_production = 0.0
+            f.price = avg_price * self.p["new_firm_price_markup"]
+            f.current_labor = 0
+            f.desired_labor = 0
+            f.n_vacancies = 0
+            f.wage_bill = 0.0
+            f.wage_offer = max(mean_wage * self.p["new_firm_wage_factor"], min_wage)
+            f.loans = []
+
+        # Replace each exiting bank by cloning a random survivor's equity.
+        survivor_banks = [b for b in self.banks if b not in set(exiting_banks)]
+        for b in exiting_banks:
+            src = self.random.choice(survivor_banks)
+            b.equity_base = src.equity_base
+            b.credit_supply = 0.0
+            b.interest_rate = 0.0
+
+    def _revenue(self) -> None:
+        """Phase 6: revenue (events 30-32)."""
+        self.firms.do("collect_revenue")
+        for f in self.firms:
+            f.validate_debt(self)
+        self._pay_dividends()
+
+    def _bankruptcy_entry(self) -> None:
+        """Phase 7-8: net worth update, bankruptcy detection, and entry (events 33-37)."""
+        self.firms.do("update_net_worth")
+        self._mark_bankrupt_and_replace()
+
     def step(self):
         """Execute one simulation period."""
         if self.collapsed:
@@ -182,3 +316,5 @@ class BamModel(mesa.Model):
         self._credit_market()
         self._production()
         self._goods_market()
+        self._revenue()
+        self._bankruptcy_entry()

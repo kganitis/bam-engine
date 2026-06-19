@@ -199,3 +199,50 @@ def test_propensity_in_unit_interval():
     h.savings = 2.0
     h.calc_propensity(avg_savings=1.0)
     assert 0.0 < h.propensity < 1.0
+
+
+def test_revenue_and_gross_profit():
+    m = _model(n_firms=1, n_households=5, n_banks=1)
+    f = next(iter(m.firms))
+    f.production, f.inventory, f.price, f.wage_bill, f.total_funds = (
+        10.0,
+        4.0,
+        2.0,
+        5.0,
+        1.0,
+    )
+    f.collect_revenue()
+    assert f.total_funds == 1.0 + 2.0 * 6 and f.gross_profit == 2.0 * 6 - 5.0  # noqa: PT018
+
+
+def test_dividends_split_across_households():
+    m = _model(n_firms=2, n_households=4, n_banks=1)
+    for f in m.firms:
+        f.net_profit = 10.0
+        f.total_funds = 100.0
+    base = next(iter(m.households)).savings
+    m._pay_dividends()
+    # delta=0.10 -> dividends per firm = 0.10*10 = 1.0; total 2.0 / 4 hh = 0.5 each
+    assert all(abs(h.savings - (base + 0.5)) < 1e-9 for h in m.households)
+
+
+def test_ghost_firm_marked_bankrupt():
+    m = _model(n_firms=2, n_households=5, n_banks=2)
+    fs = list(m.firms)
+    fs[0].production_prev = 0.0  # ghost -> bankrupt even if solvent
+    fs[0].net_worth = 100.0
+    fs[1].net_worth = 100.0
+    fs[1].production_prev = 2.0
+    m._mark_bankrupt_and_replace()
+    assert not m.collapsed
+    # the ghost firm was replaced in place with production_prev > 0
+    assert fs[0].production_prev > 0.0
+
+
+def test_full_step_runs_and_economy_is_alive():
+    m = _model(seed=7)
+    for _ in range(50):
+        m.step()
+    assert not m.collapsed
+    assert any(h.employed for h in m.households)
+    assert sum(f.production for f in m.firms) > 0.0

@@ -13,6 +13,17 @@ class Loan(NamedTuple):
 
     principal: float
     rate: float
+    lender: object = None  # Bank object that issued the loan
+
+    @property
+    def interest(self) -> float:
+        """Interest portion of the debt: principal * rate."""
+        return self.principal * self.rate
+
+    @property
+    def debt(self) -> float:
+        """Total amount owed: principal + interest."""
+        return self.principal * (1.0 + self.rate)
 
 
 class Firm(mesa.Agent):
@@ -220,6 +231,49 @@ class Firm(mesa.Agent):
         self.production = self.labor_productivity * self.current_labor
         self.production_prev = self.production  # unconditional every period
         self.inventory = self.production  # overwrite, NOT accumulate
+
+    # ------------------------------------------------------------------
+    # Revenue phase methods (events 30-32, 33)
+    # ------------------------------------------------------------------
+
+    def collect_revenue(self) -> None:
+        """Event 30: collect revenue from goods sold; compute gross profit."""
+        qty_sold = self.production - self.inventory
+        revenue = self.price * qty_sold
+        self.total_funds += revenue
+        self.gross_profit = revenue - self.wage_bill
+
+    def validate_debt(self, model) -> None:
+        """Event 31: repay loans if solvent; write off and record losses if not."""
+        eps = model.EPS
+        total_debt = sum(loan.debt for loan in self.loans)
+        total_interest = sum(loan.interest for loan in self.loans)
+        total_principal = sum(loan.principal for loan in self.loans)
+
+        if total_debt > eps:
+            if self.total_funds - total_debt >= -eps:
+                # Full repayment: deduct debt and credit each lender's interest.
+                self.total_funds -= total_debt
+                for loan in self.loans:
+                    loan.lender.equity_base += loan.interest
+            else:
+                # Default: zero out cash; each lender takes a proportional loss.
+                # Uses CURRENT (pre-update) net_worth for recovery calculation.
+                nw = self.net_worth
+                self.total_funds = 0.0
+                for loan in self.loans:
+                    frac = loan.principal / max(total_principal, eps)
+                    recovery = min(max(frac * nw, 0.0), loan.principal)
+                    loss = loan.principal - recovery
+                    loan.lender.equity_base -= loss
+
+        # Net profit computed for ALL firms (including those with no debt).
+        self.net_profit = self.gross_profit - total_interest
+
+    def update_net_worth(self) -> None:
+        """Event 33: add retained profit to net worth; clamp total_funds >= 0."""
+        self.net_worth += self.retained_profit
+        self.total_funds = max(self.net_worth, 0.0)
 
 
 class Household(mesa.Agent):
