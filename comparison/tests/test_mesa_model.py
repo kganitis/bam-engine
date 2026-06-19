@@ -63,7 +63,7 @@ def test_fire_excess_reduces_labor():
     hs = list(m.households)[:3]
     for h in hs:
         h.employer = f
-        f.employees.add(h)
+        f.employees[h] = None
         f.current_labor += 1
     f.desired_labor = 1
     f.fire_excess_workers()
@@ -98,7 +98,7 @@ def test_wage_bill_sums_employee_wages():
     for h, w in zip(list(m.households), [1.0, 2.0, 3.0], strict=True):
         h.employer = f
         h.wage = w
-        f.employees.add(h)
+        f.employees[h] = None
     f.calc_wage_bill()
     assert f.wage_bill == 6.0
 
@@ -165,7 +165,7 @@ def test_contract_expiry_frees_worker():
     h = next(iter(m.households))
     h.employer = f
     h.periods_left = 1
-    f.employees.add(h)
+    f.employees[h] = None
     f.current_labor = 1
     h.update_contract()
     assert h.employer is None and h.contract_expired and not h.fired  # noqa: PT018

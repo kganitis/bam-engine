@@ -66,9 +66,11 @@ class Firm(mesa.Agent):
         # scratch for market rounds (set during phases)
         self.loan_apps = []  # ranked bank ids (objects), consumed per round
         self.loans: list[Loan] = []  # outstanding loans
-        self.employees = (
-            set()
-        )  # Household objects employed here (maintained on hire/fire)
+        # Use a dict (insertion-ordered) instead of a set to get O(1)
+        # membership/add/remove AND deterministic iteration order.  Plain sets
+        # depend on id()-based hashes which vary by memory address, making
+        # list(set) non-deterministic across processes.
+        self.employees: dict = {}  # keys = Household objects; values always None
 
     # ------------------------------------------------------------------
     # Planning phase methods (events 1-6)
@@ -144,7 +146,7 @@ class Firm(mesa.Agent):
             h.periods_left = 0
             h.contract_expired = False
             h.fired = True
-            self.employees.discard(h)
+            self.employees.pop(h, None)
             self.current_labor -= 1
 
     # ------------------------------------------------------------------
@@ -194,7 +196,7 @@ class Firm(mesa.Agent):
             h.periods_left = 0
             h.contract_expired = False
             h.fired = True
-            self.employees.discard(h)
+            self.employees.pop(h, None)
             self.current_labor -= 1
             self.wage_bill -= wage
             cumulative += wage
@@ -329,7 +331,7 @@ class Household(mesa.Agent):
             self.wage = 0.0
             self.contract_expired = True
             self.fired = False
-            employer.employees.discard(self)
+            employer.employees.pop(self, None)
             employer.current_labor -= 1
 
     # ------------------------------------------------------------------
@@ -359,7 +361,9 @@ class Household(mesa.Agent):
             self.shop_visits = []
             return
         max_Z = model.p["max_Z"]
-        all_firms = list(model.firms)
+        # model._firms_list is snapshotted once in __init__; firms are never
+        # added or removed during a run, so this is always current.
+        all_firms = model._firms_list
         n_firms = len(all_firms)
         Z = min(max_Z, n_firms)
         selected = model.random.sample(all_firms, Z)
@@ -400,7 +404,9 @@ class Household(mesa.Agent):
         model = self.model
         max_M = model.p["max_M"]
 
-        pool = list(model.firms)
+        # model._firms_list is snapshotted once in __init__; firms are never
+        # added or removed during a run, so this is always current.
+        pool = model._firms_list
         M_eff = min(max_M, len(pool))
         sample = model.random.sample(pool, M_eff)
 
@@ -408,7 +414,12 @@ class Household(mesa.Agent):
         sample.sort(key=lambda f: f.wage_offer, reverse=True)
 
         # Loyalty: move employer_prev to front if eligible.
-        if self.contract_expired and not self.fired and self.employer_prev in pool:
+        # Use the pre-built set for O(1) membership test instead of O(n) scan.
+        if (
+            self.contract_expired
+            and not self.fired
+            and self.employer_prev in model._firms_set
+        ):
             prev = self.employer_prev
             if prev in sample:
                 sample.remove(prev)
