@@ -30,13 +30,22 @@ class BamModel(mesa.Model):
 
     EPS = EPS
 
-    def __init__(self, n_firms, n_households, n_banks, params, seed=0):
+    def __init__(self, n_firms, n_households, n_banks, params, seed=0, collect=False):
         super().__init__(rng=seed)
         self.n_firms = n_firms
         self.n_households = n_households
         self.n_banks = n_banks
         self.p = dict(params)
         self.period = 0
+        self.collect = collect
+
+        # Per-period collection lists (populated when collect=True).
+        self._c_unemployment: list[float] = []
+        self._c_avg_employed_wage: list[float] = []
+        self._c_total_production: list[float] = []
+        self._c_total_vacancies: list[float] = []
+        self._c_inflation: list[float] = []
+        self._c_production_final: list[float] = []
 
         # derived init values (REF §3)
         lp = self.p["labor_productivity"]
@@ -86,6 +95,10 @@ class BamModel(mesa.Model):
         self.firms.do("plan_price")
         self.firms.do("decide_desired_labor")
         self.firms.do("decide_vacancies")
+        # Event 5 collection: total vacancies after decide_vacancies.
+        if self.collect:
+            total_vac = sum(f.n_vacancies for f in self.firms)
+            self._c_total_vacancies.append(float(total_vac))
         self.firms.do("fire_excess_workers")
 
     def _calc_inflation(self) -> None:
@@ -119,6 +132,9 @@ class BamModel(mesa.Model):
     def _labor_market(self) -> None:
         """Phase 2: labor market (events 7-12)."""
         self._calc_inflation()
+        # Event 7 collection: inflation after _calc_inflation.
+        if self.collect:
+            self._c_inflation.append(self.inflation_history[-1])
         self._adjust_min_wage()
         self.firms.do("decide_wage_offer")
         self.households.do("decide_firms_to_apply")
@@ -162,6 +178,23 @@ class BamModel(mesa.Model):
         self.firms.do("pay_wages")
         self.households.do("receive_wage")
         self.firms.do("run_production")
+        # Event 22 collection: employment and production after run_production.
+        if self.collect:
+            employed_count = 0
+            wage_sum = 0.0
+            for h in self.households:
+                if h.employed:
+                    employed_count += 1
+                    wage_sum += h.wage
+            n_hh = self.n_households
+            unemployment = 1.0 - employed_count / n_hh if n_hh > 0 else 1.0
+            avg_wage = wage_sum / employed_count if employed_count > 0 else 0.0
+            total_prod = sum(f.production for f in self.firms)
+            self._c_unemployment.append(unemployment)
+            self._c_avg_employed_wage.append(avg_wage)
+            self._c_total_production.append(float(total_prod))
+            # Capture per-firm production for production_final (overwritten each period).
+            self._c_production_final = [f.production for f in self.firms]
         self._update_avg_mkt_price()
         # Snapshot employer before clearing so we can update firm bookkeeping.
         for h in list(self.households):
