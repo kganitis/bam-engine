@@ -17,3 +17,14 @@ def test_quick_run_produces_raw_results_and_gate(tmp_path):
     assert rec["status"] in {"ok", "skipped", "timeout"}
     assert (tmp_path / "raw").exists()
     assert "bamengine" in out["gate"]["frameworks"]
+
+
+def test_quick_run_renders_report(tmp_path):
+    run_benchmark(
+        frameworks=["bamengine"],
+        results_dir=tmp_path,
+        quick=True,
+        gate_workers=2,
+        budget_s=120,
+    )
+    assert (tmp_path / "report.md").exists()

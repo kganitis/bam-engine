@@ -248,6 +248,18 @@ def run_benchmark(
 
     (results_dir / "skips.json").write_text(json.dumps(skips, indent=2))
 
+    from comparison.analysis import plots
+    from comparison.analysis.aggregate import load_results
+    from comparison.analysis.report import write_report
+
+    df = load_results(raw)
+    figdir = results_dir / "figures"
+    figdir.mkdir(exist_ok=True)
+    if not df[df["status"] == "ok"].empty:
+        plots.scaling_curve(df, figdir / "scaling.png")
+        plots.memory_curve(df, figdir / "memory.png")
+    write_report(df, gate, env, results_dir / "report.md")
+
     return {"gate": gate, "env_id": env_id, "skips": skips}
 
 
