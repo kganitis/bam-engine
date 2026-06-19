@@ -10,6 +10,31 @@ if TYPE_CHECKING:
 EPS = 1e-9
 
 
+def run_goods_market(model: BamModel) -> None:
+    """Event 28 (REF §6.3): strictly-sequential goods market matching.
+
+    Buyers are shuffled once, then processed one at a time.  Each buyer
+    walks its price-sorted shop_visits fully before the next buyer acts,
+    decrementing firm inventory IMMEDIATELY so subsequent buyers see the
+    current stock.  A rationed buyer overflows to its next firm within its
+    own turn.
+    """
+    buyers = [h for h in model.households if h.income_to_spend > EPS]
+    if not buyers:
+        return
+    model.random.shuffle(buyers)
+    for buyer in buyers:
+        for firm in buyer.shop_visits:
+            if buyer.income_to_spend <= EPS:
+                break
+            if firm.inventory <= EPS:
+                continue
+            qty = min(buyer.income_to_spend / firm.price, firm.inventory)
+            spent = qty * firm.price
+            buyer.income_to_spend -= spent
+            firm.inventory -= qty
+
+
 def run_labor_market(model: BamModel) -> None:
     """Event 11 (x max_M): multi-round labor market matching.
 

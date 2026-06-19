@@ -170,3 +170,32 @@ def test_contract_expiry_frees_worker():
     h.update_contract()
     assert h.employer is None and h.contract_expired and not h.fired  # noqa: PT018
     assert h.employer_prev is f and f.current_labor == 0 and h not in f.employees  # noqa: PT018
+
+
+def test_goods_sequential_depletion_and_overflow():
+    m = _model(n_firms=2, n_households=2, n_banks=1, seed=5)
+    from comparison.runners.mesa.markets import run_goods_market
+
+    cheap, dear = list(m.firms)
+    cheap.price, cheap.inventory = 1.0, 1.0  # only 1 unit at the cheap firm
+    dear.price, dear.inventory = 2.0, 10.0
+    h1, h2 = list(m.households)
+    for h in (h1, h2):
+        h.income_to_spend = 3.0
+        h.shop_visits = [cheap, dear]  # price-sorted already
+    # Force deterministic buyer order by stubbing shuffle to identity in the test:
+    m.random.shuffle = lambda seq: None
+    run_goods_market(m)
+    # h1 buys 1 unit at cheap (spends 1), overflows: 2 budget / 2 price = 1 unit at dear (spends 2) -> 0 left
+    assert abs(h1.income_to_spend) < 1e-6
+    assert cheap.inventory < 1e-6  # cheap drained by h1
+    # h2 finds cheap empty, buys 3/2=1.5 units at dear
+    assert abs(dear.inventory - (10.0 - 1.0 - 1.5)) < 1e-6
+
+
+def test_propensity_in_unit_interval():
+    m = _model(n_firms=1, n_households=3, n_banks=1)
+    h = next(iter(m.households))
+    h.savings = 2.0
+    h.calc_propensity(avg_savings=1.0)
+    assert 0.0 < h.propensity < 1.0
