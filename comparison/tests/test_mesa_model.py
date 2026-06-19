@@ -18,9 +18,17 @@ def test_initial_state_matches_reference():
     assert f.current_labor == 0 and f.n_vacancies == 0  # noqa: PT018
     assert math.isclose(f.wage_offer, 0.5 / 3)
     h = next(iter(m.households))
-    assert h.employer == -1 and h.savings == 1.0 and h.wage == 0.0  # noqa: PT018
+    assert h.employer is None and h.savings == 1.0 and h.wage == 0.0  # noqa: PT018
     b = next(iter(m.banks))
     assert b.equity_base == 5.0 and b.credit_supply == 0.0  # noqa: PT018
     assert m.avg_mkt_price == 0.5
     assert math.isclose(m.min_wage, (0.5 / 3) * 0.5)
     assert m.avg_mkt_price_history == [0.5] and m.inflation_history == [0.0]  # noqa: PT018
+
+
+def test_rng_is_deterministic():
+    m1 = BamModel(3, 5, 1, canonical_params(), seed=123)
+    m2 = BamModel(3, 5, 1, canonical_params(), seed=123)
+    seq1 = [m1.random.random() for _ in range(5)]
+    seq2 = [m2.random.random() for _ in range(5)]
+    assert seq1 == seq2

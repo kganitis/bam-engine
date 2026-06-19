@@ -55,8 +55,8 @@ class Household(mesa.Agent):
     def __init__(self, model, *, savings):
         super().__init__(model)
         # Worker
-        self.employer = -1  # int: Firm object or -1 (unemployed)
-        self.employer_prev = -1
+        self.employer = None  # Firm object or None (unemployed)
+        self.employer_prev = None
         self.wage = 0.0
         self.periods_left = 0
         self.contract_expired = False
@@ -66,7 +66,7 @@ class Household(mesa.Agent):
         self.savings = savings
         self.income_to_spend = 0.0
         self.propensity = 0.0
-        self.largest_prod_prev = -1  # int: Firm object or -1 (none)
+        self.largest_prod_prev = None  # Firm object or None (none visited)
         self.job_apps = []
         self.shop_visits = []
         # Shareholder
@@ -75,7 +75,7 @@ class Household(mesa.Agent):
     @property
     def employed(self) -> bool:
         """Derived property: whether this household is employed."""
-        return self.employer != -1
+        return self.employer is not None
 
 
 class Bank(mesa.Agent):
