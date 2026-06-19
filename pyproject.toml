@@ -71,6 +71,17 @@ calibration = ["bamengine[validation]"]
 # Visualization (lazy-imported in validation/calibration viz modules)
 viz = ["matplotlib>=3.8"]
 
+# Cross-framework benchmark suite
+comparison = [
+    "psutil>=5.9",
+    "pandas>=2.0",
+    "matplotlib>=3.8",
+    "scipy>=1.11",
+    "tabulate>=0.9",
+    "mesa>=3.0",
+    "mesa-frames",
+]
+
 # Development
 dev = [
     "bamengine[test,lint,docs,pandas,extensions,calibration,viz]",
@@ -169,6 +180,7 @@ line-length = 88
 include = [
     "src/**/*.py",
     "tests/**/*.py",
+    "comparison/**/*.py",
     "diagnostics/**/*.py",
     "benchmarks/**/*.py",
     "examples/**/*.py",

@@ -89,7 +89,7 @@ docs/sg_execution_times.rst
 *.tmp
 
 # Local scripts and notes
-analysis/
+/analysis/
 diagnostics/
 notes/
 thesis/
