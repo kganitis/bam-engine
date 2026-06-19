@@ -34,6 +34,7 @@ from comparison.orchestrator.subprocess_runner import run_subprocess
 
 RUNNER_CMD: dict[str, list[str]] = {
     "bamengine": [sys.executable, "-m", "comparison.runners.bamengine.run"],
+    "mesa": [sys.executable, "-m", "comparison.runners.mesa.run"],
 }
 
 _THREAD_ENV = {
