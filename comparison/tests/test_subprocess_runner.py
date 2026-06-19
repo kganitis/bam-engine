@@ -21,6 +21,9 @@ def test_times_out_and_kills():
 
 
 def test_measures_allocation_peak():
-    code = "x = bytearray(80_000_000); import sys; sys.stdout.write('ok')"
+    code = (
+        "x = bytearray(160_000_000); x[::4096] = b'\\x01' * len(x[::4096]);"
+        " import sys, time; sys.stdout.write('ok'); sys.stdout.flush(); time.sleep(0.3)"
+    )
     out = run_subprocess([sys.executable, "-c", code], budget_s=30)
-    assert out.peak_rss_bytes > 40_000_000
+    assert out.peak_rss_bytes > 80_000_000
