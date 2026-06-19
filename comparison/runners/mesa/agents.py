@@ -137,6 +137,60 @@ class Firm(mesa.Agent):
             self.current_labor -= 1
 
     # ------------------------------------------------------------------
+    # Credit market methods (events 15-17, 19)
+    # ------------------------------------------------------------------
+
+    def decide_credit_demand(self) -> None:
+        """Event 15: credit demand = max(wage_bill - total_funds, 0)."""
+        self.credit_demand = max(self.wage_bill - self.total_funds, 0.0)
+
+    def calc_fragility(self) -> None:
+        """Event 16: projected fragility = credit_demand / net_worth (or max_leverage if NW<=0)."""
+        max_leverage = self.model.p["max_leverage"]
+        if self.net_worth > 0:
+            self.projected_fragility = self.credit_demand / self.net_worth
+        else:
+            self.projected_fragility = max_leverage
+
+    def prepare_loan_applications(self, model) -> None:
+        """Event 17: sample H_eff banks with supply, sort by interest_rate ASC."""
+        if self.credit_demand <= 0:
+            self.loan_apps = []
+            return
+        max_H = model.p["max_H"]
+        lenders = [b for b in model.banks if b.credit_supply > 0]
+        H_eff = min(max_H, len(lenders))
+        if H_eff == 0:
+            self.loan_apps = []
+            return
+        sample = model.random.sample(lenders, H_eff)
+        sample.sort(key=lambda b: b.interest_rate)
+        self.loan_apps = sample
+
+    def fire_workers_for_gap(self, model) -> None:
+        """Event 19: fire workers until wage_bill is covered by total_funds."""
+        if self.wage_bill <= self.total_funds:
+            return
+        gap = self.wage_bill - self.total_funds
+        employees_list = list(self.employees)
+        model.random.shuffle(employees_list)
+        cumulative = 0.0
+        for h in employees_list:
+            wage = h.wage
+            h.employer = None
+            h.employer_prev = self
+            h.wage = 0.0
+            h.periods_left = 0
+            h.contract_expired = False
+            h.fired = True
+            self.employees.discard(h)
+            self.current_labor -= 1
+            self.wage_bill -= wage
+            cumulative += wage
+            if cumulative >= gap:
+                break
+
+    # ------------------------------------------------------------------
     # Labor market methods (events 9, 12)
     # ------------------------------------------------------------------
 
@@ -232,3 +286,20 @@ class Bank(mesa.Agent):
         self.credit_supply = 0.0
         self.interest_rate = 0.0
         self.opex_shock = 0.0
+
+    # ------------------------------------------------------------------
+    # Credit market methods (events 13-14)
+    # ------------------------------------------------------------------
+
+    def decide_credit_supply(self) -> None:
+        """Event 13: credit_supply = max(equity_base / v, 0)."""
+        v = self.model.p["v"]
+        self.credit_supply = max(self.equity_base / v, 0.0)
+
+    def decide_interest_rate(self) -> None:
+        """Event 14: draw opex_shock ~ U(0, h_phi); interest_rate = r_bar*(1+opex_shock)."""
+        model = self.model
+        h_phi = model.p["h_phi"]
+        r_bar = model.p["r_bar"]
+        self.opex_shock = model.random.uniform(0, h_phi)
+        self.interest_rate = r_bar * (1.0 + self.opex_shock)

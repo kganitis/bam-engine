@@ -5,7 +5,7 @@ from __future__ import annotations
 import mesa
 
 from comparison.runners.mesa.agents import Bank, Firm, Household
-from comparison.runners.mesa.markets import run_labor_market
+from comparison.runners.mesa.markets import run_credit_market, run_labor_market
 
 EPS = 1e-9
 
@@ -110,6 +110,21 @@ class BamModel(mesa.Model):
         run_labor_market(self)
         self.firms.do("calc_wage_bill")
 
+    def _credit_market(self) -> None:
+        """Phase 3: credit market (events 13-19)."""
+        # Purge previous-period loans (retained through planning/labor for breakeven).
+        for f in self.firms:
+            f.loans = []
+        self.banks.do("decide_credit_supply")
+        self.banks.do("decide_interest_rate")
+        self.firms.do("decide_credit_demand")
+        self.firms.do("calc_fragility")
+        for f in self.firms:
+            f.prepare_loan_applications(self)
+        run_credit_market(self)
+        for f in self.firms:
+            f.fire_workers_for_gap(self)
+
     def step(self):
         """Execute one simulation period."""
         if self.collapsed:
@@ -117,3 +132,4 @@ class BamModel(mesa.Model):
         self.period += 1
         self._planning()
         self._labor_market()
+        self._credit_market()
