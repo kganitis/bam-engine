@@ -5,7 +5,11 @@ from __future__ import annotations
 import mesa
 
 from comparison.runners.mesa.agents import Bank, Firm, Household
-from comparison.runners.mesa.markets import run_credit_market, run_labor_market
+from comparison.runners.mesa.markets import (
+    run_credit_market,
+    run_goods_market,
+    run_labor_market,
+)
 
 EPS = 1e-9
 
@@ -152,6 +156,22 @@ class BamModel(mesa.Model):
         for h in list(self.households):
             h.update_contract()
 
+    def _goods_market(self) -> None:
+        """Phase 5: goods market (events 25-29)."""
+        all_savings = [h.savings for h in self.households]
+        avg_sav = (
+            max(sum(all_savings) / len(all_savings), self.EPS)
+            if all_savings
+            else self.EPS
+        )
+        for h in self.households:
+            h.calc_propensity(avg_sav)
+        self.households.do("decide_income_to_spend")
+        for h in self.households:
+            h.decide_firms_to_visit(self)
+        run_goods_market(self)
+        self.households.do("finalize_purchases")
+
     def step(self):
         """Execute one simulation period."""
         if self.collapsed:
@@ -161,3 +181,4 @@ class BamModel(mesa.Model):
         self._labor_market()
         self._credit_market()
         self._production()
+        self._goods_market()

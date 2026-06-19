@@ -279,6 +279,56 @@ class Household(mesa.Agent):
             employer.current_labor -= 1
 
     # ------------------------------------------------------------------
+    # Goods market methods (events 25-27, 29)
+    # ------------------------------------------------------------------
+
+    def calc_propensity(self, avg_savings: float) -> None:
+        """Event 25: marginal propensity to consume from relative savings."""
+        model = self.model
+        beta = model.p["beta"]
+        eps = model.EPS
+        savings = max(self.savings, 0.0)
+        avg_sav = max(avg_savings, eps)
+        self.propensity = 1.0 / (1.0 + math.tanh(savings / avg_sav) ** beta)
+
+    def decide_income_to_spend(self) -> None:
+        """Event 26: split wealth into spending budget and savings."""
+        wealth = self.savings + self.income
+        self.income_to_spend = wealth * self.propensity
+        self.savings = wealth - self.income_to_spend
+        self.income = 0.0
+
+    def decide_firms_to_visit(self, model) -> None:
+        """Event 27: select and price-sort firms to shop at; update loyalty."""
+        eps = model.EPS
+        if self.income_to_spend <= eps:
+            self.shop_visits = []
+            return
+        max_Z = model.p["max_Z"]
+        all_firms = list(model.firms)
+        n_firms = len(all_firms)
+        Z = min(max_Z, n_firms)
+        selected = model.random.sample(all_firms, Z)
+        # Loyalty: force previous best producer into set if known.
+        if model.p.get("consumer_matching", "loyalty") == "loyalty":
+            if (
+                self.largest_prod_prev is not None
+                and self.largest_prod_prev not in selected
+            ):
+                selected[-1] = self.largest_prod_prev
+        # Sort by price ASC.
+        selected.sort(key=lambda f: f.price)
+        self.shop_visits = selected
+        # Update loyalty BEFORE shopping: track largest producer in set.
+        if model.p.get("consumer_matching", "loyalty") == "loyalty":
+            self.largest_prod_prev = max(selected, key=lambda f: f.production)
+
+    def finalize_purchases(self) -> None:
+        """Event 29: return unspent budget to savings."""
+        self.savings += self.income_to_spend
+        self.income_to_spend = 0.0
+
+    # ------------------------------------------------------------------
     # Labor market methods (event 10)
     # ------------------------------------------------------------------
 
