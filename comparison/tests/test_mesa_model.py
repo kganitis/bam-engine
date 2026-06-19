@@ -101,3 +101,39 @@ def test_wage_bill_sums_employee_wages():
         f.employees.add(h)
     f.calc_wage_bill()
     assert f.wage_bill == 6.0
+
+
+def test_credit_grants_partial_at_supply_boundary():
+    m = _model(n_firms=2, n_households=5, n_banks=1, seed=4)
+    from comparison.runners.mesa.markets import run_credit_market
+
+    bank = next(iter(m.banks))
+    bank.credit_supply = 10.0
+    bank.opex_shock = 0.0
+    f1, f2 = list(m.firms)
+    f1.credit_demand = 8.0
+    f1.net_worth = 100.0
+    f1.projected_fragility = 0.1
+    f2.credit_demand = 8.0
+    f2.net_worth = 100.0
+    f2.projected_fragility = 0.5  # served second
+    f1.loan_apps = [bank]
+    f2.loan_apps = [bank]
+    m.p["max_loan_to_net_worth"] = 0  # disable per-loan cap for clarity
+    run_credit_market(m)
+    # f1 (safer) fully funded 8.0; f2 gets remaining 2.0
+    assert abs(sum(loan.principal for loan in f1.loans) - 8.0) < 1e-6
+    assert abs(sum(loan.principal for loan in f2.loans) - 2.0) < 1e-6
+
+
+def test_credit_supply_and_demand_formulas():
+    m = _model(n_firms=1, n_households=5, n_banks=1)
+    b = next(iter(m.banks))
+    b.equity_base = 5.0
+    b.decide_credit_supply()
+    assert abs(b.credit_supply - 5.0 / m.p["v"]) < 1e-9
+    f = next(iter(m.firms))
+    f.wage_bill = 10.0
+    f.total_funds = 4.0
+    f.decide_credit_demand()
+    assert f.credit_demand == 6.0

@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from comparison.runners.mesa.model import BamModel
 
+EPS = 1e-9
+
 
 def run_labor_market(model: BamModel) -> None:
     """Event 11 (x max_M): multi-round labor market matching.
@@ -47,3 +49,64 @@ def run_labor_market(model: BamModel) -> None:
                 firm.employees.add(h)
                 firm.current_labor += 1
                 firm.n_vacancies -= 1
+
+
+def run_credit_market(model: BamModel) -> None:
+    """Events 18 (×max_H): multi-round credit market matching.
+
+    Each round: firms with credit_demand>0 and non-empty loan_apps pop their
+    front bank; applicants are grouped by bank and ranked by projected_fragility
+    ASC (deterministic, no random tie-break); loans are granted walking the
+    ranked list maintaining a running total against credit_supply; the boundary
+    applicant may receive a partial loan.  Loans accumulate across rounds.
+    """
+    from comparison.runners.mesa.agents import Loan
+
+    max_H = model.p["max_H"]
+    max_loan_to_net_worth = model.p["max_loan_to_net_worth"]
+    r_bar = model.p["r_bar"]
+    max_leverage = model.p["max_leverage"]
+
+    for _ in range(max_H):
+        # Group applications by bank for this round.
+        applicants_by_bank: dict = {}
+        for f in model.firms:
+            if f.credit_demand <= 0 or not f.loan_apps:
+                continue
+            bank = f.loan_apps.pop(0)
+            applicants_by_bank.setdefault(bank, []).append(f)
+
+        for bank, applicants in applicants_by_bank.items():
+            supply = bank.credit_supply
+            if supply <= EPS:
+                continue
+            # Rank by projected_fragility ASC (safer firms first, no random tie-break).
+            applicants.sort(key=lambda f: f.projected_fragility)
+            granted_total = 0.0
+            for f in applicants:
+                if granted_total >= supply:
+                    break
+                # Per-loan cap.
+                if max_loan_to_net_worth > 0:
+                    max_grant = min(
+                        f.credit_demand, f.net_worth * max_loan_to_net_worth
+                    )
+                else:
+                    max_grant = f.credit_demand
+                if max_grant <= 0:
+                    continue
+                remaining = supply - granted_total
+                amount = (
+                    max_grant
+                    if granted_total + max_grant <= supply
+                    else max(remaining, 0.0)
+                )
+                if amount > EPS:
+                    fragility = min(f.projected_fragility, max_leverage)
+                    rate = r_bar * (1.0 + bank.opex_shock * fragility)
+                    f.loans.append(Loan(principal=amount, rate=rate))
+                    f.total_funds += amount
+                    f.credit_demand -= amount
+                    granted_total += amount
+            # Update bank supply once after all applicants processed.
+            bank.credit_supply -= granted_total
