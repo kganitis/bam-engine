@@ -129,7 +129,7 @@ def run_credit_market(model: BamModel) -> None:
                 if amount > EPS:
                     fragility = min(f.projected_fragility, max_leverage)
                     rate = r_bar * (1.0 + bank.opex_shock * fragility)
-                    f.loans.append(Loan(principal=amount, rate=rate))
+                    f.loans.append(Loan(principal=amount, rate=rate, lender=bank))
                     f.total_funds += amount
                     f.credit_demand -= amount
                     granted_total += amount
