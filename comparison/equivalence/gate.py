@@ -83,7 +83,8 @@ def evaluate_gate(by_framework: dict, k: float = 2.0) -> dict:
                             "bamengine_mean": float,
                             "deviation": float,
                             "tolerance": float,
-                            "within": bool,
+                            "within": "bool | None",
+                            "indeterminate": bool,
                         }
                     },
                     "passed": bool,
@@ -100,16 +101,43 @@ def evaluate_gate(by_framework: dict, k: float = 2.0) -> dict:
         metrics = {}
         ok = True
         for m in METRIC_KEYS:
-            dev = abs(stats[m]["mean"] - be[m]["mean"])
-            within = dev <= tol[m]
-            metrics[m] = {
-                "mean": stats[m]["mean"],
-                "bamengine_mean": be[m]["mean"],
-                "deviation": dev,
-                "tolerance": tol[m],
-                "within": within,
-            }
-            ok = ok and within
+            ref = be[m]["mean"]
+            cand = stats[m]["mean"]
+            if np.isnan(ref):
+                # Reference cannot determine this metric; treat as indeterminate.
+                # An indeterminate metric must not fail any candidate or the reference.
+                metrics[m] = {
+                    "mean": cand,
+                    "bamengine_mean": ref,
+                    "deviation": float("nan"),
+                    "tolerance": tol[m],
+                    "within": None,
+                    "indeterminate": True,
+                }
+                # ok unchanged: indeterminate metrics are excluded from pass/fail
+            elif np.isnan(cand):
+                # Reference is finite but candidate produced no value: genuine failure.
+                metrics[m] = {
+                    "mean": cand,
+                    "bamengine_mean": ref,
+                    "deviation": float("nan"),
+                    "tolerance": tol[m],
+                    "within": False,
+                    "indeterminate": False,
+                }
+                ok = False
+            else:
+                dev = abs(cand - ref)
+                within = bool(dev <= tol[m])
+                metrics[m] = {
+                    "mean": cand,
+                    "bamengine_mean": ref,
+                    "deviation": dev,
+                    "tolerance": tol[m],
+                    "within": within,
+                    "indeterminate": False,
+                }
+                ok = ok and within
         blocking = fw not in NON_BLOCKING and fw != "bamengine"
         frameworks[fw] = {"metrics": metrics, "passed": ok, "blocking": blocking}
     return {"tolerances": tol, "bamengine": be, "frameworks": frameworks}
