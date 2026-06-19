@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "run_id": "mesa__s2000__rep6",
+  "framework": "mesa",
+  "framework_version": "3.5.1",
+  "language": "python",
+  "language_version": "3.13.12",
+  "status": "ok",
+  "error": null,
+  "population": {
+    "n_firms": 2000,
+    "n_households": 10000,
+    "n_banks": 200,
+    "n_agents_total": 12200
+  },
+  "n_periods": 1000,
+  "warmup_periods": 100,
+  "seed": 1006,
+  "timing": {
+    "init_seconds": 0.013353582995478064,
+    "run_seconds": 28.315071084012743,
+    "steady_state_per_period_seconds": 0.03146119009334749,
+    "throughput_agent_steps_per_s": 387779.3549386329
+  },
+  "outputs": null,
+  "process": {
+    "wall_seconds": 32.09809033398051,
+    "peak_rss_bytes": 120356864,
+    "startup_seconds": 3.769665666972287
+  },
+  "environment_id": "ec8da0cb068e"
+}
