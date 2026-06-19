@@ -32,3 +32,41 @@ def test_rng_is_deterministic():
     seq1 = [m1.random.random() for _ in range(5)]
     seq2 = [m2.random.random() for _ in range(5)]
     assert seq1 == seq2
+
+
+def test_desired_labor_ceil_ratchet():
+    m = _model(n_firms=1, n_households=5, n_banks=1)
+    f = next(iter(m.firms))
+    f.desired_production = 4.5
+    f.labor_productivity = 0.5  # 4.5/0.5 = 9.0 -> 9
+    f.decide_desired_labor()
+    assert f.desired_labor == 9
+    f.desired_production = 4.4  # 8.8 -> ceil 9 (ratchet)
+    f.decide_desired_labor()
+    assert f.desired_labor == 9
+
+
+def test_plan_price_raise_floored_by_breakeven():
+    m = _model(n_firms=1, n_households=5, n_banks=1, seed=1)
+    f = next(iter(m.firms))
+    m.avg_mkt_price = 1.0
+    f.price = 0.5
+    f.inventory = 0.0
+    f.breakeven_price = 0.6  # sold out, underpriced -> raise, floored
+    f.plan_price()
+    assert f.price >= 0.6
+
+
+def test_fire_excess_reduces_labor():
+    m = _model(n_firms=1, n_households=5, n_banks=1, seed=2)
+    f = next(iter(m.firms))
+    hs = list(m.households)[:3]
+    for h in hs:
+        h.employer = f
+        f.employees.add(h)
+        f.current_labor += 1
+    f.desired_labor = 1
+    f.fire_excess_workers()
+    assert f.current_labor == 1 and len(f.employees) == 1  # noqa: PT018
+    fired = [h for h in hs if h.employer is None]
+    assert len(fired) == 2 and all(h.fired and h.employer_prev is f for h in fired)  # noqa: PT018

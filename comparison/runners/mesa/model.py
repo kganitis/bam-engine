@@ -6,9 +6,13 @@ import mesa
 
 from comparison.runners.mesa.agents import Bank, Firm, Household
 
+EPS = 1e-9
+
 
 class BamModel(mesa.Model):
     """The baseline BAM agent-based macroeconomic model in Mesa 3.x."""
+
+    EPS = EPS
 
     def __init__(self, n_firms, n_households, n_banks, params, seed=0):
         super().__init__(rng=seed)
@@ -59,12 +63,18 @@ class BamModel(mesa.Model):
     def banks(self):
         return self.agents_by_type[Bank]
 
-    def step(self):
-        """Execute one simulation period.
+    def _planning(self) -> None:
+        """Phase 1: planning (events 1-6)."""
+        self.firms.do("decide_desired_production")
+        self.firms.do("plan_breakeven_price")
+        self.firms.do("plan_price")
+        self.firms.do("decide_desired_labor")
+        self.firms.do("decide_vacancies")
+        self.firms.do("fire_excess_workers")
 
-        For now, only increments the period counter.
-        Phases added in later tasks.
-        """
+    def step(self):
+        """Execute one simulation period."""
         if self.collapsed:
             return
         self.period += 1
+        self._planning()
