@@ -101,6 +101,7 @@ scripts/
 # Claude AI files
 .claude/
 CLAUDE.md
+/.claude.local.md
 
 # Plot analysis output
 examples/plot_analysis/
