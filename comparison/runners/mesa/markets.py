@@ -71,7 +71,7 @@ def run_labor_market(model: BamModel) -> None:
                 h.contract_expired = False
                 h.fired = False
                 h.job_apps = []
-                firm.employees.add(h)
+                firm.employees[h] = None
                 firm.current_labor += 1
                 firm.n_vacancies -= 1
 
