@@ -125,6 +125,33 @@ class BamModel(mesa.Model):
         for f in self.firms:
             f.fire_workers_for_gap(self)
 
+    def _update_avg_mkt_price(self) -> None:
+        """Event 23: production-weighted average price; keep previous if result <= 0."""
+        total_prod = 0.0
+        weighted_sum = 0.0
+        for f in self.firms:
+            if f.production >= 1e-3:
+                weighted_sum += f.price * f.production
+                total_prod += f.production
+        if total_prod > 0:
+            new_price = weighted_sum / total_prod
+        else:
+            new_price = 0.0
+        if new_price > 0:
+            self.avg_mkt_price = new_price
+        # else: keep previous avg_mkt_price
+        self.avg_mkt_price_history.append(self.avg_mkt_price)
+
+    def _production(self) -> None:
+        """Phase 4: production (events 20-24)."""
+        self.firms.do("pay_wages")
+        self.households.do("receive_wage")
+        self.firms.do("run_production")
+        self._update_avg_mkt_price()
+        # Snapshot employer before clearing so we can update firm bookkeeping.
+        for h in list(self.households):
+            h.update_contract()
+
     def step(self):
         """Execute one simulation period."""
         if self.collapsed:
@@ -133,3 +160,4 @@ class BamModel(mesa.Model):
         self._planning()
         self._labor_market()
         self._credit_market()
+        self._production()

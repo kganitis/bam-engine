@@ -137,3 +137,36 @@ def test_credit_supply_and_demand_formulas():
     f.total_funds = 4.0
     f.decide_credit_demand()
     assert f.credit_demand == 6.0
+
+
+def test_run_production_overwrites_inventory():
+    m = _model(n_firms=1, n_households=5, n_banks=1)
+    f = next(iter(m.firms))
+    f.current_labor = 4
+    f.labor_productivity = 0.5
+    f.inventory = 99.0
+    f.run_production()
+    assert f.production == 2.0 and f.production_prev == 2.0 and f.inventory == 2.0  # noqa: PT018
+
+
+def test_avg_mkt_price_production_weighted():
+    m = _model(n_firms=2, n_households=5, n_banks=1)
+    a, b = list(m.firms)
+    a.price, a.production = 1.0, 3.0
+    b.price, b.production = 2.0, 1.0
+    m._update_avg_mkt_price()
+    assert abs(m.avg_mkt_price - (1.0 * 3 + 2.0 * 1) / 4) < 1e-9
+    assert m.avg_mkt_price_history[-1] == m.avg_mkt_price
+
+
+def test_contract_expiry_frees_worker():
+    m = _model(n_firms=1, n_households=5, n_banks=1)
+    f = next(iter(m.firms))
+    h = next(iter(m.households))
+    h.employer = f
+    h.periods_left = 1
+    f.employees.add(h)
+    f.current_labor = 1
+    h.update_contract()
+    assert h.employer is None and h.contract_expired and not h.fired  # noqa: PT018
+    assert h.employer_prev is f and f.current_labor == 0 and h not in f.employees  # noqa: PT018
