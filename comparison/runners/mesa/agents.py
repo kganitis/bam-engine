@@ -207,6 +207,20 @@ class Firm(mesa.Agent):
         """Event 12: sum wages of all employees."""
         self.wage_bill = sum(w.wage for w in self.employees)
 
+    # ------------------------------------------------------------------
+    # Production phase methods (events 20, 22)
+    # ------------------------------------------------------------------
+
+    def pay_wages(self) -> None:
+        """Event 20: deduct wage bill from total funds."""
+        self.total_funds -= self.wage_bill
+
+    def run_production(self) -> None:
+        """Event 22: produce output; overwrite inventory; update production_prev."""
+        self.production = self.labor_productivity * self.current_labor
+        self.production_prev = self.production  # unconditional every period
+        self.inventory = self.production  # overwrite, NOT accumulate
+
 
 class Household(mesa.Agent):
     """Household agent (Worker + Consumer + Shareholder roles)."""
@@ -235,6 +249,34 @@ class Household(mesa.Agent):
     def employed(self) -> bool:
         """Derived property: whether this household is employed."""
         return self.employer is not None
+
+    # ------------------------------------------------------------------
+    # Labor market methods (event 10)
+    # ------------------------------------------------------------------
+
+    # ------------------------------------------------------------------
+    # Production phase methods (events 21, 24)
+    # ------------------------------------------------------------------
+
+    def receive_wage(self) -> None:
+        """Event 21: add wage to income if employed."""
+        if self.employed:
+            self.income += self.wage
+
+    def update_contract(self) -> None:
+        """Event 24: decrement contract; expire if periods_left reaches 0."""
+        if not self.employed:
+            return
+        self.periods_left -= 1
+        if self.periods_left == 0:
+            employer = self.employer
+            self.employer_prev = employer
+            self.employer = None
+            self.wage = 0.0
+            self.contract_expired = True
+            self.fired = False
+            employer.employees.discard(self)
+            employer.current_labor -= 1
 
     # ------------------------------------------------------------------
     # Labor market methods (event 10)
