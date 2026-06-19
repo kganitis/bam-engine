@@ -68,6 +68,15 @@ class BamModel(mesa.Model):
         for _ in range(n_banks):
             Bank(self, equity_base=self.p["equity_base_init"])
 
+        # Snapshot firm list and set once.  Firms are never added or removed
+        # during a run (bankrupt firms are reset in-place), so these are stable
+        # for the lifetime of the model.  The pre-built list avoids O(n_firms)
+        # AgentSet iteration overhead per consumer/worker call; the pre-built
+        # set gives O(1) membership tests (employer_prev in pool) instead of
+        # O(n_firms) linear scans.
+        self._firms_list: list = list(self.agents_by_type[Firm])
+        self._firms_set: set = set(self._firms_list)
+
         # economy state (REF §3)
         self.avg_mkt_price = price_init
         self.min_wage = wage_offer_init * self.p["min_wage_ratio"]
