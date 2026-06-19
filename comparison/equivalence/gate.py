@@ -32,7 +32,10 @@ def bamengine_stats(metric_rows: list) -> dict:
     for m in METRIC_KEYS:
         vals = np.array([r[m] for r in metric_rows], float)
         vals = vals[~np.isnan(vals)]
-        out[m] = {"mean": float(np.mean(vals)), "std": float(np.std(vals))}
+        if len(vals) == 0:
+            out[m] = {"mean": float("nan"), "std": float("nan")}
+        else:
+            out[m] = {"mean": float(np.mean(vals)), "std": float(np.std(vals))}
     return out
 
 
