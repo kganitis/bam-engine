@@ -49,7 +49,7 @@ from comparison.orchestrator.contract import (
 #                     is a computed bool property (employer >= 0) and is only
 #                     collected via the ``BASELINE_COLLECT`` config, which also
 #                     pins its capture timing to ``firms_run_production`` (so the
-#                     last period is not inflated by post-step contract expiry —
+#                     last period is not inflated by post-step contract expiry
 #                     see CLAUDE.md "measurement timing"). This matches the
 #                     canonical formula in validation/robustness/internal_validity.
 #   price_inflation : ``Economy.inflation``  (exists, per-period scalar series).

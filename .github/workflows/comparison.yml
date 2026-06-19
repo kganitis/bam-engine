@@ -15,4 +15,4 @@ jobs:
       - run: pip install ruff
       - run: ruff check comparison/
       - run: ruff format --check comparison/
-      - run: python -m pytest comparison/tests -v
+      - run: python -m pytest comparison/tests -v --no-cov
