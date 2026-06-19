@@ -2,7 +2,17 @@
 
 from __future__ import annotations
 
+import math
+from typing import NamedTuple
+
 import mesa
+
+
+class Loan(NamedTuple):
+    """A single loan record held by a Firm."""
+
+    principal: float
+    rate: float
 
 
 class Firm(mesa.Agent):
@@ -44,9 +54,87 @@ class Firm(mesa.Agent):
         self.retained_profit = 0.0
         # scratch for market rounds (set during phases)
         self.loan_apps = []  # ranked bank ids (objects), consumed per round
+        self.loans: list[Loan] = []  # outstanding loans
         self.employees = (
             set()
         )  # Household objects employed here (maintained on hire/fire)
+
+    # ------------------------------------------------------------------
+    # Planning phase methods (events 1-6)
+    # ------------------------------------------------------------------
+
+    def decide_desired_production(self) -> None:
+        """Event 1: set production target based on inventory and market position."""
+        model = self.model
+        p_avg = model.avg_mkt_price
+        h_rho = model.p["h_rho"]
+
+        self.production = 0.0
+        shock = model.random.uniform(0, h_rho)
+        up = self.inventory == 0 and self.price >= p_avg
+        dn = self.inventory > 0 and self.price < p_avg
+
+        self.expected_demand = self.production_prev
+        if up:
+            self.expected_demand *= 1 + shock
+        elif dn:
+            self.expected_demand *= 1 - shock
+
+        self.desired_production = self.expected_demand
+
+    def plan_breakeven_price(self) -> None:
+        """Event 2: compute breakeven price from wage bill and loan interest."""
+        eps = self.model.EPS
+        interest = sum(loan.rate * loan.principal for loan in self.loans)
+        self.breakeven_price = (self.wage_bill + interest) / max(
+            self.desired_production, eps
+        )
+
+    def plan_price(self) -> None:
+        """Event 3: adjust price based on inventory and market position."""
+        model = self.model
+        p_avg = model.avg_mkt_price
+        h_eta = model.p["h_eta"]
+
+        shock = model.random.uniform(0, h_eta)
+        up = self.inventory == 0 and self.price < p_avg
+        dn = self.inventory > 0 and self.price >= p_avg
+
+        if up:
+            self.price *= 1 + shock
+            self.price = max(self.price, self.breakeven_price)
+        elif dn:
+            self.price *= 1 - shock
+            self.price = max(self.price, self.breakeven_price)
+
+    def decide_desired_labor(self) -> None:
+        """Event 4: compute desired labor as ceil(desired_production / labor_productivity)."""
+        eps = self.model.EPS
+        self.desired_labor = math.ceil(
+            self.desired_production / max(self.labor_productivity, eps)
+        )
+
+    def decide_vacancies(self) -> None:
+        """Event 5: open vacancies = max(desired_labor - current_labor, 0)."""
+        self.n_vacancies = max(self.desired_labor - self.current_labor, 0)
+
+    def fire_excess_workers(self) -> None:
+        """Event 6: fire excess workers chosen uniformly at random."""
+        excess = self.current_labor - self.desired_labor
+        if excess <= 0:
+            return
+
+        k = min(excess, len(self.employees))
+        victims = self.model.random.sample(list(self.employees), k)
+        for h in victims:
+            h.employer = None
+            h.employer_prev = self
+            h.wage = 0.0
+            h.periods_left = 0
+            h.contract_expired = False
+            h.fired = True
+            self.employees.discard(h)
+            self.current_labor -= 1
 
 
 class Household(mesa.Agent):
