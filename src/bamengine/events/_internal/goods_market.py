@@ -229,7 +229,16 @@ def consumers_decide_firms_to_visit(
 
     # Sort selected firms by price (cheapest first) - vectorized
     prices_selected = prod.price[top_k_indices]
-    price_order = np.argsort(prices_selected, axis=1)
+    if effective_Z == 2:
+        # argsort over 2 columns returns [0,1] when prices_selected[:,0] <= [:,1]
+        # (ties -> [0,1], matching numpy's argsort stable behaviour), else [1,0].
+        # Build that directly without the O(n log n) overhead of np.argsort.
+        swap = prices_selected[:, 0] > prices_selected[:, 1]
+        price_order = np.empty((prices_selected.shape[0], 2), dtype=np.intp)
+        price_order[:, 0] = swap  # 0 if no swap, 1 if swap
+        price_order[:, 1] = ~swap  # 1 if no swap, 0 if swap
+    else:
+        price_order = np.argsort(prices_selected, axis=1)
     sorted_firms = np.take_along_axis(top_k_indices, price_order, axis=1)
 
     # Vectorized buffer write — fancy indexing replaces per-consumer loop
