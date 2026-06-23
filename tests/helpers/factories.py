@@ -58,7 +58,7 @@ def _producer_defaults(n: int, *, queue_: int) -> dict[str, Any]:
     )
 
 
-def _employer_defaults(n: int, *, queue_m: int) -> dict[str, Any]:
+def _employer_defaults(n: int) -> dict[str, Any]:
     return dict(
         desired_labor=np.zeros(n, dtype=np.int64),
         current_labor=np.zeros(n, dtype=np.int64),
@@ -66,8 +66,6 @@ def _employer_defaults(n: int, *, queue_m: int) -> dict[str, Any]:
         wage_bill=np.zeros(n, dtype=np.float64),
         n_vacancies=np.zeros(n, dtype=np.int64),
         total_funds=np.ones(n, dtype=np.float64),
-        recv_job_apps_head=np.full(n, -1, dtype=np.int64),
-        recv_job_apps=np.full((n, n * 5), -1, dtype=np.int64),
         wage_shock=None,  # scratch
     )
 
@@ -100,13 +98,11 @@ def _borrower_defaults(n: int, *, queue_h: int) -> dict[str, Any]:
     )
 
 
-def _lender_defaults(n: int, *, queue_h: int) -> dict[str, Any]:
+def _lender_defaults(n: int) -> dict[str, Any]:
     return dict(
         equity_base=np.full(n, 10_000.0, dtype=np.float64),
         credit_supply=np.zeros(n, dtype=np.float64),
         interest_rate=np.zeros(n, dtype=np.float64),
-        recv_loan_apps_head=np.full(n, -1, dtype=np.int64),
-        recv_loan_apps=np.full((n, n * 10), -1, dtype=np.int64),
         opex_shock=None,  # scratch
     )
 
@@ -199,8 +195,6 @@ def mock_producer(
 
 def mock_employer(
     n: int = 1,
-    *,
-    queue_m: int = 4,
     **overrides: Any,
 ) -> Employer:
     """
@@ -210,12 +204,10 @@ def mock_employer(
     ----------
     n
         Number of employers.
-    queue_m
-        Width of the application queue (`recv_job_apps.shape[1]`).
     **overrides
         Field-value pairs that overwrite defaults.
     """
-    cfg = _employer_defaults(n, queue_m=queue_m) | overrides
+    cfg = _employer_defaults(n) | overrides
     return Employer(**cfg)
 
 
@@ -265,8 +257,6 @@ def mock_borrower(
 
 def mock_lender(
     n: int = 1,
-    *,
-    queue_h: int = 2,
     **overrides: Any,
 ) -> Lender:
     """
@@ -276,12 +266,10 @@ def mock_lender(
     ----------
     n
         Number of lenders.
-    queue_h
-        Width of the inbound loan queue (`recv_loan_apps.shape[1]`).
     **overrides
         Field-value pairs that overwrite defaults.
     """
-    cfg = _lender_defaults(n, queue_h=queue_h) | overrides
+    cfg = _lender_defaults(n) | overrides
     return Lender(**cfg)
 
 

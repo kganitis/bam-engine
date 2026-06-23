@@ -43,7 +43,6 @@ def _mini_state(
     rng = make_rng(seed)
     emp = mock_employer(
         n=n_employers,
-        queue_m=M,
         wage_offer=np.array([1.0, 1.5, 1.2]),
         n_vacancies=np.array([2, 1, 0]),
         current_labor=np.array([1, 0, 2], dtype=np.int64),
@@ -255,7 +254,6 @@ def test_prepare_applications_loyalty_swap_branch() -> None:
 
     emp = mock_employer(
         n=2,
-        queue_m=2,
         wage_offer=np.array([1.0, 10.0]),  # firm-1 much higher wage
         n_vacancies=np.array([1, 1]),
     )
@@ -284,7 +282,6 @@ def test_prepare_applications_loyalty_swap_branch() -> None:
 def test_prepare_applications_loyalty_noop_when_already_first() -> None:
     emp = mock_employer(
         n=2,
-        queue_m=2,
         wage_offer=np.array([10.0, 1.0]),  # prev employer (0) has higher wage
         n_vacancies=np.array([1, 1]),
     )
@@ -322,7 +319,6 @@ def test_prepare_applications_large_unemployment() -> None:
     n_wrk, n_emp, M = 20, 3, 2
     fw = mock_employer(
         n=n_emp,
-        queue_m=M,
         wage_offer=np.array([1.0, 1.5, 1.2]),
         n_vacancies=np.array([2, 1, 0]),
     )
@@ -351,7 +347,6 @@ def test_prepare_applications_job_search_method_vacancies_only() -> None:
     """
     emp = mock_employer(
         n=4,
-        queue_m=2,
         wage_offer=np.array([1.0, 1.5, 1.2, 2.0]),
         n_vacancies=np.array([2, 0, 1, 0]),  # only firms 0 and 2 have vacancies
     )
@@ -377,7 +372,6 @@ def test_prepare_applications_job_search_method_all_firms() -> None:
     """
     emp = mock_employer(
         n=4,
-        queue_m=4,
         wage_offer=np.array([1.0, 1.5, 1.2, 2.0]),
         n_vacancies=np.array([0, 0, 0, 0]),  # NO firm has vacancies
     )
@@ -406,7 +400,6 @@ def test_prepare_applications_fewer_hiring_than_max_m() -> None:
     max_M = 4
     emp = mock_employer(
         n=4,
-        queue_m=max_M,
         wage_offer=np.array([1.0, 1.5, 1.2, 2.0]),
         n_vacancies=np.array([1, 0, 1, 0]),  # only 2 hiring firms
     )
@@ -435,7 +428,6 @@ def test_labor_round_no_hires_after_conflict_resolution() -> None:
     M = 2
     emp = mock_employer(
         n=2,
-        queue_m=M,
         wage_offer=np.array([1.0, 1.5]),
         n_vacancies=np.array([1, 1]),
         current_labor=np.array([0, 0], dtype=np.int64),

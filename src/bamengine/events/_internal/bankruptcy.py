@@ -322,8 +322,6 @@ def spawn_replacement_banks(
     lend.equity_base[exiting_indices] = lend.equity_base[src_indices]
     lend.credit_supply[exiting_indices] = 0.0
     lend.interest_rate[exiting_indices] = 0.0
-    lend.recv_loan_apps_head[exiting_indices] = -1
-    lend.recv_loan_apps[exiting_indices, :] = -1
 
     if log.isEnabledFor(logging.DEBUG):
         for k, src in zip(exiting_indices, src_indices, strict=True):

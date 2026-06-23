@@ -824,8 +824,6 @@ class Simulation:
         wage_offer = np.full(p["n_firms"], fill_value=wage_offer_init)
         wage_bill = np.zeros_like(wage_offer)
         n_vacancies = np.zeros_like(desired_labor)
-        recv_job_apps_head = np.full(p["n_firms"], -1, dtype=np.int64)
-        recv_job_apps = np.full((p["n_firms"], p["n_households"]), -1, dtype=np.int64)
 
         # worker
         employer = np.full(p["n_households"], -1, dtype=np.int64)
@@ -848,8 +846,6 @@ class Simulation:
         # noinspection DuplicatedCode
         credit_supply = np.zeros_like(equity_base)
         interest_rate = np.zeros(p["n_banks"])
-        recv_loan_apps_head = np.full(p["n_banks"], -1, dtype=np.int64)
-        recv_loan_apps = np.full((p["n_banks"], p["n_firms"]), -1, dtype=np.int64)
 
         # consumer
         income = np.zeros_like(wage)
@@ -903,8 +899,6 @@ class Simulation:
             wage_bill=wage_bill,
             n_vacancies=n_vacancies,
             total_funds=total_funds,
-            recv_job_apps_head=recv_job_apps_head,
-            recv_job_apps=recv_job_apps,
         )
         bor = Borrower(
             net_worth=net_worth,
@@ -922,8 +916,6 @@ class Simulation:
             equity_base=equity_base,
             credit_supply=credit_supply,
             interest_rate=interest_rate,
-            recv_loan_apps_head=recv_loan_apps_head,
-            recv_loan_apps=recv_loan_apps,
         )
         con = Consumer(
             income=income,
