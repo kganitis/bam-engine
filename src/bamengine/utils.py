@@ -456,7 +456,9 @@ def sample_k_per_row(
         out[fmask, 0] = forced[fmask].astype(np.intp)
 
     # Resample rows that have within-row duplicates (rejection sampling).
-    # Converges in 1-2 iterations for k << n_pool; the cap is a safety bound.
+    # Converges in 1-2 iterations for k << n_pool; when k approaches n_pool
+    # (e.g. a small hiring pool in the labor market) it takes more iterations
+    # but stays well within the cap.
     for _ in range(1000):
         srt = np.sort(out, axis=1)
         bad = (np.diff(srt, axis=1) == 0).any(axis=1)
