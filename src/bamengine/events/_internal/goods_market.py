@@ -15,7 +15,7 @@ import numpy as np
 
 from bamengine import Rng, logging, make_rng
 from bamengine.roles import Consumer, Producer
-from bamengine.utils import EPS
+from bamengine.utils import EPS, sample_k_per_row
 
 log = logging.getLogger(__name__)
 
@@ -217,28 +217,15 @@ def consumers_decide_firms_to_visit(
     loyalty_firms = con.largest_prod_prev[budget_indices]
     has_loyalty = loyalty_firms >= 0
 
-    # Vectorized firm selection using random priorities
-    # Generate random priorities for each (consumer, firm) pair
-    # Then select top-k firms by these priorities
     effective_Z = min(max_Z, n_firms)
-    priorities = rng.random((n_active, n_firms))
-
-    # For consumers with loyalty, give their loyalty firm highest priority (> 1.0)
+    # Forced loyalty inclusion (replaces the priority=1.1 trick), distributionally identical.
     if consumer_matching == "loyalty":
-        loyal_consumer_local_idx = np.where(has_loyalty)[0]
-        if loyal_consumer_local_idx.size > 0:
-            loyal_firm_ids = loyalty_firms[has_loyalty].astype(np.intp)
-            priorities[loyal_consumer_local_idx, loyal_firm_ids] = 1.1
-
-    # Select top effective_Z firms per consumer using argpartition (O(n) vs O(n log n))
-    if effective_Z < n_firms:
-        # argpartition: first effective_Z elements will be the top-k (unordered)
-        top_k_indices = np.argpartition(-priorities, kth=effective_Z - 1, axis=1)[
-            :, :effective_Z
-        ]
+        forced = np.where(has_loyalty, loyalty_firms.astype(np.intp), -1).astype(
+            np.intp
+        )
     else:
-        # If max_Z >= n_firms, all firms are selected
-        top_k_indices = np.broadcast_to(np.arange(n_firms), (n_active, n_firms)).copy()
+        forced = None
+    top_k_indices = sample_k_per_row(rng, n_active, n_firms, effective_Z, forced=forced)
 
     # Sort selected firms by price (cheapest first) - vectorized
     prices_selected = prod.price[top_k_indices]
