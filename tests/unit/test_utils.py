@@ -371,3 +371,63 @@ def test_resample_branch_covered_high_collision() -> None:
     # n_pool barely above k forces many within-row duplicate draws -> exercises resampling
     out = sample_k_per_row(_rng(5), n_rows=2000, n_pool=6, k=5)
     assert all(len(set(row.tolist())) == 5 for row in out)
+
+
+def test_forced_path_uniform_non_forced_slots() -> None:
+    """Forced index always present; remaining k-1 slots are uniform over the rest of the pool."""
+    n_rows, n_pool, k = 20000, 10, 3
+    forced_val = 3
+    forced = np.full(n_rows, forced_val, dtype=np.intp)
+    out = sample_k_per_row(_rng(6), n_rows, n_pool, k, forced=forced)
+
+    # (a) forced index present in every row
+    assert np.all(np.any(out == forced_val, axis=1)), (
+        "forced index missing from some rows"
+    )
+
+    # (b) non-forced slots are uniform over the remaining n_pool-1 indices.
+    # Each of the n_rows*(k-1) non-forced selections is drawn uniformly from
+    # the n_pool-1 remaining pool elements, so expected frequency per element
+    # is 1/(n_pool-1) ~ 0.111.
+    non_forced_entries = out[out != forced_val]
+    expected_freq = 1.0 / (n_pool - 1)  # ~ 1/9 ~ 0.111
+    pool_without_forced = [i for i in range(n_pool) if i != forced_val]
+    counts = np.array(
+        [np.sum(non_forced_entries == idx) for idx in pool_without_forced]
+    )
+    freq = counts / non_forced_entries.size
+    assert np.all(np.abs(freq - expected_freq) < 0.03), (
+        f"Non-forced slots not uniform: freq={freq}, expected~{expected_freq:.3f}"
+    )
+
+
+def test_high_collision_forced_all_rows_distinct_and_forced_present() -> None:
+    """n_pool=6, k=5, forced for all rows: exercises resample loop with forcing."""
+    n_rows, n_pool, k = 2000, 6, 5
+    forced_val = 2
+    forced = np.full(n_rows, forced_val, dtype=np.intp)
+    out = sample_k_per_row(_rng(7), n_rows, n_pool, k, forced=forced)
+
+    # All rows must have k distinct indices
+    assert all(len(set(row.tolist())) == k for row in out), (
+        "duplicate indices in some row"
+    )
+    # Forced index present in every row
+    assert np.all(np.any(out == forced_val, axis=1)), (
+        "forced index missing from some rows"
+    )
+
+
+def test_k_strictly_greater_than_n_pool_returns_permutation() -> None:
+    """k > n_pool (not just k == n_pool): result is (n_rows, n_pool) with all indices present."""
+    n_rows, n_pool = 50, 5
+    k = n_pool + 2  # k=7, strictly larger than pool
+    out = sample_k_per_row(_rng(8), n_rows, n_pool, k)
+
+    assert out.shape == (n_rows, n_pool), (
+        f"Expected shape ({n_rows}, {n_pool}), got {out.shape}"
+    )
+    for i, row in enumerate(out):
+        assert sorted(row.tolist()) == list(range(n_pool)), (
+            f"Row {i} is not a permutation of all pool indices: {row}"
+        )
