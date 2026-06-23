@@ -191,6 +191,9 @@ def trimmed_weighted_mean(
     if values.size == 0:
         return 0.0
 
+    # NOTE: np.argpartition would be O(n) here, but it changes the float summation
+    # order of the weighted mean (np.average sums values in traversal order), so
+    # it is NOT bit-identical and is therefore intentionally left as np.argsort.
     idx = np.argsort(values)
     values = values[idx]
     weights = weights[idx]

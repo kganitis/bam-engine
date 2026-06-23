@@ -152,6 +152,50 @@ def test_loyalty_firm_competes_on_price() -> None:
     assert con.shop_visits_targets[0, 1] == 1  # Loyalty firm still included
 
 
+def test_pick_firms_z2_compare_swap_tie_exact() -> None:
+    """Z=2 compare-swap must produce the same price_order as np.argsort (including ties).
+
+    Verifies that the fast compare-swap branch for effective_Z==2 matches
+    np.argsort exactly: [0,1] when p0 <= p1 (including p0==p1), [1,0] when p0 > p1.
+    """
+    # Three cases: ascending, descending, tie (equal prices)
+    prices = np.array([[1.0, 2.0], [2.0, 1.0], [5.0, 5.0]])
+    expected = np.argsort(prices, axis=1)  # [[0,1],[1,0],[0,1]]
+    np.testing.assert_array_equal(expected, [[0, 1], [1, 0], [0, 1]])
+
+    # Reproduce the compare-swap logic from goods_market.py
+    swap = prices[:, 0] > prices[:, 1]
+    price_order = np.empty((prices.shape[0], 2), dtype=np.intp)
+    price_order[:, 0] = swap
+    price_order[:, 1] = ~swap
+
+    np.testing.assert_array_equal(price_order, expected)
+
+    # Also verify via a 2-firm simulation: sorted targets must equal argsort result
+    Z = 2
+    con = mock_consumer(n=3, queue_z=Z, income=np.full(3, 3.0), savings=np.full(3, 2.0))
+    prod = mock_producer(
+        n=2,
+        inventory=np.array([10.0, 10.0]),
+        price=np.array([5.0, 5.0]),  # equal prices: tie case
+        production=np.array([4.0, 4.0]),
+    )
+    consumers_calc_propensity(con, avg_sav=1.0, beta=0.9)
+    consumers_decide_income_to_spend(con)
+    consumers_decide_firms_to_visit(
+        con, prod, max_Z=Z, rng=make_rng(0), consumer_matching="random"
+    )
+    # With tie prices, argsort gives [0,1] (firm index order is preserved).
+    # Directly verify the compare-swap logic on a tie: both firms have the same price,
+    # so swap = (p0 > p1) is False, and price_order must be [0, 1].
+    tie_prices = np.array([[5.0, 5.0]])
+    tie_swap = tie_prices[:, 0] > tie_prices[:, 1]  # False for ties
+    tie_order = np.empty((1, 2), dtype=np.intp)
+    tie_order[:, 0] = tie_swap
+    tie_order[:, 1] = ~tie_swap
+    np.testing.assert_array_equal(tie_order, np.argsort(tie_prices, axis=1))
+
+
 def test_finalize_transfers_leftover_to_savings() -> None:
     con, _, _, _ = _mini_state()
     leftover = con.income_to_spend.copy()

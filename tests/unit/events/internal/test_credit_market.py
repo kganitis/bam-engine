@@ -394,3 +394,54 @@ def test_fire_workers_no_workers_at_gap_firms() -> None:
     # Workers at firm 1 (no gap) should be unaffected
     assert emp.current_labor[1] == labor_before
     assert np.all(wrk.employer[:2] == 1)
+
+
+def test_fire_workers_premask_only_gap_firms_affected() -> None:
+    """
+    Pre-mask correctness: only workers at firms with financing gaps are fired;
+    workers at non-gap firms are completely untouched. current_labor is decremented
+    by exactly the per-firm fired count.
+    """
+    # 4 firms: firm 0 has gap, firm 1 no gap, firm 2 has gap, firm 3 no gap
+    wage_bill = np.array([100.0, 50.0, 80.0, 30.0])
+    total_funds = np.array([10.0, 100.0, 20.0, 60.0])  # gaps at 0 and 2
+    current_labor = np.array([3, 3, 3, 1], dtype=np.int64)
+
+    emp = mock_employer(
+        n=4,
+        wage_bill=wage_bill.copy(),
+        total_funds=total_funds.copy(),
+        current_labor=current_labor.copy(),
+    )
+    # 10 workers: 3 at firm 0, 3 at firm 1, 3 at firm 2, 1 at firm 3
+    wrk = mock_worker(
+        n=10,
+        employer=np.array([0, 0, 0, 1, 1, 1, 2, 2, 2, 3], dtype=np.intp),
+        wage=np.array([40.0, 30.0, 20.0, 15.0, 18.0, 17.0, 35.0, 25.0, 15.0, 30.0]),
+    )
+
+    rng = np.random.default_rng(99)
+    firms_fire_workers(emp, wrk, rng=rng)
+
+    fired_mask = wrk.fired == 1
+    fired_employers = wrk.employer_prev[fired_mask]
+
+    # (a) Only workers at gap firms (0 and 2) may be fired
+    assert set(fired_employers.tolist()).issubset({0, 2})
+
+    # (b) Workers at non-gap firms (1 and 3) are completely untouched
+    non_gap_workers = np.array([3, 4, 5, 9])  # at firms 1 and 3
+    assert np.all(
+        wrk.employer[non_gap_workers] == np.array([1, 1, 1, 3], dtype=np.intp)
+    )
+    assert np.all(wrk.fired[non_gap_workers] == 0)
+
+    # (c) current_labor of non-gap firms is unchanged
+    assert emp.current_labor[1] == current_labor[1]
+    assert emp.current_labor[3] == current_labor[3]
+
+    # (d) current_labor of gap firms decremented by exactly fired count
+    firm0_fired = int(np.sum(fired_employers == 0))
+    firm2_fired = int(np.sum(fired_employers == 2))
+    assert emp.current_labor[0] == current_labor[0] - firm0_fired
+    assert emp.current_labor[2] == current_labor[2] - firm2_fired

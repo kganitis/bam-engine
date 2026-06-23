@@ -229,7 +229,16 @@ def consumers_decide_firms_to_visit(
 
     # Sort selected firms by price (cheapest first) - vectorized
     prices_selected = prod.price[top_k_indices]
-    price_order = np.argsort(prices_selected, axis=1)
+    if effective_Z == 2:
+        # argsort over 2 columns returns [0,1] when prices_selected[:,0] <= [:,1]
+        # (ties -> [0,1], matching numpy's argsort stable behaviour), else [1,0].
+        # Build that directly without the O(n log n) overhead of np.argsort.
+        swap = prices_selected[:, 0] > prices_selected[:, 1]
+        price_order = np.empty((prices_selected.shape[0], 2), dtype=np.intp)
+        price_order[:, 0] = swap  # 0 if no swap, 1 if swap
+        price_order[:, 1] = ~swap  # 1 if no swap, 0 if swap
+    else:
+        price_order = np.argsort(prices_selected, axis=1)
     sorted_firms = np.take_along_axis(top_k_indices, price_order, axis=1)
 
     # Vectorized buffer write — fancy indexing replaces per-consumer loop
@@ -413,26 +422,46 @@ def goods_market_round(
     prices = prod.price.tolist()
     targets = con.shop_visits_targets.tolist()
 
-    for c in buyers.tolist():
-        for v in range(max_Z):
-            t = targets[c][v]
-            if t < 0:
-                break
-            if budget[c] <= EPS:
-                break
-            if inv[t] <= EPS:
-                continue
-            qty = budget[c] / prices[t]
-            if qty > inv[t]:
-                qty = inv[t]
-            spent = qty * prices[t]
-            budget[c] -= spent
-            inv[t] -= qty
-
-            if info_enabled:
+    if info_enabled:
+        # accounting variant (rare; only when INFO logging is enabled)
+        for c in buyers.tolist():
+            bc = budget[c]
+            for t in targets[c]:
+                if t < 0:
+                    break
+                if bc <= EPS:
+                    break
+                it = inv[t]
+                if it <= EPS:
+                    continue
+                qty = bc / prices[t]
+                if qty > it:
+                    qty = it
+                spent = qty * prices[t]
+                bc -= spent
+                inv[t] = it - qty
                 total_purchases += 1
                 total_qty += qty
                 total_revenue += spent
+            budget[c] = bc
+    else:
+        # hot path: no per-iteration logging branch
+        for c in buyers.tolist():
+            bc = budget[c]
+            for t in targets[c]:
+                if t < 0:
+                    break
+                if bc <= EPS:
+                    break
+                it = inv[t]
+                if it <= EPS:
+                    continue
+                qty = bc / prices[t]
+                if qty > it:
+                    qty = it
+                bc -= qty * prices[t]
+                inv[t] = it - qty
+            budget[c] = bc
 
     # Write back to NumPy arrays
     con.income_to_spend[:] = budget
