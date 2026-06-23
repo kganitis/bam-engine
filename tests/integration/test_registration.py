@@ -68,8 +68,6 @@ def test_role_instantiation_via_registry():
         wage_bill=np.zeros(10),
         n_vacancies=np.zeros(10, dtype=int),
         total_funds=np.ones(10) * 100,
-        recv_job_apps_head=np.zeros(10, dtype=int),
-        recv_job_apps=np.zeros((10, 5), dtype=int),
     )
 
     # noinspection PyUnresolvedReferences

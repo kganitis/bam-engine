@@ -8,7 +8,7 @@ in the BAM model. Each bank provides credit to firms and charges interest.
 from dataclasses import field
 
 from bamengine.core.decorators import role
-from bamengine.typing import Float1D, Idx1D, Idx2D
+from bamengine.typing import Float1D
 
 
 @role
@@ -27,10 +27,6 @@ class Lender:
         Maximum credit available to lend (based on equity and capital requirements).
     interest_rate : Float1D
         Interest rate charged on loans.
-    recv_loan_apps_head : Idx1D
-        Queue head pointer for received loan applications.
-    recv_loan_apps : Idx2D
-        Queue of borrower firm IDs, shape (n_banks, n_firms).
     opex_shock : Float1D, optional
         Scratch buffer for operational expense shock calculations (not persisted).
 
@@ -92,12 +88,6 @@ class Lender:
     """Maximum credit available to lend (equity_base / v)."""
     interest_rate: Float1D
     """Interest rate charged on loans."""
-
-    # Scratch queues
-    recv_loan_apps_head: Idx1D
-    """Queue head pointer for received loan applications."""
-    recv_loan_apps: Idx2D
-    """Queue of borrower firm IDs, shape ``(n_banks, n_firms)``."""
 
     # Scratch buffer
     opex_shock: Float1D | None = field(default=None, repr=False)

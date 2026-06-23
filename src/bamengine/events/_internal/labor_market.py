@@ -16,7 +16,7 @@ import numpy as np
 from bamengine import Rng, logging, make_rng
 from bamengine.economy import Economy
 from bamengine.roles import Employer, Worker
-from bamengine.utils import resolve_conflicts
+from bamengine.utils import resolve_conflicts, sample_k_per_row
 
 log = logging.getLogger(__name__)
 
@@ -253,21 +253,16 @@ def workers_decide_firms_to_apply(
         wrk.job_apps_targets[unemp, :].fill(-1)
         return
 
-    # --- Vectorized sampling using random priorities + argpartition ---
+    # --- Sparse sampling: O(n_unemp * M_eff) instead of O(n_unemp * n_hiring) ---
     n_unemp = unemp.size
     n_hiring = hiring.size
     M_eff = min(max_M, n_hiring)
     if info_enabled:
         log.info(f"  Effective applications per worker (M_eff): {M_eff}")
 
-    # Generate random priorities for all (worker, firm) pairs
-    priorities = rng.random((n_unemp, n_hiring))
-
-    # Select top M_eff firms per worker using argpartition (O(n) per row)
-    if M_eff < n_hiring:
-        top_k_local = np.argpartition(-priorities, kth=M_eff - 1, axis=1)[:, :M_eff]
-    else:
-        top_k_local = np.broadcast_to(np.arange(n_hiring), (n_unemp, n_hiring)).copy()
+    # Sample M_eff LOCAL pool indices per unemployed worker (no forced inclusion;
+    # loyalty is applied as a post-sort reordering below, unchanged).
+    top_k_local = sample_k_per_row(rng, n_unemp, n_hiring, M_eff)
 
     # Map local indices to firm IDs
     sample = hiring[top_k_local]

@@ -8,7 +8,7 @@ in the BAM model. Each firm hires workers and pays wages.
 from dataclasses import field
 
 from bamengine.core.decorators import role
-from bamengine.typing import Float1D, Idx1D, Idx2D, Int1D
+from bamengine.typing import Float1D, Int1D
 
 
 @role
@@ -33,10 +33,6 @@ class Employer:
         Number of open positions (desired_labor - current_labor).
     total_funds : Float1D
         Available funds for hiring (shared view with Borrower.total_funds).
-    recv_job_apps_head : Idx1D
-        Queue head pointer for received job applications.
-    recv_job_apps : Idx2D
-        Queue of job application IDs, shape (n_firms, n_households).
     wage_shock : Float1D, optional
         Scratch buffer for wage shock calculations (not persisted).
 
@@ -99,12 +95,6 @@ class Employer:
     # Shared view with Borrower role (same array in memory)
     total_funds: Float1D
     """Available funds for hiring (shared view with Borrower.total_funds)."""
-
-    # Scratch queues
-    recv_job_apps_head: Idx1D
-    """Queue head pointer for received job applications."""
-    recv_job_apps: Idx2D
-    """Queue of worker IDs who applied, shape ``(n_firms, n_households)``."""
 
     # Scratch buffer
     wage_shock: Float1D | None = field(default=None, repr=False)

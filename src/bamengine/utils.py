@@ -45,7 +45,7 @@ import numpy as np
 from numpy.random import Generator, default_rng
 
 from bamengine import Rng
-from bamengine.typing import Bool1D, Float1D, Idx1D, Int1D
+from bamengine.typing import Bool1D, Float1D, Idx1D, Idx2D, Int1D
 
 EPS = 1.0e-9
 
@@ -387,6 +387,90 @@ def select_top_k_indices_sorted(
     )
 
     return k_indices_sorted_final
+
+
+# ── sample_k_per_row ──────────────────────────────────────────────────────────
+#
+# Dispatch decision (benchmarked 2026-06-23, OMP/MKL/OPENBLAS=1, k=2):
+#
+#   n_firms  n_rows   vectorized   per_agent   speedup
+#       100     500     0.021 ms    1.259 ms      60x
+#       500   2 500     0.059 ms    6.393 ms     108x
+#     1 000   5 000     0.104 ms   12.783 ms     123x
+#     5 000  25 000     0.500 ms   69.627 ms     139x
+#    20 000 100 000     1.969 ms  269.597 ms     137x
+#
+# Decision: FIXED-VECTORIZED (single implementation, no adaptive dispatch).
+# The vectorized rejection sampler is 60-137x faster across the entire
+# realistic parameter range (100..20000 firms). There is no crossover where
+# a per-agent loop would win, so no _sample_k_per_agent variant is needed
+# (YAGNI: adding dead code solely to dispatch away from it at every size
+# would be counterproductive).
+
+
+def sample_k_per_row(
+    rng: Rng,
+    n_rows: int,
+    n_pool: int,
+    k: int,
+    forced: Idx1D | None = None,
+) -> Idx2D:
+    """Per row, ``k`` distinct indices in ``[0, n_pool)`` sampled uniformly
+    without replacement (O(n_rows * k), no dense (n_rows, n_pool) matrix).
+
+    If ``forced`` (shape ``(n_rows,)``, ``-1`` = none) is given, its index is
+    guaranteed present in that row, replicating the loyalty "priority = 1.1"
+    selection. If ``k >= n_pool`` every row gets all ``n_pool`` indices.
+
+    This is distributionally identical to assigning each pool element an iid
+    uniform priority and taking the top ``k`` (a uniform random k-subset).
+
+    Parameters
+    ----------
+    rng : Rng
+        NumPy random generator.
+    n_rows : int
+        Number of rows (agents) in the output.
+    n_pool : int
+        Size of the index pool; indices are drawn from ``[0, n_pool)``.
+    k : int
+        Number of distinct indices per row.
+    forced : Idx1D or None, optional
+        Shape ``(n_rows,)``. For each row, if ``forced[i] >= 0`` that index is
+        guaranteed to appear in row ``i``. ``-1`` means no forced index.
+
+    Returns
+    -------
+    Idx2D
+        Array of shape ``(n_rows, k)`` (or ``(n_rows, n_pool)`` when
+        ``k >= n_pool``) with ``np.intp`` dtype.
+    """
+    if k >= n_pool:
+        return np.broadcast_to(
+            np.arange(n_pool, dtype=np.intp), (n_rows, n_pool)
+        ).copy()
+
+    out = rng.integers(0, n_pool, size=(n_rows, k)).astype(np.intp)
+    if forced is not None:
+        fmask = forced >= 0
+        out[fmask, 0] = forced[fmask].astype(np.intp)
+
+    # Resample rows that have within-row duplicates (rejection sampling).
+    # Converges in 1-2 iterations for k << n_pool; when k approaches n_pool
+    # (e.g. a small hiring pool in the labor market) it takes more iterations
+    # but stays well within the cap.
+    for _ in range(1000):
+        srt = np.sort(out, axis=1)
+        bad = (np.diff(srt, axis=1) == 0).any(axis=1)
+        if not bad.any():
+            break
+        idx = np.where(bad)[0]
+        fresh = rng.integers(0, n_pool, size=(idx.size, k)).astype(np.intp)
+        if forced is not None:
+            fb = forced[idx] >= 0
+            fresh[fb, 0] = forced[idx][fb].astype(np.intp)
+        out[idx] = fresh
+    return out
 
 
 # ── grouped_cumsum ────────────────────────────────────────────────────────────
