@@ -62,7 +62,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import numpy as np
 import yaml
@@ -92,7 +92,7 @@ from bamengine.roles import (
 from bamengine.relationships import LoanBook  # Must import after roles
 
 # isort: on
-from bamengine.typing import Float1D
+from bamengine.typing import Bool1D, Float1D, Int1D
 
 __all__ = ["Simulation"]
 
@@ -109,6 +109,36 @@ _ANNOTATION_DTYPE: dict[str, tuple[type[np.generic], int]] = {
     "Agent": (np.intp, -1),
     "Idx1D": (np.intp, -1),
 }
+
+# Resolved type-alias objects → (numpy dtype, fill value), used when annotations
+# are real objects (no ``from __future__ import annotations`` in the role's module).
+# Keying on the alias objects is stable across numpy versions, unlike the internal
+# ``__args__`` layout of ``NDArray[...]`` (which changed in numpy 2.5). Idx1D is
+# intentionally absent: it equals Int1D on 64-bit platforms (np.intp is np.int64),
+# so a resolved agent-id field maps to (int, 0); the -1 sentinel is reachable via
+# the Agent class or string annotations.
+_ALIAS_DTYPE: dict[Any, tuple[type[np.generic], int]] = {
+    Float1D: (np.float64, 0),
+    Int1D: (np.int64, 0),
+    Bool1D: (np.bool_, 0),
+}
+
+
+def _np_scalar_from_annotation(ann: Any) -> type[np.generic] | None:
+    """Extract the numpy scalar type from an ``NDArray[...]`` annotation.
+
+    Robust to the numpy 2.5 layout change where ``NDArray[np.int64].__args__``
+    became ``(np.int64,)`` instead of ``(Any, np.dtype[np.int64])``. Returns
+    ``None`` when no numpy scalar can be found.
+    """
+    for arg in get_args(ann):
+        if isinstance(arg, type) and issubclass(arg, np.generic):
+            return arg  # numpy >= 2.5: NDArray[X] -> (X,)
+        for inner in get_args(arg):
+            if isinstance(inner, type) and issubclass(inner, np.generic):
+                return inner  # numpy <= 2.4: NDArray[X] -> (Any, np.dtype[X])
+    return None
+
 
 log = logging.getLogger(__name__)
 
@@ -1637,33 +1667,51 @@ class Simulation:
     def _resolve_annotation_dtype(ann: Any) -> tuple[type[np.generic], int]:
         """Resolve a role field annotation to (numpy dtype, fill value).
 
-        Handles string annotations (from ``__future__`` annotations),
-        resolved ``GenericAlias`` / type objects, and the Agent class.
-        Agent/Idx1D annotations use -1 fill (unassigned sentinel);
-        all others use 0.
+        Handles string annotations (from ``__future__`` annotations), the
+        Agent class, the known resolved type aliases, and arbitrary
+        ``NDArray[np.<scalar>]`` objects. Agent (class / string) annotations
+        use -1 fill (unassigned sentinel); all others use 0.
+
+        Raises
+        ------
+        TypeError
+            If the annotation cannot be mapped to a numpy dtype. Failing
+            loudly avoids silently materialising the wrong dtype (e.g. an
+            ``Int`` field becoming float64), which is what a quiet fallback
+            did before numpy 2.5 changed ``NDArray`` introspection.
         """
         # String annotations (e.g., 'Float', 'Int1D')
         if isinstance(ann, str):
-            return _ANNOTATION_DTYPE.get(ann, (np.float64, 0))
+            try:
+                return _ANNOTATION_DTYPE[ann]
+            except KeyError:
+                raise TypeError(
+                    f"Cannot resolve a numpy dtype for role field annotation "
+                    f"{ann!r}. Use Float, Int, Bool, Agent, or an "
+                    f"NDArray[np.<scalar>] annotation."
+                ) from None
 
-        # Agent class (bamengine.core.agent.Agent) — special case
+        # Agent class (bamengine.core.agent.Agent) — unassigned sentinel -1
         from bamengine.core.agent import Agent as AgentCls
 
         if ann is AgentCls:
             return np.intp, -1
 
-        # Resolved GenericAlias: NDArray[np.float64] → extract inner dtype
-        args: tuple[Any, ...] = getattr(ann, "__args__", ())
-        if len(args) >= 2:
-            inner_args: tuple[Any, ...] = getattr(args[1], "__args__", ())
-            if (
-                inner_args
-                and isinstance(inner_args[0], type)
-                and issubclass(inner_args[0], np.generic)
-            ):
-                return inner_args[0], 0
+        # Known resolved type aliases (Float1D/Int1D/Bool1D and their friendly
+        # aliases) — version-independent, no NDArray introspection needed.
+        resolved = _ALIAS_DTYPE.get(ann)
+        if resolved is not None:
+            return resolved
 
-        return np.float64, 0  # pragma: no cover - default fallback
+        # Arbitrary NDArray[np.<scalar>] — introspect robustly across numpy.
+        scalar = _np_scalar_from_annotation(ann)
+        if scalar is not None:
+            return scalar, 0
+
+        raise TypeError(
+            f"Cannot resolve a numpy dtype for role field annotation {ann!r}. "
+            f"Use Float, Int, Bool, Agent, or an NDArray[np.<scalar>] annotation."
+        )
 
     def get_event(self, name: str) -> Any:
         """

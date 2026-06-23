@@ -2,11 +2,12 @@
 
 import numpy as np
 import pytest
+from numpy.typing import NDArray
 
 import bamengine.events  # noqa: F401 - register events
 from bamengine import role
 from bamengine.simulation import Simulation
-from bamengine.typing import Bool1D, Float1D, Int1D
+from bamengine.typing import Bool1D, Float1D, Idx1D, Int1D
 
 
 class TestInputValidation:
@@ -429,6 +430,36 @@ class TestUseRole:
 
         assert sim.prod.price.dtype == np.float64
         assert sim.prod.production.dtype == np.float64
+
+    def test_resolve_annotation_dtype_resolved_aliases(self) -> None:
+        """Resolved type aliases map to their dtype (numpy 2.5 regression guard).
+
+        numpy 2.5 changed ``NDArray[np.int64].__args__`` from
+        ``(Any, np.dtype[np.int64])`` to ``(np.int64,)``; resolution must
+        survive both layouts rather than silently defaulting to float64.
+        """
+        resolve = Simulation._resolve_annotation_dtype
+        assert resolve(Float1D) == (np.float64, 0)
+        assert resolve(Int1D) == (np.int64, 0)
+        assert resolve(Bool1D) == (np.bool_, 0)
+        # A resolved Idx1D resolves to the platform int with fill 0: the -1
+        # unassigned sentinel is only applied via the Agent class / string
+        # annotations, since NDArray[np.intp] == Int1D on 64-bit platforms.
+        assert resolve(Idx1D) == (np.intp, 0)
+
+    def test_resolve_annotation_dtype_generic_ndarray(self) -> None:
+        """Arbitrary ``NDArray[np.<scalar>]`` annotations resolve to that scalar."""
+        resolve = Simulation._resolve_annotation_dtype
+        assert resolve(NDArray[np.float32]) == (np.float32, 0)
+        assert resolve(NDArray[np.int32]) == (np.int32, 0)
+
+    def test_resolve_annotation_dtype_unknown_raises(self) -> None:
+        """Unknown annotations fail loudly instead of silently using float64."""
+        resolve = Simulation._resolve_annotation_dtype
+        with pytest.raises(TypeError, match="Cannot resolve"):
+            resolve(list)
+        with pytest.raises(TypeError, match="Cannot resolve"):
+            resolve("NotAValidType")
 
 
 class TestExtraParams:
