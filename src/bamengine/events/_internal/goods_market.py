@@ -413,26 +413,46 @@ def goods_market_round(
     prices = prod.price.tolist()
     targets = con.shop_visits_targets.tolist()
 
-    for c in buyers.tolist():
-        for v in range(max_Z):
-            t = targets[c][v]
-            if t < 0:
-                break
-            if budget[c] <= EPS:
-                break
-            if inv[t] <= EPS:
-                continue
-            qty = budget[c] / prices[t]
-            if qty > inv[t]:
-                qty = inv[t]
-            spent = qty * prices[t]
-            budget[c] -= spent
-            inv[t] -= qty
-
-            if info_enabled:
+    if info_enabled:
+        # accounting variant (rare; only when INFO logging is enabled)
+        for c in buyers.tolist():
+            bc = budget[c]
+            for t in targets[c]:
+                if t < 0:
+                    break
+                if bc <= EPS:
+                    break
+                it = inv[t]
+                if it <= EPS:
+                    continue
+                qty = bc / prices[t]
+                if qty > it:
+                    qty = it
+                spent = qty * prices[t]
+                bc -= spent
+                inv[t] = it - qty
                 total_purchases += 1
                 total_qty += qty
                 total_revenue += spent
+            budget[c] = bc
+    else:
+        # hot path: no per-iteration logging branch
+        for c in buyers.tolist():
+            bc = budget[c]
+            for t in targets[c]:
+                if t < 0:
+                    break
+                if bc <= EPS:
+                    break
+                it = inv[t]
+                if it <= EPS:
+                    continue
+                qty = bc / prices[t]
+                if qty > it:
+                    qty = it
+                bc -= qty * prices[t]
+                inv[t] = it - qty
+            budget[c] = bc
 
     # Write back to NumPy arrays
     con.income_to_spend[:] = budget
