@@ -390,6 +390,22 @@ def select_top_k_indices_sorted(
 
 
 # ── sample_k_per_row ──────────────────────────────────────────────────────────
+#
+# Dispatch decision (benchmarked 2026-06-23, OMP/MKL/OPENBLAS=1, k=2):
+#
+#   n_firms  n_rows   vectorized   per_agent   speedup
+#       100     500     0.021 ms    1.259 ms      60x
+#       500   2 500     0.059 ms    6.393 ms     108x
+#     1 000   5 000     0.104 ms   12.783 ms     123x
+#     5 000  25 000     0.500 ms   69.627 ms     139x
+#    20 000 100 000     1.969 ms  269.597 ms     137x
+#
+# Decision: FIXED-VECTORIZED (single implementation, no adaptive dispatch).
+# The vectorized rejection sampler is 60-137x faster across the entire
+# realistic parameter range (100..20000 firms). There is no crossover where
+# a per-agent loop would win, so no _sample_k_per_agent variant is needed
+# (YAGNI: adding dead code solely to dispatch away from it at every size
+# would be counterproductive).
 
 
 def sample_k_per_row(
