@@ -212,7 +212,7 @@ class Relationship(
         Idx1D
             Array of edge indices where source_ids == source_id
         """
-        return np.where(self.source_ids[: self.size] == source_id)[0]
+        return np.flatnonzero(self.source_ids[: self.size] == source_id)
 
     def query_targets(self, target_id: int) -> Idx1D:
         """
@@ -228,7 +228,7 @@ class Relationship(
         Idx1D
             Array of edge indices where target_ids == target_id
         """
-        return np.where(self.target_ids[: self.size] == target_id)[0]
+        return np.flatnonzero(self.target_ids[: self.size] == target_id)
 
     def aggregate_by_source(
         self,

@@ -10,6 +10,32 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 
    Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.
 
+[0.9.2] - 2026-06-23
+--------------------
+
+This patch restores compatibility with NumPy 2.5 and bundles validation,
+documentation, and tooling fixes accumulated since 0.9.1.
+
+Fixed
+~~~~~
+
+* Restored NumPy 2.5 compatibility: custom roles attached via
+  ``Simulation.use_role()`` again get correct (non-``float64``) dtypes, and
+  ``mypy`` no longer trips on NumPy 2.5's typed stubs.
+* Validation and robustness figure fixes (baseline target bounds,
+  collapsed-seed statistics).
+
+Changed
+~~~~~~~
+
+* ``Simulation.use_role()`` now raises ``TypeError`` on an unresolvable field
+  annotation instead of silently defaulting to ``float64``.
+
+Added
+~~~~~
+
+* ``CONTRIBUTING.md``.
+
 [0.9.1] - 2026-03-19
 ---------------------
 

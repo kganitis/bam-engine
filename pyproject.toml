@@ -241,7 +241,11 @@ line-ending = "auto"
 docstring-code-format = true
 
 [tool.mypy]
-python_version = "3.11"
+# 3.12 (not the 3.11 floor) so mypy can parse PEP 695 `type` statements that
+# numpy >= 2.5 ships in its stubs; runtime 3.11 support is guarded by the test
+# matrix. The codebase uses `from __future__ import annotations` and no
+# 3.12-only runtime syntax, so this does not weaken our own checks.
+python_version = "3.12"
 strict = true
 files = ["src/"]
 disallow_untyped_decorators = false  # Allow @event, @role decorators
