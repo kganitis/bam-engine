@@ -514,6 +514,17 @@ def firms_fire_workers(
 
     employers_of_employed = wrk.employer[all_employed]
 
+    is_firing = np.zeros(n_firms, dtype=np.bool_)
+    is_firing[firing_ids] = True
+    keep = is_firing[employers_of_employed]
+    all_employed = all_employed[keep]
+    employers_of_employed = employers_of_employed[keep]
+    if all_employed.size == 0:
+        if info_enabled:
+            log.info("  No workers at firing firms.")
+            log.info("--- Firms Firing Workers complete ---")
+        return
+
     # Sort workers by employer
     sort_order = np.argsort(employers_of_employed, kind="stable")
     sorted_workers = all_employed[sort_order]
