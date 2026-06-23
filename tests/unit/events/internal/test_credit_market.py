@@ -55,11 +55,9 @@ def _mini_state(
     )
     lend = mock_lender(
         n=n_lenders,
-        queue_h=H,
         equity_base=np.linspace(8_000, 12_000, n_lenders, dtype=np.float64),
         credit_supply=np.full(n_lenders, 4_000.0),
         interest_rate=np.linspace(0.08, 0.11, n_lenders, dtype=np.float64),
-        recv_loan_apps=np.full((n_lenders, n_borrowers), -1, dtype=np.int64),
     )
     # Provide per-bank opex shock (normally set by banks_decide_interest_rate)
     lend.opex_shock = np.full(n_lenders, 0.10)
@@ -71,7 +69,6 @@ def _mini_state(
 def test_decide_credit_supply_basic() -> None:
     lend = mock_lender(
         n=3,
-        queue_h=2,
         equity_base=np.array([10.0, 20.0, 5.0]),
     )
     banks_decide_credit_supply(lend, v=0.1)
@@ -79,20 +76,20 @@ def test_decide_credit_supply_basic() -> None:
 
 
 def test_interest_rate_basic() -> None:
-    lend = mock_lender(n=4, queue_h=2)
+    lend = mock_lender(n=4)
     banks_decide_interest_rate(lend, r_bar=0.05, h_phi=0.1, rng=make_rng(0))
     assert (lend.interest_rate >= 0.05 - 1e-12).all()
     assert (lend.interest_rate <= 0.05 * 1.1 + 1e-12).all()
 
 
 def test_interest_rate_zero_shock() -> None:
-    lend = mock_lender(n=2, queue_h=2)
+    lend = mock_lender(n=2)
     banks_decide_interest_rate(lend, r_bar=0.05, h_phi=0.0, rng=make_rng(0))
     assert np.allclose(lend.interest_rate, 0.05, atol=1e-12)
 
 
 def test_interest_rate_reuses_scratch() -> None:
-    lend = mock_lender(n=3, queue_h=2)
+    lend = mock_lender(n=3)
     banks_decide_interest_rate(lend, r_bar=0.05, h_phi=0.1, rng=make_rng(0))
     buf0 = lend.opex_shock
     banks_decide_interest_rate(lend, r_bar=0.06, h_phi=0.1, rng=make_rng(1))
@@ -230,7 +227,7 @@ def test_prepare_applications_single_trial() -> None:
 
 def test_prepare_applications_no_demand() -> None:
     bor = mock_borrower(n=2, queue_h=2, credit_demand=np.zeros(2))
-    lend = mock_lender(n=2, queue_h=2)
+    lend = mock_lender(n=2)
     ledger = mock_loanbook()
     firms_prepare_loan_applications(bor, lend, ledger, max_H=2, rng=make_rng(0))
     assert np.all(bor.loan_apps_head == -1)
@@ -243,7 +240,6 @@ def test_decide_credit_supply_clips_negative_equity_to_zero() -> None:
     """
     lend = mock_lender(
         n=3,
-        queue_h=2,
         equity_base=np.array([10.0, -5.0, 0.0]),
     )
     banks_decide_credit_supply(lend, v=0.2)
@@ -257,7 +253,7 @@ def test_prepare_applications_no_lenders_early_exit() -> None:
     """
     bor = mock_borrower(n=3, queue_h=2)
     bor.credit_demand[:] = np.array([5.0, 0.0, 2.0])  # some borrowers demand
-    lend = mock_lender(n=2, queue_h=2)
+    lend = mock_lender(n=2)
     lend.credit_supply[:] = 0.0  # no lenders available
     ledger = mock_loanbook()
 
@@ -280,7 +276,6 @@ def test_prepare_applications_Heff_lt_H_and_sorted_by_rate() -> None:
     # Only two lenders exist → H_eff = min(H, 2) = 2
     lend = mock_lender(
         n=2,
-        queue_h=H,
         # Distinct rates so sort order is observable
         interest_rate=np.array([0.12, 0.05]),
     )
@@ -311,7 +306,7 @@ def test_credit_round_no_active_borrowers() -> None:
     bor = mock_borrower(n=2, queue_h=H, credit_demand=np.array([5.0, 3.0]))
     # Head pointers exhausted — no pending applications
     bor.loan_apps_head[:] = -1
-    lend = mock_lender(n=1, queue_h=H, credit_supply=np.array([1000.0]))
+    lend = mock_lender(n=1, credit_supply=np.array([1000.0]))
     lend.opex_shock = np.array([0.10])
     lb = mock_loanbook()
 
@@ -329,7 +324,7 @@ def test_credit_round_no_supply_at_targets() -> None:
     bor.loan_apps_targets[1, :] = np.array([0, 0])
     bor.loan_apps_head[:] = np.arange(n_bor) * H  # valid heads
 
-    lend = mock_lender(n=1, queue_h=H, credit_supply=np.array([0.0]))
+    lend = mock_lender(n=1, credit_supply=np.array([0.0]))
     lend.opex_shock = np.array([0.10])
     lb = mock_loanbook()
 
@@ -352,7 +347,7 @@ def test_credit_round_nw_cap_zeros_all_grants() -> None:
     bor.loan_apps_targets[1, :] = np.array([0, 0])
     bor.loan_apps_head[:] = np.arange(n_bor) * H
 
-    lend = mock_lender(n=1, queue_h=H, credit_supply=np.array([1000.0]))
+    lend = mock_lender(n=1, credit_supply=np.array([1000.0]))
     lend.opex_shock = np.array([0.10])
     lb = mock_loanbook()
 

@@ -6,6 +6,7 @@ import pytest
 from bamengine import make_rng
 from bamengine.utils import (
     sample_beta_with_mean,
+    sample_k_per_row,
     select_top_k_indices_sorted,
     trim_mean,
     trimmed_weighted_mean,
@@ -326,3 +327,107 @@ def test_select_top_k_indices_sorted_scalar_ndarray() -> None:
     assert idx.shape == (1,)
     sel = np.atleast_1d(scalar)[idx]
     np.testing.assert_array_equal(sel, np.array([5.0]))
+
+
+# --- TESTS FOR sample_k_per_row ------------------------------------------------
+
+
+def _rng(seed: int = 0) -> np.random.Generator:
+    return np.random.default_rng(seed)
+
+
+def test_rows_are_distinct_and_in_range() -> None:
+    out = sample_k_per_row(_rng(1), n_rows=500, n_pool=100, k=4)
+    assert out.shape == (500, 4)
+    assert out.min() >= 0 and out.max() < 100
+    # every row has k distinct values
+    assert all(len(set(row.tolist())) == 4 for row in out)
+
+
+def test_forced_index_always_present() -> None:
+    forced = np.full(300, -1, dtype=np.intp)
+    forced[:150] = 7  # first half forced to firm 7
+    out = sample_k_per_row(_rng(2), n_rows=300, n_pool=50, k=3, forced=forced)
+    assert all(7 in out[i].tolist() for i in range(150))
+    assert all(len(set(out[i].tolist())) == 3 for i in range(300))  # still distinct
+
+
+def test_k_ge_n_pool_returns_all() -> None:
+    out = sample_k_per_row(_rng(3), n_rows=10, n_pool=4, k=4)
+    assert out.shape == (10, 4)
+    assert all(sorted(row.tolist()) == [0, 1, 2, 3] for row in out)
+
+
+def test_uniform_selection_frequency() -> None:
+    # with no forcing, each pool index should be selected ~ k/n_pool of the time
+    n_rows, n_pool, k = 20000, 10, 3
+    out = sample_k_per_row(_rng(4), n_rows, n_pool, k)
+    counts = np.bincount(out.reshape(-1), minlength=n_pool)
+    freq = counts / n_rows  # expected ~ k/n_pool = 0.3 each
+    assert np.all(np.abs(freq - k / n_pool) < 0.03)  # within 3 percentage points
+
+
+def test_resample_branch_covered_high_collision() -> None:
+    # n_pool barely above k forces many within-row duplicate draws -> exercises resampling
+    out = sample_k_per_row(_rng(5), n_rows=2000, n_pool=6, k=5)
+    assert all(len(set(row.tolist())) == 5 for row in out)
+
+
+def test_forced_path_uniform_non_forced_slots() -> None:
+    """Forced index always present; remaining k-1 slots are uniform over the rest of the pool."""
+    n_rows, n_pool, k = 20000, 10, 3
+    forced_val = 3
+    forced = np.full(n_rows, forced_val, dtype=np.intp)
+    out = sample_k_per_row(_rng(6), n_rows, n_pool, k, forced=forced)
+
+    # (a) forced index present in every row
+    assert np.all(np.any(out == forced_val, axis=1)), (
+        "forced index missing from some rows"
+    )
+
+    # (b) non-forced slots are uniform over the remaining n_pool-1 indices.
+    # Each of the n_rows*(k-1) non-forced selections is drawn uniformly from
+    # the n_pool-1 remaining pool elements, so expected frequency per element
+    # is 1/(n_pool-1) ~ 0.111.
+    non_forced_entries = out[out != forced_val]
+    expected_freq = 1.0 / (n_pool - 1)  # ~ 1/9 ~ 0.111
+    pool_without_forced = [i for i in range(n_pool) if i != forced_val]
+    counts = np.array(
+        [np.sum(non_forced_entries == idx) for idx in pool_without_forced]
+    )
+    freq = counts / non_forced_entries.size
+    assert np.all(np.abs(freq - expected_freq) < 0.03), (
+        f"Non-forced slots not uniform: freq={freq}, expected~{expected_freq:.3f}"
+    )
+
+
+def test_high_collision_forced_all_rows_distinct_and_forced_present() -> None:
+    """n_pool=6, k=5, forced for all rows: exercises resample loop with forcing."""
+    n_rows, n_pool, k = 2000, 6, 5
+    forced_val = 2
+    forced = np.full(n_rows, forced_val, dtype=np.intp)
+    out = sample_k_per_row(_rng(7), n_rows, n_pool, k, forced=forced)
+
+    # All rows must have k distinct indices
+    assert all(len(set(row.tolist())) == k for row in out), (
+        "duplicate indices in some row"
+    )
+    # Forced index present in every row
+    assert np.all(np.any(out == forced_val, axis=1)), (
+        "forced index missing from some rows"
+    )
+
+
+def test_k_strictly_greater_than_n_pool_returns_permutation() -> None:
+    """k > n_pool (not just k == n_pool): result is (n_rows, n_pool) with all indices present."""
+    n_rows, n_pool = 50, 5
+    k = n_pool + 2  # k=7, strictly larger than pool
+    out = sample_k_per_row(_rng(8), n_rows, n_pool, k)
+
+    assert out.shape == (n_rows, n_pool), (
+        f"Expected shape ({n_rows}, {n_pool}), got {out.shape}"
+    )
+    for i, row in enumerate(out):
+        assert sorted(row.tolist()) == list(range(n_pool)), (
+            f"Row {i} is not a permutation of all pool indices: {row}"
+        )

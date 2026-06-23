@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "run_id": "bamengine__s2000__rep3",
+  "framework": "bamengine",
+  "framework_version": "0.9.2",
+  "language": "python",
+  "language_version": "3.13.12",
+  "status": "ok",
+  "error": null,
+  "population": {
+    "n_firms": 2000,
+    "n_households": 10000,
+    "n_banks": 200,
+    "n_agents_total": 12200
+  },
+  "n_periods": 1000,
+  "warmup_periods": 100,
+  "seed": 1003,
+  "timing": {
+    "init_seconds": 0.006360792001942173,
+    "run_seconds": 6.492737666994799,
+    "steady_state_per_period_seconds": 0.007214152963327555,
+    "throughput_agent_steps_per_s": 1691120.227422057
+  },
+  "outputs": null,
+  "process": {
+    "wall_seconds": 7.30458029100555,
+    "peak_rss_bytes": 54771712,
+    "startup_seconds": 0.8054818320088089
+  },
+  "environment_id": "5ec46f67c038"
+}
