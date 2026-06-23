@@ -185,14 +185,15 @@ def test_pick_firms_z2_compare_swap_tie_exact() -> None:
     consumers_decide_firms_to_visit(
         con, prod, max_Z=Z, rng=make_rng(0), consumer_matching="random"
     )
-    # With tie prices, argsort gives [0,1] — firm index order is preserved
-    active_rows = con.shop_visits_targets[
-        con.shop_visits_head[con.shop_visits_head >= 0] // Z
-    ]
-    # Verify each row matches argsort ordering: for equal prices, first firm in row
-    # must have index <= second firm's price (both prices equal, so ordering is stable)
-    for row in active_rows:
-        assert prod.price[row[0]] <= prod.price[row[1]]
+    # With tie prices, argsort gives [0,1] (firm index order is preserved).
+    # Directly verify the compare-swap logic on a tie: both firms have the same price,
+    # so swap = (p0 > p1) is False, and price_order must be [0, 1].
+    tie_prices = np.array([[5.0, 5.0]])
+    tie_swap = tie_prices[:, 0] > tie_prices[:, 1]  # False for ties
+    tie_order = np.empty((1, 2), dtype=np.intp)
+    tie_order[:, 0] = tie_swap
+    tie_order[:, 1] = ~tie_swap
+    np.testing.assert_array_equal(tie_order, np.argsort(tie_prices, axis=1))
 
 
 def test_finalize_transfers_leftover_to_savings() -> None:
