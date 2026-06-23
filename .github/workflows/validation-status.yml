@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
 
     - name: Set up Python
       uses: actions/setup-python@v6
@@ -92,12 +92,12 @@ jobs:
 
     steps:
       - name: Checkout bam-engine
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: bam-engine
 
       - name: Checkout bamengine.org
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: kganitis/bamengine.org
           token: ${{ secrets.WEBSITE_DEPLOY_TOKEN }}
