@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "run_id": "bamengine__s1000__rep6",
   "framework": "bamengine",
-  "framework_version": "0.9.1",
+  "framework_version": "0.9.2",
   "language": "python",
   "language_version": "3.13.12",
   "status": "ok",
@@ -17,16 +17,16 @@
   "warmup_periods": 100,
   "seed": 1006,
   "timing": {
-    "init_seconds": 0.01009850000264123,
-    "run_seconds": 30.735980917001143,
-    "steady_state_per_period_seconds": 0.03415108990777905,
-    "throughput_agent_steps_per_s": 178618.01823813893
+    "init_seconds": 0.00621675000002142,
+    "run_seconds": 3.5152252910047537,
+    "steady_state_per_period_seconds": 0.0039058058788941706,
+    "throughput_agent_steps_per_s": 1561777.5663052306
   },
   "outputs": null,
   "process": {
-    "wall_seconds": 34.0463468329981,
-    "peak_rss_bytes": 737247232,
-    "startup_seconds": 3.3002674159943126
+    "wall_seconds": 3.987394708005013,
+    "peak_rss_bytes": 51281920,
+    "startup_seconds": 0.46595266700023785
   },
-  "environment_id": "ec8da0cb068e"
+  "environment_id": "5ec46f67c038"
 }

@@ -1,10 +1,32 @@
 {
+  "schema_version": "1.0",
   "run_id": "bamengine__s2000__rep0",
   "framework": "bamengine",
-  "status": "timeout",
-  "error": "wall budget exceeded",
-  "process": {
-    "wall_seconds": 120.06295024999417
+  "framework_version": "0.9.2",
+  "language": "python",
+  "language_version": "3.13.12",
+  "status": "ok",
+  "error": null,
+  "population": {
+    "n_firms": 2000,
+    "n_households": 10000,
+    "n_banks": 200,
+    "n_agents_total": 12200
   },
-  "environment_id": "ec8da0cb068e"
+  "n_periods": 1000,
+  "warmup_periods": 100,
+  "seed": 1000,
+  "timing": {
+    "init_seconds": 0.006483125005615875,
+    "run_seconds": 6.530270957999164,
+    "steady_state_per_period_seconds": 0.007255856619999071,
+    "throughput_agent_steps_per_s": 1681400.36923739
+  },
+  "outputs": null,
+  "process": {
+    "wall_seconds": 7.383189667001716,
+    "peak_rss_bytes": 55738368,
+    "startup_seconds": 0.8464355839969357
+  },
+  "environment_id": "5ec46f67c038"
 }
