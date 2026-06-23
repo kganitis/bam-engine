@@ -379,6 +379,61 @@ def test_fire_excess_workers_sets_employer_prev() -> None:
     assert (wrk.employer_prev[fired_mask] == 0).all()
 
 
+def test_fire_excess_workers_premask_only_firing_firms_affected() -> None:
+    """
+    Pre-mask correctness: only workers at firms with excess labor are fired;
+    workers at non-firing firms are completely untouched, and per-firm fire
+    counts match min(excess, group_size). current_labor is decremented exactly.
+    """
+    # 4 firms: firm 0 excess=2, firm 1 no excess, firm 2 excess=1, firm 3 no excess
+    desired_labor = np.array([1, 3, 2, 2], dtype=np.int64)
+    current_labor = np.array([3, 3, 3, 2], dtype=np.int64)  # excess: [2, 0, 1, 0]
+
+    emp = mock_employer(
+        n=4,
+        desired_labor=desired_labor,
+        current_labor=current_labor.copy(),
+    )
+    # 10 workers: 3 at firm 0, 3 at firm 1, 3 at firm 2, 1 at firm 3
+    wrk = mock_worker(
+        n=10,
+        employer=np.array([0, 0, 0, 1, 1, 1, 2, 2, 2, 3], dtype=np.intp),
+        wage=np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]),
+        periods_left=np.array([5, 6, 7, 8, 9, 10, 11, 12, 13, 14], dtype=np.int64),
+    )
+
+    rng = np.random.default_rng(77)
+    firms_fire_excess_workers(emp, wrk, rng=rng)
+
+    # (a) Only workers at firms 0 and 2 (firing firms) may be fired
+    fired_mask = wrk.fired == 1
+    assert fired_mask.sum() == 3  # 2 from firm 0 + 1 from firm 2
+
+    fired_employers = wrk.employer_prev[fired_mask]
+    assert set(fired_employers.tolist()).issubset({0, 2})
+
+    # (b) Workers at non-firing firms (1 and 3) are completely untouched
+    non_firing_workers = np.array([3, 4, 5, 9])  # indices of workers at firms 1 and 3
+    assert np.all(
+        wrk.employer[non_firing_workers] == np.array([1, 1, 1, 3], dtype=np.intp)
+    )
+    assert np.all(wrk.fired[non_firing_workers] == 0)
+    assert np.all(wrk.wage[non_firing_workers] == np.array([4.0, 5.0, 6.0, 10.0]))
+
+    # (c) Per-firm fire count matches min(excess, group_size)
+    # firm 0: excess=2, group=3 -> fire 2; firm 2: excess=1, group=3 -> fire 1
+    firm0_fired = np.sum(fired_employers == 0)
+    firm2_fired = np.sum(fired_employers == 2)
+    assert firm0_fired == 2
+    assert firm2_fired == 1
+
+    # (d) current_labor decremented by exactly the per-firm fired count
+    assert emp.current_labor[0] == current_labor[0] - 2
+    assert emp.current_labor[1] == current_labor[1]  # unchanged
+    assert emp.current_labor[2] == current_labor[2] - 1
+    assert emp.current_labor[3] == current_labor[3]  # unchanged
+
+
 # ============================================================================
 # Planning-Phase Breakeven Price Tests
 # ============================================================================

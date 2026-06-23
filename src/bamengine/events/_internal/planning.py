@@ -412,6 +412,14 @@ def firms_fire_excess_workers(
 
     excess = emp.current_labor - emp.desired_labor
     firing_ids = np.where(excess > 0)[0]
+
+    if firing_ids.size == 0:
+        # No firm has excess labor: nothing to fire (draws no RNG -> bit-identical no-op).
+        if info_enabled:
+            log.info("  No firms have excess labor. Skipping.")
+            log.info("--- Firms Firing Excess Workers complete ---")
+        return
+
     total_excess = excess[excess > 0].sum() if excess.size > 0 else 0
 
     if info_enabled:
@@ -431,6 +439,21 @@ def firms_fire_excess_workers(
         return
 
     employers_of_employed = wrk.employer[all_employed]
+
+    # Restrict to workers employed at a firing firm before sorting. The sort is
+    # stable on employer id, so per-firm worker order is unchanged -> the downstream
+    # shuffle draws identical RNG -> bit-identical result. Shrinks an O(W log W)
+    # sort over all employed to O(W_firing log W_firing).
+    is_firing = np.zeros(emp.current_labor.size, dtype=np.bool_)
+    is_firing[firing_ids] = True
+    keep = is_firing[employers_of_employed]
+    all_employed = all_employed[keep]
+    employers_of_employed = employers_of_employed[keep]
+    if all_employed.size == 0:
+        if info_enabled:
+            log.info("  No workers at firing firms. Skipping.")
+            log.info("--- Firms Firing Excess Workers complete ---")
+        return
 
     # Sort workers by employer to group them
     sort_order = np.argsort(employers_of_employed, kind="stable")

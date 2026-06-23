@@ -514,6 +514,21 @@ def firms_fire_workers(
 
     employers_of_employed = wrk.employer[all_employed]
 
+    # Restrict to workers employed at a firing firm before sorting. The sort is
+    # stable on employer id, so per-firm worker order is unchanged -> the downstream
+    # shuffle draws identical RNG -> bit-identical result. Shrinks an O(W log W)
+    # sort over all employed to O(W_firing log W_firing).
+    is_firing = np.zeros(n_firms, dtype=np.bool_)
+    is_firing[firing_ids] = True
+    keep = is_firing[employers_of_employed]
+    all_employed = all_employed[keep]
+    employers_of_employed = employers_of_employed[keep]
+    if all_employed.size == 0:
+        if info_enabled:
+            log.info("  No workers at firing firms.")
+            log.info("--- Firms Firing Workers complete ---")
+        return
+
     # Sort workers by employer
     sort_order = np.argsort(employers_of_employed, kind="stable")
     sorted_workers = all_employed[sort_order]
