@@ -1,8 +1,8 @@
 """
 markets.jl - market matching routines for the Agents.jl BAM model.
 
-So far this holds the labor-market matcher (event 11) and the credit-market
-matcher (event 18). The goods-market matcher is added in a later phase task.
+This file holds the labor-market matcher (event 11), the credit-market matcher
+(event 18), and the goods-market matcher (event 28, added in Task 7).
 
 Each routine is a faithful translation of the corresponding Mesa function in
 `comparison/runners/mesa/markets.py`. The matching ALGORITHM (worker application
@@ -216,6 +216,65 @@ function _run_credit_market!(model)
             end
             # Update bank supply once after all applicants processed.
             bv.credit_supply -= granted_total
+        end
+    end
+
+    return nothing
+end
+
+# ---------------------------------------------------------------------------
+# Goods market matching (event 28, sequential shopping loop)
+# ---------------------------------------------------------------------------
+
+"""
+    _run_goods_market!(model)
+
+Event 28 (goods_market_round): sequential goods-market matching.
+
+Translated faithfully from Mesa `run_goods_market` (`markets.py`).
+
+Algorithm:
+  * Build a list of households whose `income_to_spend > eps` (active buyers).
+  * Shuffle the buyer list ONCE with `abmrng(model)` (Mesa's
+    `model.random.shuffle(buyers)`) so every buyer gets a random service order.
+  * For each buyer walk its `shop_visits` (a `Vector{Int}` of firm ids sorted by
+    price ASC, built in event 27). For each firm in the visit list:
+      - break if buyer's budget (`income_to_spend`) <= eps (budget exhausted)
+      - continue if firm's inventory <= eps (nothing left to sell)
+      - `qty = min(income_to_spend / price, inventory)`
+      - `spent = qty * price`
+      - decrement buyer's budget and firm's inventory IMMEDIATELY (in-loop)
+
+This single-pass loop matches Mesa's sequential processing. Inventory and budget
+updates are eager: a firm that sells out mid-loop appears exhausted to subsequent
+buyers in the same pass. No aggregation or reconciliation step is needed.
+
+RNG: exactly one `shuffle!(abmrng(model), buyers)` call, matching Mesa's single
+`model.random.shuffle(buyers)`. No other draws occur in this event.
+
+Note: `shop_visits` stores firm ids (integers), not Firm objects. Look up each
+firm variant by `variant(model[firm_id])`.
+"""
+function _run_goods_market!(model)
+    eps = model.eps
+    rng = abmrng(model)
+
+    # Collect active buyers in agent-iteration (creation) order, then shuffle.
+    buyers = [h for h in households(model) if variant(h).income_to_spend > eps]
+    isempty(buyers) && return nothing
+
+    shuffle!(rng, buyers)   # random service order, one call matching Mesa
+
+    for buyer in buyers
+        hv = variant(buyer)
+        for firm_id in hv.shop_visits
+            hv.income_to_spend <= eps && break          # budget exhausted
+            fv = variant(model[firm_id])
+            fv.inventory <= eps && continue             # firm is sold out
+            qty   = min(hv.income_to_spend / fv.price, fv.inventory)
+            spent = qty * fv.price
+            hv.income_to_spend -= spent
+            fv.inventory       -= qty
         end
     end
 
