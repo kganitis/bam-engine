@@ -92,13 +92,15 @@ def _make_test_model(n_firms, n_households, n_banks, seed=0):
 
 
 def _make_params():
-    """Return a minimal param dict matching the Mesa port's required keys."""
+    """Return a minimal param dict matching the agent sets' required keys."""
     return {
         "labor_productivity": 0.5,
         "price_init": 0.5,
         "net_worth_ratio": 6.0,
         "savings_init": 1.0,
         "equity_base_init": 5.0,
+        # Households needs max_M to size the -1-padded job-application queue.
+        "max_M": 4,
     }
 
 
