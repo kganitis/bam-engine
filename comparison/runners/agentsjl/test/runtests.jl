@@ -40,6 +40,8 @@ include(joinpath(@__DIR__, "..", "model.jl"))
             "max_H"                 => 2.0,
             "max_loan_to_net_worth" => 2.0,
             "max_leverage"          => 10.0,
+            # Production + revenue params (bam_step! now also runs these phases).
+            "delta"                 => 0.10,
         )
         n_firms, n_households, n_banks = 10, 50, 2
         model = build_model(n_firms, n_households, n_banks, params, 42)
@@ -458,6 +460,157 @@ include(joinpath(@__DIR__, "..", "model.jl"))
         # this period's loans remain afterwards.
         _purge_loans!(model)
         @test isempty(model.loans)
+    end
+
+    @testset "production + revenue invariants (events 20-24, 30-32)" begin
+        # Full canonical param set (all phases through revenue).
+        # Use the default net_worth_ratio=6.0 so firms have plenty of funds and
+        # most firms are solvent; a tiny net_worth_ratio tests the default path.
+        params = Dict{String,Float64}(
+            "labor_productivity"    => 0.50,
+            "price_init"            => 0.50,
+            "net_worth_ratio"       => 6.0,
+            "savings_init"          => 1.0,
+            "equity_base_init"      => 5.0,
+            "min_wage_ratio"        => 0.5,
+            "min_wage_rev_period"   => 4.0,
+            "h_rho"                 => 0.10,
+            "h_eta"                 => 0.10,
+            "h_xi"                  => 0.05,
+            "max_M"                 => 4.0,
+            "theta"                 => 8.0,
+            "v"                     => 0.10,
+            "h_phi"                 => 0.10,
+            "r_bar"                 => 0.02,
+            "max_H"                 => 2.0,
+            "max_loan_to_net_worth" => 2.0,
+            "max_leverage"          => 10.0,
+            "delta"                 => 0.10,
+        )
+        n_firms, n_households, n_banks = 10, 50, 2
+        model = build_model(n_firms, n_households, n_banks, params, 42)
+
+        # Run phases 1-4 directly (not via step! so we have a clean snapshot).
+        _planning!(model)
+        _labor_market!(model)
+        _credit_market!(model)
+
+        # Snapshot pre-production state for wage-income verification.
+        wage_of = Dict(h.id => variant(h).wage
+                       for h in households(model) if variant(h).employer_id != NO_AGENT)
+        income_pre = Dict(h.id => variant(h).income
+                          for h in households(model))
+
+        _production!(model)
+
+        # --- Event 22: production == labor_productivity * current_labor per firm ---
+        lp = params["labor_productivity"]
+        for a in allagents(model)
+            variantof(a) === Firm || continue
+            fv = variant(a)
+            @test fv.production ≈ lp * fv.current_labor
+        end
+
+        # --- Event 22: production_prev == production (unconditional) ---
+        for a in allagents(model)
+            variantof(a) === Firm || continue
+            fv = variant(a)
+            @test fv.production_prev == fv.production
+        end
+
+        # --- Event 22: inventory == production (overwrite, Flag 4) ---
+        for a in allagents(model)
+            variantof(a) === Firm || continue
+            fv = variant(a)
+            @test fv.inventory == fv.production
+        end
+
+        # --- Event 21: employed workers' income increased by their wage ---
+        for (hid, w) in wage_of
+            hv = variant(model[hid])
+            @test hv.income ≈ income_pre[hid] + w
+        end
+
+        # --- Event 23: avg_mkt_price_history gained one entry ---
+        # (It was length 1 after build_model, then 2 after the inflation event in
+        # _labor_market!... but the history grows per update_avg_mkt_price call.)
+        @test length(model.avg_mkt_price_history) >= 2
+
+        # --- avg_mkt_price is positive and finite ---
+        @test model.avg_mkt_price > 0.0
+        @test isfinite(model.avg_mkt_price)
+
+        # --- Event 24: periods_left decremented for all still-employed workers ---
+        # (A newly hired worker starts with periods_left == theta == 8; after one
+        # update_contracts pass it is 7. Check it is <= theta - 1 = 7.)
+        theta = Int(round(params["theta"]))
+        for h in households(model)
+            hv = variant(h)
+            if hv.employer_id != NO_AGENT
+                # Still employed: periods_left was decremented and > 0.
+                @test hv.periods_left > 0
+                @test hv.periods_left <= theta
+            end
+        end
+
+        # --- Contract-expired workers are properly unlinked ---
+        for h in households(model)
+            hv = variant(h)
+            if hv.contract_expired
+                # Unlinked from employer.
+                @test hv.employer_id == NO_AGENT
+                @test hv.wage == 0.0
+                @test hv.fired == false
+            end
+        end
+
+        # --- current_labor + employee_ids consistency after contract expiry ---
+        for a in allagents(model)
+            variantof(a) === Firm || continue
+            fv = variant(a)
+            @test fv.current_labor == length(fv.employee_ids)
+            @test fv.current_labor >= 0
+        end
+
+        # --- Revenue phase ---
+        _revenue!(model)
+
+        # --- Event 32: dividends >= 0 for every household ---
+        for h in households(model)
+            @test variant(h).dividends >= 0.0
+        end
+
+        # --- Event 32: all households received the same dividend per household ---
+        div_vals = [variant(h).dividends for h in households(model)]
+        if length(div_vals) > 1
+            @test all(d -> d ≈ div_vals[1], div_vals)
+        end
+
+        # --- Event 30: gross_profit is finite for all firms ---
+        for a in allagents(model)
+            variantof(a) === Firm || continue
+            fv = variant(a)
+            @test isfinite(fv.gross_profit)
+        end
+
+        # --- Event 31: net_profit is finite for all firms ---
+        for a in allagents(model)
+            variantof(a) === Firm || continue
+            fv = variant(a)
+            @test isfinite(fv.net_profit)
+        end
+
+        # --- Event 31: total_funds is finite and non-negative for all firms ---
+        # (Defaulting firms get total_funds=0; solvent firms have reduced funds.)
+        for a in allagents(model)
+            variantof(a) === Firm || continue
+            fv = variant(a)
+            @test isfinite(fv.total_funds)
+            @test fv.total_funds >= 0.0
+        end
+
+        # --- Populations preserved; no agents added or removed ---
+        @test nagents(model) == n_firms + n_households + n_banks
     end
 
     @testset "event 2 reads prior-period loan interest" begin

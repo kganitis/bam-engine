@@ -19,6 +19,13 @@ Tasks covered so far:
     persists across periods and is purged at the start of `_credit_market!` (event
     17 open), matching the Mesa port. `bam_step!` now runs planning + labor +
     credit. The fire-on-gap step (event 19) reuses the event-6 firing pattern.
+  * Task 6: production-phase event functions (events 20-24) and `_production!`
+    dispatcher; revenue-phase event functions (events 30-32) and `_revenue!`
+    dispatcher. `bam_step!` now runs planning + labor + credit + production +
+    revenue. Loans are NOT removed in the revenue phase; the loan book is cleared
+    at the next credit-market open (event 17 purge), matching the Mesa port
+    (Flag 6). Bank equity is updated per-loan: fully-repaid lenders earn interest;
+    defaulting lenders take a proportional loss against pre-update net_worth.
 
 Agents.jl v7.0.3 idioms:
   * `@agent struct Variant(NoSpaceAgent) ... end` + `@multiagent BAMAgent(...)`
@@ -908,15 +915,365 @@ function _credit_market!(model)
 end
 
 # ---------------------------------------------------------------------------
-# Per-period step (planning + labor scaffold; remaining phases added in later tasks)
+# Production phase - event functions (events 20-24)
+# ---------------------------------------------------------------------------
+
+"""
+    _event20_pay_wages!(model)
+
+Event 20 (firms_pay_wages): each firm deducts its wage bill from total funds.
+
+Formula (Mesa `Firm.pay_wages`):
+  * `total_funds -= wage_bill`
+
+No RNG.
+"""
+function _event20_pay_wages!(model)
+    for a in allagents(model)
+        variantof(a) === Firm || continue
+        fv = variant(a)
+        fv.total_funds -= fv.wage_bill
+    end
+    return nothing
+end
+
+"""
+    _event21_receive_wage!(model)
+
+Event 21 (workers_receive_wage): each employed household adds its wage to income.
+
+Formula (Mesa `Household.receive_wage`):
+  * if employed (`employer_id != NO_AGENT`): `income += wage`
+
+No RNG.
+"""
+function _event21_receive_wage!(model)
+    for h in households(model)
+        hv = variant(h)
+        if hv.employer_id != NO_AGENT
+            hv.income += hv.wage
+        end
+    end
+    return nothing
+end
+
+"""
+    _event22_run_production!(model)
+
+Event 22 (firms_run_production): each firm produces output, overwrites inventory,
+and updates production_prev.
+
+Formula (Mesa `Firm.run_production`):
+  * `production = labor_productivity * current_labor`
+  * `production_prev = production`   (unconditional every period; Flag 2)
+  * `inventory = production`         (OVERWRITE, not accumulate; Flag 4)
+
+No RNG.
+"""
+function _event22_run_production!(model)
+    for a in allagents(model)
+        variantof(a) === Firm || continue
+        fv = variant(a)
+        fv.production = fv.labor_productivity * fv.current_labor
+        fv.production_prev = fv.production
+        fv.inventory = fv.production
+    end
+    return nothing
+end
+
+"""
+    _event23_update_avg_mkt_price!(model)
+
+Event 23 (update_avg_mkt_price): production-weighted average price over firms with
+production >= 1e-3; keep previous avg_mkt_price if result <= 0; append to history.
+
+Formula (Mesa `BamModel._update_avg_mkt_price`):
+  * weighted_sum = sum(price * production for firms with production >= 1e-3)
+  * total_prod   = sum(production for firms with production >= 1e-3)
+  * new_price = weighted_sum / total_prod  if total_prod > 0  else 0.0
+  * if new_price > 0: avg_mkt_price = new_price  (else keep previous; Flag 10)
+  * append avg_mkt_price to avg_mkt_price_history
+
+No RNG.
+"""
+function _event23_update_avg_mkt_price!(model)
+    total_prod = 0.0
+    weighted_sum = 0.0
+    for a in allagents(model)
+        variantof(a) === Firm || continue
+        fv = variant(a)
+        if fv.production >= 1e-3
+            weighted_sum += fv.price * fv.production
+            total_prod   += fv.production
+        end
+    end
+    new_price = total_prod > 0.0 ? weighted_sum / total_prod : 0.0
+    if new_price > 0.0
+        model.avg_mkt_price = new_price
+    end
+    # else: keep previous avg_mkt_price (Flag 10)
+    push!(model.avg_mkt_price_history, model.avg_mkt_price)
+    return nothing
+end
+
+"""
+    _event24_update_contracts!(model)
+
+Event 24 (workers_update_contracts): decrement each employed worker's
+`periods_left`; workers whose contract expires (`periods_left` reaches 0) are
+separated from their employer.
+
+Formula (Mesa `Household.update_contract`):
+  * skip unemployed workers (`employer_id == NO_AGENT`)
+  * `periods_left -= 1`
+  * if `periods_left == 0`:
+    - `employer_prev_id = employer_id`
+    - `employer_id = NO_AGENT`
+    - `wage = 0.0`
+    - `contract_expired = true`
+    - `fired = false`
+    - remove this worker id from employer's `employee_ids`
+    - `employer.current_labor -= 1`
+
+Note: wage_bill is NOT recomputed here; the next period's event 12 handles it.
+No RNG. (`contract_expired=1, fired=0` => worker is loyal next period.)
+"""
+function _event24_update_contracts!(model)
+    for h in households(model)
+        hv = variant(h)
+        hv.employer_id == NO_AGENT && continue
+        hv.periods_left -= 1
+        if hv.periods_left == 0
+            employer_id = hv.employer_id
+            hv.employer_prev_id = employer_id
+            hv.employer_id      = NO_AGENT
+            hv.wage             = 0.0
+            hv.contract_expired = true
+            hv.fired            = false
+            # Update the firm's employee roster and labor count.
+            fv = variant(model[employer_id])
+            filter!(id -> id != h.id, fv.employee_ids)
+            fv.current_labor -= 1
+        end
+    end
+    return nothing
+end
+
+# ---------------------------------------------------------------------------
+# Production phase dispatcher
+# ---------------------------------------------------------------------------
+
+"""
+    _production!(model)
+
+Phase 4: run events 20-24 (production phase) in order.
+
+  20. Firms pay wages (total_funds -= wage_bill)
+  21. Workers receive wage (employed workers: income += wage)
+  22. Firms run production (labor_productivity * current_labor; overwrite inventory)
+  23. Update production-weighted average market price (append to history)
+  24. Workers update contracts (decrement periods_left; expire if == 0)
+
+Mirrors Mesa `BamModel._production()`.
+"""
+function _production!(model)
+    _event20_pay_wages!(model)
+    _event21_receive_wage!(model)
+    _event22_run_production!(model)
+    _event23_update_avg_mkt_price!(model)
+    _event24_update_contracts!(model)
+    return nothing
+end
+
+# ---------------------------------------------------------------------------
+# Revenue phase - event functions (events 30-32)
+# ---------------------------------------------------------------------------
+
+"""
+    _event30_collect_revenue!(model)
+
+Event 30 (firms_collect_revenue): each firm collects revenue from goods sold,
+then computes gross profit.
+
+Formula (Mesa `Firm.collect_revenue`):
+  * `qty_sold = production - inventory`
+  * `revenue = price * qty_sold`
+  * `total_funds += revenue`
+  * `gross_profit = revenue - wage_bill`
+
+Note: `inventory` is NOT decremented here; it is updated by the goods market
+(events 25-29, Task 7). At the start of this task, goods market is not yet
+implemented, so revenue collection uses production as the sole measure of
+quantity sold (inventory was set to `production` in event 22, so qty_sold = 0
+until goods market runs). This is the correct formula per the Mesa source.
+No RNG.
+"""
+function _event30_collect_revenue!(model)
+    for a in allagents(model)
+        variantof(a) === Firm || continue
+        fv = variant(a)
+        qty_sold = fv.production - fv.inventory
+        revenue = fv.price * qty_sold
+        fv.total_funds += revenue
+        fv.gross_profit = revenue - fv.wage_bill
+    end
+    return nothing
+end
+
+"""
+    _event31_validate_debt!(model)
+
+Event 31 (firms_validate_debt_commitments): repay loans if solvent; write off
+and record losses if not. Update each bank's equity per loan.
+
+Formula (Mesa `Firm.validate_debt`):
+  * per firm: filter `model.loans` by `borrower_id == firm.id`
+  * `total_debt      = sum(debt(loan)      for each firm loan)`
+  * `total_interest  = sum(interest(loan)  for each firm loan)`
+  * `total_principal = sum(principal(loan) for each firm loan)`
+  * if `total_debt > EPS`:
+    - SOLVENT (`total_funds - total_debt >= -EPS`):
+        `total_funds -= total_debt`
+        per loan: `bank.equity_base += loan.interest`  (Flag 7: interest only on
+        fully-repaid loans; lenders earn nothing on defaulted loans)
+    - DEFAULT (`total_funds - total_debt < -EPS`):
+        `total_funds = 0.0`
+        per loan: `frac = principal / max(total_principal, EPS)`
+                  `recovery = clamp(frac * net_worth, 0.0, loan.principal)`
+                  `loss = loan.principal - recovery`
+                  `bank.equity_base -= loss`
+        (uses CURRENT pre-update `net_worth`; Flag 7)
+  * ALL firms (regardless of debt): `net_profit = gross_profit - total_interest`
+
+Loan settlement timing: loans are NOT removed from `model.loans` here. The loan
+book persists so planning-phase event 2 (next period) can read prior interest.
+The book is cleared at the start of the next `_credit_market!` (`_purge_loans!`).
+This matches Mesa and the model-reference Flag 6.
+
+No RNG.
+"""
+function _event31_validate_debt!(model)
+    eps = model.eps
+    loans = model.loans
+    for a in allagents(model)
+        variantof(a) === Firm || continue
+        fv = variant(a)
+
+        # Gather this firm's loans by filtering the shared book.
+        firm_loans = [l for l in loans if l.borrower_id == a.id]
+
+        total_debt      = sum(debt(l)      for l in firm_loans; init = 0.0)
+        total_interest  = sum(interest(l)  for l in firm_loans; init = 0.0)
+        total_principal = sum(l.principal  for l in firm_loans; init = 0.0)
+
+        if total_debt > eps
+            if fv.total_funds - total_debt >= -eps
+                # Full repayment: deduct debt; each lender earns interest (Flag 7).
+                fv.total_funds -= total_debt
+                for l in firm_loans
+                    bv = variant(model[l.lender_id])
+                    bv.equity_base += interest(l)
+                end
+            else
+                # Default: zero out cash; proportional recovery against pre-update NW.
+                nw = fv.net_worth   # pre-update net_worth (Flag 7)
+                fv.total_funds = 0.0
+                for l in firm_loans
+                    frac     = l.principal / max(total_principal, eps)
+                    recovery = clamp(frac * nw, 0.0, l.principal)
+                    loss     = l.principal - recovery
+                    bv = variant(model[l.lender_id])
+                    bv.equity_base -= loss
+                end
+            end
+        end
+
+        # Net profit computed for ALL firms (including those with no debt).
+        fv.net_profit = fv.gross_profit - total_interest
+    end
+    return nothing
+end
+
+"""
+    _event32_pay_dividends!(model)
+
+Event 32 (firms_pay_dividends): distribute dividends from profitable firms to
+all households equally (Flag 8).
+
+Formula (Mesa `BamModel._pay_dividends`):
+  * per firm: `retained = net_profit`
+    if `net_profit > 0`: `retained *= (1 - delta)`
+    `dividends_paid = net_profit - retained`
+    `total_funds -= dividends_paid`
+    `retained_profit = retained`
+  * `total_dividends = sum(dividends_paid over all firms)`
+  * `div_per_hh = total_dividends / n_households`
+  * per household: `savings += div_per_hh`; `dividends = div_per_hh`
+
+Note: `net_worth` is NOT updated here (event 33 in Task 8 handles that).
+No RNG.
+"""
+function _event32_pay_dividends!(model)
+    delta = model.params["delta"]
+    total_dividends = 0.0
+    for a in allagents(model)
+        variantof(a) === Firm || continue
+        fv = variant(a)
+        retained = fv.net_profit
+        if fv.net_profit > 0.0
+            retained *= 1.0 - delta
+        end
+        dividends_paid = fv.net_profit - retained
+        fv.total_funds    -= dividends_paid
+        fv.retained_profit = retained
+        total_dividends   += dividends_paid
+    end
+
+    n_hh = model.n_households
+    div_per_hh = n_hh > 0 ? total_dividends / n_hh : 0.0
+    for h in households(model)
+        hv = variant(h)
+        hv.savings   += div_per_hh
+        hv.dividends  = div_per_hh
+    end
+    return nothing
+end
+
+# ---------------------------------------------------------------------------
+# Revenue phase dispatcher
+# ---------------------------------------------------------------------------
+
+"""
+    _revenue!(model)
+
+Phase 6: run events 30-32 (revenue phase) in order.
+
+  30. Firms collect revenue (qty_sold = production - inventory; gross_profit)
+  31. Firms validate debt commitments (loan repayment or default; bank equity update)
+  32. Firms pay dividends (profitable firms pay delta fraction; households receive share)
+
+Mirrors Mesa `BamModel._revenue()`.
+"""
+function _revenue!(model)
+    _event30_collect_revenue!(model)
+    _event31_validate_debt!(model)
+    _event32_pay_dividends!(model)
+    return nothing
+end
+
+# ---------------------------------------------------------------------------
+# Per-period step (planning + labor + credit + production + revenue;
+# goods market (T7) and bankruptcy/entry (T8) added in later tasks)
 # ---------------------------------------------------------------------------
 
 """
     bam_step!(model)
 
-Per-period model step. Currently runs Phase 1 (planning, events 1-6), Phase 2
-(labor market, events 7-12), and Phase 3 (credit market, events 13-19); later
-tasks (T6-T9) will add production, goods, revenue, and bankruptcy/entry phases.
+Per-period model step. Runs Phase 1 (planning, events 1-6), Phase 2 (labor
+market, events 7-12), Phase 3 (credit market, events 13-19), Phase 4
+(production, events 20-24), and Phase 6 (revenue, events 30-32). Phase 5
+(goods market, events 25-29) and Phase 7-8 (bankruptcy + entry, events 33-37)
+are added in Tasks 7 and 8 respectively.
 
 Defined as a named function (rather than `dummystep`) so the `StandardABM` is
 constructed with a real `model_step!` and later tasks have a single clear hook
@@ -928,6 +1285,8 @@ function bam_step!(model)
     _planning!(model)
     _labor_market!(model)
     _credit_market!(model)
+    _production!(model)
+    _revenue!(model)
     return nothing
 end
 
