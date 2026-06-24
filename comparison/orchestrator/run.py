@@ -42,11 +42,19 @@ _MF_PYTHON = str(
     / "bin"
     / "python"
 )
+_AGENTSJL_DIR = str(_REPO_ROOT / "comparison" / "runners" / "agentsjl")
+_AGENTSJL_RUN = str(_REPO_ROOT / "comparison" / "runners" / "agentsjl" / "run.jl")
 
 RUNNER_CMD: dict[str, list[str]] = {
     "bamengine": [sys.executable, "-m", "comparison.runners.bamengine.run"],
     "mesa": [sys.executable, "-m", "comparison.runners.mesa.run"],
     "mesa_frames": [_MF_PYTHON, "-m", "comparison.runners.mesa_frames.run"],
+    "agentsjl": [
+        "julia",
+        f"--project={_AGENTSJL_DIR}",
+        "--startup-file=no",
+        _AGENTSJL_RUN,
+    ],
 }
 
 _THREAD_ENV = {
