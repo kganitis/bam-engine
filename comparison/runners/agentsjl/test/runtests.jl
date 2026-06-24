@@ -45,6 +45,11 @@ include(joinpath(@__DIR__, "..", "model.jl"))
             # Goods-market params (bam_step! now also runs the goods market).
             "beta"                  => 2.5,
             "max_Z"                 => 2.0,
+            # Bankruptcy + entry params (bam_step! now also runs bankruptcy/entry).
+            "new_firm_size_factor"      => 0.5,
+            "new_firm_production_factor" => 0.5,
+            "new_firm_wage_factor"      => 0.5,
+            "new_firm_price_markup"     => 1.20,
         )
         n_firms, n_households, n_banks = 10, 50, 2
         model = build_model(n_firms, n_households, n_banks, params, 42)
@@ -715,6 +720,109 @@ include(joinpath(@__DIR__, "..", "model.jl"))
 
         # 7. Populations preserved; no agents added or removed.
         @test nagents(model) == n_firms + n_households + n_banks
+    end
+
+    @testset "bankruptcy + entry invariants (events 33-37)" begin
+        # Full canonical param set plus entry params.
+        params = Dict{String,Float64}(
+            "labor_productivity"       => 0.50,
+            "price_init"               => 0.50,
+            "net_worth_ratio"          => 6.0,
+            "savings_init"             => 1.0,
+            "equity_base_init"         => 5.0,
+            "min_wage_ratio"           => 0.5,
+            "min_wage_rev_period"      => 4.0,
+            "h_rho"                    => 0.10,
+            "h_eta"                    => 0.10,
+            "h_xi"                     => 0.05,
+            "max_M"                    => 4.0,
+            "theta"                    => 8.0,
+            "v"                        => 0.10,
+            "h_phi"                    => 0.10,
+            "r_bar"                    => 0.02,
+            "max_H"                    => 2.0,
+            "max_loan_to_net_worth"    => 2.0,
+            "max_leverage"             => 10.0,
+            "delta"                    => 0.10,
+            "beta"                     => 2.5,
+            "max_Z"                    => 2.0,
+            # Entry params (defaults.yml values).
+            "new_firm_size_factor"     => 0.5,
+            "new_firm_production_factor" => 0.5,
+            "new_firm_wage_factor"     => 0.5,
+            "new_firm_price_markup"    => 1.20,
+        )
+        n_firms, n_households, n_banks = 10, 50, 2
+        model = build_model(n_firms, n_households, n_banks, params, 42)
+
+        # Run phases 1-6 to get firms into a realistic state.
+        _planning!(model)
+        _labor_market!(model)
+        _credit_market!(model)
+        _production!(model)
+        _goods_market!(model)
+        _revenue!(model)
+
+        # --- Force some firms bankrupt by driving net_worth and production_prev to 0. ---
+        firm_ids_sorted = sort!([a.id for a in allagents(model) if variantof(a) === Firm])
+        # Force the first 2 firms into insolvency.
+        forced_bankrupt_firm_ids = firm_ids_sorted[1:2]
+        for fid in forced_bankrupt_firm_ids
+            fv = variant(model[fid])
+            fv.net_worth       = -1.0   # below EPS: insolvent
+            fv.production_prev = 0.0    # also a ghost
+        end
+
+        # Hire a worker into the first forced-bankrupt firm to test worker firing.
+        victim_firm_id = forced_bankrupt_firm_ids[1]
+        victim_fv = variant(model[victim_firm_id])
+        # Pick an unemployed household and fake-employ it.
+        victim_hh = first(h for h in households(model) if variant(h).employer_id == NO_AGENT)
+        victim_hid = victim_hh.id
+        victim_hv = variant(victim_hh)
+        victim_hv.employer_id      = victim_firm_id
+        victim_hv.employer_prev_id = NO_AGENT
+        victim_hv.wage             = 0.5
+        victim_hv.periods_left     = 4
+        push!(victim_fv.employee_ids, victim_hid)
+        victim_fv.current_labor = 1
+
+        # --- Force the first bank bankrupt. ---
+        bank_ids_sorted = sort!([b.id for b in banks(model) if variantof(b) === Bank])
+        forced_bankrupt_bank_id = bank_ids_sorted[1]
+        variant(model[forced_bankrupt_bank_id]).equity_base = -1.0   # below EPS
+
+        # --- Run bankruptcy + entry. ---
+        _bankruptcy_entry!(model)
+
+        # 1. Population constant per kind.
+        @test count(a -> variantof(a) === Firm,      allagents(model)) == n_firms
+        @test count(a -> variantof(a) === Household, allagents(model)) == n_households
+        @test count(a -> variantof(a) === Bank,      allagents(model)) == n_banks
+        @test nagents(model) == n_firms + n_households + n_banks
+
+        # 2. Replacement firms have positive net_worth (not re-ghosted).
+        for fid in forced_bankrupt_firm_ids
+            fv = variant(model[fid])
+            @test fv.net_worth > 0.0
+            @test fv.total_funds > 0.0
+            @test fv.production_prev > 0.0   # > 0 so not immediately re-ghosted
+        end
+
+        # 3. Worker of bankrupt firm is now unemployed; employer_prev cleared.
+        hv_after = variant(model[victim_hid])
+        @test hv_after.employer_id      == NO_AGENT
+        @test hv_after.employer_prev_id == NO_AGENT   # event 34: loyalty link cleared
+        @test hv_after.wage             == 0.0
+
+        # 4. Replacement bank has positive equity_base (cloned from survivor).
+        bv_after = variant(model[forced_bankrupt_bank_id])
+        @test bv_after.equity_base > 0.0
+        @test bv_after.credit_supply  == 0.0
+        @test bv_after.interest_rate  == 0.0
+
+        # 5. Model not collapsed (not all firms/banks exited).
+        @test model.collapsed == false
     end
 
     @testset "event 2 reads prior-period loan interest" begin
