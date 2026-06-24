@@ -10,6 +10,9 @@ Tasks covered so far:
     `_event6_fire_excess_workers!`) and the `_planning!` dispatcher, plus a
     `model_step!` skeleton (`bam_step!`) that runs only the planning phase for
     now (later tasks fill in the remaining phases).
+  * Task 4: labor-market event functions (events 7-12) and the `_labor_market!`
+    dispatcher. The matching round (event 11) lives in `markets.jl`. `bam_step!`
+    now runs planning + labor market.
 
 Agents.jl v7.0.3 idioms:
   * `@agent struct Variant(NoSpaceAgent) ... end` + `@multiagent BAMAgent(...)`
@@ -33,6 +36,9 @@ Field names and initial values mirror the Mesa reference in
 
 using Agents
 using Random
+
+# Market-matching routines (labor market here; credit/goods added in later tasks).
+include(joinpath(@__DIR__, "markets.jl"))
 
 # Sentinel for "no agent" (unemployed worker, no previous employer, no loyalty
 # target, etc.). Agents.jl assigns ids starting at 1, so 0 is always free.
@@ -415,15 +421,233 @@ function _planning!(model)
 end
 
 # ---------------------------------------------------------------------------
-# Per-period step (planning-only scaffold; remaining phases added in later tasks)
+# Labor market phase - event functions (events 7-12)
+# ---------------------------------------------------------------------------
+
+"""
+    _event7_calc_inflation!(model)
+
+Event 7 (calc_inflation_rate): year-over-year inflation from the price history,
+appended to `inflation_history`.
+
+Formula (Mesa `BamModel._calc_inflation`):
+  * if `length(avg_mkt_price_history) <= 4`: append `0.0`
+  * else `p_now = hist[end]`, `p_prev = hist[end-4]`
+    (the value 5 entries back, matching Python's `hist[-5]`)
+  * append `0.0` if `p_prev <= 0` else `(p_now - p_prev) / p_prev`
+
+No RNG.
+"""
+function _event7_calc_inflation!(model)
+    hist = model.avg_mkt_price_history
+    if length(hist) <= 4
+        push!(model.inflation_history, 0.0)
+        return nothing
+    end
+    p_now = hist[end]
+    p_prev = hist[end-4]   # Python hist[-5]
+    if p_prev <= 0.0
+        push!(model.inflation_history, 0.0)
+    else
+        push!(model.inflation_history, (p_now - p_prev) / p_prev)
+    end
+    return nothing
+end
+
+"""
+    _event8_adjust_min_wage!(model)
+
+Event 8 (adjust_minimum_wage): periodically index the minimum wage to inflation.
+
+Formula (Mesa `BamModel._adjust_min_wage`):
+  * `m = min_wage_rev_period`; `hist_len = length(avg_mkt_price_history)`
+  * skip if `hist_len <= m`
+  * skip unless `(hist_len - 1) % m == 0`
+  * `inflation = inflation_history[end]`; `min_wage *= (1 + inflation)`
+    (bidirectional - can fall when inflation is negative)
+  * bump every EMPLOYED worker whose wage is below the new floor up to it.
+
+"Employed" is derived as `employer_id != NO_AGENT`. No RNG.
+"""
+function _event8_adjust_min_wage!(model)
+    m = model.min_wage_rev_period
+    hist_len = length(model.avg_mkt_price_history)
+    hist_len <= m && return nothing
+    (hist_len - 1) % m != 0 && return nothing
+    inflation = model.inflation_history[end]
+    model.min_wage *= 1.0 + inflation
+    new_floor = model.min_wage
+    for h in households(model)
+        hv = variant(h)
+        if hv.employer_id != NO_AGENT && hv.wage < new_floor
+            hv.wage = new_floor
+        end
+    end
+    return nothing
+end
+
+"""
+    _event9_decide_wage_offer!(model)
+
+Event 9 (firms_decide_wage_offer): set each firm's posted wage offer with a
+random markup, floored at the minimum wage.
+
+Formula (Mesa `Firm.decide_wage_offer`):
+  * `shock ~ U(0, h_xi)` per firm, but ONLY when `n_vacancies > 0`; otherwise
+    `shock = 0.0` and NO draw is consumed
+  * `wage_offer *= (1 + shock)`
+  * `wage_offer = max(wage_offer, min_wage)`
+
+RNG alignment with Mesa: one `rand(rng)` per firm WITH vacancies, in
+agent/creation order, matching Mesa's `self.firms` iteration where the
+`uniform(0, h_xi)` draw is taken only in the `n_vacancies > 0` branch. Firms
+without vacancies consume no draw in either implementation.
+"""
+function _event9_decide_wage_offer!(model)
+    h_xi = model.params["h_xi"]
+    min_wage = model.min_wage
+    rng = abmrng(model)
+    for a in allagents(model)
+        variantof(a) === Firm || continue
+        fv = variant(a)
+        shock = fv.n_vacancies > 0 ? rand(rng) * h_xi : 0.0
+        fv.wage_offer *= 1.0 + shock
+        fv.wage_offer = max(fv.wage_offer, min_wage)
+    end
+    return nothing
+end
+
+"""
+    _event10_decide_firms_to_apply!(model)
+
+Event 10 (workers_decide_firms_to_apply): each UNEMPLOYED worker builds a ranked
+application queue.
+
+Formula (Mesa `Household.decide_firms_to_apply`):
+  * skip employed workers (`employer_id != NO_AGENT`)
+  * pool = ALL firm ids; `M_eff = min(max_M, |pool|)`; sample `M_eff` firms
+    WITHOUT replacement
+  * sort the sample by `wage_offer` DESC
+  * loyalty: if `contract_expired AND !fired AND employer_prev_id` is a firm in
+    the pool, move `employer_prev_id` to the FRONT (dropping the last entry if
+    it was not already in the sample, to keep length `M_eff`)
+  * store as `job_apps`; reset `contract_expired = false`, `fired = false`
+
+RNG alignment with Mesa: Mesa uses `model.random.sample(pool, M_eff)` (one
+sample draw per unemployed worker, in `self.households` creation order). Here we
+take a copy of the firm-id pool, `shuffle!` it once with `abmrng`, and take the
+first `M_eff` ids - the same sample-without-replacement distribution and the
+same single-draw-per-worker cadence in the same worker order. (This mirrors the
+shuffle-and-take approach already used for event 6 firing.)
+"""
+function _event10_decide_firms_to_apply!(model)
+    rng = abmrng(model)
+    max_M = Int(round(model.params["max_M"]))
+
+    # Pool of all firm ids, in ascending creation order (matches Mesa's
+    # snapshotted `_firms_list`).
+    pool = sort!([a.id for a in allagents(model) if variantof(a) === Firm])
+    pool_set = Set(pool)
+    npool = length(pool)
+
+    # Lookup of firm wage_offer by id for DESC ranking.
+    wage_offer_of(fid) = variant(model[fid]).wage_offer
+
+    for h in households(model)
+        hv = variant(h)
+        hv.employer_id == NO_AGENT || continue   # employed workers skip
+
+        M_eff = min(max_M, npool)
+        # Sample M_eff firm ids without replacement: shuffle a copy, take front.
+        shuffled = shuffle!(rng, copy(pool))
+        sample = shuffled[1:M_eff]
+
+        # Sort by wage_offer DESC. Use a STABLE sort so ties keep the sampled
+        # order, matching Python's stable `list.sort`.
+        sort!(sample; by = wage_offer_of, rev = true, alg = MergeSort)
+
+        # Loyalty: move employer_prev_id to the front if eligible.
+        prev = hv.employer_prev_id
+        if hv.contract_expired && !hv.fired && prev != NO_AGENT && prev in pool_set
+            idx = findfirst(==(prev), sample)
+            if idx !== nothing
+                deleteat!(sample, idx)
+            elseif length(sample) == M_eff
+                # Drop the last to keep the M_eff length.
+                sample = sample[1:M_eff-1]
+            end
+            pushfirst!(sample, prev)
+        end
+
+        hv.job_apps = sample
+        hv.contract_expired = false
+        hv.fired = false
+    end
+    return nothing
+end
+
+"""
+    _event12_calc_wage_bill!(model)
+
+Event 12 (firms_calc_wage_bill): each firm's wage bill = sum of its employees'
+wages.
+
+Formula (Mesa `Firm.calc_wage_bill`):
+  * `wage_bill = sum(employee.wage for employee in employees)`
+
+No RNG.
+"""
+function _event12_calc_wage_bill!(model)
+    for a in allagents(model)
+        variantof(a) === Firm || continue
+        fv = variant(a)
+        total = 0.0
+        for hid in fv.employee_ids
+            total += variant(model[hid]).wage
+        end
+        fv.wage_bill = total
+    end
+    return nothing
+end
+
+# ---------------------------------------------------------------------------
+# Labor market phase dispatcher
+# ---------------------------------------------------------------------------
+
+"""
+    _labor_market!(model)
+
+Phase 2: run events 7-12 (labor market) in order.
+
+  7.  Calc YoY inflation -> inflation_history
+  8.  Adjust minimum wage (periodic, indexed to inflation)
+  9.  Firms decide wage offer (random markup, min-wage floor)
+  10. Unemployed workers decide which firms to apply to (ranked queue)
+  11. Labor market matching (x max_M rounds; conflict-resolved hiring)
+  12. Firms calc wage bill (sum of employees' wages)
+
+Mirrors Mesa `BamModel._labor_market()`.
+"""
+function _labor_market!(model)
+    _event7_calc_inflation!(model)
+    _event8_adjust_min_wage!(model)
+    _event9_decide_wage_offer!(model)
+    _event10_decide_firms_to_apply!(model)
+    _run_labor_market!(model)        # event 11 (defined in markets.jl)
+    _event12_calc_wage_bill!(model)
+    return nothing
+end
+
+# ---------------------------------------------------------------------------
+# Per-period step (planning + labor scaffold; remaining phases added in later tasks)
 # ---------------------------------------------------------------------------
 
 """
     bam_step!(model)
 
-Per-period model step. Currently runs only Phase 1 (planning, events 1-6);
-later tasks (T4-T9) will add labor, credit, production, goods, revenue, and
-bankruptcy/entry phases.
+Per-period model step. Currently runs Phase 1 (planning, events 1-6) and Phase 2
+(labor market, events 7-12); later tasks (T5-T9) will add credit, production,
+goods, revenue, and bankruptcy/entry phases.
 
 Defined as a named function (rather than `dummystep`) so the `StandardABM` is
 constructed with a real `model_step!` and later tasks have a single clear hook
@@ -433,6 +657,7 @@ function bam_step!(model)
     model.collapsed && return nothing
     model.period += 1
     _planning!(model)
+    _labor_market!(model)
     return nothing
 end
 
