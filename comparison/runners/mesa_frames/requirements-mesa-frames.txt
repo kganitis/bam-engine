@@ -2,3 +2,7 @@ numpy<2
 polars
 pyarrow
 mesa-frames==0.1.0a0
+psutil
+pyyaml
+scipy
+pytest

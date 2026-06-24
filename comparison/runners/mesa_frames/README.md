@@ -43,6 +43,10 @@ See `requirements-mesa-frames.txt`:
 - `polars`
 - `pyarrow`
 - `mesa-frames==0.1.0a0`
+- `psutil` (used by `comparison.orchestrator.environment` and `subprocess_runner`)
+- `pyyaml` (used by `comparison.orchestrator.params` to load `defaults.yml`)
+- `scipy` (used by `comparison.equivalence.metrics` at module load via `scipy.stats.skew`)
+- `pytest` (to run the smoke test suite)
 
 ## Running manually
 
