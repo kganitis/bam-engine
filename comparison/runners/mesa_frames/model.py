@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import mesa_frames as mf
+import numpy as np
 import polars as pl
 
 from comparison.runners.mesa_frames.agents import Banks, Firms, Households
@@ -13,6 +14,38 @@ from comparison.runners.mesa_frames.markets import (
 )
 
 EPS = 1e-9
+
+
+def _batched_k_subset(
+    rng: np.random.Generator, n_rows: int, pool: np.ndarray, k: int
+) -> np.ndarray:
+    """Return an (n_rows, k) array of distinct indices drawn uniformly per row.
+
+    For each row, k items are selected without replacement from ``pool`` using
+    the priorities trick: assign i.i.d. U(0,1) priorities to every pool element
+    and take the top-k.  The top-k of independent uniform priorities is a
+    uniform k-subset (Fisher-Yates equivalent in expectation), so each row is
+    a uniform draw without replacement -- distributionally identical to calling
+    ``rng.choice(pool, size=k, replace=False)`` once per row, but uses a single
+    batched RNG draw for all rows at once.
+
+    Args:
+        rng: The model's seeded numpy Generator (``self.random``).
+        n_rows: Number of rows (active agents).
+        pool: 1-D array of pool elements (firm ids or bank ids).
+        k: Number of items to select per row (k <= len(pool)).
+
+    Returns:
+        Integer array of shape (n_rows, k) containing selected pool elements.
+    """
+    n_pool = len(pool)
+    # Draw one priority matrix: shape (n_rows, n_pool).
+    priorities = rng.random((n_rows, n_pool))
+    # argpartition gives the indices of the k smallest values per row;
+    # negate to get the k largest (top-k).
+    top_k_local = np.argpartition(-priorities, k - 1, axis=1)[:, :k]
+    # Convert local pool indices to actual pool values (firm/bank ids).
+    return pool[top_k_local]
 
 
 def trim_mean(values: list[float], pct: float = 0.05) -> float:
@@ -483,9 +516,11 @@ class BAMModel(mf.ModelDF):
         The queue is stored as -1-padded columns job_app_0..job_app_{max_M-1}
         plus job_app_head (reset to 0).
 
-        RNG: one without-replacement sample of M_eff firms per UNEMPLOYED worker,
-        in worker row order -- the same draw structure as the Mesa port (which
-        iterates households in row order and draws only for unemployed ones).
+        RNG: one batched ``_batched_k_subset`` call for ALL unemployed workers at
+        once (replaces the per-worker ``rng.choice(..., replace=False)`` loop).
+        The batched draw is a uniform k-subset per row (distributionally identical
+        to the per-call ``rng.choice``); loyalty and sort ordering are applied
+        per-row after the batch draw, exactly as before.
         """
         max_M = int(self.p["max_M"])
         rng = self.random
@@ -511,39 +546,43 @@ class BAMModel(mf.ModelDF):
         worker_fired = list(hdf["fired"])
         n_workers = len(worker_employer)
 
+        # Identify unemployed workers (in row order, preserving draw ordering).
+        unemployed_rows = [i for i in range(n_workers) if worker_employer[i] < 0]
+        n_unemployed = len(unemployed_rows)
+
         # Output queue matrix (n_workers x max_M), -1-padded.
         queue = [[-1] * max_M for _ in range(n_workers)]
         new_contract_expired = list(worker_contract_expired)
         new_fired = list(worker_fired)
 
-        for i in range(n_workers):
-            if worker_employer[i] >= 0:
-                continue  # employed workers do not apply
-            # Sample M_eff firms without replacement (in firm-id space).
-            # One choice(replace=False) per unemployed worker -- same draw
-            # structure as the Mesa port's model.random.sample(pool, M_eff).
-            sample = [int(f) for f in rng.choice(firm_ids, size=M_eff, replace=False)]
-            # Sort by wage_offer DESC (stable on sampled order).
-            sample.sort(key=lambda fid: wage_offer[fid], reverse=True)
+        if n_unemployed > 0 and M_eff > 0:
+            # Batched k-subset draw: ONE call for all unemployed workers at once.
+            # Returns (n_unemployed, M_eff) array of firm ids (not local indices).
+            batch = _batched_k_subset(rng, n_unemployed, firm_ids, M_eff)
 
-            # Loyalty: move employer_prev to front if eligible.
-            prev = worker_emp_prev[i]
-            if (
-                worker_contract_expired[i]
-                and not worker_fired[i]
-                and prev in firm_id_set
-            ):
-                if prev in sample:
-                    sample.remove(prev)
-                elif len(sample) == M_eff:
-                    sample = sample[: M_eff - 1]
-                sample.insert(0, prev)
+            for ui, i in enumerate(unemployed_rows):
+                sample = [int(f) for f in batch[ui]]
+                # Sort by wage_offer DESC (stable on sampled order).
+                sample.sort(key=lambda fid: wage_offer[fid], reverse=True)
 
-            for k, fid in enumerate(sample[:max_M]):
-                queue[i][k] = fid
+                # Loyalty: move employer_prev to front if eligible.
+                prev = worker_emp_prev[i]
+                if (
+                    worker_contract_expired[i]
+                    and not worker_fired[i]
+                    and prev in firm_id_set
+                ):
+                    if prev in sample:
+                        sample.remove(prev)
+                    elif len(sample) == M_eff:
+                        sample = sample[: M_eff - 1]
+                    sample.insert(0, prev)
 
-            new_contract_expired[i] = False
-            new_fired[i] = False
+                for k, fid in enumerate(sample[:max_M]):
+                    queue[i][k] = fid
+
+                new_contract_expired[i] = False
+                new_fired[i] = False
 
         cols = []
         for k in range(max_M):
@@ -686,18 +725,19 @@ class BAMModel(mf.ModelDF):
         ``-1``-padded columns ``loan_app_0 .. loan_app_{max_H-1}`` (bank
         unique_ids) plus ``loan_app_head`` (reset to 0).
 
-        RNG: one without-replacement sample of H_eff banks per firm with
-        credit_demand>0, in firm row order -- the same draw structure as the
-        Mesa port (firms.do iterates firms in row order; only demanding firms
-        draw).  Banks eligible = those with credit_supply>0 at the snapshot
-        taken before any round runs (matching the Mesa port).
+        RNG: one batched ``_batched_k_subset`` call for ALL demanding firms at
+        once (replaces the per-firm ``rng.choice(..., replace=False)`` loop).
+        The batched draw is a uniform k-subset per row (distributionally identical
+        to the per-call ``rng.choice``); rate-ASC sort is applied per-row after.
+        Banks eligible = those with credit_supply>0 at the snapshot taken before
+        any round runs (matching the Mesa port).  No loyalty rule for credit.
         """
         max_H = int(self.p["max_H"])
         rng = self.random
 
         bdf = self.banks.agents
         # Lenders with supply > 0 (snapshot in bank row order), and their rates.
-        lender_ids = [
+        lender_ids_list = [
             int(bid)
             for bid, sup in zip(
                 bdf["unique_id"].to_list(),
@@ -714,8 +754,8 @@ class BAMModel(mf.ModelDF):
                 strict=True,
             )
         }
-        lender_id_arr = list(lender_ids)
-        n_lenders = len(lender_id_arr)
+        lender_id_arr = np.array(lender_ids_list, dtype=np.int64)
+        n_lenders = len(lender_ids_list)
         H_eff = min(max_H, n_lenders)
 
         fdf = self.firms.agents
@@ -725,18 +765,23 @@ class BAMModel(mf.ModelDF):
         # Output queue matrix (n_firms x max_H), -1-padded bank ids.
         queue = [[-1] * max_H for _ in range(n_firms)]
 
-        for i in range(n_firms):
-            if credit_demand[i] <= 0.0 or H_eff == 0:
-                continue
-            # One without-replacement sample of H_eff banks per demanding firm --
-            # same draw structure as the Mesa port's model.random.sample.
-            sample = [
-                int(b) for b in rng.choice(lender_id_arr, size=H_eff, replace=False)
-            ]
-            # Sort by interest_rate ASC (cheapest bank first).
-            sample.sort(key=lambda bid: rate_of[bid])
-            for k, bid in enumerate(sample[:max_H]):
-                queue[i][k] = bid
+        # Identify demanding firms (in row order).
+        demanding_rows = [
+            i for i in range(n_firms) if credit_demand[i] > 0.0 and H_eff > 0
+        ]
+        n_demanding = len(demanding_rows)
+
+        if n_demanding > 0 and H_eff > 0:
+            # Batched k-subset draw: ONE call for all demanding firms at once.
+            # Returns (n_demanding, H_eff) array of bank ids.
+            batch = _batched_k_subset(rng, n_demanding, lender_id_arr, H_eff)
+
+            for di, i in enumerate(demanding_rows):
+                sample = [int(b) for b in batch[di]]
+                # Sort by interest_rate ASC (cheapest bank first).
+                sample.sort(key=lambda bid: rate_of[bid])
+                for k, bid in enumerate(sample[:max_H]):
+                    queue[i][k] = bid
 
         cols = []
         for k in range(max_H):
@@ -1114,9 +1159,11 @@ class BAMModel(mf.ModelDF):
         ``shop_visit_0 .. shop_visit_{max_Z-1}`` on the Households DataFrame.
         ``largest_prod_prev`` is updated BEFORE shopping (same as Mesa port).
 
-        RNG: one without-replacement sample of Z firm ids per consumer with
-        budget > EPS, in consumer row order -- matching the Mesa port's
-        per-household ``model.random.sample``.
+        RNG: one batched ``_batched_k_subset`` call for ALL active consumers at
+        once (replaces the per-consumer ``rng.choice(..., replace=False)`` loop).
+        The batched draw is a uniform k-subset per row (distributionally identical
+        to the per-call ``rng.choice``); loyalty (force last slot) and price-ASC
+        sort are applied per-row after, exactly as before.
         """
         eps = self.EPS
         max_Z = int(self.p["max_Z"])
@@ -1150,36 +1197,38 @@ class BAMModel(mf.ModelDF):
         income_to_spend: list[float] = [float(b) for b in hdf["income_to_spend"]]
         largest_prod_prev: list[int] = [int(lp) for lp in hdf["largest_prod_prev"]]
 
+        # Identify active buyers (in row order, preserving draw ordering).
+        buyer_rows = [i for i in range(n_hh) if income_to_spend[i] > eps]
+        n_buyers = len(buyer_rows)
+
         # Output: shop visit matrix (n_hh x max_Z), -1-padded.
         visit_queue: list[list[int]] = [[-1] * max_Z for _ in range(n_hh)]
         new_largest: list[int] = list(largest_prod_prev)
 
-        for i in range(n_hh):
-            if income_to_spend[i] <= eps:
-                # No budget: leave shop_visits all -1 (already initialised).
-                continue
+        if n_buyers > 0 and Z > 0:
+            # Batched k-subset draw: ONE call for all active buyers at once.
+            # Returns (n_buyers, Z) array of firm ids.
+            batch = _batched_k_subset(rng, n_buyers, firm_ids_arr, Z)
 
-            # Sample Z firms without replacement in firm_id_list order --
-            # one rng.choice per consumer with budget, matching the Mesa port's
-            # model.random.sample(all_firms, Z).
-            sample = [int(f) for f in rng.choice(firm_ids_arr, size=Z, replace=False)]
+            for bi, i in enumerate(buyer_rows):
+                sample = [int(f) for f in batch[bi]]
 
-            # Loyalty: force largest_prod_prev into set if not already present.
-            if consumer_matching == "loyalty":
-                prev = largest_prod_prev[i]
-                if prev >= 0 and prev in firm_id_set and prev not in sample:
-                    sample[-1] = prev
+                # Loyalty: force largest_prod_prev into last slot if not present.
+                if consumer_matching == "loyalty":
+                    prev = largest_prod_prev[i]
+                    if prev >= 0 and prev in firm_id_set and prev not in sample:
+                        sample[-1] = prev
 
-            # Sort by price ASC (cheapest first, mirroring Mesa port).
-            sample.sort(key=lambda fid: price_of[fid])
+                # Sort by price ASC (cheapest first, mirroring Mesa port).
+                sample.sort(key=lambda fid: price_of[fid])
 
-            # Update loyalty BEFORE shopping: track firm with max production in set.
-            if consumer_matching == "loyalty":
-                new_largest[i] = max(sample, key=lambda fid: production_of[fid])
+                # Update loyalty BEFORE shopping: track firm with max production.
+                if consumer_matching == "loyalty":
+                    new_largest[i] = max(sample, key=lambda fid: production_of[fid])
 
-            # Store in visit queue (truncated to max_Z slots).
-            for k, fid in enumerate(sample[:max_Z]):
-                visit_queue[i][k] = fid
+                # Store in visit queue (truncated to max_Z slots).
+                for k, fid in enumerate(sample[:max_Z]):
+                    visit_queue[i][k] = fid
 
         # Build Polars columns for shop_visit_0..max_Z-1 and largest_prod_prev.
         cols = []

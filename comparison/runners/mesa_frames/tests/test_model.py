@@ -1151,12 +1151,21 @@ class TestProductionAndRevenue:
         assert model.period == 1
 
     def test_multi_step_production_invariant(self):
-        """production == lp * current_labor holds across multiple full steps."""
+        """production == lp * current_labor holds for active firms across multiple steps.
+
+        Firms that were just replaced (bankruptcy event 36) have current_labor=0
+        and production set to a non-zero placeholder (mean_prod * factor), so the
+        invariant only applies to firms that have at least one worker.  Replaced
+        firms satisfy it in the NEXT period after they hire workers.
+        """
         model = make_model(seed=5)
         for _ in range(5):
             model.step()
             fdf = model.firms.agents
             for row in fdf.iter_rows(named=True):
+                if row["current_labor"] == 0:
+                    # Replacement (or no hires yet): skip -- production is a placeholder.
+                    continue
                 expected = row["labor_productivity"] * row["current_labor"]
                 assert abs(row["production"] - expected) < 1e-9
 
