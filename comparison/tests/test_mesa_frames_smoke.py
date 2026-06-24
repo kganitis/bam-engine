@@ -6,8 +6,8 @@ remain fast in CI without triggering a full environment build.
 Agent construction tests (test_*_agent_set_*) require the mesa-frames venv and
 are guarded with pytest.importorskip("mesa_frames").  Run them with:
 
-    comparison/runners/mesa_frames/.venv-mf/bin/python -m pytest \
-        comparison/tests/test_mesa_frames_smoke.py --no-cov -v
+    PYTHONPATH=. comparison/runners/mesa_frames/.venv-mf/bin/python -m pytest \
+        comparison/tests/test_mesa_frames_smoke.py --override-ini="addopts=" -v
 """
 
 from __future__ import annotations
