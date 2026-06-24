@@ -45,61 +45,70 @@ class Firms(mf.AgentSetPolars):
         net_worth_init: float = (
             production_init * price_init * float(params["net_worth_ratio"])
         )
+        max_H: int = int(params["max_H"])
 
         ids = _alloc_ids(model, n)
 
-        df = pl.DataFrame(
-            {
-                # Mesa: unique_id is assigned by super().__init__(model) sequentially
-                "unique_id": ids,
-                # Producer columns
-                "production": [0.0] * n,
-                "production_prev": [production_init] * n,
-                "inventory": [0.0] * n,
-                "expected_demand": [1.0] * n,
-                "desired_production": [0.0] * n,
-                "labor_productivity": [lp] * n,
-                "breakeven_price": [price_init] * n,
-                "price": [price_init] * n,
-                # Employer columns
-                "desired_labor": [0] * n,
-                "current_labor": [0] * n,
-                "wage_offer": [wage_offer_init] * n,
-                "wage_bill": [0.0] * n,
-                "n_vacancies": [0] * n,
-                "total_funds": [net_worth_init] * n,
-                # Borrower columns
-                "net_worth": [net_worth_init] * n,
-                "credit_demand": [0.0] * n,
-                "projected_fragility": [0.0] * n,
-                "gross_profit": [0.0] * n,
-                "net_profit": [0.0] * n,
-                "retained_profit": [0.0] * n,
-            },
-            schema={
-                "unique_id": pl.Int64,
-                "production": pl.Float64,
-                "production_prev": pl.Float64,
-                "inventory": pl.Float64,
-                "expected_demand": pl.Float64,
-                "desired_production": pl.Float64,
-                "labor_productivity": pl.Float64,
-                "breakeven_price": pl.Float64,
-                "price": pl.Float64,
-                "desired_labor": pl.Int64,
-                "current_labor": pl.Int64,
-                "wage_offer": pl.Float64,
-                "wage_bill": pl.Float64,
-                "n_vacancies": pl.Int64,
-                "total_funds": pl.Float64,
-                "net_worth": pl.Float64,
-                "credit_demand": pl.Float64,
-                "projected_fragility": pl.Float64,
-                "gross_profit": pl.Float64,
-                "net_profit": pl.Float64,
-                "retained_profit": pl.Float64,
-            },
-        )
+        data = {
+            # Mesa: unique_id is assigned by super().__init__(model) sequentially
+            "unique_id": ids,
+            # Producer columns
+            "production": [0.0] * n,
+            "production_prev": [production_init] * n,
+            "inventory": [0.0] * n,
+            "expected_demand": [1.0] * n,
+            "desired_production": [0.0] * n,
+            "labor_productivity": [lp] * n,
+            "breakeven_price": [price_init] * n,
+            "price": [price_init] * n,
+            # Employer columns
+            "desired_labor": [0] * n,
+            "current_labor": [0] * n,
+            "wage_offer": [wage_offer_init] * n,
+            "wage_bill": [0.0] * n,
+            "n_vacancies": [0] * n,
+            "total_funds": [net_worth_init] * n,
+            # Borrower columns
+            "net_worth": [net_worth_init] * n,
+            "credit_demand": [0.0] * n,
+            "projected_fragility": [0.0] * n,
+            "gross_profit": [0.0] * n,
+            "net_profit": [0.0] * n,
+            "retained_profit": [0.0] * n,
+            # Loan-application queue (-1-padded bank ids + head index), mirroring
+            # the labor market's job_app_* columns on Households.  Populated by
+            # event 17 (firms_prepare_loan_applications) before each credit market.
+            "loan_app_head": [0] * n,
+        }
+        schema = {
+            "unique_id": pl.Int64,
+            "production": pl.Float64,
+            "production_prev": pl.Float64,
+            "inventory": pl.Float64,
+            "expected_demand": pl.Float64,
+            "desired_production": pl.Float64,
+            "labor_productivity": pl.Float64,
+            "breakeven_price": pl.Float64,
+            "price": pl.Float64,
+            "desired_labor": pl.Int64,
+            "current_labor": pl.Int64,
+            "wage_offer": pl.Float64,
+            "wage_bill": pl.Float64,
+            "n_vacancies": pl.Int64,
+            "total_funds": pl.Float64,
+            "net_worth": pl.Float64,
+            "credit_demand": pl.Float64,
+            "projected_fragility": pl.Float64,
+            "gross_profit": pl.Float64,
+            "net_profit": pl.Float64,
+            "retained_profit": pl.Float64,
+            "loan_app_head": pl.Int64,
+        }
+        for k in range(max_H):
+            data[f"loan_app_{k}"] = [-1] * n
+            schema[f"loan_app_{k}"] = pl.Int64
+
+        df = pl.DataFrame(data, schema=schema)
         self.add(df)
 
     def step(self) -> None:

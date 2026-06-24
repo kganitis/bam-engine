@@ -6,9 +6,28 @@ import mesa_frames as mf
 import polars as pl
 
 from comparison.runners.mesa_frames.agents import Banks, Firms, Households
-from comparison.runners.mesa_frames.markets import run_labor_market
+from comparison.runners.mesa_frames.markets import run_credit_market, run_labor_market
 
 EPS = 1e-9
+
+
+def empty_loan_book() -> pl.DataFrame:
+    """An empty loan relationship table with the canonical schema.
+
+    Mirrors bamengine's ``LoanBook`` / the Mesa port's per-firm ``list[Loan]``.
+    Each row is one firm<->bank loan.  ``interest`` and ``debt`` are derived
+    (``principal * interest_rate`` and ``principal * (1 + interest_rate)``) and
+    recomputed where needed rather than stored, matching the Mesa ``Loan``
+    NamedTuple properties.
+    """
+    return pl.DataFrame(
+        schema={
+            "borrower_id": pl.Int64,  # firm unique_id
+            "lender_id": pl.Int64,  # bank unique_id
+            "principal": pl.Float64,
+            "interest_rate": pl.Float64,
+        }
+    )
 
 
 class BAMModel(mf.ModelDF):
@@ -67,6 +86,15 @@ class BAMModel(mf.ModelDF):
         self.avg_mkt_price_history: list[float] = [float(price_init)]
         self.inflation_history: list[float] = [0.0]
         self.collapsed: bool = False
+
+        # Loan relationship table (firm<->bank loans).  Mirrors bamengine's
+        # LoanBook and the Mesa port's per-firm ``Firm.loans`` lists, aggregated
+        # into one columnar table keyed by ``borrower_id``.  Loans PERSIST across
+        # periods (retained after settlement so the planning-phase breakeven in
+        # event 2 can read last period's interest); they are purged at the start
+        # of the credit market (``_credit_market``), matching the Mesa port's
+        # ``for f in self.firms: f.loans = []`` at the top of ``_credit_market``.
+        self.loans: pl.DataFrame = empty_loan_book()
 
     # ------------------------------------------------------------------
     # Phase 1: planning (events 1-6)
@@ -143,22 +171,38 @@ class BAMModel(mf.ModelDF):
           interest = sum(loan.rate * loan.principal for loan in self.loans)
           breakeven = (wage_bill + interest) / max(desired_production, EPS)
 
-        At t=0 wage_bill=0 and there are no loans, so breakeven=0.
-        Loan interest from prior-period loans is tracked in a separate
-        relationship table (added in a later task); for now interest=0.
+        Event 2 runs in the planning phase, BEFORE the credit market opens, so
+        ``self.loans`` still holds last period's loans (they are purged at the
+        start of ``_credit_market``).  The per-firm interest is therefore the
+        prior-period interest ``Σ principal * interest_rate`` over the firm's
+        loans -- identical to the Mesa port reading ``self.loans`` carried over
+        from the previous period.  At t=0 the table is empty and wage_bill=0, so
+        breakeven=0.
         """
         eps = self.EPS
         df = self.firms.agents
 
-        # TODO (task 5+): add loan interest from LoanBook relationship table.
-        # For now interest_i = 0 for all firms.
-        interest = pl.lit(0.0)
+        # Prior-period interest per borrowing firm: Σ principal * interest_rate.
+        interest_by_firm = (
+            self.loans.with_columns(
+                (pl.col("principal") * pl.col("interest_rate")).alias("_interest")
+            )
+            .group_by("borrower_id")
+            .agg(pl.col("_interest").sum().alias("_interest_sum"))
+            .rename({"borrower_id": "unique_id"})
+        )
 
-        breakeven = (pl.col("wage_bill") + interest) / pl.when(
+        df = df.join(interest_by_firm, on="unique_id", how="left").with_columns(
+            pl.col("_interest_sum").fill_null(0.0).alias("_interest_sum")
+        )
+
+        breakeven = (pl.col("wage_bill") + pl.col("_interest_sum")) / pl.when(
             pl.col("desired_production") > eps
         ).then(pl.col("desired_production")).otherwise(eps)
 
-        self.firms.agents = df.with_columns(breakeven.alias("breakeven_price"))
+        self.firms.agents = df.with_columns(breakeven.alias("breakeven_price")).drop(
+            "_interest_sum"
+        )
 
     def _event3_plan_price(self) -> None:
         """Event 3: price adjustment based on inventory and market position.
@@ -521,6 +565,267 @@ class BAMModel(mf.ModelDF):
             pl.col("_wage_bill_new").fill_null(0.0).alias("wage_bill")
         ).drop("_wage_bill_new")
 
+    # ------------------------------------------------------------------
+    # Phase 3: credit market (events 13-19)
+    # ------------------------------------------------------------------
+
+    def _credit_market(self) -> None:
+        """Phase 3: credit market (events 13-19).
+
+        Mirrors BamModel._credit_market in mesa/model.py:
+          purge prior-period loans -> banks_decide_credit_supply
+          -> banks_decide_interest_rate -> firms_decide_credit_demand
+          -> firms_calc_fragility -> firms_prepare_loan_applications
+          -> run_credit_market -> firms_fire_workers_for_gap
+        """
+        # Purge previous-period loans (retained through planning/labor for the
+        # event-2 breakeven), matching the Mesa port clearing f.loans at the top
+        # of _credit_market.
+        self.loans = empty_loan_book()
+        self._event13_decide_credit_supply()
+        self._event14_decide_interest_rate()
+        self._event15_decide_credit_demand()
+        self._event16_calc_fragility()
+        self._event17_prepare_loan_applications()
+        run_credit_market(self)
+        self._event19_fire_workers_for_gap()
+
+    def _event13_decide_credit_supply(self) -> None:
+        """Event 13: credit_supply = max(equity_base / v, 0).
+
+        Mesa port: Bank.decide_credit_supply().  No RNG.
+        """
+        v = float(self.p["v"])
+        bdf = self.banks.agents
+        supply = pl.max_horizontal(pl.col("equity_base") / v, pl.lit(0.0))
+        self.banks.agents = bdf.with_columns(supply.alias("credit_supply"))
+
+    def _event14_decide_interest_rate(self) -> None:
+        """Event 14: opex_shock ~ U(0, h_phi); interest_rate = r_bar*(1+shock).
+
+        Mesa port: Bank.decide_interest_rate()
+          opex_shock = model.random.uniform(0, h_phi)
+          interest_rate = r_bar * (1 + opex_shock)
+
+        RNG: one draw per bank, uniform(0, h_phi), in bank row order -- the same
+        draw structure as the Mesa port (banks.do("decide_interest_rate")).
+        The posted ``interest_rate`` ranks banks; ``opex_shock`` is reused in the
+        fragility-scaled loan contract rate (event 18).
+        """
+        h_phi = float(self.p["h_phi"])
+        r_bar = float(self.p["r_bar"])
+        bdf = self.banks.agents
+        n = len(bdf)
+
+        shocks = pl.Series("opex_shock", self.random.uniform(0.0, h_phi, size=n))
+        self.banks.agents = bdf.with_columns(
+            shocks.alias("opex_shock"),
+            (r_bar * (1.0 + shocks)).alias("interest_rate"),
+        )
+
+    def _event15_decide_credit_demand(self) -> None:
+        """Event 15: credit_demand = max(wage_bill - total_funds, 0).
+
+        Mesa port: Firm.decide_credit_demand().  No RNG.
+        """
+        fdf = self.firms.agents
+        demand = pl.max_horizontal(
+            pl.col("wage_bill") - pl.col("total_funds"), pl.lit(0.0)
+        )
+        self.firms.agents = fdf.with_columns(demand.alias("credit_demand"))
+
+    def _event16_calc_fragility(self) -> None:
+        """Event 16: projected_fragility = credit_demand/net_worth (or max_leverage).
+
+        Mesa port: Firm.calc_fragility()
+          if net_worth > 0: projected_fragility = credit_demand / net_worth
+          else:             projected_fragility = max_leverage
+
+        No RNG.  net_worth<=0 firms get max_leverage (worst fragility).
+        """
+        max_leverage = float(self.p["max_leverage"])
+        fdf = self.firms.agents
+        fragility = (
+            pl.when(pl.col("net_worth") > 0.0)
+            .then(pl.col("credit_demand") / pl.col("net_worth"))
+            .otherwise(pl.lit(max_leverage))
+        )
+        self.firms.agents = fdf.with_columns(fragility.alias("projected_fragility"))
+
+    def _event17_prepare_loan_applications(self) -> None:
+        """Event 17: each firm with credit_demand>0 samples banks, sorts by rate.
+
+        Mesa port: Firm.prepare_loan_applications()
+          if credit_demand <= 0: loan_apps = []; return
+          lenders = [b for b in banks if b.credit_supply > 0]
+          H_eff = min(max_H, len(lenders))
+          if H_eff == 0: loan_apps = []; return
+          sample = model.random.sample(lenders, H_eff)
+          sample.sort(key=lambda b: b.interest_rate)
+          loan_apps = sample
+
+        The application queue is stored on the Households-style pattern: per-firm
+        ``-1``-padded columns ``loan_app_0 .. loan_app_{max_H-1}`` (bank
+        unique_ids) plus ``loan_app_head`` (reset to 0).
+
+        RNG: one without-replacement sample of H_eff banks per firm with
+        credit_demand>0, in firm row order -- the same draw structure as the
+        Mesa port (firms.do iterates firms in row order; only demanding firms
+        draw).  Banks eligible = those with credit_supply>0 at the snapshot
+        taken before any round runs (matching the Mesa port).
+        """
+        max_H = int(self.p["max_H"])
+        rng = self.random
+
+        bdf = self.banks.agents
+        # Lenders with supply > 0 (snapshot in bank row order), and their rates.
+        lender_ids = [
+            int(bid)
+            for bid, sup in zip(
+                bdf["unique_id"].to_list(),
+                bdf["credit_supply"].to_list(),
+                strict=True,
+            )
+            if sup > 0.0
+        ]
+        rate_of = {
+            int(bid): float(r)
+            for bid, r in zip(
+                bdf["unique_id"].to_list(),
+                bdf["interest_rate"].to_list(),
+                strict=True,
+            )
+        }
+        lender_id_arr = list(lender_ids)
+        n_lenders = len(lender_id_arr)
+        H_eff = min(max_H, n_lenders)
+
+        fdf = self.firms.agents
+        credit_demand = [float(d) for d in fdf["credit_demand"]]
+        n_firms = len(credit_demand)
+
+        # Output queue matrix (n_firms x max_H), -1-padded bank ids.
+        queue = [[-1] * max_H for _ in range(n_firms)]
+
+        for i in range(n_firms):
+            if credit_demand[i] <= 0.0 or H_eff == 0:
+                continue
+            # One without-replacement sample of H_eff banks per demanding firm --
+            # same draw structure as the Mesa port's model.random.sample.
+            sample = [
+                int(b) for b in rng.choice(lender_id_arr, size=H_eff, replace=False)
+            ]
+            # Sort by interest_rate ASC (cheapest bank first).
+            sample.sort(key=lambda bid: rate_of[bid])
+            for k, bid in enumerate(sample[:max_H]):
+                queue[i][k] = bid
+
+        cols = []
+        for k in range(max_H):
+            cols.append(
+                pl.Series(
+                    f"loan_app_{k}",
+                    [queue[i][k] for i in range(n_firms)],
+                    dtype=pl.Int64,
+                )
+            )
+        cols.append(pl.Series("loan_app_head", [0] * n_firms, dtype=pl.Int64))
+        self.firms.agents = fdf.with_columns(*cols)
+
+    def _event19_fire_workers_for_gap(self) -> None:
+        """Event 19: firms with wage_bill > total_funds fire workers to close gap.
+
+        Mesa port: Firm.fire_workers_for_gap()
+          if wage_bill <= total_funds: return
+          gap = wage_bill - total_funds
+          employees_list = list(self.employees)
+          model.random.shuffle(employees_list)
+          cumulative = 0
+          for h in employees_list:
+            fire h; wage_bill -= h.wage; cumulative += h.wage; current_labor -= 1
+            if cumulative >= gap: break
+
+        Household-side writes mirror event 6 (employer relation): fired worker
+        gets employer=-1, employer_prev=firm, wage=0, periods_left=0,
+        contract_expired=False, fired=True.
+
+        RNG: one ``model.random.shuffle`` per firm with a financing gap, in firm
+        row order -- identical draw structure to the Mesa port (firms iterated in
+        row order; only gap firms shuffle).  Workers of a firm are gathered as
+        rows where employer==firm_id, in worker row order (mirroring the Mesa
+        employees-dict insertion order, which is worker creation/row order).
+        """
+        fdf = self.firms.agents
+        rng = self.random
+
+        firm_ids = fdf["unique_id"].to_list()
+        wage_bill = [float(w) for w in fdf["wage_bill"]]
+        total_funds = [float(t) for t in fdf["total_funds"]]
+        cur_labor = [int(c) for c in fdf["current_labor"]]
+
+        hdf = self.households.agents
+        hh_employer = [int(e) for e in hdf["employer"]]
+        hh_wage = [float(w) for w in hdf["wage"]]
+
+        # Map firm_id -> worker rows employed there, in worker row order.
+        employees_of: dict[int, list[int]] = {}
+        for i, emp in enumerate(hh_employer):
+            if emp >= 0:
+                employees_of.setdefault(emp, []).append(i)
+
+        # Worker-side mutable copies.
+        new_employer = list(hh_employer)
+        new_employer_prev = [int(e) for e in hdf["employer_prev"]]
+        new_wage = list(hh_wage)
+        new_periods = [int(p) for p in hdf["periods_left"]]
+        new_contract_expired = list(hdf["contract_expired"])
+        new_fired = list(hdf["fired"])
+
+        any_fired = False
+        for fi, firm_id in enumerate(firm_ids):
+            if wage_bill[fi] <= total_funds[fi]:
+                continue
+            emps = employees_of.get(firm_id, [])
+            if not emps:
+                continue
+            gap = wage_bill[fi] - total_funds[fi]
+            # ONE shuffle per gap firm, in firm row order -- mirrors the Mesa
+            # port's model.random.shuffle(employees_list).
+            order = list(emps)
+            rng.shuffle(order)
+            cumulative = 0.0
+            for vi in order:
+                wage = new_wage[vi]
+                new_employer[vi] = -1
+                new_employer_prev[vi] = firm_id
+                new_wage[vi] = 0.0
+                new_periods[vi] = 0
+                new_contract_expired[vi] = False
+                new_fired[vi] = True
+                cur_labor[fi] -= 1
+                wage_bill[fi] -= wage
+                cumulative += wage
+                any_fired = True
+                if cumulative >= gap:
+                    break
+
+        if not any_fired:
+            return
+
+        # Write firm-side results (current_labor, wage_bill).
+        self.firms.agents = fdf.with_columns(
+            pl.Series("current_labor", cur_labor, dtype=pl.Int64),
+            pl.Series("wage_bill", wage_bill, dtype=pl.Float64),
+        )
+        self.households.agents = hdf.with_columns(
+            pl.Series("employer", new_employer, dtype=pl.Int64),
+            pl.Series("employer_prev", new_employer_prev, dtype=pl.Int64),
+            pl.Series("wage", new_wage, dtype=pl.Float64),
+            pl.Series("periods_left", new_periods, dtype=pl.Int64),
+            pl.Series("contract_expired", new_contract_expired, dtype=pl.Boolean),
+            pl.Series("fired", new_fired, dtype=pl.Boolean),
+        )
+
     def step(self) -> None:
         """Execute one simulation period."""
         if self.collapsed:
@@ -528,4 +833,5 @@ class BAMModel(mf.ModelDF):
         self.period += 1
         self._planning()
         self._labor_market()
-        # Remaining phases added in Tasks 5-8.
+        self._credit_market()
+        # Remaining phases added in Tasks 6-8.

@@ -138,3 +138,155 @@ def run_labor_market(model: BAMModel) -> None:
         pl.Series("fired", fired, dtype=pl.Boolean),
         pl.Series("job_app_head", head, dtype=pl.Int64),
     )
+
+
+def run_credit_market(model: BAMModel) -> None:
+    """Event 18 (x max_H): multi-round credit market matching.
+
+    Faithful translation of the Mesa port's ``run_credit_market``.
+
+    Each round:
+
+    1. Every firm with ``credit_demand > 0`` and a remaining queue entry offers
+       its current front bank target (``loan_app_{head}``) and advances its head
+       by one.  Applications to ``-1`` targets are discarded (head still
+       advances).  (The Mesa port pops the front bank unconditionally for every
+       firm with demand and a non-empty list; banks with no supply are filtered
+       later when their supply is checked, so we mirror that by grouping all
+       offered targets and skipping zero-supply banks at grant time.)
+    2. Remaining applicants are grouped by bank.  Bank processing order is the
+       insertion order in which each bank first appears while scanning applicants
+       in firm-row order, mirroring the Mesa port's ``applicants_by_bank`` dict
+       insertion order.
+    3. For each bank with ``credit_supply > EPS``, its applicant list is RANKED
+       ASC by ``projected_fragility`` (safer firms first; NO random tie-break --
+       DETERMINISTIC).  Loans are granted walking the ranked list, maintaining a
+       running total against ``credit_supply``; the boundary applicant may
+       receive a PARTIAL loan.  The loan contract rate is fragility-scaled:
+       ``rate = r_bar * (1 + opex_shock[bank] * min(fragility, max_leverage))``
+       (DIFFERENT from the posted ranking rate).
+
+    On grant: a loan row (borrower_id, lender_id, principal, interest_rate) is
+    appended to ``model.loans``; ``firm.total_funds += amount``;
+    ``firm.credit_demand -= amount``; ``bank.credit_supply -= amount`` (applied
+    once per bank after all its applicants are processed, matching the Mesa
+    port).  Loans accumulate across rounds.
+
+    NO RNG is drawn here (deterministic fragility ranking) -- identical to the
+    Mesa port.  The DataFrames are read into Python lists/dicts once, the rounds
+    run as a plain loop, and the firm-/bank-side results plus the loan table are
+    written back to Polars once at the end.
+    """
+    max_H: int = int(model.p["max_H"])
+    max_loan_to_net_worth: float = float(model.p["max_loan_to_net_worth"])
+    r_bar: float = float(model.p["r_bar"])
+    max_leverage: float = float(model.p["max_leverage"])
+
+    fdf = model.firms.agents
+    bdf = model.banks.agents
+
+    # --- Firm-side state (parallel lists in row order). ---
+    firm_ids: list[int] = fdf["unique_id"].to_list()
+    credit_demand: list[float] = [float(d) for d in fdf["credit_demand"]]
+    fragility: list[float] = [float(f) for f in fdf["projected_fragility"]]
+    net_worth: list[float] = [float(nw) for nw in fdf["net_worth"]]
+    total_funds: list[float] = [float(t) for t in fdf["total_funds"]]
+    head: list[int] = [int(h) for h in fdf["loan_app_head"]]
+    queue_cols = [fdf[f"loan_app_{k}"].to_list() for k in range(max_H)]
+
+    # --- Bank-side per-round scalar maps keyed by bank unique_id. ---
+    bank_ids: list[int] = bdf["unique_id"].to_list()
+    supply: dict[int, float] = dict(
+        zip(bank_ids, (float(s) for s in bdf["credit_supply"]), strict=True)
+    )
+    opex_shock: dict[int, float] = dict(
+        zip(bank_ids, (float(o) for o in bdf["opex_shock"]), strict=True)
+    )
+
+    # Accumulated loan rows for this period (borrower, lender, principal, rate).
+    loan_rows: list[tuple[int, int, float, float]] = []
+
+    for _ in range(max_H):
+        # --- Phase A: each active demanding firm offers its front bank. ---
+        applicants_by_bank: dict[int, list[int]] = {}
+        for r in range(len(firm_ids)):
+            if credit_demand[r] <= 0.0:
+                continue
+            h = head[r]
+            if h >= max_H:
+                continue
+            target = queue_cols[h][r]
+            head[r] = h + 1  # advance head (pop the front)
+            if target < 0:
+                continue
+            applicants_by_bank.setdefault(target, []).append(r)
+
+        # --- Phase B: per bank (insertion order), rank then grant. ---
+        for bank_id, applicant_rows in applicants_by_bank.items():
+            bank_supply = supply.get(bank_id, 0.0)
+            if bank_supply <= EPS:
+                continue
+            # Rank applicants ASC by projected_fragility (safer first; no random
+            # tie-break) -- mirrors the Mesa port's applicants.sort(key=...).
+            applicant_rows.sort(key=lambda rr: fragility[rr])
+            granted_total = 0.0
+            for rr in applicant_rows:
+                if granted_total >= bank_supply:
+                    break
+                # Per-loan cap (max_loan_to_net_worth * net_worth) if param > 0.
+                if max_loan_to_net_worth > 0:
+                    max_grant = min(
+                        credit_demand[rr], net_worth[rr] * max_loan_to_net_worth
+                    )
+                else:
+                    max_grant = credit_demand[rr]
+                if max_grant <= 0:
+                    continue
+                remaining = bank_supply - granted_total
+                amount = (
+                    max_grant
+                    if granted_total + max_grant <= bank_supply
+                    else max(remaining, 0.0)
+                )
+                if amount > EPS:
+                    frag = min(fragility[rr], max_leverage)
+                    rate = r_bar * (1.0 + opex_shock[bank_id] * frag)
+                    loan_rows.append((firm_ids[rr], bank_id, amount, rate))
+                    total_funds[rr] += amount
+                    credit_demand[rr] -= amount
+                    granted_total += amount
+            # Update bank supply once after all applicants processed.
+            supply[bank_id] = bank_supply - granted_total
+
+    # --- Write firm-side results back (credit_demand, total_funds, head). ---
+    model.firms.agents = fdf.with_columns(
+        pl.Series("credit_demand", credit_demand, dtype=pl.Float64),
+        pl.Series("total_funds", total_funds, dtype=pl.Float64),
+        pl.Series("loan_app_head", head, dtype=pl.Int64),
+    )
+
+    # --- Write bank-side results back (credit_supply). ---
+    model.banks.agents = bdf.with_columns(
+        pl.col("unique_id")
+        .replace_strict(supply, default=None)
+        .cast(pl.Float64)
+        .alias("credit_supply")
+    )
+
+    # --- Append accumulated loans to the model's loan relationship table. ---
+    if loan_rows:
+        new_loans = pl.DataFrame(
+            {
+                "borrower_id": [row[0] for row in loan_rows],
+                "lender_id": [row[1] for row in loan_rows],
+                "principal": [row[2] for row in loan_rows],
+                "interest_rate": [row[3] for row in loan_rows],
+            },
+            schema={
+                "borrower_id": pl.Int64,
+                "lender_id": pl.Int64,
+                "principal": pl.Float64,
+                "interest_rate": pl.Float64,
+            },
+        )
+        model.loans = pl.concat([model.loans, new_loans], how="vertical")
