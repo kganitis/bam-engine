@@ -1458,22 +1458,317 @@ function _revenue!(model)
 end
 
 # ---------------------------------------------------------------------------
-# Per-period step (planning + labor + credit + production + revenue;
-# goods market (T7) and bankruptcy/entry (T8) added in later tasks)
+# Bankruptcy + entry phase - event functions (events 33-37)
+# ---------------------------------------------------------------------------
+
+"""
+    trim_mean(values; pct=0.05) -> Float64
+
+Compute the trimmed mean of `values`, removing `pct` fraction from each tail.
+Mirrors the Mesa `trim_mean` helper (model.py ~line 17).
+
+  * Sort values.
+  * `k = floor(Int, n * pct)` items removed from each end.
+  * If `n - 2k <= 0`, use the full sorted array (nothing trimmed).
+  * Return the mean of the trimmed slice, or 0.0 if the input is empty.
+"""
+function trim_mean(values::AbstractVector{<:Real}; pct::Float64 = 0.05)::Float64
+    isempty(values) && return 0.0
+    sorted = sort(values)
+    n = length(sorted)
+    k = floor(Int, n * pct)
+    trimmed = (n - 2 * k > 0) ? sorted[k+1 : n-k] : sorted
+    return sum(trimmed) / length(trimmed)
+end
+
+"""
+    _event33_update_net_worth!(model)
+
+Event 33 (firms_update_net_worth): add `retained_profit` to each firm's
+`net_worth`; clamp `total_funds` to `max(net_worth, 0)`.
+
+Formula (Mesa `Firm.update_net_worth`):
+  * `net_worth += retained_profit`
+  * `total_funds = max(net_worth, 0)`
+
+No RNG.
+"""
+function _event33_update_net_worth!(model)
+    for a in allagents(model)
+        variantof(a) === Firm || continue
+        fv = variant(a)
+        fv.net_worth   += fv.retained_profit
+        fv.total_funds  = max(fv.net_worth, 0.0)
+    end
+    return nothing
+end
+
+"""
+    _event34_mark_bankrupt_firms!(model)
+
+Event 34 (mark_bankrupt_firms): identify insolvent or ghost firms; fire all
+their workers; purge their loans from the shared book.
+
+Bankruptcy conditions (Mesa `_mark_bankrupt_and_replace`):
+  * `net_worth < EPS` (insolvency), OR
+  * `production_prev <= EPS` (ghost firm: never produced)
+
+Per bankrupt firm:
+  * For each employed worker: `employer_id = NO_AGENT`,
+    `employer_prev_id = NO_AGENT`, `wage = 0`, `periods_left = 0`,
+    `contract_expired = false`, `fired = false`
+    (bankruptcy CLEARS the loyalty link, per Mesa event 34; different from
+    normal firing which sets `employer_prev_id = firm.id`)
+  * `current_labor = 0`, `wage_bill = 0`, `employee_ids = []`
+
+Loans: filter `model.loans` removing any loan whose `borrower_id` is one of
+the exiting firms. (A separate pass in event 35 removes loans from exiting
+banks, matching Mesa's two-step prune.)
+
+Returns the vector of bankrupt firm ids for use by event 36.
+
+No RNG.
+"""
+function _event34_mark_bankrupt_firms!(model)
+    eps = model.eps
+    exiting_firm_ids = Int[]
+    for a in allagents(model)
+        variantof(a) === Firm || continue
+        fv = variant(a)
+        if fv.net_worth < eps || fv.production_prev <= eps
+            push!(exiting_firm_ids, a.id)
+            # Fire all employees: bankruptcy clears the loyalty link.
+            for hid in fv.employee_ids
+                hv = variant(model[hid])
+                hv.employer_id      = NO_AGENT
+                hv.employer_prev_id = NO_AGENT   # cleared, not set to firm (event 34)
+                hv.wage             = 0.0
+                hv.periods_left     = 0
+                hv.contract_expired = false
+                hv.fired            = false
+            end
+            fv.employee_ids  = Int[]
+            fv.current_labor = 0
+            fv.wage_bill     = 0.0
+        end
+    end
+    # Purge bankrupt-firm loans from the shared book.
+    if !isempty(exiting_firm_ids)
+        exiting_set = Set(exiting_firm_ids)
+        filter!(l -> !(l.borrower_id in exiting_set), model.loans)
+    end
+    return exiting_firm_ids
+end
+
+"""
+    _event35_mark_bankrupt_banks!(model)
+
+Event 35 (mark_bankrupt_banks): identify insolvent banks; purge their loans
+from the shared book (drop loans where `lender_id` is exiting).
+
+Bankruptcy condition:
+  * `equity_base < EPS`
+
+Returns the vector of bankrupt bank ids for use by event 37.
+
+No RNG.
+"""
+function _event35_mark_bankrupt_banks!(model)
+    eps = model.eps
+    exiting_bank_ids = Int[]
+    for b in banks(model)
+        bv = variant(b)
+        if bv.equity_base < eps
+            push!(exiting_bank_ids, b.id)
+        end
+    end
+    # Purge loans issued by bankrupt banks (from surviving firms' perspective).
+    if !isempty(exiting_bank_ids)
+        exiting_set = Set(exiting_bank_ids)
+        filter!(l -> !(l.lender_id in exiting_set), model.loans)
+    end
+    return exiting_bank_ids
+end
+
+"""
+    _event36_spawn_replacement_firms!(model, exiting_firm_ids)
+
+Event 36 (spawn_replacement_firms): if all firms are exiting, set
+`model.collapsed = true` and return. Otherwise compute survivor statistics
+(5%-trimmed means of net_worth, production_prev, employed wages) and reset
+each exiting firm in place.
+
+Replacement fields (Mesa `_mark_bankrupt_and_replace` firm-reset block):
+  * `net_worth = total_funds = mean_net * new_firm_size_factor`
+  * `gross_profit = net_profit = retained_profit = credit_demand =
+     projected_fragility = 0.0`
+  * `production = production_prev = mean_prod * new_firm_production_factor`
+    (> 0 so the replacement is NOT immediately re-ghosted)
+  * `inventory = 0.0`, `expected_demand = 0.0`, `desired_production = 0.0`
+  * `price = avg_mkt_price * new_firm_price_markup`
+  * `current_labor = desired_labor = n_vacancies = 0`
+  * `wage_bill = 0.0`
+  * `wage_offer = max(mean_wage * new_firm_wage_factor, min_wage)`
+  * `loan_apps = []`, `employee_ids = []` (already cleared in event 34)
+
+No RNG.
+"""
+function _event36_spawn_replacement_firms!(model, exiting_firm_ids::Vector{Int})
+    isempty(exiting_firm_ids) && return nothing
+
+    # Collapse check: all firms exiting.
+    n_total_firms = count(a -> variantof(a) === Firm, allagents(model))
+    if length(exiting_firm_ids) == n_total_firms
+        model.collapsed = true
+        return nothing
+    end
+
+    # Survivor statistics.
+    exiting_set = Set(exiting_firm_ids)
+    survivor_net_worths  = Float64[]
+    survivor_productions = Float64[]
+    for a in allagents(model)
+        variantof(a) === Firm || continue
+        a.id in exiting_set && continue
+        fv = variant(a)
+        push!(survivor_net_worths,  fv.net_worth)
+        push!(survivor_productions, fv.production_prev)
+    end
+
+    # Employed wages from all households with employer_id != NO_AGENT and wage > 0.
+    employed_wages = Float64[]
+    for h in households(model)
+        hv = variant(h)
+        if hv.employer_id != NO_AGENT && hv.wage > 0.0
+            push!(employed_wages, hv.wage)
+        end
+    end
+
+    mean_net  = trim_mean(survivor_net_worths)
+    mean_prod = trim_mean(survivor_productions)
+    mean_wage = trim_mean(employed_wages)
+
+    avg_price = model.avg_mkt_price
+    min_wage  = model.min_wage
+    p = model.params
+
+    nw_val   = mean_net  * p["new_firm_size_factor"]
+    prod_val = mean_prod * p["new_firm_production_factor"]
+    new_wage = max(mean_wage * p["new_firm_wage_factor"], min_wage)
+    new_price = avg_price * p["new_firm_price_markup"]
+
+    for fid in exiting_firm_ids
+        fv = variant(model[fid])
+        fv.net_worth           = nw_val
+        fv.total_funds         = nw_val
+        fv.gross_profit        = 0.0
+        fv.net_profit          = 0.0
+        fv.retained_profit     = 0.0
+        fv.credit_demand       = 0.0
+        fv.projected_fragility = 0.0
+        fv.production          = prod_val
+        fv.production_prev     = prod_val
+        fv.inventory           = 0.0
+        fv.expected_demand     = 0.0
+        fv.desired_production  = 0.0
+        fv.price               = new_price
+        fv.current_labor       = 0
+        fv.desired_labor       = 0
+        fv.n_vacancies         = 0
+        fv.wage_bill           = 0.0
+        fv.wage_offer          = new_wage
+        fv.loan_apps           = Int[]
+        fv.employee_ids        = Int[]
+    end
+    return nothing
+end
+
+"""
+    _event37_spawn_replacement_banks!(model, exiting_bank_ids)
+
+Event 37 (spawn_replacement_banks): if no banks survive, set
+`model.collapsed = true` and return. Otherwise each exiting bank clones a
+RANDOM surviving bank's `equity_base`; `credit_supply` and `interest_rate`
+reset to 0.
+
+Mesa: `src = self.random.choice(survivor_banks)` per exiting bank. Here we use
+`rand(abmrng(model), survivor_bank_ids)` once per exiting bank in agent-iteration
+order, matching the one-draw-per-exit cadence.
+
+RNG: one `rand(rng, collection)` per exiting bank.
+"""
+function _event37_spawn_replacement_banks!(model, exiting_bank_ids::Vector{Int})
+    isempty(exiting_bank_ids) && return nothing
+
+    # Collapse check: no surviving banks.
+    n_total_banks = count(b -> variantof(b) === Bank, allagents(model))
+    if length(exiting_bank_ids) == n_total_banks
+        model.collapsed = true
+        return nothing
+    end
+
+    exiting_set = Set(exiting_bank_ids)
+    survivor_bank_ids = [b.id for b in banks(model) if !(b.id in exiting_set)]
+
+    rng = abmrng(model)
+    for bid in exiting_bank_ids
+        src_id = rand(rng, survivor_bank_ids)   # one draw per exiting bank
+        src_equity = variant(model[src_id]).equity_base
+        bv = variant(model[bid])
+        bv.equity_base    = src_equity
+        bv.credit_supply  = 0.0
+        bv.interest_rate  = 0.0
+    end
+    return nothing
+end
+
+# ---------------------------------------------------------------------------
+# Bankruptcy + entry phase dispatcher
+# ---------------------------------------------------------------------------
+
+"""
+    _bankruptcy_entry!(model)
+
+Phase 7-8: run events 33-37 (bankruptcy detection and firm/bank entry).
+
+  33. Firms update net worth (net_worth += retained_profit; total_funds = max(nw, 0))
+  34. Mark bankrupt firms (net_worth < EPS or production_prev <= EPS); fire workers;
+      prune their loans; set `exiting_firms`
+  35. Mark bankrupt banks (equity_base < EPS); prune their loans; set `exiting_banks`
+  36. Spawn replacement firms (collapsed if all firms exit; reset from survivor stats)
+  37. Spawn replacement banks (collapsed if all banks exit; clone random survivor's equity)
+
+Mirrors Mesa `BamModel._bankruptcy_entry()`.
+"""
+function _bankruptcy_entry!(model)
+    _event33_update_net_worth!(model)
+    exiting_firm_ids = _event34_mark_bankrupt_firms!(model)
+    exiting_bank_ids = _event35_mark_bankrupt_banks!(model)
+    model.collapsed && return nothing   # early collapse from event 34 or 35 (pre-entry)
+    _event36_spawn_replacement_firms!(model, exiting_firm_ids)
+    model.collapsed && return nothing   # collapse set by event 36
+    _event37_spawn_replacement_banks!(model, exiting_bank_ids)
+    return nothing
+end
+
+# ---------------------------------------------------------------------------
+# Per-period step (all phases: planning + labor + credit + production +
+# goods + revenue + bankruptcy/entry)
 # ---------------------------------------------------------------------------
 
 """
     bam_step!(model)
 
-Per-period model step. Runs Phase 1 (planning, events 1-6), Phase 2 (labor
-market, events 7-12), Phase 3 (credit market, events 13-19), Phase 4
-(production, events 20-24), Phase 5 (goods market, events 25-29), and Phase 6
-(revenue, events 30-32). Phase 7-8 (bankruptcy + entry, events 33-37) are added
-in Task 8.
+Per-period model step. Runs all 7 phases (events 1-37):
+  * Phase 1: planning (events 1-6)
+  * Phase 2: labor market (events 7-12)
+  * Phase 3: credit market (events 13-19)
+  * Phase 4: production (events 20-24)
+  * Phase 5: goods market (events 25-29)
+  * Phase 6: revenue (events 30-32)
+  * Phase 7-8: bankruptcy + entry (events 33-37)
 
-Defined as a named function (rather than `dummystep`) so the `StandardABM` is
-constructed with a real `model_step!` and later tasks have a single clear hook
-to extend.
+Defined as a named function so the `StandardABM` has a real `model_step!`.
 """
 function bam_step!(model)
     model.collapsed && return nothing
@@ -1484,6 +1779,7 @@ function bam_step!(model)
     _production!(model)
     _goods_market!(model)
     _revenue!(model)
+    _bankruptcy_entry!(model)
     return nothing
 end
 
