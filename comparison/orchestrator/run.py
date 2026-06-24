@@ -32,9 +32,21 @@ from comparison.orchestrator.contract import (
 from comparison.orchestrator.environment import capture_environment, environment_id
 from comparison.orchestrator.subprocess_runner import run_subprocess
 
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+_MF_PYTHON = str(
+    _REPO_ROOT
+    / "comparison"
+    / "runners"
+    / "mesa_frames"
+    / ".venv-mf"
+    / "bin"
+    / "python"
+)
+
 RUNNER_CMD: dict[str, list[str]] = {
     "bamengine": [sys.executable, "-m", "comparison.runners.bamengine.run"],
     "mesa": [sys.executable, "-m", "comparison.runners.mesa.run"],
+    "mesa_frames": [_MF_PYTHON, "-m", "comparison.runners.mesa_frames.run"],
 }
 
 _THREAD_ENV = {
@@ -46,10 +58,19 @@ _THREAD_ENV = {
 }
 
 
-def _pinned_env() -> dict:
-    """Return os.environ merged with single-thread pinning vars."""
+def _pinned_env(framework: str | None = None) -> dict:
+    """Return os.environ merged with single-thread pinning vars.
+
+    For ``mesa_frames``, also injects ``PYTHONPATH=<repo root>`` so the
+    dedicated venv subprocess can import ``comparison.*`` without having
+    bamengine installed inside it.
+    """
     env = dict(os.environ)
     env.update(_THREAD_ENV)
+    if framework == "mesa_frames":
+        existing = env.get("PYTHONPATH", "")
+        repo_root = str(_REPO_ROOT)
+        env["PYTHONPATH"] = f"{repo_root}:{existing}" if existing else repo_root
     return env
 
 
@@ -69,7 +90,7 @@ def _execute(req: RunRequest, budget_s: float) -> dict:
         outcome = run_subprocess(
             RUNNER_CMD[req.framework] + [path],
             budget_s=budget_s,
-            env=_pinned_env(),
+            env=_pinned_env(req.framework),
         )
     finally:
         os.unlink(path)
