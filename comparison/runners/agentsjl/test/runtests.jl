@@ -30,6 +30,9 @@ include(joinpath(@__DIR__, "..", "model.jl"))
             "h_rho"               => 0.10,
             "h_eta"               => 0.10,
             "h_xi"                => 0.05,
+            # Labor-market params (bam_step! now also runs the labor phase).
+            "max_M"               => 4.0,
+            "theta"               => 8.0,
         )
         n_firms, n_households, n_banks = 10, 50, 2
         model = build_model(n_firms, n_households, n_banks, params, 42)
@@ -202,6 +205,81 @@ include(joinpath(@__DIR__, "..", "model.jl"))
         end
 
         # Household counts preserved; no agents added or removed.
+        @test nagents(model) == n_firms + n_households + n_banks
+    end
+
+    @testset "labor market invariants (events 7-12)" begin
+        # Full canonical param set required by planning + labor events.
+        params = Dict{String,Float64}(
+            "labor_productivity"  => 0.50,
+            "price_init"          => 0.50,
+            "net_worth_ratio"     => 6.0,
+            "savings_init"        => 1.0,
+            "equity_base_init"    => 5.0,
+            "min_wage_ratio"      => 0.5,
+            "min_wage_rev_period" => 4.0,
+            "h_rho"               => 0.10,
+            "h_eta"               => 0.10,
+            "h_xi"                => 0.05,
+            # Labor-market params.
+            "max_M"               => 4.0,
+            "theta"               => 8.0,
+        )
+        n_firms, n_households, n_banks = 10, 50, 2
+        model = build_model(n_firms, n_households, n_banks, params, 42)
+
+        # Run planning + labor directly (not via step! so period stays 0).
+        _planning!(model)
+        _labor_market!(model)
+
+        # Build the set of valid firm ids for membership checks.
+        firm_ids = Set(a.id for a in allagents(model) if variantof(a) === Firm)
+
+        # --- Employed count <= n_households ---
+        employed = [a for a in allagents(model)
+                    if variantof(a) === Household && variant(a).employer_id != NO_AGENT]
+        @test length(employed) <= n_households
+
+        # --- Every employed worker's employer_id is a valid Firm id ---
+        for a in employed
+            hv = variant(a)
+            @test hv.employer_id in firm_ids
+            # A hired worker carries the firm's posted wage and a full contract.
+            @test hv.periods_left == Int(round(params["theta"]))
+            @test hv.wage > 0.0
+        end
+
+        # --- Each firm's current_labor == count of its employed workers and
+        #     == length(employee_ids); employee_ids point back at this firm ---
+        for a in allagents(model)
+            variantof(a) === Firm || continue
+            fv = variant(a)
+            counted = count(h -> variantof(h) === Household
+                                 && variant(h).employer_id == a.id,
+                            allagents(model))
+            @test fv.current_labor == counted
+            @test fv.current_labor == length(fv.employee_ids)
+            # employee_ids back-reference this firm; no duplicates.
+            for hid in fv.employee_ids
+                @test variant(model[hid]).employer_id == a.id
+            end
+            @test length(unique(fv.employee_ids)) == length(fv.employee_ids)
+            # No firm hired beyond its desired labor (event 5/6/11 bookkeeping).
+            @test fv.n_vacancies >= 0
+        end
+
+        # --- Event 12: wage_bill == sum of employees' wages ---
+        for a in allagents(model)
+            variantof(a) === Firm || continue
+            fv = variant(a)
+            expected = sum((variant(model[hid]).wage for hid in fv.employee_ids); init = 0.0)
+            @test fv.wage_bill ≈ expected
+        end
+
+        # --- Event 7: inflation_history grew by one entry (was length 1) ---
+        @test length(model.inflation_history) == 2
+
+        # Populations preserved; no agents added or removed.
         @test nagents(model) == n_firms + n_households + n_banks
     end
 
