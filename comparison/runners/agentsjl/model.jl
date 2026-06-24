@@ -1,30 +1,34 @@
 """
 model.jl - Agents.jl v7 implementation of the baseline BAM model: agent types,
-economy-state properties, and `build_model`.
+economy-state properties, `build_model`, and the planning phase (events 1-6).
 
-This is the structural scaffold (Task 2 of the port). It establishes the
-Agents.jl v7.0.3 idioms reused by every later phase task:
+Tasks covered so far:
+  * Task 2: agent types (`Firm`, `Household`, `Bank`), `BAMProperties`, and
+    `build_model`. The scaffold establishes the Agents.jl v7.0.3 idioms reused
+    by every later phase task.
+  * Task 3: planning-phase event functions (`_event1_zero_production!` through
+    `_event6_fire_excess_workers!`) and the `_planning!` dispatcher, plus a
+    `model_step!` skeleton (`bam_step!`) that runs only the planning phase for
+    now (later tasks fill in the remaining phases).
 
-  * `@agent struct Firm(NoSpaceAgent) ... end` + `@multiagent BAMAgent(Firm, Household, Bank)`
-    merge the three agent variants into one type-stable sum type. Retrieve a
-    variant with `variantof(a)` (the type) and `variant(a)` (the enclosed
-    instance whose fields are read/mutated).
-  * `BAMProperties` is a concrete mutable struct (NOT a heterogeneous Dict) so
-    that `model.field` access is type-stable.
-  * `build_model` constructs a no-space `StandardABM` with `rng=Xoshiro(seed)`
-    and a no-op `model_step! = bam_step!` (the real pipeline is wired in Task 9).
+Agents.jl v7.0.3 idioms:
+  * `@agent struct Variant(NoSpaceAgent) ... end` + `@multiagent BAMAgent(...)`
+    merge the three variants into one type-stable sum type.
+  * Retrieve variant type with `variantof(a)`, enclosed instance with `variant(a)`.
+  * `BAMProperties` is a concrete mutable struct (NOT a Dict) so that `model.field`
+    access is type-stable.
+  * All randomness flows through `abmrng(model)` (the seeded `Xoshiro`); no global
+    RNG is ever used.
+
+Relationship encoding (type stability):
+  * A Household's employer is stored as an integer agent id (`employer_id`). The
+    sentinel `NO_AGENT = 0` means unemployed (Agents.jl ids start at 1).
+  * Loans live in a single shared book `BAMProperties.loans`; each `Loan` records
+    both `borrower_id` and `lender_id`. Credit-market tasks filter this vector by
+    those ids.
 
 Field names and initial values mirror the Mesa reference in
 `comparison/runners/mesa/agents.py` and `comparison/runners/mesa/model.py`.
-
-Relationship encoding (type stability):
-  * A Household's employer is an integer agent id, `employer_id`. The sentinel
-    `NO_AGENT = 0` means "unemployed / none" (Agents.jl ids start at 1, so 0 is
-    safe). The same sentinel is reused for `employer_prev_id` and
-    `largest_prod_prev_id`.
-  * Loans are a single loan-book vector held in `BAMProperties.loans`; each
-    `Loan` records its `borrower_id` and `lender_id`. Matching logic is filled
-    in by later tasks; here only the fields are defined.
 """
 
 using Agents
@@ -185,19 +189,250 @@ mutable struct BAMProperties
 end
 
 # ---------------------------------------------------------------------------
-# Per-period step (no-op scaffold; the real pipeline is wired in Task 9)
+# Planning phase - event functions (events 1-6)
+# ---------------------------------------------------------------------------
+
+"""
+    _event1_zero_production_and_shock!(model)
+
+Event 1 (firms_decide_desired_production): for each firm in agent-iteration
+order, zero current production and apply a production shock to set
+`desired_production`.
+
+Formula (Mesa `Firm.decide_desired_production`):
+  * `production = 0`
+  * `shock ~ U(0, h_rho)` per firm (one draw per firm in agent order)
+  * `up = (inventory == 0) AND (price >= p_avg)`
+  * `dn = (inventory > 0)  AND (price <  p_avg)`
+  * `expected_demand = production_prev`
+  * if `up`: `expected_demand *= (1 + shock)`
+  * if `dn`: `expected_demand *= (1 - shock)`
+  * `desired_production = expected_demand`
+
+RNG alignment with Mesa: Mesa iterates `self.firms` (insertion order, same as
+agent-creation order); each call to `model.random.uniform(0, h_rho)` consumes
+one draw. Here we iterate `allagents(model)` filtering by `Firm` variant, which
+yields firms in the same id-ascending (creation) order, and call
+`rand(abmrng(model))` once per firm - preserving the same draw sequence.
+"""
+function _event1_zero_production_and_shock!(model)
+    p_avg = model.avg_mkt_price
+    h_rho = model.params["h_rho"]
+    rng = abmrng(model)
+    for a in allagents(model)
+        variantof(a) === Firm || continue
+        fv = variant(a)
+        fv.production = 0.0
+        shock = rand(rng) * h_rho   # U(0, h_rho): rand() in [0,1) * h_rho
+        up = fv.inventory == 0.0 && fv.price >= p_avg
+        dn = fv.inventory >  0.0 && fv.price <  p_avg
+        fv.expected_demand = fv.production_prev
+        if up
+            fv.expected_demand *= 1.0 + shock
+        elseif dn
+            fv.expected_demand *= 1.0 - shock
+        end
+        fv.desired_production = fv.expected_demand
+    end
+end
+
+"""
+    _event2_plan_breakeven_price!(model)
+
+Event 2 (firms_plan_breakeven_price): compute each firm's breakeven price from
+its wage bill and the interest on its prior-period loans.
+
+Formula (Mesa `Firm.plan_breakeven_price`):
+  * `interest = sum(loan.rate * loan.principal for loan in firm's loans)`
+  * `breakeven_price = (wage_bill + interest) / max(desired_production, EPS)`
+
+Loan filtering: the shared loan book `model.loans` stores each loan with its
+`borrower_id`; filter by `borrower_id == a.id`.
+
+At t=0 (or whenever no loans exist and wage_bill=0), breakeven_price rounds to
+approximately 0. That is correct and matches the Mesa port.
+"""
+function _event2_plan_breakeven_price!(model)
+    eps = model.eps
+    loans = model.loans
+    for a in allagents(model)
+        variantof(a) === Firm || continue
+        fv = variant(a)
+        # Sum interest over this firm's prior-period loans.
+        interest = 0.0
+        for loan in loans
+            if loan.borrower_id == a.id
+                interest += loan.principal * loan.rate
+            end
+        end
+        fv.breakeven_price = (fv.wage_bill + interest) / max(fv.desired_production, eps)
+    end
+end
+
+"""
+    _event3_plan_price!(model)
+
+Event 3 (firms_plan_price): adjust each firm's price based on inventory and its
+position vs the market average. Conditions are the COMPLEMENT of event 1.
+
+Formula (Mesa `Firm.plan_price`):
+  * `shock ~ U(0, h_eta)` per firm (one draw per firm in agent order)
+  * `up = (inventory == 0) AND (price < p_avg)`
+  * `dn = (inventory > 0)  AND (price >= p_avg)`
+  * if `up`: `price *= (1 + shock)`, then `price = max(price, breakeven_price)`
+  * if `dn`: `price *= (1 - shock)`, then `price = max(price, breakeven_price)`
+  * (no change if neither condition holds)
+"""
+function _event3_plan_price!(model)
+    p_avg = model.avg_mkt_price
+    h_eta = model.params["h_eta"]
+    rng = abmrng(model)
+    for a in allagents(model)
+        variantof(a) === Firm || continue
+        fv = variant(a)
+        shock = rand(rng) * h_eta
+        up = fv.inventory == 0.0 && fv.price <  p_avg
+        dn = fv.inventory >  0.0 && fv.price >= p_avg
+        if up
+            fv.price *= 1.0 + shock
+            fv.price = max(fv.price, fv.breakeven_price)
+        elseif dn
+            fv.price *= 1.0 - shock
+            fv.price = max(fv.price, fv.breakeven_price)
+        end
+    end
+end
+
+"""
+    _event4_decide_desired_labor!(model)
+
+Event 4 (firms_decide_desired_labor): set `desired_labor` as the ceiling of
+`desired_production / labor_productivity`. The `ceil` ratchet is load-bearing
+(see model reference Flag 1).
+
+Formula (Mesa `Firm.decide_desired_labor`):
+  * `desired_labor = ceil(Int, desired_production / max(labor_productivity, EPS))`
+"""
+function _event4_decide_desired_labor!(model)
+    eps = model.eps
+    for a in allagents(model)
+        variantof(a) === Firm || continue
+        fv = variant(a)
+        fv.desired_labor = ceil(Int, fv.desired_production / max(fv.labor_productivity, eps))
+    end
+end
+
+"""
+    _event5_decide_vacancies!(model)
+
+Event 5 (firms_decide_vacancies): open vacancies = max(desired_labor -
+current_labor, 0).
+
+Formula (Mesa `Firm.decide_vacancies`):
+  * `n_vacancies = max(desired_labor - current_labor, 0)`
+"""
+function _event5_decide_vacancies!(model)
+    for a in allagents(model)
+        variantof(a) === Firm || continue
+        fv = variant(a)
+        fv.n_vacancies = max(fv.desired_labor - fv.current_labor, 0)
+    end
+end
+
+"""
+    _event6_fire_excess_workers!(model)
+
+Event 6 (firms_fire_excess_workers): firms with more workers than desired fire
+the excess, chosen uniformly at random.
+
+Formula (Mesa `Firm.fire_excess_workers`):
+  * `excess = current_labor - desired_labor`; skip if <= 0
+  * shuffle `employee_ids` and fire the first `excess` workers
+  * per fired worker: set `employer_id = NO_AGENT`, `employer_prev_id = firm.id`,
+    `wage = 0`, `periods_left = 0`, `contract_expired = false`, `fired = true`
+  * `current_labor -= 1` per fired worker; remove id from `employee_ids`
+
+RNG: one call to `shuffle!(rng, employee_ids)` per firm that needs to fire,
+matching Mesa's `model.random.sample(list(self.employees), k)` which draws k
+without replacement from the employee list (equivalent to shuffle + take k).
+Mesa samples exactly `k` without replacement using `random.sample`; here we
+shuffle the full list and take the first `excess` entries, which is the same
+distribution.
+"""
+function _event6_fire_excess_workers!(model)
+    rng = abmrng(model)
+    for a in allagents(model)
+        variantof(a) === Firm || continue
+        fv = variant(a)
+        excess = fv.current_labor - fv.desired_labor
+        excess <= 0 && continue
+        # Shuffle employee_ids in place (random permutation = same as Mesa's sample).
+        shuffle!(rng, fv.employee_ids)
+        k = min(excess, length(fv.employee_ids))
+        victims = fv.employee_ids[1:k]
+        for hid in victims
+            h = model[hid]
+            hv = variant(h)
+            hv.employer_id      = NO_AGENT
+            hv.employer_prev_id = a.id
+            hv.wage             = 0.0
+            hv.periods_left     = 0
+            hv.contract_expired = false
+            hv.fired            = true
+        end
+        # Remove fired ids from the employee list and decrement current_labor.
+        victim_set = Set(victims)
+        filter!(id -> !(id in victim_set), fv.employee_ids)
+        fv.current_labor -= k
+    end
+end
+
+# ---------------------------------------------------------------------------
+# Planning phase dispatcher
+# ---------------------------------------------------------------------------
+
+"""
+    _planning!(model)
+
+Phase 1: run events 1-6 (planning + pricing phase) in order.
+
+  1. Zero production + production shock -> desired_production
+  2. Breakeven price from wage_bill + prior loan interest
+  3. Price adjustment vs avg_mkt_price
+  4. Desired labor (ceil ratchet)
+  5. Vacancies (desired_labor - current_labor)
+  6. Fire excess workers (random selection)
+
+Mirrors Mesa `BamModel._planning()`.
+"""
+function _planning!(model)
+    _event1_zero_production_and_shock!(model)
+    _event2_plan_breakeven_price!(model)
+    _event3_plan_price!(model)
+    _event4_decide_desired_labor!(model)
+    _event5_decide_vacancies!(model)
+    _event6_fire_excess_workers!(model)
+end
+
+# ---------------------------------------------------------------------------
+# Per-period step (planning-only scaffold; remaining phases added in later tasks)
 # ---------------------------------------------------------------------------
 
 """
     bam_step!(model)
 
-Per-period model step. A no-op scaffold for now; later tasks fill in the BAM
-phase pipeline (planning, labor, credit, production, goods, revenue,
-bankruptcy/entry). Defined as a named function (rather than `dummystep`) so the
-`StandardABM` is constructed with a real `model_step!` and Task 9 has a single
-clear hook to extend.
+Per-period model step. Currently runs only Phase 1 (planning, events 1-6);
+later tasks (T4-T9) will add labor, credit, production, goods, revenue, and
+bankruptcy/entry phases.
+
+Defined as a named function (rather than `dummystep`) so the `StandardABM` is
+constructed with a real `model_step!` and later tasks have a single clear hook
+to extend.
 """
 function bam_step!(model)
+    model.collapsed && return nothing
+    model.period += 1
+    _planning!(model)
     return nothing
 end
 
