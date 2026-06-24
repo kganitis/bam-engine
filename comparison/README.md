@@ -6,13 +6,13 @@ frameworks that implement the same BAM (Bottom-Up Adaptive Macroeconomics) model
 
 ## Competitor matrix
 
-| Framework   | Runner module                    | Status            |
-| ----------- | -------------------------------- | ----------------- |
-| bamengine   | `comparison/runners/bamengine/`  | complete          |
-| Mesa        | `comparison/runners/mesa/`       | Plan B (deferred) |
-| mesa-frames | `comparison/runners/mesaframes/` | Plan C (deferred) |
-| Agents.jl   | `comparison/runners/agentsjl/`   | Plan D (deferred) |
-| NetLogo     | `comparison/runners/netlogo/`    | Plan E (deferred) |
+| Framework   | Runner module                     | Status            |
+| ----------- | --------------------------------- | ----------------- |
+| bamengine   | `comparison/runners/bamengine/`   | complete          |
+| Mesa        | `comparison/runners/mesa/`        | complete          |
+| mesa-frames | `comparison/runners/mesa_frames/` | complete          |
+| Agents.jl   | `comparison/runners/agentsjl/`    | Plan D (deferred) |
+| NetLogo     | `comparison/runners/netlogo/`     | Plan E (deferred) |
 
 Each runner plugs into the harness by registering an entry in `RUNNER_CMD`
 (in `comparison/orchestrator/run.py`) and emitting a `RunResult` JSON to stdout.
@@ -27,6 +27,24 @@ pip install -e ".[comparison]"
 
 This installs `bamengine` plus the benchmark dependencies (psutil, pandas,
 matplotlib, scipy, tabulate).
+
+### mesa-frames runner: dedicated environment
+
+mesa-frames pins `numpy<2`, which conflicts with bamengine's `numpy>=2`. Because
+each runner is a separate subprocess, the `mesa_frames` runner uses its own
+virtual environment instead of the main one:
+
+```bash
+bash comparison/runners/mesa_frames/setup_env.sh
+```
+
+This creates `comparison/runners/mesa_frames/.venv-mf/` (Python 3.12) from
+`requirements-mesa-frames.txt` and installs mesa-frames + Polars. The
+orchestrator's `RUNNER_CMD["mesa_frames"]` points at that interpreter, so
+bamengine's environment is never touched. The env is gitignored; rebuild it on a
+fresh checkout before running the `mesa_frames` framework. CI runs the harness
+unit tests only; the multi-framework benchmark (and the mesa-frames env) is run
+locally.
 
 ## Running the benchmark
 

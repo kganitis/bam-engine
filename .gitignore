@@ -1,6 +1,7 @@
 # Python virtual environments
 .venv/
 venv/
+comparison/runners/mesa_frames/.venv-mf/
 
 # Byte-compiled / cache
 __pycache__/
