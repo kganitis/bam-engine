@@ -30,8 +30,9 @@ Translated faithfully from Mesa `run_labor_market` (`markets.py:38`).
 
 Each round:
   * Gather every still-unemployed worker (`employer_id == NO_AGENT`) with a
-    non-empty `job_apps` queue, in agent-iteration (creation) order. Each such
-    worker pops the FRONT of its queue (its current top target).
+    non-empty `job_apps` queue. `households(model)` iterates in Dict (hash)
+    order, not creation order. Each such worker pops the FRONT of its queue
+    (its current top target).
   * Applications to firms with `n_vacancies == 0` are discarded (the head still
     advances - i.e. the target is popped), matching Mesa's `continue`.
   * The remaining applicants are grouped by target firm. The grouping preserves
@@ -48,8 +49,10 @@ Each round:
 
 RNG alignment with Mesa: exactly one `shuffle!` per firm-that-has-applicants per
 round, in the SAME first-seen firm order Mesa iterates the dict it builds. The
-worker scan order (agent/creation order) also matches Mesa's `self.households`
-iteration. No other random draws occur in this event.
+worker scan uses `households(model)`, which iterates in Dict (hash) order (not
+creation order); the grouping is still deterministic because the result depends
+only on which workers are unemployed and what their `job_apps` queues contain,
+not on the visit order itself. No other random draws occur in this event.
 """
 function _run_labor_market!(model)
     rng = abmrng(model)
@@ -118,10 +121,11 @@ Translated faithfully from Mesa `run_credit_market` (`markets.py:79`).
 
 Each round:
   * Gather every firm with `credit_demand > 0` and a non-empty `loan_apps`
-    queue, in agent-iteration (creation) order. Each such firm pops the FRONT of
-    its queue (its current top bank) and is grouped under that bank. Grouping
-    preserves first-seen bank order and, within each group, firm arrival order
-    (deterministic, like Mesa's insertion-ordered dict).
+    queue. `allagents(model)` iterates in Dict (hash) order, not creation order.
+    Each such firm pops the FRONT of its queue (its current top bank) and is
+    grouped under that bank. Grouping preserves first-seen bank order and, within
+    each group, firm arrival order (deterministic, like Mesa's insertion-ordered
+    dict).
   * For each bank WITH applicants (in first-seen order): skip if its
     `credit_supply <= EPS`. Otherwise rank that bank's applicants by
     `projected_fragility` ASC (safer firms first, NO random tie-break - a STABLE
@@ -146,11 +150,11 @@ Each round:
 
 RNG alignment with Mesa: NO random draws occur in this event in either
 implementation. The applicant ranking is deterministic (`projected_fragility`
-ASC, stable). Firm scan order (creation order) and first-seen bank order match
-Mesa's `self.firms` iteration and the dict it builds. The Dict-hash iteration
-caveat does not bias the outcome here because the order-sensitive step (the
-within-bank grant order) is resolved purely by the deterministic fragility sort,
-exactly as in Mesa.
+ASC, stable). `allagents(model)` iterates in Dict (hash) order (not creation
+order), but the order-sensitive step (within-bank grant order) is resolved
+purely by the deterministic fragility sort, exactly as in Mesa, so hash-order
+iteration does not bias the outcome. First-seen bank order mirrors Mesa's
+insertion-ordered dict.
 """
 function _run_credit_market!(model)
     eps = model.eps
@@ -259,7 +263,7 @@ function _run_goods_market!(model)
     eps = model.eps
     rng = abmrng(model)
 
-    # Collect active buyers in agent-iteration (creation) order, then shuffle.
+    # Collect active buyers in Dict (hash) order (allagents iteration order), then shuffle.
     buyers = [h for h in households(model) if variant(h).income_to_spend > eps]
     isempty(buyers) && return nothing
 
