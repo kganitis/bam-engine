@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "run_id": "agentsjl__s1000__rep4",
+  "framework": "agentsjl",
+  "framework_version": "7.0.3",
+  "language": "julia",
+  "language_version": "1.12.6",
+  "status": "ok",
+  "error": null,
+  "population": {
+    "n_agents_total": 6100,
+    "n_households": 5000,
+    "n_firms": 1000,
+    "n_banks": 100
+  },
+  "n_periods": 1000,
+  "warmup_periods": 100,
+  "seed": 1004,
+  "timing": {
+    "run_seconds": 26.113097125,
+    "steady_state_per_period_seconds": 0.029014552361111112,
+    "throughput_agent_steps_per_s": 210239.32832325803,
+    "init_seconds": 0.005636292
+  },
+  "outputs": null,
+  "process": {
+    "wall_seconds": 33.03612054200494,
+    "peak_rss_bytes": 873119744,
+    "startup_seconds": 6.9173871250049395
+  },
+  "environment_id": "53769ac69a22"
+}
