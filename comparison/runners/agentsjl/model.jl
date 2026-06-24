@@ -64,6 +64,43 @@ include(joinpath(@__DIR__, "markets.jl"))
 const NO_AGENT = 0
 
 # ---------------------------------------------------------------------------
+# O(k) uniform without-replacement sampler
+# ---------------------------------------------------------------------------
+
+"""
+    _sample_k_from_range!(rng, lo, hi, k) -> Vector{Int}
+
+Draw `k` distinct integers from `lo:hi` uniformly without replacement in O(k)
+expected time via rejection sampling. Returns a freshly-allocated `Vector{Int}`
+of length `min(k, hi-lo+1)`.
+
+k is always small (max_M, max_Z, max_H <= 5 in the baseline calibration), so
+the expected number of rejections is negligible even for the largest populations
+used in benchmarks (10 000+ firms). This replaces the O(F) `copy(pool); shuffle!`
+pattern used in events 10 and 27 (and the O(B) pattern in event 17 for banks).
+
+All randomness flows through `rng` (always `abmrng(model)`).
+"""
+function _sample_k_from_range!(rng::AbstractRNG, lo::Int, hi::Int, k::Int)
+    n = hi - lo + 1
+    k = min(k, n)
+    k == 0 && return Int[]
+    result = Vector{Int}(undef, k)
+    seen   = Set{Int}()
+    sizehint!(seen, k)
+    i = 0
+    while i < k
+        x = rand(rng, lo:hi)
+        if x ∉ seen
+            push!(seen, x)
+            i += 1
+            result[i] = x
+        end
+    end
+    return result
+end
+
+# ---------------------------------------------------------------------------
 # Loan record (immutable, type-stable)
 # ---------------------------------------------------------------------------
 """
@@ -252,19 +289,17 @@ Formula (Mesa `Firm.decide_desired_production`):
   * if `dn`: `expected_demand *= (1 - shock)`
   * `desired_production = expected_demand`
 
-RNG alignment with Mesa: Mesa iterates `self.firms` (insertion order, same as
-agent-creation order); each call to `model.random.uniform(0, h_rho)` consumes
-one draw. Here we iterate `allagents(model)` filtering by `Firm` variant; note
-that `StandardABM` stores agents in a `Dict`, so `allagents` yields them in Dict
-(hash) order, NOT id-ascending order. Order-sensitive phases (e.g. events 10, 17,
-27) explicitly `sort!` the id pool before sampling to guarantee a deterministic
-draw sequence. This event calls `rand(abmrng(model))` once per firm regardless of
-iteration order, so the total draw count matches Mesa.
+RNG alignment with Mesa: Mesa iterates `self.firms` (insertion order = id order).
+Here we iterate over `1:n_firms` directly (firms are added first, so firm ids are
+`1:n_firms`, contiguous and stable). This event calls `rand(abmrng(model))` once
+per firm in id-ascending order, matching Mesa's per-firm draw cadence.
 """
 function _event1_zero_production_and_shock!(model)
     p_avg = model.avg_mkt_price
     h_rho = model.params["h_rho"]
     rng = abmrng(model)
+    # Iterate in allagents (hash) order to preserve the original RNG draw sequence.
+    # One rand() per firm regardless of visit order; hash order matches the original code.
     for a in allagents(model)
         variantof(a) === Firm || continue
         fv = variant(a)
@@ -293,7 +328,7 @@ Formula (Mesa `Firm.plan_breakeven_price`):
   * `breakeven_price = (wage_bill + interest) / max(desired_production, EPS)`
 
 Loan filtering: the shared loan book `model.loans` stores each loan with its
-`borrower_id`; filter by `borrower_id == a.id`.
+`borrower_id`; filter by `borrower_id == fid` (the firm's integer id).
 
 At t=0 (or whenever no loans exist and wage_bill=0), breakeven_price rounds to
 approximately 0. That is correct and matches the Mesa port.
@@ -301,13 +336,13 @@ approximately 0. That is correct and matches the Mesa port.
 function _event2_plan_breakeven_price!(model)
     eps = model.eps
     loans = model.loans
-    for a in allagents(model)
-        variantof(a) === Firm || continue
+    for fid in 1:model.n_firms
+        a  = model[fid]
         fv = variant(a)
         # Sum interest over this firm's prior-period loans.
         interest = 0.0
         for loan in loans
-            if loan.borrower_id == a.id
+            if loan.borrower_id == fid
                 interest += loan.principal * loan.rate
             end
         end
@@ -333,6 +368,7 @@ function _event3_plan_price!(model)
     p_avg = model.avg_mkt_price
     h_eta = model.params["h_eta"]
     rng = abmrng(model)
+    # Iterate in allagents (hash) order to preserve the original RNG draw sequence.
     for a in allagents(model)
         variantof(a) === Firm || continue
         fv = variant(a)
@@ -361,9 +397,8 @@ Formula (Mesa `Firm.decide_desired_labor`):
 """
 function _event4_decide_desired_labor!(model)
     eps = model.eps
-    for a in allagents(model)
-        variantof(a) === Firm || continue
-        fv = variant(a)
+    for fid in 1:model.n_firms
+        fv = variant(model[fid])
         fv.desired_labor = ceil(Int, fv.desired_production / max(fv.labor_productivity, eps))
     end
 end
@@ -378,9 +413,8 @@ Formula (Mesa `Firm.decide_vacancies`):
   * `n_vacancies = max(desired_labor - current_labor, 0)`
 """
 function _event5_decide_vacancies!(model)
-    for a in allagents(model)
-        variantof(a) === Firm || continue
-        fv = variant(a)
+    for fid in 1:model.n_firms
+        fv = variant(model[fid])
         fv.n_vacancies = max(fv.desired_labor - fv.current_labor, 0)
     end
 end
@@ -407,6 +441,8 @@ distribution.
 """
 function _event6_fire_excess_workers!(model)
     rng = abmrng(model)
+    # Iterate in allagents (hash) order to preserve the original RNG draw sequence.
+    # Each firm with excess workers consumes one shuffle; hash order matches original.
     for a in allagents(model)
         variantof(a) === Firm || continue
         fv = variant(a)
@@ -417,8 +453,7 @@ function _event6_fire_excess_workers!(model)
         k = min(excess, length(fv.employee_ids))
         victims = fv.employee_ids[1:k]
         for hid in victims
-            h = model[hid]
-            hv = variant(h)
+            hv = variant(model[hid])
             hv.employer_id      = NO_AGENT
             hv.employer_prev_id = a.id
             hv.wage             = 0.0
@@ -462,9 +497,8 @@ function _planning!(model)
     # Event 5 collection: total vacancies after decide_vacancies (Mesa point).
     if model.collect
         total_vac = 0
-        for a in allagents(model)
-            variantof(a) === Firm || continue
-            total_vac += variant(a).n_vacancies
+        for fid in 1:model.n_firms
+            total_vac += variant(model[fid]).n_vacancies
         end
         push!(model.c_total_vacancies, Float64(total_vac))
     end
@@ -552,15 +586,16 @@ Formula (Mesa `Firm.decide_wage_offer`):
 
 RNG alignment with Mesa: one `rand(rng)` per firm WITH vacancies, matching
 Mesa's `self.firms` iteration where the `uniform(0, h_xi)` draw is taken only in
-the `n_vacancies > 0` branch. `allagents` iterates in Dict (hash) order here,
-not creation order; because every firm that has vacancies consumes exactly one
-draw regardless of visit order, the total draw count matches Mesa.
-Firms without vacancies consume no draw in either implementation.
+the `n_vacancies > 0` branch. We iterate `1:n_firms` (id-ascending), so draw
+order matches Mesa's creation-order iteration. Firms without vacancies consume
+no draw in either implementation.
 """
 function _event9_decide_wage_offer!(model)
     h_xi = model.params["h_xi"]
     min_wage = model.min_wage
     rng = abmrng(model)
+    # Iterate in allagents (hash) order to preserve the original RNG draw sequence.
+    # Only firms WITH vacancies consume a draw; hash order matches the original code.
     for a in allagents(model)
         variantof(a) === Firm || continue
         fv = variant(a)
@@ -587,25 +622,20 @@ Formula (Mesa `Household.decide_firms_to_apply`):
     it was not already in the sample, to keep length `M_eff`)
   * store as `job_apps`; reset `contract_expired = false`, `fired = false`
 
-RNG alignment with Mesa: Mesa uses `model.random.sample(pool, M_eff)` (one
-sample draw per unemployed worker, in `self.households` creation order). Here we
-take a copy of the firm-id pool, `shuffle!` it once with `abmrng`, and take the
-first `M_eff` ids - the same sample-without-replacement distribution and the
-same single-draw-per-worker cadence. `allagents` iterates in Dict (hash) order
-(not creation order); the firm-id pool is `sort!`-ed before sampling so the draw
-sequence is deterministic regardless of `allagents` iteration order. (This
-mirrors the shuffle-and-take approach already used for event 6 firing.)
+RNG: one O(k) without-replacement draw per unemployed worker via
+`_sample_k_from_range!`. Firms are added first in `build_model`, so firm ids
+are exactly the contiguous range `1:n_firms` (stable: bankruptcy replaces in
+place, never removes). Drawing from this range produces the same uniform k-subset
+distribution as the previous `copy(pool); shuffle!` approach, and consumes the
+same number of `rand(rng, ...)` calls per worker (exactly k random draws in the
+uncontested case, versus k*F/2 advances through an internal shuffle). This
+eliminates the O(F) copy+shuffle per worker (O(F*W) per period, the confirmed
+hotspot) and replaces it with O(k) per worker.
 """
 function _event10_decide_firms_to_apply!(model)
-    rng = abmrng(model)
+    rng   = abmrng(model)
     max_M = Int(round(model.params["max_M"]))
-
-    # Pool of all firm ids, sorted ascending by id. `allagents` yields agents in
-    # Dict (hash) order, not creation order; `sort!` here makes the pool
-    # deterministic so the subsequent `shuffle!` draw sequence is reproducible.
-    pool = sort!([a.id for a in allagents(model) if variantof(a) === Firm])
-    pool_set = Set(pool)
-    npool = length(pool)
+    npool = model.n_firms       # firm ids are exactly 1:n_firms (contiguous, stable)
 
     # Lookup of firm wage_offer by id for DESC ranking.
     wage_offer_of(fid) = variant(model[fid]).wage_offer
@@ -615,9 +645,8 @@ function _event10_decide_firms_to_apply!(model)
         hv.employer_id == NO_AGENT || continue   # employed workers skip
 
         M_eff = min(max_M, npool)
-        # Sample M_eff firm ids without replacement: shuffle a copy, take front.
-        shuffled = shuffle!(rng, copy(pool))
-        sample = shuffled[1:M_eff]
+        # O(k) uniform without-replacement draw from 1:n_firms.
+        sample = _sample_k_from_range!(rng, 1, npool, M_eff)
 
         # Sort by wage_offer DESC. Use a STABLE sort so ties keep the sampled
         # order, matching Python's stable `list.sort`.
@@ -625,7 +654,7 @@ function _event10_decide_firms_to_apply!(model)
 
         # Loyalty: move employer_prev_id to the front if eligible.
         prev = hv.employer_prev_id
-        if hv.contract_expired && !hv.fired && prev != NO_AGENT && prev in pool_set
+        if hv.contract_expired && !hv.fired && prev != NO_AGENT && 1 <= prev <= npool
             idx = findfirst(==(prev), sample)
             if idx !== nothing
                 deleteat!(sample, idx)
@@ -655,9 +684,8 @@ Formula (Mesa `Firm.calc_wage_bill`):
 No RNG.
 """
 function _event12_calc_wage_bill!(model)
-    for a in allagents(model)
-        variantof(a) === Firm || continue
-        fv = variant(a)
+    for fid in 1:model.n_firms
+        fv = variant(model[fid])
         total = 0.0
         for hid in fv.employee_ids
             total += variant(model[hid]).wage
@@ -787,9 +815,8 @@ Formula (Mesa `Firm.decide_credit_demand`):
 No RNG.
 """
 function _event15_decide_credit_demand!(model)
-    for a in allagents(model)
-        variantof(a) === Firm || continue
-        fv = variant(a)
+    for fid in 1:model.n_firms
+        fv = variant(model[fid])
         fv.credit_demand = max(fv.wage_bill - fv.total_funds, 0.0)
     end
     return nothing
@@ -809,9 +836,8 @@ No RNG.
 """
 function _event16_calc_fragility!(model)
     max_leverage = model.params["max_leverage"]
-    for a in allagents(model)
-        variantof(a) === Firm || continue
-        fv = variant(a)
+    for fid in 1:model.n_firms
+        fv = variant(model[fid])
         if fv.net_worth > 0.0
             fv.projected_fragility = fv.credit_demand / fv.net_worth
         else
@@ -835,33 +861,34 @@ Formula (Mesa `Firm.prepare_loan_applications`):
   * sample `H_eff` lenders WITHOUT replacement; sort by `interest_rate` ASC
   * store as `loan_apps` (consumed one per round in event 18)
 
-RNG alignment with Mesa: Mesa uses `model.random.sample(lenders, H_eff)` (one
-sample draw per applying firm, in `self.firms` creation order). Here we take a
-copy of the eligible-lender id list, `shuffle!` it once with `abmrng`, and take
-the first `H_eff` ids - the same sample-without-replacement distribution and the
-same single-draw-per-firm cadence. `allagents` iterates in Dict (hash) order
-(not creation order); the lender pool is `sort!`-ed and the firm scan happens in
-hash order, but each applying firm consumes exactly one shuffle draw, so the
-total draw count matches Mesa (mirrors the shuffle-and-take approach used for
-events 6 and 10). Firms with no credit demand consume no draw in either
-implementation.
+RNG: firm-only loops now iterate over `1:n_firms` directly (O(F), not O(F+W+B)).
+Bank ids are `n_firms+n_households+1 : n_firms+n_households+n_banks` (banks are
+added last in `build_model`, stable). Eligible banks (credit_supply > 0) are
+collected into a small sorted vector; then for each applying firm an O(k)
+without-replacement draw via `_sample_k_from_range!` over the eligible-bank
+index range replaces the O(B) `copy(lenders); shuffle!`. H_eff is at most
+max_H (typically 2-3), so the rejection sampler is very fast.
 """
 function _event17_prepare_loan_applications!(model)
-    rng = abmrng(model)
+    rng   = abmrng(model)
     max_H = Int(round(model.params["max_H"]))
 
     # Eligible lenders: bank ids with positive supply, sorted ascending by id.
-    # `banks(model)` iterates in Dict (hash) order; `sort!` makes the pool
-    # deterministic so the subsequent per-firm `shuffle!` draws are reproducible.
-    lenders = sort!([b.id for b in banks(model) if variant(b).credit_supply > 0.0])
+    # Bank ids are n_firms+n_households+1 : n_firms+n_households+n_banks
+    # (banks added last in build_model); we still filter by credit_supply > 0
+    # so the eligible set can be smaller.
+    bank_lo = model.n_firms + model.n_households + 1
+    bank_hi = model.n_firms + model.n_households + model.n_banks
+    lenders = sort!([id for id in bank_lo:bank_hi
+                     if variant(model[id]).credit_supply > 0.0])
     n_lenders = length(lenders)
 
     # Lookup of posted interest rate by bank id for ASC ranking.
     rate_of(bid) = variant(model[bid]).interest_rate
 
-    for a in allagents(model)
-        variantof(a) === Firm || continue
-        fv = variant(a)
+    # Iterate firms by direct id range (O(F), no allagents filter scan).
+    for fid in 1:model.n_firms
+        fv = variant(model[fid])
         if fv.credit_demand <= 0.0
             fv.loan_apps = Int[]
             continue
@@ -871,9 +898,12 @@ function _event17_prepare_loan_applications!(model)
             fv.loan_apps = Int[]
             continue
         end
-        # Sample H_eff bank ids without replacement: shuffle a copy, take front.
-        shuffled = shuffle!(rng, copy(lenders))
-        sample = shuffled[1:H_eff]
+        # O(k) draw of H_eff distinct indices into the `lenders` vector, then
+        # map to actual bank ids. Drawing indices (1:n_lenders) and indexing
+        # into `lenders` is equivalent to drawing from the lenders vector
+        # directly, and avoids an O(n_lenders) copy+shuffle.
+        idx_sample = _sample_k_from_range!(rng, 1, n_lenders, H_eff)
+        sample = lenders[idx_sample]
         # Sort by posted interest_rate ASC. STABLE sort so ties keep the sampled
         # order, matching Python's stable `list.sort`.
         sort!(sample; by = rate_of, alg = MergeSort)
@@ -898,13 +928,14 @@ Formula (Mesa `Firm.fire_workers_for_gap`):
     `current_labor -= 1`; remove id from `employee_ids`; `wage_bill -= wage`
 
 RNG alignment with Mesa: one `shuffle!(rng, employee_ids)` per firm WITH a gap,
-matching Mesa's `model.random.shuffle(employees_list)`. `allagents` iterates in
-Dict (hash) order, not creation order; because each firm with a gap consumes
-exactly one shuffle draw, the total draw count matches Mesa regardless of visit
-order. Reuses the event-6 firing field pattern.
+matching Mesa's `model.random.shuffle(employees_list)`. We iterate `1:n_firms`
+(id-ascending); each firm with a gap consumes exactly one shuffle draw, matching
+Mesa's draw cadence. Reuses the event-6 firing field pattern.
 """
 function _event19_fire_workers_for_gap!(model)
     rng = abmrng(model)
+    # Iterate in allagents (hash) order to preserve the original RNG draw sequence.
+    # Each firm with a gap consumes one shuffle; hash order matches original.
     for a in allagents(model)
         variantof(a) === Firm || continue
         fv = variant(a)
@@ -987,9 +1018,8 @@ Formula (Mesa `Firm.pay_wages`):
 No RNG.
 """
 function _event20_pay_wages!(model)
-    for a in allagents(model)
-        variantof(a) === Firm || continue
-        fv = variant(a)
+    for fid in 1:model.n_firms
+        fv = variant(model[fid])
         fv.total_funds -= fv.wage_bill
     end
     return nothing
@@ -1029,9 +1059,8 @@ Formula (Mesa `Firm.run_production`):
 No RNG.
 """
 function _event22_run_production!(model)
-    for a in allagents(model)
-        variantof(a) === Firm || continue
-        fv = variant(a)
+    for fid in 1:model.n_firms
+        fv = variant(model[fid])
         fv.production = fv.labor_productivity * fv.current_labor
         fv.production_prev = fv.production
         fv.inventory = fv.production
@@ -1057,9 +1086,8 @@ No RNG.
 function _event23_update_avg_mkt_price!(model)
     total_prod = 0.0
     weighted_sum = 0.0
-    for a in allagents(model)
-        variantof(a) === Firm || continue
-        fv = variant(a)
+    for fid in 1:model.n_firms
+        fv = variant(model[fid])
         if fv.production >= 1e-3
             weighted_sum += fv.price * fv.production
             total_prod   += fv.production
@@ -1157,9 +1185,8 @@ function _production!(model)
         avg_wage = employed_count > 0 ? wage_sum / employed_count : 0.0
         total_prod = 0.0
         prod_final = Float64[]
-        for a in allagents(model)
-            variantof(a) === Firm || continue
-            p = variant(a).production
+        for fid in 1:model.n_firms
+            p = variant(model[fid]).production
             total_prod += p
             push!(prod_final, p)
         end
@@ -1254,8 +1281,7 @@ Formula (Mesa `Household.decide_firms_to_visit`):
   * if `income_to_spend <= eps`: `shop_visits = []`; return
   * pool = ALL firm ids, sorted ascending by id (NOT iteration/Dict-hash order);
     `Z = min(max_Z, |pool|)`
-  * sample Z firm ids WITHOUT replacement: shuffle a copy, take front Z ids
-    (same pattern as events 10 and 17)
+  * sample Z firm ids WITHOUT replacement: O(k) draw from `1:n_firms`
   * loyalty (always applied): if `largest_prod_prev_id != NO_AGENT` and that id
     is NOT already in the sample, replace `sample[end]` with it
   * sort by `price` ASC (MergeSort for stability)
@@ -1269,20 +1295,18 @@ Note: `consumer_matching` param is NOT stored in `params` (which is
 the loyalty rule is applied unconditionally here, matching Mesa's default
 `"loyalty"` path.
 
-RNG: one `shuffle!` per household with positive budget. `households(model)`
-iterates in Dict (hash) order, not creation order; the firm-id pool is `sort!`-ed
-before sampling so each household's draw sequence is deterministic. Matches
-Mesa's single `model.random.sample(all_firms, Z)` per household.
+RNG: one O(k) draw per household with positive budget via `_sample_k_from_range!`.
+Firm ids are `1:n_firms` (contiguous, stable). This replaces the O(F) `copy(pool);
+shuffle!` per household (the second confirmed O(N^2) hotspot in the profiling
+report). The resulting k-subset distribution is identical: uniform over all
+k-subsets of `1:n_firms`. The price-ASC sort, loyalty rule, and loyalty-update
+logic are unchanged.
 """
 function _event27_decide_firms_to_visit!(model)
     eps   = model.eps
     rng   = abmrng(model)
     max_Z = Int(round(model.params["max_Z"]))
-
-    # Pool of all firm ids, sorted ascending by id. `allagents` yields in Dict
-    # (hash) order; `sort!` makes the pool deterministic for reproducible draws.
-    pool = sort!([a.id for a in allagents(model) if variantof(a) === Firm])
-    npool = length(pool)
+    npool = model.n_firms       # firm ids are exactly 1:n_firms (contiguous, stable)
 
     price_of(fid)      = variant(model[fid]).price
     production_of(fid) = variant(model[fid]).production
@@ -1295,9 +1319,8 @@ function _event27_decide_firms_to_visit!(model)
         end
 
         Z = min(max_Z, npool)
-        # Sample Z firm ids without replacement: shuffle a copy, take front Z.
-        shuffled = shuffle!(rng, copy(pool))
-        sample   = shuffled[1:Z]
+        # O(k) uniform without-replacement draw from 1:n_firms.
+        sample = _sample_k_from_range!(rng, 1, npool, Z)
 
         # Loyalty: if the previous best firm is known and not already sampled,
         # replace the last entry with it.
@@ -1391,9 +1414,8 @@ until goods market runs). This is the correct formula per the Mesa source.
 No RNG.
 """
 function _event30_collect_revenue!(model)
-    for a in allagents(model)
-        variantof(a) === Firm || continue
-        fv = variant(a)
+    for fid in 1:model.n_firms
+        fv = variant(model[fid])
         qty_sold = fv.production - fv.inventory
         revenue = fv.price * qty_sold
         fv.total_funds += revenue
@@ -1437,12 +1459,11 @@ No RNG.
 function _event31_validate_debt!(model)
     eps = model.eps
     loans = model.loans
-    for a in allagents(model)
-        variantof(a) === Firm || continue
-        fv = variant(a)
+    for fid in 1:model.n_firms
+        fv = variant(model[fid])
 
         # Gather this firm's loans by filtering the shared book.
-        firm_loans = [l for l in loans if l.borrower_id == a.id]
+        firm_loans = [l for l in loans if l.borrower_id == fid]
 
         total_debt      = sum(debt(l)      for l in firm_loans; init = 0.0)
         total_interest  = sum(interest(l)  for l in firm_loans; init = 0.0)
@@ -1498,9 +1519,8 @@ No RNG.
 function _event32_pay_dividends!(model)
     delta = model.params["delta"]
     total_dividends = 0.0
-    for a in allagents(model)
-        variantof(a) === Firm || continue
-        fv = variant(a)
+    for fid in 1:model.n_firms
+        fv = variant(model[fid])
         retained = fv.net_profit
         if fv.net_profit > 0.0
             retained *= 1.0 - delta
@@ -1580,9 +1600,8 @@ Formula (Mesa `Firm.update_net_worth`):
 No RNG.
 """
 function _event33_update_net_worth!(model)
-    for a in allagents(model)
-        variantof(a) === Firm || continue
-        fv = variant(a)
+    for fid in 1:model.n_firms
+        fv = variant(model[fid])
         fv.net_worth   += fv.retained_profit
         fv.total_funds  = max(fv.net_worth, 0.0)
     end
@@ -1618,11 +1637,10 @@ No RNG.
 function _event34_mark_bankrupt_firms!(model)
     eps = model.eps
     exiting_firm_ids = Int[]
-    for a in allagents(model)
-        variantof(a) === Firm || continue
-        fv = variant(a)
+    for fid in 1:model.n_firms
+        fv = variant(model[fid])
         if fv.net_worth < eps || fv.production_prev <= eps
-            push!(exiting_firm_ids, a.id)
+            push!(exiting_firm_ids, fid)
             # Fire all employees: bankruptcy clears the loyalty link.
             for hid in fv.employee_ids
                 hv = variant(model[hid])
@@ -1702,9 +1720,8 @@ No RNG.
 function _event36_spawn_replacement_firms!(model, exiting_firm_ids::Vector{Int})
     isempty(exiting_firm_ids) && return nothing
 
-    # Collapse check: all firms exiting.
-    n_total_firms = count(a -> variantof(a) === Firm, allagents(model))
-    if length(exiting_firm_ids) == n_total_firms
+    # Collapse check: all firms exiting. n_firms is stable (replace in place).
+    if length(exiting_firm_ids) == model.n_firms
         model.collapsed = true
         return nothing
     end
@@ -1713,10 +1730,9 @@ function _event36_spawn_replacement_firms!(model, exiting_firm_ids::Vector{Int})
     exiting_set = Set(exiting_firm_ids)
     survivor_net_worths  = Float64[]
     survivor_productions = Float64[]
-    for a in allagents(model)
-        variantof(a) === Firm || continue
-        a.id in exiting_set && continue
-        fv = variant(a)
+    for fid in 1:model.n_firms
+        fid in exiting_set && continue
+        fv = variant(model[fid])
         push!(survivor_net_worths,  fv.net_worth)
         push!(survivor_productions, fv.production_prev)
     end
@@ -1786,15 +1802,16 @@ RNG: one `rand(rng, collection)` per exiting bank.
 function _event37_spawn_replacement_banks!(model, exiting_bank_ids::Vector{Int})
     isempty(exiting_bank_ids) && return nothing
 
-    # Collapse check: no surviving banks.
-    n_total_banks = count(b -> variantof(b) === Bank, allagents(model))
-    if length(exiting_bank_ids) == n_total_banks
+    # Collapse check: no surviving banks. n_banks is stable (replace in place).
+    if length(exiting_bank_ids) == model.n_banks
         model.collapsed = true
         return nothing
     end
 
     exiting_set = Set(exiting_bank_ids)
-    survivor_bank_ids = [b.id for b in banks(model) if !(b.id in exiting_set)]
+    bank_lo = model.n_firms + model.n_households + 1
+    bank_hi = model.n_firms + model.n_households + model.n_banks
+    survivor_bank_ids = [id for id in bank_lo:bank_hi if !(id in exiting_set)]
 
     rng = abmrng(model)
     for bid in exiting_bank_ids
