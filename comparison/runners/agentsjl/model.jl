@@ -26,6 +26,12 @@ Tasks covered so far:
     at the next credit-market open (event 17 purge), matching the Mesa port
     (Flag 6). Bank equity is updated per-loan: fully-repaid lenders earn interest;
     defaulting lenders take a proportional loss against pre-update net_worth.
+  * Task 7: goods-market event functions (events 25-27, 29) and `_goods_market!`
+    dispatcher. The sequential shopping loop (event 28) lives in `markets.jl`.
+    `bam_step!` now runs planning + labor + credit + production + goods + revenue.
+    Consumer propensity uses a tanh-based formula; firm selection uses
+    shuffle-and-take sampling (same pattern as events 10 and 17) with loyalty
+    tracking via integer ids and price-ASC sorting (MergeSort for stability).
 
 Agents.jl v7.0.3 idioms:
   * `@agent struct Variant(NoSpaceAgent) ... end` + `@multiagent BAMAgent(...)`
@@ -1086,6 +1092,194 @@ function _production!(model)
 end
 
 # ---------------------------------------------------------------------------
+# Goods market phase - event functions (events 25-27, 29)
+# ---------------------------------------------------------------------------
+
+"""
+    _event25_calc_propensity!(model)
+
+Event 25 (consumers_calc_propensity): compute each household's marginal propensity
+to consume, based on its savings relative to the economy-wide average.
+
+Formula (Mesa `Household.calc_propensity`):
+  * `avg_sav = max(mean(clamp(h.savings, 0, Inf) for all h), eps)`
+  * per household: `s = max(savings, 0)`;
+    `propensity = 1 / (1 + tanh(s / avg_sav)^beta)`
+
+The savings average uses clamped (non-negative) savings so negative balances
+do not drag the denominator below zero. The individual `s = max(savings, 0)`
+mirrors Mesa's `savings = max(self.savings, 0.0)` inside the method.
+
+No RNG.
+"""
+function _event25_calc_propensity!(model)
+    eps  = model.eps
+    beta = model.params["beta"]
+
+    # Average of non-negative savings across all households.
+    total_sav = 0.0
+    n_hh = 0
+    for h in households(model)
+        total_sav += max(variant(h).savings, 0.0)
+        n_hh += 1
+    end
+    avg_sav = n_hh > 0 ? max(total_sav / n_hh, eps) : eps
+
+    for h in households(model)
+        hv = variant(h)
+        s  = max(hv.savings, 0.0)
+        hv.propensity = 1.0 / (1.0 + tanh(s / avg_sav)^beta)
+    end
+    return nothing
+end
+
+"""
+    _event26_decide_income_to_spend!(model)
+
+Event 26 (consumers_decide_income_to_spend): each household splits wealth into
+spending budget and residual savings.
+
+Formula (Mesa `Household.decide_income_to_spend`):
+  * `wealth = savings + income`
+  * `income_to_spend = wealth * propensity`
+  * `savings = wealth - income_to_spend`
+  * `income = 0.0`
+
+No RNG.
+"""
+function _event26_decide_income_to_spend!(model)
+    for h in households(model)
+        hv = variant(h)
+        wealth = hv.savings + hv.income
+        hv.income_to_spend = wealth * hv.propensity
+        hv.savings         = wealth - hv.income_to_spend
+        hv.income          = 0.0
+    end
+    return nothing
+end
+
+"""
+    _event27_decide_firms_to_visit!(model)
+
+Event 27 (consumers_decide_firms_to_visit): each household samples up to `max_Z`
+firms, applies the loyalty rule, sorts by price ASC, and updates its loyalty
+target for the next period.
+
+Formula (Mesa `Household.decide_firms_to_visit`):
+  * if `income_to_spend <= eps`: `shop_visits = []`; return
+  * pool = ALL firm ids (id-ascending / creation order); `Z = min(max_Z, |pool|)`
+  * sample Z firm ids WITHOUT replacement: shuffle a copy, take front Z ids
+    (same pattern as events 10 and 17)
+  * loyalty (always applied): if `largest_prod_prev_id != NO_AGENT` and that id
+    is NOT already in the sample, replace `sample[end]` with it
+  * sort by `price` ASC (MergeSort for stability)
+  * update loyalty BEFORE shopping: `largest_prod_prev_id = argmax(production)`
+    over the selected firm ids (ties broken by first-maximum in sorted-price
+    order, matching Julia's `argmax` semantics on an iterator)
+  * store the Z ids as `shop_visits`
+
+Note: `consumer_matching` param is NOT stored in `params` (which is
+`Dict{String,Float64}`); the canonical model always uses loyalty matching, so
+the loyalty rule is applied unconditionally here, matching Mesa's default
+`"loyalty"` path.
+
+RNG: one `shuffle!` per household with positive budget, in household creation
+order, matching Mesa's single `model.random.sample(all_firms, Z)` per household.
+"""
+function _event27_decide_firms_to_visit!(model)
+    eps   = model.eps
+    rng   = abmrng(model)
+    max_Z = Int(round(model.params["max_Z"]))
+
+    # Pool of all firm ids in ascending creation order (matches Mesa's
+    # snapshotted `_firms_list`).
+    pool = sort!([a.id for a in allagents(model) if variantof(a) === Firm])
+    npool = length(pool)
+
+    price_of(fid)      = variant(model[fid]).price
+    production_of(fid) = variant(model[fid]).production
+
+    for h in households(model)
+        hv = variant(h)
+        if hv.income_to_spend <= eps
+            hv.shop_visits = Int[]
+            continue
+        end
+
+        Z = min(max_Z, npool)
+        # Sample Z firm ids without replacement: shuffle a copy, take front Z.
+        shuffled = shuffle!(rng, copy(pool))
+        sample   = shuffled[1:Z]
+
+        # Loyalty: if the previous best firm is known and not already sampled,
+        # replace the last entry with it.
+        prev = hv.largest_prod_prev_id
+        if prev != NO_AGENT && !(prev in sample)
+            sample[end] = prev
+        end
+
+        # Sort by price ASC. STABLE sort so ties keep the sampled order,
+        # matching Python's stable `list.sort`.
+        sort!(sample; by = price_of, alg = MergeSort)
+
+        # Update loyalty: track the firm with the largest production in the
+        # selected set (for the NEXT period). Computed BEFORE shopping so the
+        # loyalty target reflects the pre-market production snapshot.
+        hv.largest_prod_prev_id = sample[argmax(production_of.(sample))]
+
+        hv.shop_visits = sample
+    end
+    return nothing
+end
+
+"""
+    _event29_finalize_purchases!(model)
+
+Event 29 (consumers_finalize_purchases): move any unspent budget back into
+savings and zero the spending account.
+
+Formula (Mesa `Household.finalize_purchases`):
+  * `savings += income_to_spend`
+  * `income_to_spend = 0.0`
+
+No RNG.
+"""
+function _event29_finalize_purchases!(model)
+    for h in households(model)
+        hv = variant(h)
+        hv.savings        += hv.income_to_spend
+        hv.income_to_spend = 0.0
+    end
+    return nothing
+end
+
+# ---------------------------------------------------------------------------
+# Goods market phase dispatcher
+# ---------------------------------------------------------------------------
+
+"""
+    _goods_market!(model)
+
+Phase 5: run events 25-29 (goods market) in order.
+
+  25. Consumers calc propensity (tanh-based formula, savings vs avg)
+  26. Consumers decide income to spend (split wealth into budget + residual savings)
+  27. Consumers decide which firms to visit (sample, loyalty, price-sort)
+  28. Goods market sequential shopping loop (shuffle buyers, walk shop_visits)
+  29. Consumers finalize purchases (remaining budget -> savings; zero income_to_spend)
+
+Mirrors Mesa `BamModel._goods_market()`.
+"""
+function _goods_market!(model)
+    _event25_calc_propensity!(model)
+    _event26_decide_income_to_spend!(model)
+    _event27_decide_firms_to_visit!(model)
+    _run_goods_market!(model)               # event 28 (defined in markets.jl)
+    _event29_finalize_purchases!(model)
+    return nothing
+end
+
+# ---------------------------------------------------------------------------
 # Revenue phase - event functions (events 30-32)
 # ---------------------------------------------------------------------------
 
@@ -1271,9 +1465,9 @@ end
 
 Per-period model step. Runs Phase 1 (planning, events 1-6), Phase 2 (labor
 market, events 7-12), Phase 3 (credit market, events 13-19), Phase 4
-(production, events 20-24), and Phase 6 (revenue, events 30-32). Phase 5
-(goods market, events 25-29) and Phase 7-8 (bankruptcy + entry, events 33-37)
-are added in Tasks 7 and 8 respectively.
+(production, events 20-24), Phase 5 (goods market, events 25-29), and Phase 6
+(revenue, events 30-32). Phase 7-8 (bankruptcy + entry, events 33-37) are added
+in Task 8.
 
 Defined as a named function (rather than `dummystep`) so the `StandardABM` is
 constructed with a real `model_step!` and later tasks have a single clear hook
@@ -1286,6 +1480,7 @@ function bam_step!(model)
     _labor_market!(model)
     _credit_market!(model)
     _production!(model)
+    _goods_market!(model)
     _revenue!(model)
     return nothing
 end

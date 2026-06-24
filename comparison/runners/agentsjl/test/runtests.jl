@@ -42,6 +42,9 @@ include(joinpath(@__DIR__, "..", "model.jl"))
             "max_leverage"          => 10.0,
             # Production + revenue params (bam_step! now also runs these phases).
             "delta"                 => 0.10,
+            # Goods-market params (bam_step! now also runs the goods market).
+            "beta"                  => 2.5,
+            "max_Z"                 => 2.0,
         )
         n_firms, n_households, n_banks = 10, 50, 2
         model = build_model(n_firms, n_households, n_banks, params, 42)
@@ -610,6 +613,107 @@ include(joinpath(@__DIR__, "..", "model.jl"))
         end
 
         # --- Populations preserved; no agents added or removed ---
+        @test nagents(model) == n_firms + n_households + n_banks
+    end
+
+    @testset "goods market invariants (events 25-29)" begin
+        # Full canonical param set through revenue; add consumer params.
+        # Use default net_worth_ratio=6.0 so firms are solvent and produce goods.
+        params = Dict{String,Float64}(
+            "labor_productivity"    => 0.50,
+            "price_init"            => 0.50,
+            "net_worth_ratio"       => 6.0,
+            "savings_init"          => 1.0,
+            "equity_base_init"      => 5.0,
+            "min_wage_ratio"        => 0.5,
+            "min_wage_rev_period"   => 4.0,
+            "h_rho"                 => 0.10,
+            "h_eta"                 => 0.10,
+            "h_xi"                  => 0.05,
+            "max_M"                 => 4.0,
+            "theta"                 => 8.0,
+            "v"                     => 0.10,
+            "h_phi"                 => 0.10,
+            "r_bar"                 => 0.02,
+            "max_H"                 => 2.0,
+            "max_loan_to_net_worth" => 2.0,
+            "max_leverage"          => 10.0,
+            "delta"                 => 0.10,
+            # Consumer params (goods market).
+            "beta"                  => 2.5,
+            "max_Z"                 => 2.0,
+        )
+        n_firms, n_households, n_banks = 10, 50, 2
+        model = build_model(n_firms, n_households, n_banks, params, 42)
+
+        # Run phases 1-4 first so firms have production + inventory and
+        # workers have income to spend.
+        _planning!(model)
+        _labor_market!(model)
+        _credit_market!(model)
+        _production!(model)
+
+        # Snapshot pre-goods state.
+        income_to_spend_pre = Dict(h.id => variant(h).income_to_spend
+                                   for h in households(model))
+        inventory_pre = Dict(a.id => variant(a).inventory
+                             for a in allagents(model) if variantof(a) === Firm)
+
+        # Run goods market.
+        _goods_market!(model)
+
+        firm_ids = [a.id for a in allagents(model) if variantof(a) === Firm]
+
+        # 1. No household spent more than its pre-goods income_to_spend.
+        #    After finalize_purchases, income_to_spend is reset to 0 for all
+        #    households; the spending is absorbed into savings. The per-household
+        #    budget change (pre - 0) must be non-negative.
+        #    Note: income_to_spend_pre is 0 before the goods market runs (workers
+        #    receive income in event 21, and event 26 splits it into budget +
+        #    savings before shopping). Check that all income_to_spend_pre are
+        #    non-negative (they must be by construction) and that after event 29
+        #    they are all exactly 0.
+        for h in households(model)
+            hv = variant(h)
+            # Event 29: all income_to_spend zeroed after finalize_purchases.
+            @test hv.income_to_spend == 0.0
+        end
+
+        # 2. No firm ends with negative inventory.
+        for a in allagents(model)
+            variantof(a) === Firm || continue
+            fv = variant(a)
+            @test fv.inventory >= -1e-9
+        end
+
+        # 3. Total inventory sold = sum of (inventory_pre - inventory_post) >= 0.
+        total_sold = sum(inventory_pre[fid] - variant(model[fid]).inventory
+                         for fid in firm_ids)
+        @test total_sold >= 0.0
+
+        # 4. Firm inventory did not INCREASE (goods market only removes goods).
+        for fid in firm_ids
+            fv = variant(model[fid])
+            @test fv.inventory <= inventory_pre[fid] + 1e-9
+        end
+
+        # 5. Propensity in (0, 1] for all households (tanh-based formula).
+        for h in households(model)
+            hv = variant(h)
+            @test hv.propensity > 0.0
+            @test hv.propensity <= 1.0
+        end
+
+        # 6. shop_visits contains valid firm ids (or is empty for zero-budget hh).
+        for h in households(model)
+            hv = variant(h)
+            for fid in hv.shop_visits
+                @test fid in firm_ids
+            end
+            @test length(hv.shop_visits) <= Int(round(params["max_Z"]))
+        end
+
+        # 7. Populations preserved; no agents added or removed.
         @test nagents(model) == n_firms + n_households + n_banks
     end
 
