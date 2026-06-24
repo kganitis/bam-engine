@@ -111,8 +111,24 @@ class Households(mf.AgentSetPolars):
     """Household agents (Worker + Consumer + Shareholder roles).
 
     Columns mirror Household.__init__ in comparison/runners/mesa/agents.py.
-    Object-valued attributes (employer, employer_prev, largest_prod_prev,
-    job_apps, shop_visits) are excluded and handled in later tasks.
+
+    The worker -> firm link is represented columnar-style, mirroring
+    bamengine's ``wrk.employer`` (an Int64 array):
+
+    - ``employer``: firm ``unique_id`` of the current employer, or ``-1`` when
+      unemployed.  "Employed" is ALWAYS derived from ``employer >= 0``; there is
+      no stored employed bool.
+    - ``employer_prev``: firm ``unique_id`` of the previous employer (loyalty),
+      or ``-1`` when none.
+
+    The job-application queue (Mesa port's per-worker ``job_apps`` list) is
+    stored as a fixed-width ``-1``-padded matrix of ``max_M`` columns
+    ``job_app_0 .. job_app_{max_M-1}`` plus a ``job_app_head`` index, matching
+    the application-queue pattern in the model reference (SPEC section 6).
+
+    Object-valued attributes from the Mesa port that are not yet needed
+    (``largest_prod_prev``, ``shop_visits``) are excluded and handled in later
+    tasks.
     """
 
     def __init__(
@@ -125,37 +141,48 @@ class Households(mf.AgentSetPolars):
         super().__init__(model)
 
         savings_init: float = float(params["savings_init"])
+        max_M: int = int(params["max_M"])
         ids = _alloc_ids(model, n)
 
-        df = pl.DataFrame(
-            {
-                "unique_id": ids,
-                # Worker columns
-                "wage": [0.0] * n,
-                "periods_left": [0] * n,
-                "contract_expired": [False] * n,
-                "fired": [False] * n,
-                # Consumer columns
-                "income": [0.0] * n,
-                "savings": [savings_init] * n,
-                "income_to_spend": [0.0] * n,
-                "propensity": [0.0] * n,
-                # Shareholder columns
-                "dividends": [0.0] * n,
-            },
-            schema={
-                "unique_id": pl.Int64,
-                "wage": pl.Float64,
-                "periods_left": pl.Int64,
-                "contract_expired": pl.Boolean,
-                "fired": pl.Boolean,
-                "income": pl.Float64,
-                "savings": pl.Float64,
-                "income_to_spend": pl.Float64,
-                "propensity": pl.Float64,
-                "dividends": pl.Float64,
-            },
-        )
+        data = {
+            "unique_id": ids,
+            # Worker columns
+            "employer": [-1] * n,  # -1 = unemployed; employed := employer >= 0
+            "employer_prev": [-1] * n,  # -1 = no previous employer
+            "wage": [0.0] * n,
+            "periods_left": [0] * n,
+            "contract_expired": [False] * n,
+            "fired": [False] * n,
+            # Consumer columns
+            "income": [0.0] * n,
+            "savings": [savings_init] * n,
+            "income_to_spend": [0.0] * n,
+            "propensity": [0.0] * n,
+            # Shareholder columns
+            "dividends": [0.0] * n,
+            # Job-application queue (-1-padded targets + head index).
+            "job_app_head": [0] * n,
+        }
+        schema = {
+            "unique_id": pl.Int64,
+            "employer": pl.Int64,
+            "employer_prev": pl.Int64,
+            "wage": pl.Float64,
+            "periods_left": pl.Int64,
+            "contract_expired": pl.Boolean,
+            "fired": pl.Boolean,
+            "income": pl.Float64,
+            "savings": pl.Float64,
+            "income_to_spend": pl.Float64,
+            "propensity": pl.Float64,
+            "dividends": pl.Float64,
+            "job_app_head": pl.Int64,
+        }
+        for k in range(max_M):
+            data[f"job_app_{k}"] = [-1] * n
+            schema[f"job_app_{k}"] = pl.Int64
+
+        df = pl.DataFrame(data, schema=schema)
         self.add(df)
 
     def step(self) -> None:

@@ -6,6 +6,7 @@ import mesa_frames as mf
 import polars as pl
 
 from comparison.runners.mesa_frames.agents import Banks, Firms, Households
+from comparison.runners.mesa_frames.markets import run_labor_market
 
 EPS = 1e-9
 
@@ -248,46 +249,277 @@ class BAMModel(mf.ModelDF):
                             h.periods_left=0, h.contract_expired=False, h.fired=True
           current_labor -= len(victims)
 
-        The household-side writes (employer, employer_prev, wage, etc.) require
-        the employer-relationship table, which is added in a later task (Task 4).
-        This implementation updates current_labor on the firm side only; the
-        household updates are deferred to Task 4.
+        Household-side writes go through the columnar employer relationship:
+        ``employer`` is the firm unique_id (-1 = unemployed); employed is
+        derived from ``employer >= 0``.  For each over-staffed firm (in firm
+        row order, matching the Mesa port's firm iteration), the firm's current
+        employees are gathered as worker rows where ``employer == firm_id`` (in
+        worker row order, mirroring the Mesa employees dict insertion order),
+        and ``min(excess, n_employees)`` victims are drawn WITHOUT replacement.
 
-        RNG: self.random.choice / permutation for each over-staffed firm.
+        RNG: one ``self.random.choice(..., replace=False)`` per over-staffed
+        firm, in firm row order -- the same draw structure as the Mesa port's
+        per-firm ``model.random.sample``.
         """
-        df = self.firms.agents
-        over_staffed = df.filter(pl.col("current_labor") > pl.col("desired_labor"))
+        fdf = self.firms.agents
+        rng = self.random
 
-        if len(over_staffed) == 0:
+        firm_ids = fdf["unique_id"].to_list()
+        cur_labor = [int(c) for c in fdf["current_labor"]]
+        desired = [int(d) for d in fdf["desired_labor"]]
+
+        # Map firm_id -> list of worker rows currently employed there (row order).
+        hdf = self.households.agents
+        hh_employer = [int(e) for e in hdf["employer"]]
+        employees_of: dict[int, list[int]] = {}
+        for i, emp in enumerate(hh_employer):
+            if emp >= 0:
+                employees_of.setdefault(emp, []).append(i)
+
+        # Worker-side mutable copies (row-indexed).
+        new_employer = list(hh_employer)
+        new_employer_prev = [int(e) for e in hdf["employer_prev"]]
+        new_wage = [float(w) for w in hdf["wage"]]
+        new_periods = [int(p) for p in hdf["periods_left"]]
+        new_contract_expired = list(hdf["contract_expired"])
+        new_fired = list(hdf["fired"])
+
+        any_fired = False
+        for fi, firm_id in enumerate(firm_ids):
+            excess = cur_labor[fi] - desired[fi]
+            if excess <= 0:
+                continue
+            emps = employees_of.get(firm_id, [])
+            k = min(excess, len(emps))
+            if k <= 0:
+                continue
+            any_fired = True
+            # Draw k victims without replacement, in this firm's pass.
+            victims = rng.choice(emps, size=k, replace=False)
+            for vi in victims:
+                vi = int(vi)
+                new_employer[vi] = -1
+                new_employer_prev[vi] = firm_id
+                new_wage[vi] = 0.0
+                new_periods[vi] = 0
+                new_contract_expired[vi] = False
+                new_fired[vi] = True
+            cur_labor[fi] -= k
+
+        if not any_fired:
             return
 
-        # Build updated current_labor column for over-staffed firms.
-        # For now we just clamp current_labor down to desired_labor.
-        # The actual random-victim selection is deferred until household
-        # relationship tables exist.
-        updated_rows = []
-        for i in range(len(df)):
-            cl = int(df["current_labor"][i])
-            dl = int(df["desired_labor"][i])
-            if cl > dl:
-                excess = cl - dl
-                # Draw excess victims (random permutation of worker indices).
-                # Worker-side updates deferred to Task 4; only firm counter
-                # is decremented here.
-                fired_count = min(excess, cl)
-                updated_rows.append((int(df["unique_id"][i]), cl - fired_count))
-            else:
-                updated_rows.append((int(df["unique_id"][i]), cl))
-
-        id_series = pl.Series("unique_id", [r[0] for r in updated_rows], dtype=pl.Int64)
-        cl_series = pl.Series(
-            "current_labor", [r[1] for r in updated_rows], dtype=pl.Int64
+        self.firms.agents = fdf.with_columns(
+            pl.Series("current_labor", cur_labor, dtype=pl.Int64)
         )
-        updates = pl.DataFrame({"unique_id": id_series, "current_labor": cl_series})
-
-        self.firms.agents = df.drop("current_labor").join(
-            updates, on="unique_id", how="left"
+        self.households.agents = hdf.with_columns(
+            pl.Series("employer", new_employer, dtype=pl.Int64),
+            pl.Series("employer_prev", new_employer_prev, dtype=pl.Int64),
+            pl.Series("wage", new_wage, dtype=pl.Float64),
+            pl.Series("periods_left", new_periods, dtype=pl.Int64),
+            pl.Series("contract_expired", new_contract_expired, dtype=pl.Boolean),
+            pl.Series("fired", new_fired, dtype=pl.Boolean),
         )
+
+    # ------------------------------------------------------------------
+    # Phase 2: labor market (events 7-12)
+    # ------------------------------------------------------------------
+
+    def _labor_market(self) -> None:
+        """Phase 2: labor market (events 7-12).
+
+        Mirrors BamModel._labor_market in mesa/model.py:
+          _calc_inflation -> _adjust_min_wage -> firms_decide_wage_offer
+          -> workers_decide_firms_to_apply -> run_labor_market -> calc_wage_bill
+        """
+        self._calc_inflation()
+        if self.collect:
+            self._c_inflation.append(self.inflation_history[-1])
+        self._adjust_min_wage()
+        self._event9_decide_wage_offer()
+        self._event10_decide_firms_to_apply()
+        run_labor_market(self)
+        self._event12_calc_wage_bill()
+
+    def _calc_inflation(self) -> None:
+        """Event 7: YoY inflation rate appended to inflation_history.
+
+        Mesa port: _calc_inflation() (identical scalar logic).
+        """
+        hist = self.avg_mkt_price_history
+        if len(hist) <= 4:
+            self.inflation_history.append(0.0)
+            return
+        p_now = hist[-1]
+        p_prev = hist[-5]
+        if p_prev <= 0:
+            self.inflation_history.append(0.0)
+        else:
+            self.inflation_history.append((p_now - p_prev) / p_prev)
+
+    def _adjust_min_wage(self) -> None:
+        """Event 8: periodically index minimum wage to inflation.
+
+        Mesa port: _adjust_min_wage().  Employed workers below the new floor are
+        bumped up to it.  Employed is derived from ``employer >= 0``.
+        """
+        m = self.min_wage_rev_period
+        hist_len = len(self.avg_mkt_price_history)
+        if hist_len <= m:
+            return
+        if (hist_len - 1) % m != 0:
+            return
+        inflation = self.inflation_history[-1]
+        self.min_wage *= 1.0 + inflation
+
+        # Bump employed workers below the new floor (vectorized).
+        hdf = self.households.agents
+        new_wage = (
+            pl.when((pl.col("employer") >= 0) & (pl.col("wage") < self.min_wage))
+            .then(pl.lit(self.min_wage))
+            .otherwise(pl.col("wage"))
+        )
+        self.households.agents = hdf.with_columns(new_wage.alias("wage"))
+
+    def _event9_decide_wage_offer(self) -> None:
+        """Event 9: firms set wage offer with random markup (zero if no vacancies).
+
+        Mesa port: decide_wage_offer()
+          shock = model.random.uniform(0, h_xi) if n_vacancies > 0 else 0.0
+          wage_offer *= (1 + shock); wage_offer = max(wage_offer, min_wage)
+
+        RNG: one draw per firm, uniform(0, h_xi), in firm row order, masked to
+        zero where n_vacancies == 0 (mirrors bamengine's draw-then-mask, which
+        the Mesa port replicates per firm).
+        """
+        h_xi = float(self.p["h_xi"])
+        df = self.firms.agents
+        n = len(df)
+
+        shocks = pl.Series("shock", self.random.uniform(0.0, h_xi, size=n))
+        masked_shock = (
+            pl.when(pl.col("n_vacancies") > 0).then(shocks).otherwise(pl.lit(0.0))
+        )
+        new_offer = pl.max_horizontal(
+            pl.col("wage_offer") * (1.0 + masked_shock),
+            pl.lit(self.min_wage),
+        )
+        self.firms.agents = df.with_columns(new_offer.alias("wage_offer"))
+
+    def _event10_decide_firms_to_apply(self) -> None:
+        """Event 10: unemployed workers build a ranked job-application queue.
+
+        Mesa port: decide_firms_to_apply()
+          only unemployed workers participate
+          pool = all firms; M_eff = min(max_M, |pool|)
+          sample = model.random.sample(pool, M_eff)  (without replacement)
+          sort sample by wage_offer DESC
+          loyalty: if contract_expired AND not fired AND employer_prev in pool:
+            move employer_prev to front (remove if present else drop last)
+          job_apps = sample; contract_expired=False; fired=False
+
+        The queue is stored as -1-padded columns job_app_0..job_app_{max_M-1}
+        plus job_app_head (reset to 0).
+
+        RNG: one without-replacement sample of M_eff firms per UNEMPLOYED worker,
+        in worker row order -- the same draw structure as the Mesa port (which
+        iterates households in row order and draws only for unemployed ones).
+        """
+        max_M = int(self.p["max_M"])
+        rng = self.random
+
+        fdf = self.firms.agents
+        firm_ids = fdf["unique_id"].to_numpy()
+        wage_offer = {
+            int(fid): float(wo)
+            for fid, wo in zip(
+                fdf["unique_id"].to_list(),
+                fdf["wage_offer"].to_list(),
+                strict=True,
+            )
+        }
+        firm_id_set = set(int(f) for f in firm_ids)
+        pool_size = len(firm_ids)
+        M_eff = min(max_M, pool_size)
+
+        hdf = self.households.agents
+        worker_employer = [int(e) for e in hdf["employer"]]
+        worker_emp_prev = [int(e) for e in hdf["employer_prev"]]
+        worker_contract_expired = list(hdf["contract_expired"])
+        worker_fired = list(hdf["fired"])
+        n_workers = len(worker_employer)
+
+        # Output queue matrix (n_workers x max_M), -1-padded.
+        queue = [[-1] * max_M for _ in range(n_workers)]
+        new_contract_expired = list(worker_contract_expired)
+        new_fired = list(worker_fired)
+
+        for i in range(n_workers):
+            if worker_employer[i] >= 0:
+                continue  # employed workers do not apply
+            # Sample M_eff firms without replacement (in firm-id space).
+            # One choice(replace=False) per unemployed worker -- same draw
+            # structure as the Mesa port's model.random.sample(pool, M_eff).
+            sample = [int(f) for f in rng.choice(firm_ids, size=M_eff, replace=False)]
+            # Sort by wage_offer DESC (stable on sampled order).
+            sample.sort(key=lambda fid: wage_offer[fid], reverse=True)
+
+            # Loyalty: move employer_prev to front if eligible.
+            prev = worker_emp_prev[i]
+            if (
+                worker_contract_expired[i]
+                and not worker_fired[i]
+                and prev in firm_id_set
+            ):
+                if prev in sample:
+                    sample.remove(prev)
+                elif len(sample) == M_eff:
+                    sample = sample[: M_eff - 1]
+                sample.insert(0, prev)
+
+            for k, fid in enumerate(sample[:max_M]):
+                queue[i][k] = fid
+
+            new_contract_expired[i] = False
+            new_fired[i] = False
+
+        cols = []
+        for k in range(max_M):
+            cols.append(
+                pl.Series(
+                    f"job_app_{k}",
+                    [queue[i][k] for i in range(n_workers)],
+                    dtype=pl.Int64,
+                )
+            )
+        cols.append(pl.Series("job_app_head", [0] * n_workers, dtype=pl.Int64))
+        cols.append(
+            pl.Series("contract_expired", new_contract_expired, dtype=pl.Boolean)
+        )
+        cols.append(pl.Series("fired", new_fired, dtype=pl.Boolean))
+
+        self.households.agents = hdf.with_columns(*cols)
+
+    def _event12_calc_wage_bill(self) -> None:
+        """Event 12: wage_bill_i = sum of wages over firm i's employees.
+
+        Mesa port: calc_wage_bill().  Computed via a group-by join on the
+        employer relationship (employed workers grouped by employer firm id).
+        """
+        hdf = self.households.agents
+        fdf = self.firms.agents
+
+        wage_by_firm = (
+            hdf.filter(pl.col("employer") >= 0)
+            .group_by("employer")
+            .agg(pl.col("wage").sum().alias("_wage_bill_new"))
+            .rename({"employer": "unique_id"})
+        )
+
+        joined = fdf.join(wage_by_firm, on="unique_id", how="left")
+        self.firms.agents = joined.with_columns(
+            pl.col("_wage_bill_new").fill_null(0.0).alias("wage_bill")
+        ).drop("_wage_bill_new")
 
     def step(self) -> None:
         """Execute one simulation period."""
@@ -295,4 +527,5 @@ class BAMModel(mf.ModelDF):
             return
         self.period += 1
         self._planning()
-        # Remaining phases added in Tasks 4-8.
+        self._labor_market()
+        # Remaining phases added in Tasks 5-8.
