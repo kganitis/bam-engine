@@ -19,15 +19,19 @@ EPS = 1e-9
 def _batched_k_subset(
     rng: np.random.Generator, n_rows: int, pool: np.ndarray, k: int
 ) -> np.ndarray:
-    """Return an (n_rows, k) array of distinct indices drawn uniformly per row.
+    """Return an (n_rows, k) array of distinct pool elements drawn uniformly per row.
 
-    For each row, k items are selected without replacement from ``pool`` using
-    the priorities trick: assign i.i.d. U(0,1) priorities to every pool element
-    and take the top-k.  The top-k of independent uniform priorities is a
-    uniform k-subset (Fisher-Yates equivalent in expectation), so each row is
-    a uniform draw without replacement -- distributionally identical to calling
-    ``rng.choice(pool, size=k, replace=False)`` once per row, but uses a single
-    batched RNG draw for all rows at once.
+    Sparse O(n_rows * k) implementation: draws candidate indices directly with
+    ``rng.integers(0, n_pool, size=(n_rows, k))``, then resamples only rows that
+    have within-row duplicates (rejection sampling).  For k << n_pool (the normal
+    case: k = max_M/max_H/max_Z; n_pool = firms/banks) duplicates are rare, so
+    the loop converges in 1-2 iterations.  When k >= n_pool every row gets all
+    n_pool indices (broadcast, no RNG draw needed).
+
+    This replaces the former dense O(n_rows * n_pool) priority-matrix approach
+    (``rng.random((n_rows, n_pool))`` + argpartition).  The distribution is
+    identical: each row is a uniform k-subset without replacement, equivalent
+    to ``rng.choice(pool, size=k, replace=False)`` once per row.
 
     Args:
         rng: The model's seeded numpy Generator (``self.random``).
@@ -36,16 +40,29 @@ def _batched_k_subset(
         k: Number of items to select per row (k <= len(pool)).
 
     Returns:
-        Integer array of shape (n_rows, k) containing selected pool elements.
+        Integer array of shape (n_rows, k) (or (n_rows, n_pool) when k >= n_pool)
+        containing selected pool elements.
     """
     n_pool = len(pool)
-    # Draw one priority matrix: shape (n_rows, n_pool).
-    priorities = rng.random((n_rows, n_pool))
-    # argpartition gives the indices of the k smallest values per row;
-    # negate to get the k largest (top-k).
-    top_k_local = np.argpartition(-priorities, k - 1, axis=1)[:, :k]
+    if k >= n_pool:
+        # Return all pool elements for every row (broadcast, no RNG).
+        return np.broadcast_to(pool, (n_rows, n_pool)).copy()
+
+    # Draw local indices: shape (n_rows, k), values in [0, n_pool).
+    idx = rng.integers(0, n_pool, size=(n_rows, k))
+
+    # Rejection sampling: resample rows that contain within-row duplicates.
+    # For k << n_pool duplicates are rare; convergence is typically 1-2 iters.
+    for _ in range(1000):
+        srt = np.sort(idx, axis=1)
+        bad = (np.diff(srt, axis=1) == 0).any(axis=1)
+        if not bad.any():
+            break
+        bad_rows = np.where(bad)[0]
+        idx[bad_rows] = rng.integers(0, n_pool, size=(bad_rows.size, k))
+
     # Convert local pool indices to actual pool values (firm/bank ids).
-    return pool[top_k_local]
+    return pool[idx]
 
 
 def trim_mean(values: list[float], pct: float = 0.05) -> float:
