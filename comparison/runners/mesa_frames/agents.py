@@ -135,9 +135,13 @@ class Households(mf.AgentSetPolars):
     ``job_app_0 .. job_app_{max_M-1}`` plus a ``job_app_head`` index, matching
     the application-queue pattern in the model reference (SPEC section 6).
 
-    Object-valued attributes from the Mesa port that are not yet needed
-    (``largest_prod_prev``, ``shop_visits``) are excluded and handled in later
-    tasks.
+    The goods-market visit queue (Mesa port's per-consumer ``shop_visits`` list)
+    is stored as a fixed-width ``-1``-padded matrix of ``max_Z`` columns
+    ``shop_visit_0 .. shop_visit_{max_Z-1}`` (firm unique_ids) plus a
+    ``shop_visit_count`` column tracking how many slots are actually filled.
+    Loyalty is tracked via ``largest_prod_prev``: the firm unique_id of the
+    largest producer visited last period (``-1`` = none), mirroring the Mesa
+    port's ``Household.largest_prod_prev`` attribute.
     """
 
     def __init__(
@@ -151,6 +155,7 @@ class Households(mf.AgentSetPolars):
 
         savings_init: float = float(params["savings_init"])
         max_M: int = int(params["max_M"])
+        max_Z: int = int(params["max_Z"])
         ids = _alloc_ids(model, n)
 
         data = {
@@ -167,6 +172,9 @@ class Households(mf.AgentSetPolars):
             "savings": [savings_init] * n,
             "income_to_spend": [0.0] * n,
             "propensity": [0.0] * n,
+            # Loyalty: firm unique_id of the largest producer visited last period.
+            # -1 = none (mirrors Mesa port's Household.largest_prod_prev = None).
+            "largest_prod_prev": [-1] * n,
             # Shareholder columns
             "dividends": [0.0] * n,
             # Job-application queue (-1-padded targets + head index).
@@ -184,12 +192,17 @@ class Households(mf.AgentSetPolars):
             "savings": pl.Float64,
             "income_to_spend": pl.Float64,
             "propensity": pl.Float64,
+            "largest_prod_prev": pl.Int64,
             "dividends": pl.Float64,
             "job_app_head": pl.Int64,
         }
         for k in range(max_M):
             data[f"job_app_{k}"] = [-1] * n
             schema[f"job_app_{k}"] = pl.Int64
+        # Shop-visit queue (-1-padded firm ids), populated by event 27.
+        for k in range(max_Z):
+            data[f"shop_visit_{k}"] = [-1] * n
+            schema[f"shop_visit_{k}"] = pl.Int64
 
         df = pl.DataFrame(data, schema=schema)
         self.add(df)

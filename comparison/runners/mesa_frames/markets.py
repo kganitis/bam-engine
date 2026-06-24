@@ -290,3 +290,86 @@ def run_credit_market(model: BAMModel) -> None:
             },
         )
         model.loans = pl.concat([model.loans, new_loans], how="vertical")
+
+
+def run_goods_market(model: BAMModel) -> None:
+    """Event 28 (x1): strictly-sequential goods market matching.
+
+    Faithful translation of the Mesa port's ``run_goods_market`` in
+    ``comparison/runners/mesa/markets.py``.
+
+    Buyers are shuffled ONCE via ``model.random.shuffle`` (the same shuffle
+    point as the Mesa port), then processed one at a time.  Each buyer walks
+    its price-sorted ``shop_visit_0..shop_visit_{max_Z-1}`` targets fully
+    before the next buyer acts, decrementing firm inventory IMMEDIATELY so
+    subsequent buyers see the current stock.  A rationed buyer overflows to its
+    next firm within its own turn.
+
+    RNG: ONE ``model.random.shuffle`` on the list of active buyer row-indices,
+    drawn at the same point as the Mesa port's ``model.random.shuffle(buyers)``.
+    No per-buyer or per-visit draws.
+
+    The DataFrames are read into Python lists once, the loop runs entirely in
+    Python (cannot be vectorized -- see GOODS_MARKET_VECTORIZATION.md), and the
+    firm inventory and household income_to_spend columns are written back once
+    at the end.
+    """
+    max_Z: int = int(model.p["max_Z"])
+    rng = model.random
+
+    hdf = model.households.agents
+    fdf = model.firms.agents
+
+    # --- Household-side state (row-indexed parallel lists). ---
+    income_to_spend: list[float] = [float(b) for b in hdf["income_to_spend"]]
+    # Shop-visit queues: list of max_Z columns, each a list of firm unique_ids.
+    visit_cols: list[list[int]] = [
+        hdf[f"shop_visit_{k}"].to_list() for k in range(max_Z)
+    ]
+
+    # --- Firm-side state (mapped by firm unique_id). ---
+    firm_ids: list[int] = fdf["unique_id"].to_list()
+    # inventory and price as dicts for O(1) lookup by firm unique_id.
+    inventory: dict[int, float] = dict(
+        zip(firm_ids, (float(v) for v in fdf["inventory"]), strict=True)
+    )
+    price_of: dict[int, float] = dict(
+        zip(firm_ids, (float(p) for p in fdf["price"]), strict=True)
+    )
+
+    # --- Gather active buyers (those with income_to_spend > EPS). ---
+    # Mirror the Mesa port: ``buyers = [h for h in model.households if h.income_to_spend > EPS]``
+    buyers: list[int] = [i for i, b in enumerate(income_to_spend) if b > EPS]
+    if not buyers:
+        return
+
+    # --- Shuffle buyers ONCE via model.random -- IDENTICAL shuffle point to Mesa port. ---
+    rng.shuffle(buyers)
+
+    # --- Sequential shopping loop (mirrors Mesa port exactly). ---
+    for i in buyers:
+        for k in range(max_Z):
+            if income_to_spend[i] <= EPS:
+                break
+            fid = visit_cols[k][i]
+            if fid < 0:
+                break  # end of this buyer's visit list
+            if inventory.get(fid, 0.0) <= EPS:
+                continue
+            qty = min(income_to_spend[i] / price_of[fid], inventory[fid])
+            spent = qty * price_of[fid]
+            income_to_spend[i] -= spent
+            inventory[fid] -= qty
+
+    # --- Write household-side results back (income_to_spend updated by spending). ---
+    model.households.agents = hdf.with_columns(
+        pl.Series("income_to_spend", income_to_spend, dtype=pl.Float64)
+    )
+
+    # --- Write firm-side results back (inventory depleted by sales). ---
+    model.firms.agents = fdf.with_columns(
+        pl.col("unique_id")
+        .replace_strict(inventory, default=None)
+        .cast(pl.Float64)
+        .alias("inventory")
+    )
