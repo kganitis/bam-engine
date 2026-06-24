@@ -4,7 +4,8 @@ runtests.jl - Julia test harness for the Agents.jl BAM runner.
 Run with:
     julia --project=comparison/runners/agentsjl --startup-file=no comparison/runners/agentsjl/test/runtests.jl
 
-Tests are added here as the BAM model implementation progresses (Tasks 2-9).
+Tests cover the complete Agents.jl BAM runner (all phases: planning, labor,
+credit, production, goods market, bankruptcy and entry).
 """
 
 using Test
@@ -792,8 +793,23 @@ include(joinpath(@__DIR__, "..", "model.jl"))
         forced_bankrupt_bank_id = bank_ids_sorted[1]
         variant(model[forced_bankrupt_bank_id]).equity_base = -1.0   # below EPS
 
+        # --- Inject synthetic loans to make the loan-pruning assertion meaningful. ---
+        # One loan whose borrower is a forced-bankrupt firm (should be pruned by event 34).
+        push!(model.loans, Loan(5.0, 0.03, forced_bankrupt_firm_ids[1], bank_ids_sorted[2]))
+        # One loan whose lender is the forced-bankrupt bank (should be pruned by event 35).
+        push!(model.loans, Loan(3.0, 0.02, firm_ids_sorted[end], forced_bankrupt_bank_id))
+        @test length(model.loans) >= 2   # sanity: at least the injected loans exist
+
         # --- Run bankruptcy + entry. ---
         _bankruptcy_entry!(model)
+
+        # M3 loan-pruning: no loan in the book should reference a forced-bankrupt
+        # firm as borrower OR a forced-bankrupt bank as lender.
+        bankrupt_firm_set = Set(forced_bankrupt_firm_ids)
+        for loan in model.loans
+            @test !(loan.borrower_id in bankrupt_firm_set)
+            @test loan.lender_id != forced_bankrupt_bank_id
+        end
 
         # 1. Population constant per kind.
         @test count(a -> variantof(a) === Firm,      allagents(model)) == n_firms

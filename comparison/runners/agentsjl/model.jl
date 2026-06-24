@@ -254,9 +254,12 @@ Formula (Mesa `Firm.decide_desired_production`):
 
 RNG alignment with Mesa: Mesa iterates `self.firms` (insertion order, same as
 agent-creation order); each call to `model.random.uniform(0, h_rho)` consumes
-one draw. Here we iterate `allagents(model)` filtering by `Firm` variant, which
-yields firms in the same id-ascending (creation) order, and call
-`rand(abmrng(model))` once per firm - preserving the same draw sequence.
+one draw. Here we iterate `allagents(model)` filtering by `Firm` variant; note
+that `StandardABM` stores agents in a `Dict`, so `allagents` yields them in Dict
+(hash) order, NOT id-ascending order. Order-sensitive phases (e.g. events 10, 17,
+27) explicitly `sort!` the id pool before sampling to guarantee a deterministic
+draw sequence. This event calls `rand(abmrng(model))` once per firm regardless of
+iteration order, so the total draw count matches Mesa.
 """
 function _event1_zero_production_and_shock!(model)
     p_avg = model.avg_mkt_price
@@ -547,10 +550,12 @@ Formula (Mesa `Firm.decide_wage_offer`):
   * `wage_offer *= (1 + shock)`
   * `wage_offer = max(wage_offer, min_wage)`
 
-RNG alignment with Mesa: one `rand(rng)` per firm WITH vacancies, in
-agent/creation order, matching Mesa's `self.firms` iteration where the
-`uniform(0, h_xi)` draw is taken only in the `n_vacancies > 0` branch. Firms
-without vacancies consume no draw in either implementation.
+RNG alignment with Mesa: one `rand(rng)` per firm WITH vacancies, matching
+Mesa's `self.firms` iteration where the `uniform(0, h_xi)` draw is taken only in
+the `n_vacancies > 0` branch. `allagents` iterates in Dict (hash) order here,
+not creation order; because every firm that has vacancies consumes exactly one
+draw regardless of visit order, the total draw count matches Mesa.
+Firms without vacancies consume no draw in either implementation.
 """
 function _event9_decide_wage_offer!(model)
     h_xi = model.params["h_xi"]
@@ -586,15 +591,18 @@ RNG alignment with Mesa: Mesa uses `model.random.sample(pool, M_eff)` (one
 sample draw per unemployed worker, in `self.households` creation order). Here we
 take a copy of the firm-id pool, `shuffle!` it once with `abmrng`, and take the
 first `M_eff` ids - the same sample-without-replacement distribution and the
-same single-draw-per-worker cadence in the same worker order. (This mirrors the
-shuffle-and-take approach already used for event 6 firing.)
+same single-draw-per-worker cadence. `allagents` iterates in Dict (hash) order
+(not creation order); the firm-id pool is `sort!`-ed before sampling so the draw
+sequence is deterministic regardless of `allagents` iteration order. (This
+mirrors the shuffle-and-take approach already used for event 6 firing.)
 """
 function _event10_decide_firms_to_apply!(model)
     rng = abmrng(model)
     max_M = Int(round(model.params["max_M"]))
 
-    # Pool of all firm ids, in ascending creation order (matches Mesa's
-    # snapshotted `_firms_list`).
+    # Pool of all firm ids, sorted ascending by id. `allagents` yields agents in
+    # Dict (hash) order, not creation order; `sort!` here makes the pool
+    # deterministic so the subsequent `shuffle!` draw sequence is reproducible.
     pool = sort!([a.id for a in allagents(model) if variantof(a) === Firm])
     pool_set = Set(pool)
     npool = length(pool)
@@ -751,8 +759,10 @@ This is the POSTED rate (Flag 5): it ranks banks during application preparation.
 The CONTRACT rate charged on an actual loan is fragility-scaled and computed in
 event 18 (see `_run_credit_market!`).
 
-RNG alignment with Mesa: one `rand(rng)` per bank, in bank creation order,
-matching Mesa's `self.banks` iteration with one `uniform(0, h_phi)` draw each.
+RNG alignment with Mesa: one `rand(rng)` per bank, matching Mesa's `self.banks`
+iteration with one `uniform(0, h_phi)` draw each. `banks(model)` iterates in
+Dict (hash) order, not creation order; because every bank consumes exactly one
+draw, the total draw count matches Mesa regardless of iteration order.
 """
 function _event14_decide_interest_rate!(model)
     h_phi = model.params["h_phi"]
@@ -829,16 +839,20 @@ RNG alignment with Mesa: Mesa uses `model.random.sample(lenders, H_eff)` (one
 sample draw per applying firm, in `self.firms` creation order). Here we take a
 copy of the eligible-lender id list, `shuffle!` it once with `abmrng`, and take
 the first `H_eff` ids - the same sample-without-replacement distribution and the
-same single-draw-per-firm cadence in the same firm order (mirrors the
-shuffle-and-take approach used for events 6 and 10). Firms with no credit demand
-consume no draw in either implementation.
+same single-draw-per-firm cadence. `allagents` iterates in Dict (hash) order
+(not creation order); the lender pool is `sort!`-ed and the firm scan happens in
+hash order, but each applying firm consumes exactly one shuffle draw, so the
+total draw count matches Mesa (mirrors the shuffle-and-take approach used for
+events 6 and 10). Firms with no credit demand consume no draw in either
+implementation.
 """
 function _event17_prepare_loan_applications!(model)
     rng = abmrng(model)
     max_H = Int(round(model.params["max_H"]))
 
-    # Eligible lenders: bank ids with positive supply, in ascending creation
-    # order (matches Mesa's `self.banks` iteration order before sampling).
+    # Eligible lenders: bank ids with positive supply, sorted ascending by id.
+    # `banks(model)` iterates in Dict (hash) order; `sort!` makes the pool
+    # deterministic so the subsequent per-firm `shuffle!` draws are reproducible.
     lenders = sort!([b.id for b in banks(model) if variant(b).credit_supply > 0.0])
     n_lenders = length(lenders)
 
@@ -884,8 +898,10 @@ Formula (Mesa `Firm.fire_workers_for_gap`):
     `current_labor -= 1`; remove id from `employee_ids`; `wage_bill -= wage`
 
 RNG alignment with Mesa: one `shuffle!(rng, employee_ids)` per firm WITH a gap,
-in firm creation order, matching Mesa's `model.random.shuffle(employees_list)`.
-Reuses the event-6 firing field pattern.
+matching Mesa's `model.random.shuffle(employees_list)`. `allagents` iterates in
+Dict (hash) order, not creation order; because each firm with a gap consumes
+exactly one shuffle draw, the total draw count matches Mesa regardless of visit
+order. Reuses the event-6 firing field pattern.
 """
 function _event19_fire_workers_for_gap!(model)
     rng = abmrng(model)
@@ -1236,7 +1252,8 @@ target for the next period.
 
 Formula (Mesa `Household.decide_firms_to_visit`):
   * if `income_to_spend <= eps`: `shop_visits = []`; return
-  * pool = ALL firm ids (id-ascending / creation order); `Z = min(max_Z, |pool|)`
+  * pool = ALL firm ids, sorted ascending by id (NOT iteration/Dict-hash order);
+    `Z = min(max_Z, |pool|)`
   * sample Z firm ids WITHOUT replacement: shuffle a copy, take front Z ids
     (same pattern as events 10 and 17)
   * loyalty (always applied): if `largest_prod_prev_id != NO_AGENT` and that id
@@ -1252,16 +1269,18 @@ Note: `consumer_matching` param is NOT stored in `params` (which is
 the loyalty rule is applied unconditionally here, matching Mesa's default
 `"loyalty"` path.
 
-RNG: one `shuffle!` per household with positive budget, in household creation
-order, matching Mesa's single `model.random.sample(all_firms, Z)` per household.
+RNG: one `shuffle!` per household with positive budget. `households(model)`
+iterates in Dict (hash) order, not creation order; the firm-id pool is `sort!`-ed
+before sampling so each household's draw sequence is deterministic. Matches
+Mesa's single `model.random.sample(all_firms, Z)` per household.
 """
 function _event27_decide_firms_to_visit!(model)
     eps   = model.eps
     rng   = abmrng(model)
     max_Z = Int(round(model.params["max_Z"]))
 
-    # Pool of all firm ids in ascending creation order (matches Mesa's
-    # snapshotted `_firms_list`).
+    # Pool of all firm ids, sorted ascending by id. `allagents` yields in Dict
+    # (hash) order; `sort!` makes the pool deterministic for reproducible draws.
     pool = sort!([a.id for a in allagents(model) if variantof(a) === Firm])
     npool = length(pool)
 
