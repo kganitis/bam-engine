@@ -1464,3 +1464,295 @@ class TestGoodsMarket:
             # income_to_spend zeroed after finalize.
             assert (hdf_after["income_to_spend"] == 0.0).all()
             model._revenue()
+
+
+class TestBankruptcyEntry:
+    """Invariant tests for _bankruptcy_entry() (events 33-37)."""
+
+    def _run_through_revenue(self, seed: int = SEED):
+        """Helper: run all phases through revenue (ready for bankruptcy)."""
+        model = make_model(seed=seed)
+        model._planning()
+        model._labor_market()
+        model._credit_market()
+        model._production()
+        model._goods_market()
+        model._revenue()
+        return model
+
+    def test_population_constant_after_bankruptcy(self):
+        """Population counts must not change after _bankruptcy_entry()."""
+        model = self._run_through_revenue()
+        n_firms_before = len(model.firms.agents)
+        n_hh_before = len(model.households.agents)
+        n_banks_before = len(model.banks.agents)
+        model._bankruptcy_entry()
+        assert len(model.firms.agents) == n_firms_before
+        assert len(model.households.agents) == n_hh_before
+        assert len(model.banks.agents) == n_banks_before
+
+    def test_event33_net_worth_update(self):
+        """Event 33: net_worth += retained_profit; total_funds = max(net_worth, 0)."""
+        model = self._run_through_revenue()
+        fdf_before = model.firms.agents.clone()
+        model._event33_update_net_worth()
+        fdf_after = model.firms.agents
+        for row_b, row_a in zip(
+            fdf_before.iter_rows(named=True),
+            fdf_after.iter_rows(named=True),
+            strict=True,
+        ):
+            expected_nw = row_b["net_worth"] + row_b["retained_profit"]
+            expected_tf = max(expected_nw, 0.0)
+            assert abs(row_a["net_worth"] - expected_nw) < 1e-9, (
+                f"firm {row_b['unique_id']}: net_worth mismatch"
+            )
+            assert abs(row_a["total_funds"] - expected_tf) < 1e-9, (
+                f"firm {row_b['unique_id']}: total_funds mismatch"
+            )
+
+    def test_replacement_firms_have_positive_net_worth(self):
+        """Replacement firms must have positive net worth (cannot be re-ghosted)."""
+        model = make_model(seed=SEED)
+        # Force some firms to be insolvent (net_worth < 0).
+        fdf = model.firms.agents
+        n = len(fdf)
+        nw_vals = [-1.0 if i < n // 3 else float(fdf["net_worth"][i]) for i in range(n)]
+        prod_prev_vals = [
+            0.5 if i < n // 3 else float(fdf["production_prev"][i]) for i in range(n)
+        ]
+        model.firms.agents = fdf.with_columns(
+            pl.Series("net_worth", nw_vals, dtype=pl.Float64),
+            pl.Series("production_prev", prod_prev_vals, dtype=pl.Float64),
+            pl.Series("retained_profit", [0.0] * n, dtype=pl.Float64),
+            pl.Series("total_funds", [max(v, 0.0) for v in nw_vals], dtype=pl.Float64),
+        )
+        model._mark_bankrupt_and_replace()
+        if model.collapsed:
+            pytest.skip("model collapsed (all firms bankrupt)")
+        fdf_after = model.firms.agents
+        # Every replacement firm must have net_worth > 0.
+        for i in range(n // 3):
+            nw = float(fdf_after["net_worth"][i])
+            assert nw > 0.0, f"replacement firm {i} has non-positive net_worth {nw}"
+
+    def test_workers_of_bankrupt_firms_become_unemployed(self):
+        """Workers employed by bankrupt firms must be unemployed after replacement."""
+        model = make_model(seed=SEED)
+        # Run planning + labor so there are employed workers.
+        model._planning()
+        model._labor_market()
+        model._credit_market()
+        model._production()
+        model._goods_market()
+        model._revenue()
+
+        fdf = model.firms.agents
+        hdf = model.households.agents
+
+        # Force the first firm to be bankrupt (net_worth < EPS, production_prev > 0).
+        firm_ids = fdf["unique_id"].to_list()
+        target_firm_id = int(firm_ids[0])
+
+        # Check if the target firm has employees.
+        employees_of_target = [
+            int(e) == target_firm_id for e in hdf["employer"].to_list()
+        ]
+        n_employees = sum(employees_of_target)
+        if n_employees == 0:
+            pytest.skip("target firm has no employees under this seed")
+
+        nw_vals = [
+            -1.0 if int(fid) == target_firm_id else float(nw)
+            for fid, nw in zip(
+                fdf["unique_id"].to_list(), fdf["net_worth"].to_list(), strict=True
+            )
+        ]
+        model.firms.agents = fdf.with_columns(
+            pl.Series("net_worth", nw_vals, dtype=pl.Float64),
+            pl.Series("retained_profit", [0.0] * len(fdf), dtype=pl.Float64),
+        )
+        # Run just event33 (net worth update) then mark_bankrupt_and_replace.
+        model._event33_update_net_worth()
+        model._mark_bankrupt_and_replace()
+
+        if model.collapsed:
+            pytest.skip("model collapsed")
+
+        hdf_after = model.households.agents
+        # Workers that were employed at the target firm must now be unemployed.
+        for i, was_target_employee in enumerate(employees_of_target):
+            if was_target_employee:
+                emp_after = int(hdf_after["employer"][i])
+                assert emp_after == -1, (
+                    f"worker {i} was employed at bankrupt firm {target_firm_id} "
+                    f"but still has employer={emp_after} after bankruptcy"
+                )
+
+    def test_bankrupt_firm_workers_have_zero_wage(self):
+        """Fired workers of bankrupt firms must have wage=0 after replacement."""
+        model = make_model(seed=SEED)
+        model._planning()
+        model._labor_market()
+        model._credit_market()
+        model._production()
+        model._goods_market()
+        model._revenue()
+
+        fdf = model.firms.agents
+        hdf = model.households.agents
+        firm_ids = fdf["unique_id"].to_list()
+        target_firm_id = int(firm_ids[0])
+
+        employees_of_target = [
+            int(e) == target_firm_id for e in hdf["employer"].to_list()
+        ]
+        if not any(employees_of_target):
+            pytest.skip("target firm has no employees under this seed")
+
+        nw_vals = [
+            -1.0 if int(fid) == target_firm_id else float(nw)
+            for fid, nw in zip(
+                fdf["unique_id"].to_list(), fdf["net_worth"].to_list(), strict=True
+            )
+        ]
+        model.firms.agents = fdf.with_columns(
+            pl.Series("net_worth", nw_vals, dtype=pl.Float64),
+            pl.Series("retained_profit", [0.0] * len(fdf), dtype=pl.Float64),
+        )
+        model._event33_update_net_worth()
+        model._mark_bankrupt_and_replace()
+
+        if model.collapsed:
+            pytest.skip("model collapsed")
+
+        hdf_after = model.households.agents
+        for i, was_target_employee in enumerate(employees_of_target):
+            if was_target_employee:
+                w = float(hdf_after["wage"][i])
+                assert w == 0.0, f"worker {i} still has wage={w} after bankruptcy"
+
+    def test_replacement_bank_clones_survivor_equity(self):
+        """Replacement banks must have equity cloned from a surviving bank."""
+        model = make_model(seed=SEED)
+        bdf = model.banks.agents
+        n_banks = len(bdf)
+        if n_banks < 2:
+            pytest.skip("need at least 2 banks for this test")
+
+        # Force the first bank to be insolvent.
+        bank_ids = bdf["unique_id"].to_list()
+        target_bank_id = int(bank_ids[0])
+        survivor_equities = [
+            float(eq)
+            for bid, eq in zip(
+                bdf["unique_id"].to_list(), bdf["equity_base"].to_list(), strict=True
+            )
+            if int(bid) != target_bank_id
+        ]
+
+        eq_vals = [
+            -1.0 if int(bid) == target_bank_id else float(eq)
+            for bid, eq in zip(
+                bdf["unique_id"].to_list(), bdf["equity_base"].to_list(), strict=True
+            )
+        ]
+        model.banks.agents = bdf.with_columns(
+            pl.Series("equity_base", eq_vals, dtype=pl.Float64)
+        )
+        # Also need some firms that are NOT bankrupt (net_worth > 0).
+        fdf = model.firms.agents
+        model.firms.agents = fdf.with_columns(
+            pl.Series("retained_profit", [0.0] * len(fdf), dtype=pl.Float64)
+        )
+        model._mark_bankrupt_and_replace()
+
+        if model.collapsed:
+            pytest.skip("model collapsed")
+
+        bdf_after = model.banks.agents
+        replacement_eq = float(
+            bdf_after.filter(pl.col("unique_id") == target_bank_id)["equity_base"][0]
+        )
+        # Replacement equity must be one of the survivors' equity values.
+        assert any(abs(replacement_eq - seq) < 1e-9 for seq in survivor_equities), (
+            f"replacement bank equity {replacement_eq} not found in survivors "
+            f"{survivor_equities}"
+        )
+
+    def test_full_step_with_bankruptcy_runs_without_error(self):
+        """step() including _bankruptcy_entry() completes without raising."""
+        model = make_model(seed=SEED)
+        model.step()
+        assert model.period == 1
+        assert not model.collapsed
+
+    def test_multi_step_population_constant(self):
+        """Population remains constant across multiple full steps."""
+        model = make_model(seed=5)
+        for _ in range(5):
+            model.step()
+            if model.collapsed:
+                break
+            assert len(model.firms.agents) == N_FIRMS
+            assert len(model.households.agents) == N_HOUSEHOLDS
+            assert len(model.banks.agents) == N_BANKS
+
+    def test_bankruptcy_entry_deterministic(self):
+        """Same seed produces identical state after a full step with bankruptcy."""
+        m1 = make_model(seed=7)
+        m2 = make_model(seed=7)
+        m1.step()
+        m2.step()
+        if m1.collapsed or m2.collapsed:
+            pytest.skip("model collapsed under this seed")
+        for col in ["net_worth", "total_funds", "production", "production_prev"]:
+            assert (m1.firms.agents[col] == m2.firms.agents[col]).all(), (
+                f"column {col} differs between identical seeds after step()"
+            )
+
+    def test_ghost_firm_replaced(self):
+        """A firm with production_prev <= 0 (ghost) is treated as bankrupt."""
+        model = make_model(seed=SEED)
+        fdf = model.firms.agents
+        n = len(fdf)
+        # Set first firm to be a ghost (production_prev=0) but positive net_worth.
+        prod_prev_vals = [
+            0.0 if i == 0 else float(fdf["production_prev"][i]) for i in range(n)
+        ]
+        model.firms.agents = fdf.with_columns(
+            pl.Series("production_prev", prod_prev_vals, dtype=pl.Float64),
+            pl.Series("retained_profit", [0.0] * n, dtype=pl.Float64),
+        )
+        model._mark_bankrupt_and_replace()
+        if model.collapsed:
+            pytest.skip("model collapsed")
+        fdf_after = model.firms.agents
+        # Ghost firm (index 0) must have been replaced: production_prev > 0.
+        new_prod_prev = float(fdf_after["production_prev"][0])
+        assert new_prod_prev > 0.0, (
+            f"ghost firm was not replaced: production_prev={new_prod_prev}"
+        )
+
+    def test_collapse_detection_all_firms_bankrupt(self):
+        """All firms bankrupt triggers collapse."""
+        model = make_model(seed=SEED)
+        fdf = model.firms.agents
+        n = len(fdf)
+        model.firms.agents = fdf.with_columns(
+            pl.Series("net_worth", [-1.0] * n, dtype=pl.Float64),
+            pl.Series("production_prev", [-1.0] * n, dtype=pl.Float64),
+            pl.Series("retained_profit", [0.0] * n, dtype=pl.Float64),
+        )
+        model._mark_bankrupt_and_replace()
+        assert model.collapsed
+
+    def test_trim_mean_helper(self):
+        """trim_mean removes pct from each tail and averages the rest."""
+        from comparison.runners.mesa_frames.model import trim_mean
+
+        assert trim_mean([]) == 0.0
+        assert trim_mean([1.0, 2.0, 3.0, 4.0, 5.0], pct=0.0) == pytest.approx(3.0)
+        # 10 values, 5% from each tail = 0 trimmed (k=0 when n*pct<1).
+        vals = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
+        assert trim_mean(vals, pct=0.1) == pytest.approx(5.5)

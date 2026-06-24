@@ -15,6 +15,20 @@ from comparison.runners.mesa_frames.markets import (
 EPS = 1e-9
 
 
+def trim_mean(values: list[float], pct: float = 0.05) -> float:
+    """Compute trimmed mean, removing pct fraction from each tail.
+
+    Translated directly from the Mesa port's trim_mean helper (mesa/model.py:17).
+    """
+    if not values:
+        return 0.0
+    sorted_vals = sorted(values)
+    n = len(sorted_vals)
+    k = int(n * pct)
+    trimmed = sorted_vals[k : n - k] if n - 2 * k > 0 else sorted_vals
+    return sum(trimmed) / len(trimmed)
+
+
 def empty_loan_book() -> pl.DataFrame:
     """An empty loan relationship table with the canonical schema.
 
@@ -1417,6 +1431,309 @@ class BAMModel(mf.ModelDF):
             pl.lit(div_per_hh).alias("dividends"),
         )
 
+    # ------------------------------------------------------------------
+    # Phase 7-8: bankruptcy detection and entry (events 33-37)
+    # ------------------------------------------------------------------
+
+    def _mark_bankrupt_and_replace(self) -> None:
+        """Events 34-37: detect and replace bankrupt firms and banks.
+
+        Translated directly from the Mesa port's _mark_bankrupt_and_replace
+        (mesa/model.py:247-338).  The logic, formula, and RNG draw order are
+        preserved exactly to keep the observable economics consistent.
+
+        Firm bankruptcy (event 34): insolvent (net_worth < EPS) OR ghost
+        (production_prev <= EPS).  Fire all employees of bankrupt firms: set
+        employer=-1, employer_prev=-1, wage=0, periods_left=0,
+        contract_expired=False, fired=False.  Purge their loans.
+
+        Bank bankruptcy (event 35): equity_base < EPS.  Purge loans they issued
+        from surviving firms.
+
+        Collapse (event 36/37 preamble): if ALL firms OR ALL banks exit, set
+        self.collapsed=True and return early.
+
+        Firm replacement (event 36): surviving-firm 5%-trimmed means of
+        net_worth, production_prev, and employed wages.  Each exiting firm reset:
+          net_worth = total_funds = mean_net * new_firm_size_factor
+          profits / credit_demand / fragility = 0
+          production = production_prev = mean_prod * new_firm_production_factor
+          inventory = expected_demand = desired_production = 0
+          price = avg_mkt_price * new_firm_price_markup
+          current_labor = desired_labor = n_vacancies = 0
+          wage_bill = 0
+          wage_offer = max(mean_wage * new_firm_wage_factor, min_wage)
+          loans cleared
+
+        Bank replacement (event 37): each exiting bank clones a RANDOM surviving
+        bank's equity_base; credit_supply=0, interest_rate=0.
+        RNG: one self.random.choice per exiting bank -- same draw structure as the
+        Mesa port's model.random.choice(survivor_banks).
+
+        Identity/unique_id: bankrupt firms and banks are RESET IN PLACE; their
+        unique_id rows are overwritten but the id does not change.  This matches
+        the Mesa port (agents are reset in-place, never removed or added), keeps
+        the employer relation intact for future hiring, and maintains constant
+        population size throughout the run.
+        """
+        eps = self.EPS
+        fdf = self.firms.agents
+        hdf = self.households.agents
+        bdf = self.banks.agents
+
+        # ------------------------------------------------------------------
+        # Event 34: identify exiting firms (insolvent OR ghost).
+        # ------------------------------------------------------------------
+        firm_bankrupt_mask = (fdf["net_worth"] < eps) | (fdf["production_prev"] <= eps)
+        exiting_firm_ids = set(fdf.filter(firm_bankrupt_mask)["unique_id"].to_list())
+
+        if exiting_firm_ids:
+            # Fire all employees of bankrupt firms.
+            # Matches the Mesa port: employer=None (here -1), employer_prev=None
+            # (here -1), wage=0, periods_left=0, contract_expired=False, fired=False.
+            # Note: bankruptcy firing uses -1 for employer_prev (not the firm id) --
+            # matches the Mesa port exactly (spec event 34).
+            fired_mask = pl.Series(
+                "mask",
+                [int(e) in exiting_firm_ids for e in hdf["employer"].to_list()],
+                dtype=pl.Boolean,
+            )
+            if fired_mask.any():
+                hdf = hdf.with_columns(
+                    pl.when(fired_mask)
+                    .then(pl.lit(-1, dtype=pl.Int64))
+                    .otherwise(pl.col("employer"))
+                    .alias("employer"),
+                    pl.when(fired_mask)
+                    .then(pl.lit(-1, dtype=pl.Int64))
+                    .otherwise(pl.col("employer_prev"))
+                    .alias("employer_prev"),
+                    pl.when(fired_mask)
+                    .then(pl.lit(0.0))
+                    .otherwise(pl.col("wage"))
+                    .alias("wage"),
+                    pl.when(fired_mask)
+                    .then(pl.lit(0, dtype=pl.Int64))
+                    .otherwise(pl.col("periods_left"))
+                    .alias("periods_left"),
+                    pl.when(fired_mask)
+                    .then(pl.lit(False))
+                    .otherwise(pl.col("contract_expired"))
+                    .alias("contract_expired"),
+                    pl.when(fired_mask)
+                    .then(pl.lit(False))
+                    .otherwise(pl.col("fired"))
+                    .alias("fired"),
+                )
+                self.households.agents = hdf
+
+            # Purge loans of bankrupt firms (remove their rows from loan table).
+            if len(self.loans) > 0:
+                self.loans = self.loans.filter(
+                    ~pl.col("borrower_id").is_in(list(exiting_firm_ids))
+                )
+
+        # ------------------------------------------------------------------
+        # Event 35: identify exiting banks (negative equity).
+        # ------------------------------------------------------------------
+        bank_bankrupt_mask = bdf["equity_base"] < eps
+        exiting_bank_ids = set(bdf.filter(bank_bankrupt_mask)["unique_id"].to_list())
+
+        if exiting_bank_ids:
+            # Drop loans issued by bankrupt banks from surviving firms' loan books.
+            if len(self.loans) > 0:
+                self.loans = self.loans.filter(
+                    ~pl.col("lender_id").is_in(list(exiting_bank_ids))
+                )
+
+        # ------------------------------------------------------------------
+        # Collapse check: all firms OR all banks exiting.
+        # ------------------------------------------------------------------
+        n_firms_total = len(fdf)
+        n_banks_total = len(bdf)
+        if (
+            len(exiting_firm_ids) == n_firms_total
+            or len(exiting_bank_ids) == n_banks_total
+        ):
+            self.collapsed = True
+            return
+
+        # ------------------------------------------------------------------
+        # Event 36: replace each exiting firm in place.
+        # ------------------------------------------------------------------
+        survivor_firm_ids = set(fdf["unique_id"].to_list()) - exiting_firm_ids
+        survivor_fdf = fdf.filter(pl.col("unique_id").is_in(list(survivor_firm_ids)))
+        survivor_net_worths = survivor_fdf["net_worth"].to_list()
+        survivor_productions = survivor_fdf["production_prev"].to_list()
+
+        # Employed wages from all households (not just survivors' employees).
+        hdf_now = self.households.agents
+        employed_wages = [
+            float(w)
+            for emp, w in zip(
+                hdf_now["employer"].to_list(),
+                hdf_now["wage"].to_list(),
+                strict=True,
+            )
+            if int(emp) >= 0 and float(w) > 0.0
+        ]
+
+        mean_net = trim_mean(survivor_net_worths)
+        mean_prod = trim_mean(survivor_productions)
+        mean_wage = trim_mean(employed_wages)
+
+        avg_price = self.avg_mkt_price
+        min_wage = self.min_wage
+
+        nw_val = mean_net * float(self.p["new_firm_size_factor"])
+        prod_val = mean_prod * float(self.p["new_firm_production_factor"])
+        price_val = avg_price * float(self.p["new_firm_price_markup"])
+        wage_val = max(mean_wage * float(self.p["new_firm_wage_factor"]), min_wage)
+
+        if exiting_firm_ids:
+            bankrupt_firm_mask = pl.col("unique_id").is_in(list(exiting_firm_ids))
+            fdf = fdf.with_columns(
+                pl.when(bankrupt_firm_mask)
+                .then(pl.lit(nw_val))
+                .otherwise(pl.col("net_worth"))
+                .alias("net_worth"),
+                pl.when(bankrupt_firm_mask)
+                .then(pl.lit(nw_val))
+                .otherwise(pl.col("total_funds"))
+                .alias("total_funds"),
+                pl.when(bankrupt_firm_mask)
+                .then(pl.lit(0.0))
+                .otherwise(pl.col("gross_profit"))
+                .alias("gross_profit"),
+                pl.when(bankrupt_firm_mask)
+                .then(pl.lit(0.0))
+                .otherwise(pl.col("net_profit"))
+                .alias("net_profit"),
+                pl.when(bankrupt_firm_mask)
+                .then(pl.lit(0.0))
+                .otherwise(pl.col("retained_profit"))
+                .alias("retained_profit"),
+                pl.when(bankrupt_firm_mask)
+                .then(pl.lit(0.0))
+                .otherwise(pl.col("credit_demand"))
+                .alias("credit_demand"),
+                pl.when(bankrupt_firm_mask)
+                .then(pl.lit(0.0))
+                .otherwise(pl.col("projected_fragility"))
+                .alias("projected_fragility"),
+                pl.when(bankrupt_firm_mask)
+                .then(pl.lit(prod_val))
+                .otherwise(pl.col("production"))
+                .alias("production"),
+                pl.when(bankrupt_firm_mask)
+                .then(pl.lit(prod_val))
+                .otherwise(pl.col("production_prev"))
+                .alias("production_prev"),
+                pl.when(bankrupt_firm_mask)
+                .then(pl.lit(0.0))
+                .otherwise(pl.col("inventory"))
+                .alias("inventory"),
+                pl.when(bankrupt_firm_mask)
+                .then(pl.lit(0.0))
+                .otherwise(pl.col("expected_demand"))
+                .alias("expected_demand"),
+                pl.when(bankrupt_firm_mask)
+                .then(pl.lit(0.0))
+                .otherwise(pl.col("desired_production"))
+                .alias("desired_production"),
+                pl.when(bankrupt_firm_mask)
+                .then(pl.lit(price_val))
+                .otherwise(pl.col("price"))
+                .alias("price"),
+                pl.when(bankrupt_firm_mask)
+                .then(pl.lit(0, dtype=pl.Int64))
+                .otherwise(pl.col("current_labor"))
+                .alias("current_labor"),
+                pl.when(bankrupt_firm_mask)
+                .then(pl.lit(0, dtype=pl.Int64))
+                .otherwise(pl.col("desired_labor"))
+                .alias("desired_labor"),
+                pl.when(bankrupt_firm_mask)
+                .then(pl.lit(0, dtype=pl.Int64))
+                .otherwise(pl.col("n_vacancies"))
+                .alias("n_vacancies"),
+                pl.when(bankrupt_firm_mask)
+                .then(pl.lit(0.0))
+                .otherwise(pl.col("wage_bill"))
+                .alias("wage_bill"),
+                pl.when(bankrupt_firm_mask)
+                .then(pl.lit(wage_val))
+                .otherwise(pl.col("wage_offer"))
+                .alias("wage_offer"),
+            )
+            self.firms.agents = fdf
+
+        # ------------------------------------------------------------------
+        # Event 37: replace each exiting bank by cloning a random survivor.
+        # ------------------------------------------------------------------
+        if exiting_bank_ids:
+            survivor_bank_ids = [
+                int(bid)
+                for bid in bdf["unique_id"].to_list()
+                if int(bid) not in exiting_bank_ids
+            ]
+            # Build a map: bank_id -> equity_base for survivors.
+            equity_of = {
+                int(row["unique_id"]): float(row["equity_base"])
+                for row in bdf.iter_rows(named=True)
+                if int(row["unique_id"]) in set(survivor_bank_ids)
+            }
+
+            # One self.random.choice per exiting bank -- same draw structure as the
+            # Mesa port's model.random.choice(survivor_banks) per exiting bank.
+            new_equity_base = []
+            for row in bdf.iter_rows(named=True):
+                bid = int(row["unique_id"])
+                if bid in exiting_bank_ids:
+                    src_id = int(self.random.choice(survivor_bank_ids))
+                    new_equity_base.append(equity_of[src_id])
+                else:
+                    new_equity_base.append(float(row["equity_base"]))
+
+            bankrupt_bank_mask = pl.col("unique_id").is_in(list(exiting_bank_ids))
+            self.banks.agents = bdf.with_columns(
+                pl.Series("equity_base", new_equity_base, dtype=pl.Float64),
+                pl.when(bankrupt_bank_mask)
+                .then(pl.lit(0.0))
+                .otherwise(pl.col("credit_supply"))
+                .alias("credit_supply"),
+                pl.when(bankrupt_bank_mask)
+                .then(pl.lit(0.0))
+                .otherwise(pl.col("interest_rate"))
+                .alias("interest_rate"),
+            )
+
+    def _event33_update_net_worth(self) -> None:
+        """Event 33: net_worth += retained_profit; total_funds = max(net_worth, 0).
+
+        Mesa port: Firm.update_net_worth() (called via firms.do in _bankruptcy_entry).
+          self.net_worth += self.retained_profit
+          self.total_funds = max(self.net_worth, 0)
+
+        No RNG.  Vectorized Polars update.
+        """
+        fdf = self.firms.agents
+        new_nw = pl.col("net_worth") + pl.col("retained_profit")
+        new_tf = pl.max_horizontal(new_nw, pl.lit(0.0))
+        self.firms.agents = fdf.with_columns(
+            new_nw.alias("net_worth"),
+            new_tf.alias("total_funds"),
+        )
+
+    def _bankruptcy_entry(self) -> None:
+        """Phase 7-8: net worth update, bankruptcy detection, and entry (events 33-37).
+
+        Mirrors BamModel._bankruptcy_entry in mesa/model.py:
+          firms.do("update_net_worth") -> _mark_bankrupt_and_replace()
+        """
+        self._event33_update_net_worth()
+        self._mark_bankrupt_and_replace()
+
     def step(self) -> None:
         """Execute one simulation period."""
         if self.collapsed:
@@ -1428,4 +1745,4 @@ class BAMModel(mf.ModelDF):
         self._production()
         self._goods_market()
         self._revenue()
-        # Bankruptcy + entry added in Task 8.
+        self._bankruptcy_entry()
