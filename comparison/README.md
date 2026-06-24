@@ -11,7 +11,7 @@ frameworks that implement the same BAM (Bottom-Up Adaptive Macroeconomics) model
 | bamengine   | `comparison/runners/bamengine/`   | complete          |
 | Mesa        | `comparison/runners/mesa/`        | complete          |
 | mesa-frames | `comparison/runners/mesa_frames/` | complete          |
-| Agents.jl   | `comparison/runners/agentsjl/`    | Plan D (deferred) |
+| Agents.jl   | `comparison/runners/agentsjl/`    | complete          |
 | NetLogo     | `comparison/runners/netlogo/`     | Plan E (deferred) |
 
 Each runner plugs into the harness by registering an entry in `RUNNER_CMD`
@@ -45,6 +45,23 @@ bamengine's environment is never touched. The env is gitignored; rebuild it on a
 fresh checkout before running the `mesa_frames` framework. CI runs the harness
 unit tests only; the multi-framework benchmark (and the mesa-frames env) is run
 locally.
+
+### Agents.jl runner: Julia toolchain
+
+The `agentsjl` runner is a Julia process (not Python). It needs Julia (1.12+,
+e.g. via juliaup) and a one-time package install into a dedicated Julia project:
+
+```bash
+bash comparison/runners/agentsjl/setup_env.sh
+```
+
+This instantiates `comparison/runners/agentsjl/` from its committed
+`Project.toml` + `Manifest.toml` (Agents.jl + JSON3) into the shared `~/.julia`
+depot (nothing repo-local to gitignore). The orchestrator's
+`RUNNER_CMD["agentsjl"]` invokes `julia --project=... run.jl`. Julia compiles on
+first run, so the runner warms up untimed before the timed loop and the
+compilation cost lands in `init_seconds` (timed separately). The benchmark is
+run locally.
 
 ## Running the benchmark
 
@@ -108,9 +125,9 @@ comparison/results/          (default --results-dir)
 Committed `comparison/results/` snapshots serve as the source for the headline
 speed table in `paper/paper.md`.
 
-## Julia and NetLogo runners
+## NetLogo runner
 
-The Agents.jl and NetLogo runners are deferred to Plans D and E respectively.
-They require additional toolchain detection (Julia installation, NetLogo
-headless mode) and are implemented as separate plan items to keep each plan
-self-contained and testable on its own.
+The Agents.jl runner is complete (see the Julia toolchain section above). The
+NetLogo runner is deferred to Plan E; it requires NetLogo headless-mode
+detection and is a separate plan item to keep each plan self-contained and
+testable on its own.
