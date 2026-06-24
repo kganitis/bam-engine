@@ -13,6 +13,12 @@ Tasks covered so far:
   * Task 4: labor-market event functions (events 7-12) and the `_labor_market!`
     dispatcher. The matching round (event 11) lives in `markets.jl`. `bam_step!`
     now runs planning + labor market.
+  * Task 5: credit-market event functions (events 13-19) and the `_credit_market!`
+    dispatcher. The firm-bank matching round (event 18) lives in `markets.jl`.
+    Loans are created into the shared loan book `BAMProperties.loans`; the book
+    persists across periods and is purged at the start of `_credit_market!` (event
+    17 open), matching the Mesa port. `bam_step!` now runs planning + labor +
+    credit. The fire-on-gap step (event 19) reuses the event-6 firing pattern.
 
 Agents.jl v7.0.3 idioms:
   * `@agent struct Variant(NoSpaceAgent) ... end` + `@multiagent BAMAgent(...)`
@@ -639,15 +645,278 @@ function _labor_market!(model)
 end
 
 # ---------------------------------------------------------------------------
+# Credit market phase - event functions (events 13-19)
+# ---------------------------------------------------------------------------
+
+"""
+    _purge_loans!(model)
+
+Event 17 open (loan-book purge): clear the previous period's loans at the START
+of the credit market.
+
+The shared loan book `model.loans` PERSISTS across the planning and labor phases
+so event 2 (`plan_breakeven_price`) can read last period's per-firm interest.
+The Mesa port clears `f.loans = []` for every firm at the very start of
+`_credit_market`; here we empty the single shared vector once, which is exactly
+equivalent (every loan, regardless of borrower, is dropped). New loans for THIS
+period are then pushed during event 18.
+
+No RNG.
+"""
+function _purge_loans!(model)
+    empty!(model.loans)
+    return nothing
+end
+
+"""
+    _event13_decide_credit_supply!(model)
+
+Event 13 (banks_decide_credit_supply): each bank's lending capacity from its
+equity base and the capital-requirement coefficient.
+
+Formula (Mesa `Bank.decide_credit_supply`):
+  * `credit_supply = max(equity_base / v, 0)`
+
+No RNG.
+"""
+function _event13_decide_credit_supply!(model)
+    v = model.params["v"]
+    for b in banks(model)
+        bv = variant(b)
+        bv.credit_supply = max(bv.equity_base / v, 0.0)
+    end
+    return nothing
+end
+
+"""
+    _event14_decide_interest_rate!(model)
+
+Event 14 (banks_decide_interest_rate): each bank draws an operating-expense shock
+and sets its POSTED interest rate (used to rank banks in event 17).
+
+Formula (Mesa `Bank.decide_interest_rate`):
+  * `opex_shock ~ U(0, h_phi)` per bank (one draw per bank in agent order)
+  * `interest_rate = r_bar * (1 + opex_shock)`
+
+This is the POSTED rate (Flag 5): it ranks banks during application preparation.
+The CONTRACT rate charged on an actual loan is fragility-scaled and computed in
+event 18 (see `_run_credit_market!`).
+
+RNG alignment with Mesa: one `rand(rng)` per bank, in bank creation order,
+matching Mesa's `self.banks` iteration with one `uniform(0, h_phi)` draw each.
+"""
+function _event14_decide_interest_rate!(model)
+    h_phi = model.params["h_phi"]
+    r_bar = model.params["r_bar"]
+    rng = abmrng(model)
+    for b in banks(model)
+        bv = variant(b)
+        bv.opex_shock = rand(rng) * h_phi          # U(0, h_phi)
+        bv.interest_rate = r_bar * (1.0 + bv.opex_shock)
+    end
+    return nothing
+end
+
+"""
+    _event15_decide_credit_demand!(model)
+
+Event 15 (firms_decide_credit_demand): each firm's external financing need.
+
+Formula (Mesa `Firm.decide_credit_demand`):
+  * `credit_demand = max(wage_bill - total_funds, 0)`
+
+No RNG.
+"""
+function _event15_decide_credit_demand!(model)
+    for a in allagents(model)
+        variantof(a) === Firm || continue
+        fv = variant(a)
+        fv.credit_demand = max(fv.wage_bill - fv.total_funds, 0.0)
+    end
+    return nothing
+end
+
+"""
+    _event16_calc_fragility!(model)
+
+Event 16 (firms_calc_fragility): each firm's projected financial fragility,
+used to rank applicants at each bank during event 18.
+
+Formula (Mesa `Firm.calc_fragility`):
+  * if `net_worth > 0`: `projected_fragility = credit_demand / net_worth`
+  * else: `projected_fragility = max_leverage`
+
+No RNG.
+"""
+function _event16_calc_fragility!(model)
+    max_leverage = model.params["max_leverage"]
+    for a in allagents(model)
+        variantof(a) === Firm || continue
+        fv = variant(a)
+        if fv.net_worth > 0.0
+            fv.projected_fragility = fv.credit_demand / fv.net_worth
+        else
+            fv.projected_fragility = max_leverage
+        end
+    end
+    return nothing
+end
+
+"""
+    _event17_prepare_loan_applications!(model)
+
+Event 17 (firms_prepare_loan_applications): each firm with positive credit demand
+samples up to `max_H` banks that still have supply and ranks them by POSTED
+interest rate ASC (cheapest first).
+
+Formula (Mesa `Firm.prepare_loan_applications`):
+  * if `credit_demand <= 0`: `loan_apps = []`
+  * `lenders = [bank ids with credit_supply > 0]`; `H_eff = min(max_H, |lenders|)`
+  * if `H_eff == 0`: `loan_apps = []`
+  * sample `H_eff` lenders WITHOUT replacement; sort by `interest_rate` ASC
+  * store as `loan_apps` (consumed one per round in event 18)
+
+RNG alignment with Mesa: Mesa uses `model.random.sample(lenders, H_eff)` (one
+sample draw per applying firm, in `self.firms` creation order). Here we take a
+copy of the eligible-lender id list, `shuffle!` it once with `abmrng`, and take
+the first `H_eff` ids - the same sample-without-replacement distribution and the
+same single-draw-per-firm cadence in the same firm order (mirrors the
+shuffle-and-take approach used for events 6 and 10). Firms with no credit demand
+consume no draw in either implementation.
+"""
+function _event17_prepare_loan_applications!(model)
+    rng = abmrng(model)
+    max_H = Int(round(model.params["max_H"]))
+
+    # Eligible lenders: bank ids with positive supply, in ascending creation
+    # order (matches Mesa's `self.banks` iteration order before sampling).
+    lenders = sort!([b.id for b in banks(model) if variant(b).credit_supply > 0.0])
+    n_lenders = length(lenders)
+
+    # Lookup of posted interest rate by bank id for ASC ranking.
+    rate_of(bid) = variant(model[bid]).interest_rate
+
+    for a in allagents(model)
+        variantof(a) === Firm || continue
+        fv = variant(a)
+        if fv.credit_demand <= 0.0
+            fv.loan_apps = Int[]
+            continue
+        end
+        H_eff = min(max_H, n_lenders)
+        if H_eff == 0
+            fv.loan_apps = Int[]
+            continue
+        end
+        # Sample H_eff bank ids without replacement: shuffle a copy, take front.
+        shuffled = shuffle!(rng, copy(lenders))
+        sample = shuffled[1:H_eff]
+        # Sort by posted interest_rate ASC. STABLE sort so ties keep the sampled
+        # order, matching Python's stable `list.sort`.
+        sort!(sample; by = rate_of, alg = MergeSort)
+        fv.loan_apps = sample
+    end
+    return nothing
+end
+
+"""
+    _event19_fire_workers_for_gap!(model)
+
+Event 19 (firms_fire_workers_for_gap): firms whose wage bill still exceeds their
+available funds (after any loans) fire workers until the gap is covered.
+
+Formula (Mesa `Firm.fire_workers_for_gap`):
+  * skip if `wage_bill <= total_funds`
+  * `gap = wage_bill - total_funds`
+  * shuffle the firm's employees; fire them one at a time, accumulating their
+    wages, until the cumulative fired wage `>= gap` (then stop)
+  * per fired worker: `employer_id = NO_AGENT`, `employer_prev_id = firm.id`,
+    `wage = 0`, `periods_left = 0`, `contract_expired = false`, `fired = true`;
+    `current_labor -= 1`; remove id from `employee_ids`; `wage_bill -= wage`
+
+RNG alignment with Mesa: one `shuffle!(rng, employee_ids)` per firm WITH a gap,
+in firm creation order, matching Mesa's `model.random.shuffle(employees_list)`.
+Reuses the event-6 firing field pattern.
+"""
+function _event19_fire_workers_for_gap!(model)
+    rng = abmrng(model)
+    for a in allagents(model)
+        variantof(a) === Firm || continue
+        fv = variant(a)
+        fv.wage_bill <= fv.total_funds && continue
+        gap = fv.wage_bill - fv.total_funds
+        # Shuffle a copy of the employee ids (Mesa shuffles a list copy).
+        order = shuffle!(rng, copy(fv.employee_ids))
+        cumulative = 0.0
+        fired_ids = Int[]
+        for hid in order
+            hv = variant(model[hid])
+            w = hv.wage
+            hv.employer_id      = NO_AGENT
+            hv.employer_prev_id = a.id
+            hv.wage             = 0.0
+            hv.periods_left     = 0
+            hv.contract_expired = false
+            hv.fired            = true
+            fv.current_labor   -= 1
+            fv.wage_bill       -= w
+            cumulative         += w
+            push!(fired_ids, hid)
+            cumulative >= gap && break
+        end
+        # Remove the fired ids from the employee list (preserving order of the rest).
+        if !isempty(fired_ids)
+            fired_set = Set(fired_ids)
+            filter!(id -> !(id in fired_set), fv.employee_ids)
+        end
+    end
+    return nothing
+end
+
+# ---------------------------------------------------------------------------
+# Credit market phase dispatcher
+# ---------------------------------------------------------------------------
+
+"""
+    _credit_market!(model)
+
+Phase 3: run events 13-19 (credit market) in order.
+
+  17a. Purge previous-period loans (retained through planning/labor for breakeven)
+  13.  Banks decide credit supply (equity_base / v)
+  14.  Banks decide POSTED interest rate (r_bar * (1 + opex_shock))
+  15.  Firms decide credit demand (max(wage_bill - total_funds, 0))
+  16.  Firms calc projected fragility (credit_demand / net_worth, or max_leverage)
+  17.  Firms prepare loan applications (sample max_H lenders, rank by posted rate)
+  18.  Credit market matching (x max_H rounds; fragility ASC; partial at boundary;
+       contract rate fragility-scaled; loans pushed to shared book)
+  19.  Firms fire workers for any remaining wage-bill gap
+
+Mirrors Mesa `BamModel._credit_market()`. The loan-book purge happens first
+(event 17 open), so loans created here are this period's only.
+"""
+function _credit_market!(model)
+    _purge_loans!(model)                       # event 17 open: clear prior loans
+    _event13_decide_credit_supply!(model)
+    _event14_decide_interest_rate!(model)
+    _event15_decide_credit_demand!(model)
+    _event16_calc_fragility!(model)
+    _event17_prepare_loan_applications!(model)
+    _run_credit_market!(model)                 # event 18 (defined in markets.jl)
+    _event19_fire_workers_for_gap!(model)
+    return nothing
+end
+
+# ---------------------------------------------------------------------------
 # Per-period step (planning + labor scaffold; remaining phases added in later tasks)
 # ---------------------------------------------------------------------------
 
 """
     bam_step!(model)
 
-Per-period model step. Currently runs Phase 1 (planning, events 1-6) and Phase 2
-(labor market, events 7-12); later tasks (T5-T9) will add credit, production,
-goods, revenue, and bankruptcy/entry phases.
+Per-period model step. Currently runs Phase 1 (planning, events 1-6), Phase 2
+(labor market, events 7-12), and Phase 3 (credit market, events 13-19); later
+tasks (T6-T9) will add production, goods, revenue, and bankruptcy/entry phases.
 
 Defined as a named function (rather than `dummystep`) so the `StandardABM` is
 constructed with a real `model_step!` and later tasks have a single clear hook
@@ -658,6 +927,7 @@ function bam_step!(model)
     model.period += 1
     _planning!(model)
     _labor_market!(model)
+    _credit_market!(model)
     return nothing
 end
 
