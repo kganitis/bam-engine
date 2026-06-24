@@ -826,6 +826,407 @@ class BAMModel(mf.ModelDF):
             pl.Series("fired", new_fired, dtype=pl.Boolean),
         )
 
+    # ------------------------------------------------------------------
+    # Phase 4: production (events 20-24)
+    # ------------------------------------------------------------------
+
+    def _production(self) -> None:
+        """Phase 4: production (events 20-24).
+
+        Mirrors BamModel._production in mesa/model.py:
+          firms_pay_wages -> workers_receive_wage -> firms_run_production
+          -> _update_avg_mkt_price -> workers_update_contracts
+        """
+        self._event20_pay_wages()
+        self._event21_receive_wage()
+        self._event22_run_production()
+        if self.collect:
+            hdf = self.households.agents
+            fdf = self.firms.agents
+            employed_mask = hdf["employer"] >= 0
+            employed_count = int(employed_mask.sum())
+            n_hh = self.n_households
+            unemployment = 1.0 - employed_count / n_hh if n_hh > 0 else 1.0
+            wage_sum = float(hdf.filter(employed_mask)["wage"].sum())
+            avg_wage = wage_sum / employed_count if employed_count > 0 else 0.0
+            total_prod = float(fdf["production"].sum())
+            self._c_unemployment.append(unemployment)
+            self._c_avg_employed_wage.append(avg_wage)
+            self._c_total_production.append(total_prod)
+            self._c_production_final = fdf["production"].to_list()
+        self._update_avg_mkt_price()
+        self._event24_update_contracts()
+
+    def _event20_pay_wages(self) -> None:
+        """Event 20: total_funds -= wage_bill for all firms.
+
+        Mesa port: Firm.pay_wages()
+          self.total_funds -= self.wage_bill
+
+        Fully vectorized: no RNG.
+        """
+        fdf = self.firms.agents
+        self.firms.agents = fdf.with_columns(
+            (pl.col("total_funds") - pl.col("wage_bill")).alias("total_funds")
+        )
+
+    def _event21_receive_wage(self) -> None:
+        """Event 21: employed workers add their wage to income.
+
+        Mesa port: Household.receive_wage()
+          if self.employed: self.income += self.wage
+
+        Fully vectorized: employed derived from employer >= 0.
+        """
+        hdf = self.households.agents
+        new_income = (
+            pl.when(pl.col("employer") >= 0)
+            .then(pl.col("income") + pl.col("wage"))
+            .otherwise(pl.col("income"))
+        )
+        self.households.agents = hdf.with_columns(new_income.alias("income"))
+
+    def _event22_run_production(self) -> None:
+        """Event 22: production, production_prev, inventory update.
+
+        Mesa port: Firm.run_production()
+          self.production = self.labor_productivity * self.current_labor
+          self.production_prev = self.production   # unconditional
+          self.inventory = self.production          # OVERWRITE, not accumulate
+
+        No RNG.
+        """
+        fdf = self.firms.agents
+        production = pl.col("labor_productivity") * pl.col("current_labor").cast(
+            pl.Float64
+        )
+        self.firms.agents = fdf.with_columns(
+            production.alias("production"),
+            production.alias("production_prev"),
+            production.alias("inventory"),
+        )
+
+    def _update_avg_mkt_price(self) -> None:
+        """Event 23: production-weighted average price; keep previous if result <= 0.
+
+        Mesa port: BamModel._update_avg_mkt_price()
+          only firms with production >= 1e-3 contribute
+          p_avg = weighted_sum / total_prod  (if total_prod > 0)
+          if new_price > 0: self.avg_mkt_price = new_price
+          append self.avg_mkt_price to avg_mkt_price_history
+
+        No RNG.
+        """
+        fdf = self.firms.agents
+        active = fdf.filter(pl.col("production") >= 1e-3)
+        total_prod = float(active["production"].sum())
+        if total_prod > 0:
+            weighted_sum = float((active["price"] * active["production"]).sum())
+            new_price = weighted_sum / total_prod
+        else:
+            new_price = 0.0
+        if new_price > 0:
+            self.avg_mkt_price = new_price
+        # else: keep previous avg_mkt_price
+        self.avg_mkt_price_history.append(self.avg_mkt_price)
+
+    def _event24_update_contracts(self) -> None:
+        """Event 24: employed workers decrement periods_left; expire at 0.
+
+        Mesa port: Household.update_contract()
+          if not self.employed: return
+          self.periods_left -= 1
+          if self.periods_left == 0:
+            employer = self.employer
+            self.employer_prev = employer; self.employer = None; self.wage = 0
+            self.contract_expired = True; self.fired = False
+            employer.employees.pop(self); employer.current_labor -= 1
+
+        contract_expired=True + fired=False marks the worker as loyal next period.
+        wage_bill is NOT recomputed after contract expiry (matches spec event 24 note).
+
+        Firm-side: current_labor decremented for each expiry.
+        """
+        hdf = self.households.agents
+        fdf = self.firms.agents
+
+        employed = pl.col("employer") >= 0
+
+        # Decrement periods_left for employed workers only.
+        new_periods = (
+            pl.when(employed)
+            .then(pl.col("periods_left") - 1)
+            .otherwise(pl.col("periods_left"))
+        )
+
+        # A contract expires when it was at 1 period remaining (becomes 0).
+        expires = employed & (pl.col("periods_left") == 1)
+
+        new_employer_prev = (
+            pl.when(expires).then(pl.col("employer")).otherwise(pl.col("employer_prev"))
+        )
+        new_employer = (
+            pl.when(expires)
+            .then(pl.lit(-1, dtype=pl.Int64))
+            .otherwise(pl.col("employer"))
+        )
+        new_wage = pl.when(expires).then(pl.lit(0.0)).otherwise(pl.col("wage"))
+        new_contract_expired = (
+            pl.when(expires).then(pl.lit(True)).otherwise(pl.col("contract_expired"))
+        )
+        new_fired = pl.when(expires).then(pl.lit(False)).otherwise(pl.col("fired"))
+
+        self.households.agents = hdf.with_columns(
+            new_periods.alias("periods_left"),
+            new_employer_prev.alias("employer_prev"),
+            new_employer.alias("employer"),
+            new_wage.alias("wage"),
+            new_contract_expired.alias("contract_expired"),
+            new_fired.alias("fired"),
+        )
+
+        # Firm-side: decrement current_labor by the number of expired contracts.
+        # Group expired workers by employer_prev (the firm they just left),
+        # count expirations per firm, join and decrement.
+        hdf_after = self.households.agents
+        expired_workers = hdf_after.filter(pl.col("contract_expired"))
+        if len(expired_workers) > 0:
+            expirations_by_firm = (
+                expired_workers.group_by("employer_prev")
+                .agg(pl.len().alias("n_expired"))
+                .rename({"employer_prev": "unique_id"})
+            )
+            self.firms.agents = (
+                fdf.join(expirations_by_firm, on="unique_id", how="left")
+                .with_columns(
+                    (pl.col("current_labor") - pl.col("n_expired").fill_null(0)).alias(
+                        "current_labor"
+                    )
+                )
+                .drop("n_expired")
+            )
+
+    # ------------------------------------------------------------------
+    # Phase 6: revenue (events 30-32)
+    # ------------------------------------------------------------------
+
+    def _revenue(self) -> None:
+        """Phase 6: revenue (events 30-32).
+
+        Mirrors BamModel._revenue in mesa/model.py:
+          firms_collect_revenue -> firms_validate_debt_commitments
+          -> firms_pay_dividends
+        """
+        self._event30_collect_revenue()
+        self._event31_validate_debt()
+        self._event32_pay_dividends()
+
+    def _event30_collect_revenue(self) -> None:
+        """Event 30: collect revenue from sales; compute gross_profit.
+
+        Mesa port: Firm.collect_revenue()
+          qty_sold = self.production - self.inventory
+          revenue = self.price * qty_sold
+          self.total_funds += revenue
+          self.gross_profit = revenue - self.wage_bill
+
+        After event 22, inventory == production (full overwrite), so qty_sold starts
+        at 0 until the goods market (Task 7) depletes inventory.  The formula is
+        faithfully translated; revenue is non-zero once Task 7 is implemented.
+
+        No RNG.
+        """
+        fdf = self.firms.agents
+        qty_sold = pl.col("production") - pl.col("inventory")
+        revenue = pl.col("price") * qty_sold
+        self.firms.agents = fdf.with_columns(
+            (pl.col("total_funds") + revenue).alias("total_funds"),
+            (revenue - pl.col("wage_bill")).alias("gross_profit"),
+        )
+
+    def _event31_validate_debt(self) -> None:
+        """Event 31: repay loans if solvent; write off bad debt if not; compute net_profit.
+
+        Mesa port: Firm.validate_debt(model)
+          total_debt     = sum(loan.principal*(1+rate) for loan in self.loans)
+          total_interest = sum(loan.principal*rate      for loan in self.loans)
+          total_principal= sum(loan.principal           for loan in self.loans)
+          if total_debt > eps:
+            if total_funds - total_debt >= -eps:   # solvent
+              total_funds -= total_debt
+              for loan: loan.lender.equity_base += loan.interest
+            else:                                  # default
+              total_funds = 0
+              for loan:
+                frac = principal / max(total_principal, eps)
+                recovery = clip(frac * net_worth, 0, principal)
+                loss = principal - recovery
+                loan.lender.equity_base -= loss
+          net_profit = gross_profit - total_interest   # ALL firms
+
+        Notes:
+        - Uses CURRENT (pre-update) net_worth for recovery (spec flag 7).
+        - Banks book interest ONLY on fully-repaid loans.
+        - Loans are retained in the table here; purged at next credit market open.
+        - self.loans refers to the columnar self.model.loans in the mesa-frames port.
+        """
+        eps = self.EPS
+        fdf = self.firms.agents
+        bdf = self.banks.agents
+        loans = self.loans
+
+        if len(loans) == 0:
+            # No outstanding loans: net_profit == gross_profit for all firms.
+            self.firms.agents = fdf.with_columns(
+                pl.col("gross_profit").alias("net_profit")
+            )
+            return
+
+        # Per-firm loan aggregates.
+        agg = (
+            loans.with_columns(
+                (pl.col("principal") * pl.col("interest_rate")).alias("_interest"),
+                (pl.col("principal") * (1.0 + pl.col("interest_rate"))).alias("_debt"),
+            )
+            .group_by("borrower_id")
+            .agg(
+                pl.col("_debt").sum().alias("_total_debt"),
+                pl.col("_interest").sum().alias("_total_interest"),
+                pl.col("principal").sum().alias("_total_principal"),
+            )
+            .rename({"borrower_id": "unique_id"})
+        )
+
+        # Join onto firms (non-borrowers get 0).
+        fdf_ext = fdf.join(agg, on="unique_id", how="left").with_columns(
+            pl.col("_total_debt").fill_null(0.0),
+            pl.col("_total_interest").fill_null(0.0),
+            pl.col("_total_principal").fill_null(0.0),
+        )
+
+        # Classify each firm: has_debt, solvent, defaulting.
+        has_debt = pl.col("_total_debt") > eps
+        is_solvent = has_debt & (
+            (pl.col("total_funds") - pl.col("_total_debt")) >= -eps
+        )
+        is_defaulting = has_debt & (
+            (pl.col("total_funds") - pl.col("_total_debt")) < -eps
+        )
+
+        new_total_funds = (
+            pl.when(is_solvent)
+            .then(pl.col("total_funds") - pl.col("_total_debt"))
+            .when(is_defaulting)
+            .then(pl.lit(0.0))
+            .otherwise(pl.col("total_funds"))
+        )
+        net_profit = pl.col("gross_profit") - pl.col("_total_interest")
+
+        # Build a lookup for bank equity updates: need firm solvency + per-loan info.
+        # Capture the classification before dropping auxiliary columns.
+        firm_meta = fdf_ext.select(
+            ["unique_id", "total_funds", "net_worth", "_total_debt", "_total_principal"]
+        )
+        firm_meta_map = {
+            row["unique_id"]: row for row in firm_meta.iter_rows(named=True)
+        }
+
+        self.firms.agents = fdf_ext.with_columns(
+            new_total_funds.alias("total_funds"),
+            net_profit.alias("net_profit"),
+        ).drop(["_total_debt", "_total_interest", "_total_principal"])
+
+        # Apply bank equity updates per loan (mirrors the Mesa port's per-loan loop).
+        bank_delta: dict[int, float] = {}
+        for loan_row in loans.iter_rows(named=True):
+            fid = int(loan_row["borrower_id"])
+            bid = int(loan_row["lender_id"])
+            principal = float(loan_row["principal"])
+            rate = float(loan_row["interest_rate"])
+            interest = principal * rate
+
+            meta = firm_meta_map.get(fid)
+            if meta is None:
+                continue
+            total_debt_f = float(meta["_total_debt"])
+            if total_debt_f <= eps:
+                continue
+            total_funds_f = float(meta["total_funds"])
+
+            if (total_funds_f - total_debt_f) >= -eps:
+                # Solvent: lender earns interest.
+                bank_delta[bid] = bank_delta.get(bid, 0.0) + interest
+            else:
+                # Default: lender takes proportional loss.
+                total_principal_f = float(meta["_total_principal"])
+                nw = float(meta["net_worth"])
+                frac = principal / max(total_principal_f, eps)
+                recovery = min(max(frac * nw, 0.0), principal)
+                loss = principal - recovery
+                bank_delta[bid] = bank_delta.get(bid, 0.0) - loss
+
+        if bank_delta:
+            new_equity = [
+                row["equity_base"] + bank_delta.get(int(row["unique_id"]), 0.0)
+                for row in bdf.iter_rows(named=True)
+            ]
+            self.banks.agents = bdf.with_columns(
+                pl.Series("equity_base", new_equity, dtype=pl.Float64)
+            )
+
+    def _event32_pay_dividends(self) -> None:
+        """Event 32: profitable firms pay a fraction of net_profit as dividends.
+
+        Mesa port: BamModel._pay_dividends()
+          delta = self.p["delta"]
+          total_dividends = 0
+          for f in self.firms:
+            retained = f.net_profit
+            if f.net_profit > 0: retained *= (1 - delta)
+            dividends_paid = f.net_profit - retained
+            f.total_funds -= dividends_paid
+            f.retained_profit = retained
+            total_dividends += dividends_paid
+          div_per_hh = total_dividends / n_households
+          for h in self.households:
+            h.savings += div_per_hh; h.dividends = div_per_hh
+
+        Only profitable firms (net_profit > 0) pay dividends (spec flag 8).
+        div_per_hh is split EQUALLY across ALL households.
+        No RNG.
+        """
+        delta = float(self.p["delta"])
+        fdf = self.firms.agents
+
+        # retained_profit = net_profit * (1-delta) if net_profit > 0 else net_profit.
+        retained = (
+            pl.when(pl.col("net_profit") > 0.0)
+            .then(pl.col("net_profit") * (1.0 - delta))
+            .otherwise(pl.col("net_profit"))
+        )
+        dividends_paid = pl.col("net_profit") - retained
+
+        self.firms.agents = fdf.with_columns(
+            retained.alias("retained_profit"),
+            (pl.col("total_funds") - dividends_paid).alias("total_funds"),
+        )
+
+        # Total dividends pooled and split equally across all households.
+        fdf_after = self.firms.agents
+        total_dividends = float(
+            fdf_after.select(
+                (pl.col("net_profit") - pl.col("retained_profit")).sum()
+            ).item()
+        )
+        n_hh = self.n_households
+        div_per_hh = total_dividends / n_hh if n_hh > 0 else 0.0
+
+        hdf = self.households.agents
+        self.households.agents = hdf.with_columns(
+            (pl.col("savings") + div_per_hh).alias("savings"),
+            pl.lit(div_per_hh).alias("dividends"),
+        )
+
     def step(self) -> None:
         """Execute one simulation period."""
         if self.collapsed:
@@ -834,4 +1235,7 @@ class BAMModel(mf.ModelDF):
         self._planning()
         self._labor_market()
         self._credit_market()
-        # Remaining phases added in Tasks 6-8.
+        self._production()
+        # Goods market added in Task 7.
+        self._revenue()
+        # Bankruptcy + entry added in Task 8.
