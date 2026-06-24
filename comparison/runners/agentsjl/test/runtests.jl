@@ -19,13 +19,17 @@ include(joinpath(@__DIR__, "..", "model.jl"))
         # Small population + fixed seed. Canonical baseline params (subset
         # needed for construction; values from src/bamengine/config/defaults.yml).
         params = Dict{String,Float64}(
-            "labor_productivity" => 0.50,
-            "price_init"         => 0.50,
-            "net_worth_ratio"    => 6.0,
-            "savings_init"       => 1.0,
-            "equity_base_init"   => 5.0,
-            "min_wage_ratio"     => 0.5,
+            "labor_productivity"  => 0.50,
+            "price_init"          => 0.50,
+            "net_worth_ratio"     => 6.0,
+            "savings_init"        => 1.0,
+            "equity_base_init"    => 5.0,
+            "min_wage_ratio"      => 0.5,
             "min_wage_rev_period" => 4.0,
+            # Planning-phase params (required because bam_step! now runs planning).
+            "h_rho"               => 0.10,
+            "h_eta"               => 0.10,
+            "h_xi"                => 0.05,
         )
         n_firms, n_households, n_banks = 10, 50, 2
         model = build_model(n_firms, n_households, n_banks, params, 42)
@@ -119,8 +123,85 @@ include(joinpath(@__DIR__, "..", "model.jl"))
         @test bv.interest_rate == 0.0
         @test bv.opex_shock == 0.0
 
-        # --- A no-op step! advances without error (bam_step! for now) ---
+        # --- A step! advances without error (bam_step! runs planning phase) ---
         step!(model, 1)
+        @test nagents(model) == n_firms + n_households + n_banks
+    end
+
+    @testset "planning phase invariants (events 1-6)" begin
+        # Full canonical param set required by planning events.
+        params = Dict{String,Float64}(
+            "labor_productivity"  => 0.50,
+            "price_init"          => 0.50,
+            "net_worth_ratio"     => 6.0,
+            "savings_init"        => 1.0,
+            "equity_base_init"    => 5.0,
+            "min_wage_ratio"      => 0.5,
+            "min_wage_rev_period" => 4.0,
+            "h_rho"               => 0.10,
+            "h_eta"               => 0.10,
+            "h_xi"                => 0.05,
+        )
+        n_firms, n_households, n_banks = 10, 50, 2
+        model = build_model(n_firms, n_households, n_banks, params, 42)
+
+        # Run planning phase directly (not via step! so we don't increment period).
+        _planning!(model)
+
+        # Event 1: production zeroed; desired_production >= 0 for all firms.
+        for a in allagents(model)
+            variantof(a) === Firm || continue
+            fv = variant(a)
+            @test fv.production == 0.0
+            @test fv.desired_production >= 0.0
+            @test fv.expected_demand >= 0.0
+        end
+
+        # Event 2: breakeven_price is finite and >= 0.
+        for a in allagents(model)
+            variantof(a) === Firm || continue
+            fv = variant(a)
+            @test isfinite(fv.breakeven_price)
+            @test fv.breakeven_price >= 0.0
+        end
+
+        # Event 3: price is finite and positive (breakeven floor prevents <= 0).
+        for a in allagents(model)
+            variantof(a) === Firm || continue
+            fv = variant(a)
+            @test isfinite(fv.price)
+            @test fv.price > 0.0
+        end
+
+        # Event 4: desired_labor >= 0 (ceil of non-negative value).
+        for a in allagents(model)
+            variantof(a) === Firm || continue
+            fv = variant(a)
+            @test fv.desired_labor >= 0
+        end
+
+        # Event 5: n_vacancies >= 0.
+        for a in allagents(model)
+            variantof(a) === Firm || continue
+            fv = variant(a)
+            @test fv.n_vacancies >= 0
+        end
+
+        # Event 6: current_labor <= desired_labor after firing (no over-firing).
+        for a in allagents(model)
+            variantof(a) === Firm || continue
+            fv = variant(a)
+            @test fv.current_labor <= fv.desired_labor
+        end
+
+        # Consistency: current_labor == length(employee_ids) for all firms.
+        for a in allagents(model)
+            variantof(a) === Firm || continue
+            fv = variant(a)
+            @test fv.current_labor == length(fv.employee_ids)
+        end
+
+        # Household counts preserved; no agents added or removed.
         @test nagents(model) == n_firms + n_households + n_banks
     end
 
