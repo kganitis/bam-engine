@@ -451,8 +451,8 @@ class BAMModel(mf.ModelDF):
           wage_offer *= (1 + shock); wage_offer = max(wage_offer, min_wage)
 
         RNG: one draw per firm, uniform(0, h_xi), in firm row order, masked to
-        zero where n_vacancies == 0 (mirrors bamengine's draw-then-mask, which
-        the Mesa port replicates per firm).
+        zero where n_vacancies == 0 (mirrors bamengine's draw-then-mask; the
+        Mesa port instead short-circuits and draws nothing for zero-vacancy firms).
         """
         h_xi = float(self.p["h_xi"])
         df = self.firms.agents

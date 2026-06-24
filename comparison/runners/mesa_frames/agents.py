@@ -137,8 +137,8 @@ class Households(mf.AgentSetPolars):
 
     The goods-market visit queue (Mesa port's per-consumer ``shop_visits`` list)
     is stored as a fixed-width ``-1``-padded matrix of ``max_Z`` columns
-    ``shop_visit_0 .. shop_visit_{max_Z-1}`` (firm unique_ids) plus a
-    ``shop_visit_count`` column tracking how many slots are actually filled.
+    ``shop_visit_0 .. shop_visit_{max_Z-1}`` (firm unique_ids); the sequential
+    shopping loop stops at the first ``-1`` sentinel (no count column).
     Loyalty is tracked via ``largest_prod_prev``: the firm unique_id of the
     largest producer visited last period (``-1`` = none), mirroring the Mesa
     port's ``Household.largest_prod_prev`` attribute.
