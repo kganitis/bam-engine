@@ -1173,3 +1173,294 @@ class TestProductionAndRevenue:
         assert len(model._c_avg_employed_wage) == 1
         assert model._c_total_production[0] >= 0.0
         assert 0.0 <= model._c_unemployment[0] <= 1.0
+
+
+class TestGoodsMarket:
+    """Invariant tests for BAMModel._goods_market() (events 25-29)."""
+
+    def _run_through_goods(self, seed: int = SEED):
+        """Helper: run all phases through the goods market."""
+        model = make_model(seed=seed)
+        model._planning()
+        model._labor_market()
+        model._credit_market()
+        model._production()
+        return model
+
+    def test_largest_prod_prev_initialised(self):
+        """Households should have largest_prod_prev column initialised to -1."""
+        model = make_model()
+        hdf = model.households.agents
+        assert "largest_prod_prev" in hdf.columns
+        assert (hdf["largest_prod_prev"] == -1).all()
+
+    def test_shop_visit_columns_exist(self):
+        """shop_visit_0..max_Z-1 columns exist and are initialised to -1."""
+        model = make_model()
+        hdf = model.households.agents
+        max_Z = DEFAULT_PARAMS["max_Z"]
+        for k in range(max_Z):
+            col = f"shop_visit_{k}"
+            assert col in hdf.columns, f"Missing column {col}"
+            assert (hdf[col] == -1).all(), f"Column {col} not initialised to -1"
+
+    def test_propensity_in_range(self):
+        """Event 25: propensity must be in (0, 1] for all consumers."""
+        model = self._run_through_goods()
+        model._event25_calc_propensity()
+        hdf = model.households.agents
+        assert (hdf["propensity"] > 0.0).all()
+        assert (hdf["propensity"] <= 1.0 + 1e-12).all()
+
+    def test_income_to_spend_le_wealth(self):
+        """Event 26: income_to_spend <= pre-split wealth for every consumer."""
+        model = self._run_through_goods()
+        model._event25_calc_propensity()
+        hdf_before = model.households.agents.clone()
+        model._event26_decide_income_to_spend()
+        hdf_after = model.households.agents
+        # wealth_before = savings + income before the split.
+        wealth_before = (hdf_before["savings"] + hdf_before["income"]).to_list()
+        its = hdf_after["income_to_spend"].to_list()
+        for i, (w, s) in enumerate(zip(wealth_before, its, strict=True)):
+            assert s <= w + 1e-9, f"consumer {i}: income_to_spend {s} > wealth {w}"
+
+    def test_savings_plus_income_to_spend_equals_wealth(self):
+        """Event 26: savings + income_to_spend == pre-split wealth (conservation)."""
+        model = self._run_through_goods()
+        model._event25_calc_propensity()
+        hdf_before = model.households.agents.clone()
+        model._event26_decide_income_to_spend()
+        hdf_after = model.households.agents
+        wealth_before = (hdf_before["savings"] + hdf_before["income"]).to_list()
+        for i, row in enumerate(hdf_after.iter_rows(named=True)):
+            post_wealth = row["savings"] + row["income_to_spend"]
+            assert abs(post_wealth - wealth_before[i]) < 1e-9, (
+                f"consumer {i}: savings+its={post_wealth} != wealth={wealth_before[i]}"
+            )
+
+    def test_income_zeroed_after_event26(self):
+        """Event 26: income is set to 0 for all consumers after decide_income_to_spend."""
+        model = self._run_through_goods()
+        model._event25_calc_propensity()
+        model._event26_decide_income_to_spend()
+        hdf = model.households.agents
+        assert (hdf["income"] == 0.0).all()
+
+    def test_shop_visits_populated_for_buyers(self):
+        """Event 27: consumers with budget have at least one shop visit set."""
+        model = self._run_through_goods()
+        model._event25_calc_propensity()
+        model._event26_decide_income_to_spend()
+        model._event27_decide_firms_to_visit()
+        hdf = model.households.agents
+        eps = 1e-9
+        for row in hdf.iter_rows(named=True):
+            if row["income_to_spend"] > eps:
+                # At least shop_visit_0 must be a valid firm id (>= 0).
+                assert row["shop_visit_0"] >= 0, (
+                    f"consumer {row['unique_id']} has budget but no shop visits"
+                )
+
+    def test_shop_visits_are_valid_firm_ids(self):
+        """Event 27: every non-(-1) shop visit must be a valid firm unique_id."""
+        model = self._run_through_goods()
+        model._event25_calc_propensity()
+        model._event26_decide_income_to_spend()
+        model._event27_decide_firms_to_visit()
+        hdf = model.households.agents
+        fdf = model.firms.agents
+        firm_ids = set(fdf["unique_id"].to_list())
+        max_Z = DEFAULT_PARAMS["max_Z"]
+        for row in hdf.iter_rows(named=True):
+            for k in range(max_Z):
+                fid = row[f"shop_visit_{k}"]
+                if fid >= 0:
+                    assert fid in firm_ids, (
+                        f"consumer {row['unique_id']}: shop_visit_{k}={fid} "
+                        "is not a valid firm id"
+                    )
+
+    def test_largest_prod_prev_updated(self):
+        """Event 27: largest_prod_prev updated for consumers with budget."""
+        model = self._run_through_goods()
+        model._event25_calc_propensity()
+        model._event26_decide_income_to_spend()
+        model._event27_decide_firms_to_visit()
+        hdf = model.households.agents
+        fdf = model.firms.agents
+        firm_ids = set(fdf["unique_id"].to_list())
+        eps = 1e-9
+        for row in hdf.iter_rows(named=True):
+            if row["income_to_spend"] > eps:
+                lpp = row["largest_prod_prev"]
+                assert lpp >= 0, (
+                    f"consumer {row['unique_id']} has budget but largest_prod_prev=-1"
+                )
+                assert lpp in firm_ids, (
+                    f"consumer {row['unique_id']}: largest_prod_prev={lpp} not a firm"
+                )
+
+    def test_total_spending_le_total_budget(self):
+        """Event 28: aggregate spending never exceeds aggregate budget."""
+        model = self._run_through_goods()
+        model._event25_calc_propensity()
+        model._event26_decide_income_to_spend()
+        model._event27_decide_firms_to_visit()
+
+        hdf_before = model.households.agents.clone()
+        total_budget = float(hdf_before["income_to_spend"].sum())
+
+        from comparison.runners.mesa_frames.markets import run_goods_market
+
+        run_goods_market(model)
+
+        hdf_after = model.households.agents
+        total_remaining = float(hdf_after["income_to_spend"].sum())
+        total_spent = total_budget - total_remaining
+        assert total_spent >= -1e-9, "negative aggregate spending"
+        assert total_spent <= total_budget + 1e-9, (
+            f"total_spent {total_spent} > total_budget {total_budget}"
+        )
+
+    def test_inventory_never_negative(self):
+        """Event 28: firm inventory never goes negative during the goods market."""
+        model = self._run_through_goods()
+        model._event25_calc_propensity()
+        model._event26_decide_income_to_spend()
+        model._event27_decide_firms_to_visit()
+
+        from comparison.runners.mesa_frames.markets import run_goods_market
+
+        run_goods_market(model)
+
+        fdf = model.firms.agents
+        assert (fdf["inventory"] >= -1e-9).all(), "Some firm inventories went negative"
+
+    def test_income_to_spend_reduced_by_spending(self):
+        """Event 28: each consumer's income_to_spend only decreases; aggregate spending
+        matches aggregate revenue (price * qty_sold summed over firms)."""
+        model = self._run_through_goods()
+        model._event25_calc_propensity()
+        model._event26_decide_income_to_spend()
+        model._event27_decide_firms_to_visit()
+
+        hdf_before = model.households.agents.clone()
+        fdf_before = model.firms.agents.clone()
+
+        from comparison.runners.mesa_frames.markets import run_goods_market
+
+        run_goods_market(model)
+
+        hdf_after = model.households.agents
+        fdf_after = model.firms.agents
+
+        its_before = hdf_before["income_to_spend"].to_list()
+        its_after = hdf_after["income_to_spend"].to_list()
+
+        # Spending must not be negative per consumer (income_to_spend can only decrease).
+        for i, (b, a) in enumerate(zip(its_before, its_after, strict=True)):
+            assert b - a >= -1e-9, (
+                f"consumer {i}: income_to_spend increased from {b} to {a}"
+            )
+
+        # Aggregate spending (money) == revenue from inventory depletion.
+        # Inventory decrements in units; revenue = price * qty_sold per firm.
+        inv_before = dict(
+            zip(
+                fdf_before["unique_id"].to_list(),
+                (float(v) for v in fdf_before["inventory"]),
+                strict=True,
+            )
+        )
+        price_of = dict(
+            zip(
+                fdf_before["unique_id"].to_list(),
+                (float(p) for p in fdf_before["price"]),
+                strict=True,
+            )
+        )
+        inv_after = dict(
+            zip(
+                fdf_after["unique_id"].to_list(),
+                (float(v) for v in fdf_after["inventory"]),
+                strict=True,
+            )
+        )
+        total_revenue = sum(
+            (inv_before[fid] - inv_after[fid]) * price_of[fid] for fid in inv_before
+        )
+        total_consumer_spent = sum(
+            b - a for b, a in zip(its_before, its_after, strict=True)
+        )
+        assert abs(total_consumer_spent - total_revenue) < 1e-6, (
+            f"consumer spending {total_consumer_spent} != firm revenue {total_revenue}"
+        )
+
+    def test_finalize_purchases_clears_budget(self):
+        """Event 29: income_to_spend is 0 after finalize; savings increased."""
+        model = self._run_through_goods()
+        model._event25_calc_propensity()
+        model._event26_decide_income_to_spend()
+        model._event27_decide_firms_to_visit()
+
+        from comparison.runners.mesa_frames.markets import run_goods_market
+
+        run_goods_market(model)
+
+        hdf_before = model.households.agents.clone()
+        model._event29_finalize_purchases()
+        hdf_after = model.households.agents
+
+        # income_to_spend zeroed.
+        assert (hdf_after["income_to_spend"] == 0.0).all()
+        # savings increased by the unspent budget.
+        for i, row in enumerate(hdf_after.iter_rows(named=True)):
+            prev = hdf_before.row(i, named=True)
+            expected_savings = prev["savings"] + prev["income_to_spend"]
+            assert abs(row["savings"] - expected_savings) < 1e-9, (
+                f"consumer {row['unique_id']}: savings mismatch after finalize"
+            )
+
+    def test_goods_market_deterministic(self):
+        """Same seed produces identical goods market outcome."""
+        models = []
+        for _ in range(2):
+            m = self._run_through_goods(seed=13)
+            m._goods_market()
+            models.append(m)
+        m1, m2 = models
+        assert (m1.firms.agents["inventory"] == m2.firms.agents["inventory"]).all(), (
+            "inventory differs between identical seeds"
+        )
+        assert (
+            m1.households.agents["savings"] == m2.households.agents["savings"]
+        ).all(), "savings differs between identical seeds"
+
+    def test_full_step_revenue_non_zero_after_goods(self):
+        """After a full step with goods market, some firms should have gross_profit > 0."""
+        model = make_model(seed=SEED)
+        model.step()
+        fdf = model.firms.agents
+        # At least some firms sold something (inventory < production).
+        sold = (fdf["production"] - fdf["inventory"]).filter(
+            (fdf["production"] - fdf["inventory"]) > 1e-9
+        )
+        assert len(sold) > 0, "no firm sold anything after a full step"
+
+    def test_goods_market_phase_invariants_across_steps(self):
+        """Goods market invariants hold across several full steps."""
+        model = make_model(seed=7)
+        for _ in range(5):
+            model._planning()
+            model._labor_market()
+            model._credit_market()
+            model._production()
+            model._goods_market()
+            hdf_after = model.households.agents
+            fdf_after = model.firms.agents
+            # Inventory non-negative.
+            assert (fdf_after["inventory"] >= -1e-9).all()
+            # income_to_spend zeroed after finalize.
+            assert (hdf_after["income_to_spend"] == 0.0).all()
+            model._revenue()

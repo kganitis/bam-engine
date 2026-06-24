@@ -6,7 +6,11 @@ import mesa_frames as mf
 import polars as pl
 
 from comparison.runners.mesa_frames.agents import Banks, Firms, Households
-from comparison.runners.mesa_frames.markets import run_credit_market, run_labor_market
+from comparison.runners.mesa_frames.markets import (
+    run_credit_market,
+    run_goods_market,
+    run_labor_market,
+)
 
 EPS = 1e-9
 
@@ -1007,6 +1011,192 @@ class BAMModel(mf.ModelDF):
             )
 
     # ------------------------------------------------------------------
+    # Phase 5: goods market (events 25-29)
+    # ------------------------------------------------------------------
+
+    def _goods_market(self) -> None:
+        """Phase 5: goods market (events 25-29).
+
+        Mirrors BamModel._goods_market in mesa/model.py:
+          consumers_calc_propensity -> consumers_decide_income_to_spend
+          -> consumers_decide_firms_to_visit -> run_goods_market
+          -> consumers_finalize_purchases
+        """
+        self._event25_calc_propensity()
+        self._event26_decide_income_to_spend()
+        self._event27_decide_firms_to_visit()
+        run_goods_market(self)
+        self._event29_finalize_purchases()
+
+    def _event25_calc_propensity(self) -> None:
+        """Event 25: marginal propensity to consume from relative savings.
+
+        Mesa port: Household.calc_propensity(avg_savings)
+          savings = max(self.savings, 0)
+          avg_sav = max(avg_savings, EPS)
+          propensity = 1 / (1 + tanh(savings / avg_sav) ** beta)
+
+        Where avg_sav = max(mean(savings over ALL consumers), EPS) -- computed
+        once before iterating, matching the Mesa port's pre-loop calculation:
+          all_savings = [h.savings for h in self.households]
+          avg_sav = max(sum(all_savings)/len(all_savings), EPS) if all_savings else EPS
+
+        No RNG.
+        """
+
+        eps = self.EPS
+        beta = float(self.p["beta"])
+        hdf = self.households.agents
+
+        # avg_sav = max(mean(savings), EPS) -- matches Mesa port.
+        avg_sav = max(float(hdf["savings"].mean()), eps)
+
+        # propensity = 1 / (1 + tanh(max(savings,0)/avg_sav)^beta)
+        # Fully vectorized Polars expression.
+        clamped_savings = pl.max_horizontal(pl.col("savings"), pl.lit(0.0))
+        ratio = clamped_savings / avg_sav
+        # tanh(ratio)^beta: Polars has .tanh() on expressions.
+        tanh_ratio = ratio.tanh()
+        propensity = pl.lit(1.0) / (pl.lit(1.0) + tanh_ratio.pow(beta))
+
+        self.households.agents = hdf.with_columns(propensity.alias("propensity"))
+
+    def _event26_decide_income_to_spend(self) -> None:
+        """Event 26: split wealth into spending budget and savings.
+
+        Mesa port: Household.decide_income_to_spend()
+          wealth = self.savings + self.income
+          self.income_to_spend = wealth * self.propensity
+          self.savings = wealth - self.income_to_spend
+          self.income = 0
+
+        Fully vectorized, no RNG.
+        """
+        hdf = self.households.agents
+        wealth = pl.col("savings") + pl.col("income")
+        income_to_spend = wealth * pl.col("propensity")
+        savings = wealth - income_to_spend
+
+        self.households.agents = hdf.with_columns(
+            income_to_spend.alias("income_to_spend"),
+            savings.alias("savings"),
+            pl.lit(0.0).alias("income"),
+        )
+
+    def _event27_decide_firms_to_visit(self) -> None:
+        """Event 27: each consumer selects firms to visit; loyalty rule applied.
+
+        Mesa port: Household.decide_firms_to_visit(model)
+          if income_to_spend <= EPS: shop_visits = []; return
+          Z = min(max_Z, n_firms)
+          selected = model.random.sample(all_firms, Z)  (without replacement)
+          if loyalty and largest_prod_prev not in selected:
+            selected[-1] = largest_prod_prev
+          sort selected by price ASC
+          shop_visits = selected
+          if loyalty: largest_prod_prev = max(selected, key=lambda f: f.production)
+
+        The visit list is stored as ``-1``-padded columns
+        ``shop_visit_0 .. shop_visit_{max_Z-1}`` on the Households DataFrame.
+        ``largest_prod_prev`` is updated BEFORE shopping (same as Mesa port).
+
+        RNG: one without-replacement sample of Z firm ids per consumer with
+        budget > EPS, in consumer row order -- matching the Mesa port's
+        per-household ``model.random.sample``.
+        """
+        eps = self.EPS
+        max_Z = int(self.p["max_Z"])
+        consumer_matching = self.p.get("consumer_matching", "loyalty")
+        rng = self.random
+
+        fdf = self.firms.agents
+        firm_ids_arr = fdf["unique_id"].to_numpy()
+        firm_id_list = [int(f) for f in firm_ids_arr]
+        n_firms = len(firm_id_list)
+        Z = min(max_Z, n_firms)
+
+        price_of: dict[int, float] = dict(
+            zip(
+                fdf["unique_id"].to_list(),
+                (float(p) for p in fdf["price"]),
+                strict=True,
+            )
+        )
+        production_of: dict[int, float] = dict(
+            zip(
+                fdf["unique_id"].to_list(),
+                (float(p) for p in fdf["production"]),
+                strict=True,
+            )
+        )
+        firm_id_set: set[int] = set(firm_id_list)
+
+        hdf = self.households.agents
+        n_hh = len(hdf)
+        income_to_spend: list[float] = [float(b) for b in hdf["income_to_spend"]]
+        largest_prod_prev: list[int] = [int(lp) for lp in hdf["largest_prod_prev"]]
+
+        # Output: shop visit matrix (n_hh x max_Z), -1-padded.
+        visit_queue: list[list[int]] = [[-1] * max_Z for _ in range(n_hh)]
+        new_largest: list[int] = list(largest_prod_prev)
+
+        for i in range(n_hh):
+            if income_to_spend[i] <= eps:
+                # No budget: leave shop_visits all -1 (already initialised).
+                continue
+
+            # Sample Z firms without replacement in firm_id_list order --
+            # one rng.choice per consumer with budget, matching the Mesa port's
+            # model.random.sample(all_firms, Z).
+            sample = [int(f) for f in rng.choice(firm_ids_arr, size=Z, replace=False)]
+
+            # Loyalty: force largest_prod_prev into set if not already present.
+            if consumer_matching == "loyalty":
+                prev = largest_prod_prev[i]
+                if prev >= 0 and prev in firm_id_set and prev not in sample:
+                    sample[-1] = prev
+
+            # Sort by price ASC (cheapest first, mirroring Mesa port).
+            sample.sort(key=lambda fid: price_of[fid])
+
+            # Update loyalty BEFORE shopping: track firm with max production in set.
+            if consumer_matching == "loyalty":
+                new_largest[i] = max(sample, key=lambda fid: production_of[fid])
+
+            # Store in visit queue (truncated to max_Z slots).
+            for k, fid in enumerate(sample[:max_Z]):
+                visit_queue[i][k] = fid
+
+        # Build Polars columns for shop_visit_0..max_Z-1 and largest_prod_prev.
+        cols = []
+        for k in range(max_Z):
+            cols.append(
+                pl.Series(
+                    f"shop_visit_{k}",
+                    [visit_queue[i][k] for i in range(n_hh)],
+                    dtype=pl.Int64,
+                )
+            )
+        cols.append(pl.Series("largest_prod_prev", new_largest, dtype=pl.Int64))
+
+        self.households.agents = hdf.with_columns(*cols)
+
+    def _event29_finalize_purchases(self) -> None:
+        """Event 29: return unspent budget to savings; zero income_to_spend.
+
+        Mesa port: Household.finalize_purchases()
+          self.savings += self.income_to_spend
+          self.income_to_spend = 0
+
+        Fully vectorized, no RNG.
+        """
+        hdf = self.households.agents
+        self.households.agents = hdf.with_columns(
+            (pl.col("savings") + pl.col("income_to_spend")).alias("savings"),
+            pl.lit(0.0).alias("income_to_spend"),
+        )
+
+    # ------------------------------------------------------------------
     # Phase 6: revenue (events 30-32)
     # ------------------------------------------------------------------
 
@@ -1236,6 +1426,6 @@ class BAMModel(mf.ModelDF):
         self._labor_market()
         self._credit_market()
         self._production()
-        # Goods market added in Task 7.
+        self._goods_market()
         self._revenue()
         # Bankruptcy + entry added in Task 8.
