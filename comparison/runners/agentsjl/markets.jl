@@ -1,8 +1,8 @@
 """
 markets.jl - market matching routines for the Agents.jl BAM model.
 
-So far this holds the labor-market matcher (event 11). Later phase tasks add the
-credit-market and goods-market matchers here.
+So far this holds the labor-market matcher (event 11) and the credit-market
+matcher (event 18). The goods-market matcher is added in a later phase task.
 
 Each routine is a faithful translation of the corresponding Mesa function in
 `comparison/runners/mesa/markets.py`. The matching ALGORITHM (worker application
@@ -99,6 +99,123 @@ function _run_labor_market!(model)
                 fv.current_labor += 1
                 fv.n_vacancies   -= 1
             end
+        end
+    end
+
+    return nothing
+end
+
+# ---------------------------------------------------------------------------
+# Credit market matching (event 18, repeated max_H rounds)
+# ---------------------------------------------------------------------------
+
+"""
+    _run_credit_market!(model)
+
+Event 18 (credit_market_round x max_H): multi-round firm-bank matching.
+
+Translated faithfully from Mesa `run_credit_market` (`markets.py:79`).
+
+Each round:
+  * Gather every firm with `credit_demand > 0` and a non-empty `loan_apps`
+    queue, in agent-iteration (creation) order. Each such firm pops the FRONT of
+    its queue (its current top bank) and is grouped under that bank. Grouping
+    preserves first-seen bank order and, within each group, firm arrival order
+    (deterministic, like Mesa's insertion-ordered dict).
+  * For each bank WITH applicants (in first-seen order): skip if its
+    `credit_supply <= EPS`. Otherwise rank that bank's applicants by
+    `projected_fragility` ASC (safer firms first, NO random tie-break - a STABLE
+    sort preserves arrival order on ties, matching Mesa's stable `list.sort`).
+  * Walk the ranked applicants maintaining a running `granted_total` against the
+    bank's `credit_supply`. For each firm:
+      - per-loan cap `max_grant = min(credit_demand, net_worth * max_loan_to_net_worth)`
+        (or just `credit_demand` if `max_loan_to_net_worth <= 0`); skip if `<= 0`;
+      - `amount = max_grant` if it fits, else the remaining supply (PARTIAL loan
+        at the boundary, clamped at 0);
+      - if `amount > EPS`: the CONTRACT rate (Flag 5) is
+        `r_bar * (1 + opex_shock * min(projected_fragility, max_leverage))` -
+        fragility-scaled, distinct from the bank's posted rate. Push a `Loan`
+        (borrower_id, lender_id, principal=amount, rate) onto the shared loan
+        book `model.loans`; `total_funds += amount`; `credit_demand -= amount`;
+        `granted_total += amount`.
+  * `break` out of the applicant loop once `granted_total >= supply`.
+  * After all of a bank's applicants are processed, decrement
+    `credit_supply -= granted_total` ONCE.
+  * Loans ACCUMULATE across rounds within the period (the book is purged only at
+    the start of the credit market, event 17 open).
+
+RNG alignment with Mesa: NO random draws occur in this event in either
+implementation. The applicant ranking is deterministic (`projected_fragility`
+ASC, stable). Firm scan order (creation order) and first-seen bank order match
+Mesa's `self.firms` iteration and the dict it builds. The Dict-hash iteration
+caveat does not bias the outcome here because the order-sensitive step (the
+within-bank grant order) is resolved purely by the deterministic fragility sort,
+exactly as in Mesa.
+"""
+function _run_credit_market!(model)
+    eps = model.eps
+    max_H = Int(round(model.params["max_H"]))
+    max_loan_to_net_worth = model.params["max_loan_to_net_worth"]
+    r_bar = model.params["r_bar"]
+    max_leverage = model.params["max_leverage"]
+
+    for _ in 1:max_H
+        # Group firms (with demand + pending apps) by their popped front bank.
+        # Preserve first-seen bank order + arrival order to match Mesa's
+        # insertion-ordered dict.
+        bank_order = Int[]                       # bank ids in first-seen order
+        applicants = Dict{Int,Vector{Int}}()     # bank id => firm ids (arrival order)
+
+        for a in allagents(model)
+            variantof(a) === Firm || continue
+            fv = variant(a)
+            (fv.credit_demand <= 0.0 || isempty(fv.loan_apps)) && continue
+            bank = popfirst!(fv.loan_apps)       # pop the front bank
+            if !haskey(applicants, bank)
+                applicants[bank] = Int[]
+                push!(bank_order, bank)
+            end
+            push!(applicants[bank], a.id)
+        end
+
+        # Process banks in first-seen order.
+        for bid in bank_order
+            bv = variant(model[bid])
+            supply = bv.credit_supply
+            supply <= eps && continue
+
+            group = applicants[bid]
+            # Rank applicants by projected_fragility ASC (safer first), NO random
+            # tie-break. STABLE sort preserves arrival order on ties.
+            frag_of(fid) = variant(model[fid]).projected_fragility
+            sort!(group; by = frag_of, alg = MergeSort)
+
+            granted_total = 0.0
+            for fid in group
+                granted_total >= supply && break
+                fv = variant(model[fid])
+                # Per-loan cap.
+                max_grant = if max_loan_to_net_worth > 0.0
+                    min(fv.credit_demand, fv.net_worth * max_loan_to_net_worth)
+                else
+                    fv.credit_demand
+                end
+                max_grant <= 0.0 && continue
+                remaining = supply - granted_total
+                amount = (granted_total + max_grant <= supply) ?
+                         max_grant : max(remaining, 0.0)
+                if amount > eps
+                    fragility = min(fv.projected_fragility, max_leverage)
+                    rate = r_bar * (1.0 + bv.opex_shock * fragility)
+                    push!(model.loans,
+                          Loan(amount, rate, fid, bid))   # principal, rate, borrower, lender
+                    fv.total_funds   += amount
+                    fv.credit_demand -= amount
+                    granted_total    += amount
+                end
+            end
+            # Update bank supply once after all applicants processed.
+            bv.credit_supply -= granted_total
         end
     end
 

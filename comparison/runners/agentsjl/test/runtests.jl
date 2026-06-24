@@ -33,6 +33,13 @@ include(joinpath(@__DIR__, "..", "model.jl"))
             # Labor-market params (bam_step! now also runs the labor phase).
             "max_M"               => 4.0,
             "theta"               => 8.0,
+            # Credit-market params (bam_step! now also runs the credit phase).
+            "v"                     => 0.10,
+            "h_phi"                 => 0.10,
+            "r_bar"                 => 0.02,
+            "max_H"                 => 2.0,
+            "max_loan_to_net_worth" => 2.0,
+            "max_leverage"          => 10.0,
         )
         n_firms, n_households, n_banks = 10, 50, 2
         model = build_model(n_firms, n_households, n_banks, params, 42)
@@ -281,6 +288,218 @@ include(joinpath(@__DIR__, "..", "model.jl"))
 
         # Populations preserved; no agents added or removed.
         @test nagents(model) == n_firms + n_households + n_banks
+    end
+
+    @testset "credit market invariants (events 13-19)" begin
+        # Full canonical param set required by planning + labor + credit events.
+        # `net_worth_ratio` is set LOW so firms start with little cash and the
+        # wage bill exceeds their funds, forcing a financing gap that exercises
+        # the credit market (demand > 0, loans granted, possible fire-on-gap).
+        params = Dict{String,Float64}(
+            "labor_productivity"    => 0.50,
+            "price_init"            => 0.50,
+            "net_worth_ratio"       => 0.05,   # tiny: forces a financing gap
+            "savings_init"          => 1.0,
+            "equity_base_init"      => 5.0,
+            "min_wage_ratio"        => 0.5,
+            "min_wage_rev_period"   => 4.0,
+            "h_rho"                 => 0.10,
+            "h_eta"                 => 0.10,
+            "h_xi"                  => 0.05,
+            # Labor-market params.
+            "max_M"                 => 4.0,
+            "theta"                 => 8.0,
+            # Credit-market params (values from defaults.yml).
+            "v"                     => 0.10,
+            "h_phi"                 => 0.10,
+            "r_bar"                 => 0.02,
+            "max_H"                 => 2.0,
+            "max_loan_to_net_worth" => 2.0,
+            "max_leverage"          => 10.0,
+        )
+        n_firms, n_households, n_banks = 10, 50, 2
+        model = build_model(n_firms, n_households, n_banks, params, 42)
+
+        # Run planning + labor + credit directly (period stays 0).
+        _planning!(model)
+        _labor_market!(model)
+
+        # Snapshot per-firm pre-credit wage_bill / total_funds so we can verify
+        # that loans only ever went to firms with a financing gap, and check the
+        # total_funds bookkeeping after lending.
+        wage_bill_pre  = Dict(a.id => variant(a).wage_bill   for a in allagents(model) if variantof(a) === Firm)
+        funds_pre      = Dict(a.id => variant(a).total_funds for a in allagents(model) if variantof(a) === Firm)
+        # Capacity each bank brings into the market (equity_base / v).
+        v = params["v"]
+        supply_cap = Dict(b.id => max(variant(b).equity_base / v, 0.0)
+                          for b in allagents(model) if variantof(b) === Bank)
+
+        _credit_market!(model)
+
+        firm_ids = Set(a.id for a in allagents(model) if variantof(a) === Firm)
+        bank_ids = Set(b.id for b in allagents(model) if variantof(b) === Bank)
+
+        # --- The gap was actually forced: at least one loan was granted ---
+        @test !isempty(model.loans)
+
+        # --- Loans only to firms that had a financing gap (wage_bill > funds) ---
+        for loan in model.loans
+            @test loan.borrower_id in firm_ids
+            @test loan.lender_id in bank_ids
+            @test loan.principal > 0.0
+            @test loan.rate > 0.0
+            # Pre-credit gap must have been positive for any borrower.
+            @test wage_bill_pre[loan.borrower_id] - funds_pre[loan.borrower_id] > 0.0
+        end
+
+        # --- Per-bank lent <= credit_supply capacity (equity_base / v) ---
+        lent_by_bank = Dict{Int,Float64}(bid => 0.0 for bid in bank_ids)
+        for loan in model.loans
+            lent_by_bank[loan.lender_id] += loan.principal
+        end
+        for bid in bank_ids
+            @test lent_by_bank[bid] <= supply_cap[bid] + 1e-9
+            # Remaining advertised supply + what was lent == original capacity.
+            bv = variant(model[bid])
+            @test bv.credit_supply + lent_by_bank[bid] ≈ supply_cap[bid]
+        end
+
+        # --- total_funds bookkeeping: each borrower's funds rose by exactly the
+        #     sum of its loan principals (event 18 credits total_funds += amount).
+        #     Event 19 fire-on-gap does NOT touch total_funds, so this holds. ---
+        lent_by_firm = Dict{Int,Float64}(fid => 0.0 for fid in firm_ids)
+        for loan in model.loans
+            lent_by_firm[loan.borrower_id] += loan.principal
+        end
+        for a in allagents(model)
+            variantof(a) === Firm || continue
+            fv = variant(a)
+            @test fv.total_funds ≈ funds_pre[a.id] + lent_by_firm[a.id]
+        end
+
+        # --- Per-loan cap respected: each INDIVIDUAL loan's principal
+        #     <= net_worth * max_loan_to_net_worth. (The per-loan cap is applied
+        #     against the borrower's net_worth per draw; a firm CAN exceed this
+        #     in aggregate by borrowing from multiple banks/rounds, exactly as in
+        #     the Mesa port, so the cap is per-loan, not per-firm-aggregate.) ---
+        mltnw = params["max_loan_to_net_worth"]
+        if mltnw > 0.0
+            nw_of = Dict(a.id => variant(a).net_worth
+                         for a in allagents(model) if variantof(a) === Firm)
+            for loan in model.loans
+                @test loan.principal <= nw_of[loan.borrower_id] * mltnw + 1e-9
+            end
+        end
+
+        # --- Event 19 fire-on-gap: no firm ends with wage_bill > total_funds by
+        #     more than one (last) worker's wage; concretely current_labor and
+        #     employee_ids stay consistent and non-negative. ---
+        for a in allagents(model)
+            variantof(a) === Firm || continue
+            fv = variant(a)
+            @test fv.current_labor >= 0
+            @test fv.current_labor == length(fv.employee_ids)
+            for hid in fv.employee_ids
+                @test variant(model[hid]).employer_id == a.id
+            end
+        end
+
+        # --- Banks: posted interest_rate set (event 14) and supply non-negative ---
+        for b in allagents(model)
+            variantof(b) === Bank || continue
+            bv = variant(b)
+            @test bv.interest_rate ≈ params["r_bar"] * (1.0 + bv.opex_shock)
+            @test bv.credit_supply >= -1e-9
+        end
+
+        # Populations preserved; no agents added or removed.
+        @test nagents(model) == n_firms + n_households + n_banks
+    end
+
+    @testset "loan book persistence + purge across periods" begin
+        # Verify loans persist through planning/labor (so event 2 can read prior
+        # interest) and are purged at the start of the next credit market.
+        params = Dict{String,Float64}(
+            "labor_productivity"    => 0.50,
+            "price_init"            => 0.50,
+            "net_worth_ratio"       => 0.05,   # force a gap so loans appear
+            "savings_init"          => 1.0,
+            "equity_base_init"      => 5.0,
+            "min_wage_ratio"        => 0.5,
+            "min_wage_rev_period"   => 4.0,
+            "h_rho"                 => 0.10,
+            "h_eta"                 => 0.10,
+            "h_xi"                  => 0.05,
+            "max_M"                 => 4.0,
+            "theta"                 => 8.0,
+            "v"                     => 0.10,
+            "h_phi"                 => 0.10,
+            "r_bar"                 => 0.02,
+            "max_H"                 => 2.0,
+            "max_loan_to_net_worth" => 2.0,
+            "max_leverage"          => 10.0,
+        )
+        model = build_model(10, 50, 2, params, 7)
+
+        # Period 1: create loans.
+        _planning!(model)
+        _labor_market!(model)
+        _credit_market!(model)
+        @test !isempty(model.loans)
+        n_loans_p1 = length(model.loans)
+
+        # Loans persist through the next planning + labor phases (NOT purged yet)
+        # so event 2 (plan_breakeven_price) can read prior-period interest.
+        _planning!(model)
+        _labor_market!(model)
+        @test length(model.loans) == n_loans_p1   # still there during planning/labor
+
+        # The next credit market opens with a purge: prior loans are gone, only
+        # this period's loans remain afterwards.
+        _purge_loans!(model)
+        @test isempty(model.loans)
+    end
+
+    @testset "event 2 reads prior-period loan interest" begin
+        # Directly verify _event2_plan_breakeven_price! reads the shared loan book
+        # by borrower_id (Flag 6: planning-phase breakeven uses last period's
+        # interest).
+        params = Dict{String,Float64}(
+            "labor_productivity"  => 0.50,
+            "price_init"          => 0.50,
+            "net_worth_ratio"     => 6.0,
+            "savings_init"        => 1.0,
+            "equity_base_init"    => 5.0,
+            "min_wage_ratio"      => 0.5,
+            "min_wage_rev_period" => 4.0,
+            "h_rho"               => 0.10,
+            "h_eta"               => 0.10,
+            "h_xi"                => 0.05,
+        )
+        model = build_model(3, 5, 1, params, 1)
+
+        firm = first(firms(model))
+        fid = firm.id
+        fv = variant(firm)
+        # Set a known wage_bill and desired_production, and inject a loan for this
+        # firm into the shared book.
+        fv.wage_bill = 2.0
+        fv.desired_production = 4.0
+        push!(model.loans, Loan(10.0, 0.05, fid, 0))   # interest = 10*0.05 = 0.5
+
+        _event2_plan_breakeven_price!(model)
+
+        # breakeven = (wage_bill + interest) / max(desired_production, eps)
+        #           = (2.0 + 0.5) / 4.0 = 0.625
+        @test variant(model[fid]).breakeven_price ≈ (2.0 + 0.5) / 4.0
+
+        # A firm with NO loan in the book gets breakeven from wage_bill alone.
+        other = collect(firms(model))[2]
+        ov = variant(other)
+        ov.wage_bill = 1.0
+        ov.desired_production = 2.0
+        _event2_plan_breakeven_price!(model)
+        @test variant(other).breakeven_price ≈ 1.0 / 2.0
     end
 
 end
