@@ -1102,13 +1102,14 @@ Event 25 (consumers_calc_propensity): compute each household's marginal propensi
 to consume, based on its savings relative to the economy-wide average.
 
 Formula (Mesa `Household.calc_propensity`):
-  * `avg_sav = max(mean(clamp(h.savings, 0, Inf) for all h), eps)`
+  * `avg_sav = max(mean(h.savings for all h), eps)`  (raw savings, floor only the mean)
   * per household: `s = max(savings, 0)`;
     `propensity = 1 / (1 + tanh(s / avg_sav)^beta)`
 
-The savings average uses clamped (non-negative) savings so negative balances
-do not drag the denominator below zero. The individual `s = max(savings, 0)`
-mirrors Mesa's `savings = max(self.savings, 0.0)` inside the method.
+The savings average uses RAW (possibly negative) savings summed across all
+households; only the final mean is floored at `eps`. This matches Mesa exactly:
+`avg_sav = max(sum(all_savings) / len(all_savings), EPS)`. The individual
+`s = max(savings, 0)` inside the propensity formula is correct and unchanged.
 
 No RNG.
 """
@@ -1116,11 +1117,12 @@ function _event25_calc_propensity!(model)
     eps  = model.eps
     beta = model.params["beta"]
 
-    # Average of non-negative savings across all households.
+    # Average of RAW savings across all households (floor only the final mean).
+    # Matches Mesa: avg_sav = max(sum(all_savings) / len(all_savings), EPS)
     total_sav = 0.0
     n_hh = 0
     for h in households(model)
-        total_sav += max(variant(h).savings, 0.0)
+        total_sav += variant(h).savings
         n_hh += 1
     end
     avg_sav = n_hh > 0 ? max(total_sav / n_hh, eps) : eps
