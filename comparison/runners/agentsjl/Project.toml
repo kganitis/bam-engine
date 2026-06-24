@@ -1,0 +1,8 @@
+[deps]
+Agents = "46ada45e-f475-11e8-01d0-f70cc89e6671"
+JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[compat]
+Agents = "7"
+julia = "1.10"
