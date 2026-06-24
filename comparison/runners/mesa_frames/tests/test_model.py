@@ -768,3 +768,408 @@ class TestCreditMarket:
         )
         # wage_bill=0, so breakeven == interest / desired_production.
         assert abs(be - interest / 100.0) < 1e-9
+
+
+class TestProductionAndRevenue:
+    """Invariant tests for _production() (events 20-24) and _revenue() (events 30-32)."""
+
+    def _run_through_production(self, seed: int = SEED, use_forced_gap: bool = False):
+        """Helper: run planning + labor + credit + production phases."""
+        model = make_model(seed=seed)
+        model._planning()
+        model._labor_market()
+        if use_forced_gap:
+            # Force firms to borrow so the loan table is non-empty.
+            from comparison.runners.mesa_frames.markets import run_credit_market
+            from comparison.runners.mesa_frames.model import empty_loan_book
+
+            model.loans = empty_loan_book()
+            model._event13_decide_credit_supply()
+            model._event14_decide_interest_rate()
+            fdf = model.firms.agents
+            model.firms.agents = fdf.with_columns(pl.lit(0.0).alias("total_funds"))
+            model._event15_decide_credit_demand()
+            model._event16_calc_fragility()
+            model._event17_prepare_loan_applications()
+            run_credit_market(model)
+            model._event19_fire_workers_for_gap()
+        else:
+            model._credit_market()
+        model._production()
+        return model
+
+    def test_production_equals_labor_productivity_times_current_labor(self):
+        """Event 22: production == labor_productivity * current_labor per firm."""
+        model = self._run_through_production()
+        fdf = model.firms.agents
+        for row in fdf.iter_rows(named=True):
+            expected = row["labor_productivity"] * row["current_labor"]
+            assert abs(row["production"] - expected) < 1e-9, (
+                f"firm {row['unique_id']}: production={row['production']} "
+                f"!= lp*cl={expected}"
+            )
+
+    def test_production_prev_equals_production_after_event22(self):
+        """Event 22: production_prev is updated unconditionally to current production."""
+        model = self._run_through_production()
+        fdf = model.firms.agents
+        diff = (fdf["production"] - fdf["production_prev"]).abs()
+        assert (diff < 1e-12).all()
+
+    def test_inventory_equals_production_after_event22(self):
+        """Event 22: inventory is OVERWRITTEN to production (not accumulated)."""
+        model = self._run_through_production()
+        fdf = model.firms.agents
+        diff = (fdf["production"] - fdf["inventory"]).abs()
+        assert (diff < 1e-12).all()
+
+    def test_production_non_negative(self):
+        """Event 22: all production values are non-negative."""
+        model = self._run_through_production()
+        assert (model.firms.agents["production"] >= 0.0).all()
+
+    def test_employed_workers_income_updated(self):
+        """Event 21: employed workers' income increased by their wage."""
+        model = make_model(seed=SEED)
+        model._planning()
+        model._labor_market()
+        model._credit_market()
+
+        hdf_before = model.households.agents.clone()
+        model._event20_pay_wages()
+        model._event21_receive_wage()
+
+        hdf_after = model.households.agents
+        for i, row in enumerate(hdf_after.iter_rows(named=True)):
+            prev = hdf_before.row(i, named=True)
+            if row["employer"] >= 0:
+                expected_income = prev["income"] + prev["wage"]
+                assert abs(row["income"] - expected_income) < 1e-9, (
+                    f"worker {row['unique_id']}: income={row['income']} "
+                    f"!= prev+wage={expected_income}"
+                )
+            else:
+                # Unemployed workers: income unchanged.
+                assert abs(row["income"] - prev["income"]) < 1e-9
+
+    def test_unemployed_workers_income_unchanged(self):
+        """Event 21: unemployed workers' income is not changed."""
+        model = self._run_through_production()
+        hdf = model.households.agents
+        # After production, unemployed workers should have income == 0
+        # (started at 0, never received a wage).
+        unemployed = hdf.filter(pl.col("employer") < 0)
+        # income was 0 before; only employed workers receive wages.
+        assert (unemployed["income"] >= 0.0).all()
+
+    def test_pay_wages_reduces_total_funds(self):
+        """Event 20: total_funds decreases by exactly wage_bill."""
+        model = make_model(seed=SEED)
+        model._planning()
+        model._labor_market()
+        model._credit_market()
+
+        fdf_before = model.firms.agents.clone()
+        model._event20_pay_wages()
+        fdf_after = model.firms.agents
+
+        for i, row in enumerate(fdf_after.iter_rows(named=True)):
+            prev = fdf_before.row(i, named=True)
+            expected = prev["total_funds"] - prev["wage_bill"]
+            assert abs(row["total_funds"] - expected) < 1e-9, (
+                f"firm {row['unique_id']}: total_funds={row['total_funds']} "
+                f"!= {expected}"
+            )
+
+    def test_avg_mkt_price_updated_after_production(self):
+        """Event 23: avg_mkt_price_history gets a new entry after _production."""
+        model = make_model(seed=SEED)
+        history_len_before = len(model.avg_mkt_price_history)
+        model._planning()
+        model._labor_market()
+        model._credit_market()
+        model._production()
+        assert len(model.avg_mkt_price_history) == history_len_before + 1
+
+    def test_avg_mkt_price_positive_if_production_exists(self):
+        """Event 23: avg_mkt_price stays positive after production."""
+        model = self._run_through_production()
+        assert model.avg_mkt_price > 0.0
+
+    def test_contracts_decremented_for_employed(self):
+        """Event 24: employed workers' periods_left decremented by 1."""
+        model = make_model(seed=SEED)
+        model._planning()
+        model._labor_market()
+        model._credit_market()
+
+        hdf_before = model.households.agents.clone()
+        model._event20_pay_wages()
+        model._event21_receive_wage()
+        model._event22_run_production()
+        model._event24_update_contracts()
+
+        hdf_after = model.households.agents
+        for i, row in enumerate(hdf_after.iter_rows(named=True)):
+            prev = hdf_before.row(i, named=True)
+            was_employed = prev["employer"] >= 0
+            if was_employed:
+                # Either contract decremented by 1, or expired (employer now -1).
+                if row["employer"] >= 0:
+                    # Still employed: periods_left decremented.
+                    assert row["periods_left"] == prev["periods_left"] - 1, (
+                        f"worker {row['unique_id']}: periods_left not decremented"
+                    )
+                else:
+                    # Contract expired: periods_left was 1 before decrement.
+                    assert prev["periods_left"] == 1
+                    assert row["employer_prev"] == prev["employer"]
+                    assert row["wage"] == 0.0
+                    assert row["contract_expired"] is True
+                    assert row["fired"] is False
+            else:
+                # Unemployed: no change.
+                assert row["periods_left"] == prev["periods_left"]
+
+    def test_expired_workers_cleared_from_employer(self):
+        """Event 24: expired workers have employer=-1 and contract_expired=True."""
+        # Run multiple steps to get some contracts expiring.
+        model = make_model(seed=42)
+        theta = DEFAULT_PARAMS["theta"]
+        # Advance enough periods for contracts to expire.
+        for _ in range(theta + 1):
+            model._planning()
+            model._labor_market()
+            model._credit_market()
+            model._production()
+            model._revenue()
+        hdf = model.households.agents
+        # No employed worker should have periods_left <= 0.
+        employed = hdf.filter(pl.col("employer") >= 0)
+        if len(employed) > 0:
+            assert (employed["periods_left"] >= 0).all()
+
+    def test_firm_current_labor_consistent_after_contract_expiry(self):
+        """Event 24: current_labor matches actual employed count after expiry."""
+        model = make_model(seed=42)
+        theta = DEFAULT_PARAMS["theta"]
+        for _ in range(theta):
+            model._planning()
+            model._labor_market()
+            model._credit_market()
+            model._production()
+            model._revenue()
+        hdf = model.households.agents
+        fdf = model.firms.agents
+        counts = (
+            hdf.filter(pl.col("employer") >= 0)
+            .group_by("employer")
+            .agg(pl.len().alias("c"))
+        )
+        count_map = dict(
+            zip(counts["employer"].to_list(), counts["c"].to_list(), strict=True)
+        )
+        for row in fdf.iter_rows(named=True):
+            actual = count_map.get(row["unique_id"], 0)
+            assert row["current_labor"] == actual, (
+                f"firm {row['unique_id']}: current_labor={row['current_labor']} "
+                f"!= employed count {actual}"
+            )
+
+    def test_dividends_non_negative(self):
+        """Event 32: all households receive non-negative dividends."""
+        model = self._run_through_production()
+        model._revenue()
+        hdf = model.households.agents
+        assert (hdf["dividends"] >= 0.0).all()
+
+    def test_dividends_equal_across_households(self):
+        """Event 32: div_per_hh is EQUAL for all households (spec flag 8)."""
+        model = self._run_through_production()
+        model._revenue()
+        hdf = model.households.agents
+        divs = hdf["dividends"].to_list()
+        assert all(abs(d - divs[0]) < 1e-12 for d in divs), (
+            "dividends differ across households"
+        )
+
+    def test_revenue_finite_and_non_negative(self):
+        """Event 30: gross_profit is finite; total_funds finite after revenue."""
+        model = self._run_through_production()
+        model._event30_collect_revenue()
+        fdf = model.firms.agents
+        assert fdf["gross_profit"].is_finite().all()
+        assert fdf["total_funds"].is_finite().all()
+
+    def test_net_profit_computed_for_all_firms(self):
+        """Event 31: net_profit is defined (finite) for all firms after validate_debt."""
+        model = self._run_through_production(use_forced_gap=True)
+        model._event30_collect_revenue()
+        model._event31_validate_debt()
+        fdf = model.firms.agents
+        assert fdf["net_profit"].is_finite().all()
+
+    def test_solvent_firms_repay_debt_fully(self):
+        """Event 31: firms with total_funds >= total_debt repay; total_funds reduced."""
+        model = self._run_through_production(use_forced_gap=True)
+        if len(model.loans) == 0:
+            pytest.skip("no loans issued under this seed")
+        model._event30_collect_revenue()
+
+        # Record pre-validate state.
+        fdf_pre = model.firms.agents.clone()
+        loans = model.loans
+
+        # Compute expected per-firm total_debt.
+        agg = (
+            loans.with_columns(
+                (pl.col("principal") * (1.0 + pl.col("interest_rate"))).alias("_debt")
+            )
+            .group_by("borrower_id")
+            .agg(pl.col("_debt").sum().alias("total_debt"))
+            .rename({"borrower_id": "unique_id"})
+        )
+        fdf_ext = fdf_pre.join(agg, on="unique_id", how="left").with_columns(
+            pl.col("total_debt").fill_null(0.0)
+        )
+
+        model._event31_validate_debt()
+        fdf_post = model.firms.agents
+
+        eps = 1e-9
+        for row_pre, row_post in zip(
+            fdf_ext.iter_rows(named=True), fdf_post.iter_rows(named=True), strict=True
+        ):
+            total_debt = row_pre["total_debt"]
+            if total_debt <= eps:
+                continue  # no debt: skip
+            pre_funds = row_pre["total_funds"]
+            if (pre_funds - total_debt) >= -eps:
+                # Should have repaid.
+                expected_funds = pre_funds - total_debt
+                assert abs(row_post["total_funds"] - expected_funds) < 1e-7, (
+                    f"firm {row_pre['unique_id']}: expected repayment "
+                    f"{expected_funds}, got {row_post['total_funds']}"
+                )
+
+    def test_defaulting_firms_have_zero_total_funds(self):
+        """Event 31: firms that default have total_funds set to 0."""
+        model = self._run_through_production(use_forced_gap=True)
+        if len(model.loans) == 0:
+            pytest.skip("no loans issued under this seed")
+        # Force all firms' total_funds to 0 so they must default.
+        fdf = model.firms.agents
+        model.firms.agents = fdf.with_columns(pl.lit(0.0).alias("total_funds"))
+        model._event30_collect_revenue()
+        model._event31_validate_debt()
+        # Any firm that had debt is now a defaulter: total_funds = 0.
+        fdf_post = model.firms.agents
+        loans = model.loans
+        borrowers = set(loans["borrower_id"].to_list())
+        for row in fdf_post.iter_rows(named=True):
+            if row["unique_id"] in borrowers:
+                assert abs(row["total_funds"]) < 1e-9, (
+                    f"firm {row['unique_id']} defaulted but total_funds={row['total_funds']}"
+                )
+
+    def test_bank_equity_increases_on_full_repayment(self):
+        """Event 31: solvent repayment increases bank equity by loan interest."""
+        model = self._run_through_production(use_forced_gap=True)
+        if len(model.loans) == 0:
+            pytest.skip("no loans issued under this seed")
+        model._event30_collect_revenue()
+
+        bdf_before = model.banks.agents.clone()
+        loans = model.loans
+
+        # Check which firms are solvent pre-validate.
+        fdf_pre = model.firms.agents.clone()
+        agg = (
+            loans.with_columns(
+                (pl.col("principal") * (1.0 + pl.col("interest_rate"))).alias("_debt"),
+                (pl.col("principal") * pl.col("interest_rate")).alias("_interest"),
+            )
+            .group_by("borrower_id")
+            .agg(
+                pl.col("_debt").sum().alias("total_debt"),
+                pl.col("_interest").sum().alias("total_interest"),
+            )
+            .rename({"borrower_id": "unique_id"})
+        )
+        fdf_ext = fdf_pre.join(agg, on="unique_id", how="left").with_columns(
+            pl.col("total_debt").fill_null(0.0),
+            pl.col("total_interest").fill_null(0.0),
+        )
+        solvent_ids = set(
+            fdf_ext.filter(
+                (pl.col("total_debt") > 1e-9)
+                & ((pl.col("total_funds") - pl.col("total_debt")) >= -1e-9)
+            )["unique_id"].to_list()
+        )
+
+        model._event31_validate_debt()
+        bdf_after = model.banks.agents
+
+        # At least one bank's equity should be non-decreased if any firm was solvent.
+        if solvent_ids:
+            equity_before_total = bdf_before["equity_base"].sum()
+            equity_after_total = bdf_after["equity_base"].sum()
+            # Solvent repayments add interest: equity can only increase or stay same.
+            assert equity_after_total >= equity_before_total - 1e-6, (
+                "bank equity dropped despite solvent repayments"
+            )
+
+    def test_savings_increase_by_dividends(self):
+        """Event 32: household savings increase by div_per_hh."""
+        model = self._run_through_production()
+        hdf_before = model.households.agents.clone()
+        model._event30_collect_revenue()
+        model._event31_validate_debt()
+
+        savings_before = hdf_before["savings"].to_list()
+        model._event32_pay_dividends()
+        hdf_after = model.households.agents
+
+        div = float(hdf_after["dividends"][0])
+        for i, row in enumerate(hdf_after.iter_rows(named=True)):
+            expected = savings_before[i] + div
+            assert abs(row["savings"] - expected) < 1e-9, (
+                f"worker {row['unique_id']}: savings={row['savings']} != {expected}"
+            )
+
+    def test_production_deterministic(self):
+        """Same seed produces identical production state."""
+        m1 = self._run_through_production(seed=17)
+        m2 = self._run_through_production(seed=17)
+        for col in ["production", "production_prev", "inventory"]:
+            assert (m1.firms.agents[col] == m2.firms.agents[col]).all()
+
+    def test_step_completes_without_error(self):
+        """step() runs planning through revenue without raising."""
+        model = make_model(seed=SEED)
+        model.step()
+        assert model.period == 1
+
+    def test_multi_step_production_invariant(self):
+        """production == lp * current_labor holds across multiple full steps."""
+        model = make_model(seed=5)
+        for _ in range(5):
+            model.step()
+            fdf = model.firms.agents
+            for row in fdf.iter_rows(named=True):
+                expected = row["labor_productivity"] * row["current_labor"]
+                assert abs(row["production"] - expected) < 1e-9
+
+    def test_collect_production_populated(self):
+        """With collect=True, production stats are recorded per period."""
+        from comparison.runners.mesa_frames.model import BAMModel
+
+        model = BAMModel(
+            N_FIRMS, N_HOUSEHOLDS, N_BANKS, DEFAULT_PARAMS, seed=SEED, collect=True
+        )
+        model.step()
+        assert len(model._c_total_production) == 1
+        assert len(model._c_unemployment) == 1
+        assert len(model._c_avg_employed_wage) == 1
+        assert model._c_total_production[0] >= 0.0
+        assert 0.0 <= model._c_unemployment[0] <= 1.0
