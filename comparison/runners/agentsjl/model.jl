@@ -196,6 +196,16 @@ Fields:
   * `avg_mkt_price_history`, `inflation_history` - per-period histories.
   * `loans` - the single shared loan book (vector of `Loan`).
   * `collapsed` - collapse flag (all firms or all banks gone).
+
+Collection fields (populated when `collect == true`):
+  * `collect` - flag: whether to collect per-period data.
+  * `c_unemployment` - per-period unemployment rate (1 - employed/n_households).
+  * `c_avg_employed_wage` - per-period average wage of employed workers.
+  * `c_total_production` - per-period total production (sum over firms).
+  * `c_total_vacancies` - per-period total open vacancies (sum over firms).
+  * `c_inflation` - per-period price inflation (YoY from inflation_history).
+  * `c_production_final` - per-firm production snapshot at the LAST period
+    (overwritten each period; length == n_firms after the run completes).
 """
 mutable struct BAMProperties
     params::Dict{String,Float64}
@@ -211,6 +221,14 @@ mutable struct BAMProperties
     inflation_history::Vector{Float64}
     loans::Vector{Loan}
     collapsed::Bool
+    # Collection fields (Task 9: per-period series)
+    collect::Bool
+    c_unemployment::Vector{Float64}
+    c_avg_employed_wage::Vector{Float64}
+    c_total_production::Vector{Float64}
+    c_total_vacancies::Vector{Float64}
+    c_inflation::Vector{Float64}
+    c_production_final::Vector{Float64}
 end
 
 # ---------------------------------------------------------------------------
@@ -426,6 +444,8 @@ Phase 1: run events 1-6 (planning + pricing phase) in order.
   3. Price adjustment vs avg_mkt_price
   4. Desired labor (ceil ratchet)
   5. Vacancies (desired_labor - current_labor)
+     Collection point (when collect=true): total_vacancies after event 5,
+     matching Mesa `BamModel._planning` which collects before event 6.
   6. Fire excess workers (random selection)
 
 Mirrors Mesa `BamModel._planning()`.
@@ -436,7 +456,17 @@ function _planning!(model)
     _event3_plan_price!(model)
     _event4_decide_desired_labor!(model)
     _event5_decide_vacancies!(model)
+    # Event 5 collection: total vacancies after decide_vacancies (Mesa point).
+    if model.collect
+        total_vac = 0
+        for a in allagents(model)
+            variantof(a) === Firm || continue
+            total_vac += variant(a).n_vacancies
+        end
+        push!(model.c_total_vacancies, Float64(total_vac))
+    end
     _event6_fire_excess_workers!(model)
+    return nothing
 end
 
 # ---------------------------------------------------------------------------
@@ -639,6 +669,8 @@ end
 Phase 2: run events 7-12 (labor market) in order.
 
   7.  Calc YoY inflation -> inflation_history
+      Collection point (when collect=true): inflation after event 7,
+      matching Mesa `BamModel._labor_market` which collects before event 8.
   8.  Adjust minimum wage (periodic, indexed to inflation)
   9.  Firms decide wage offer (random markup, min-wage floor)
   10. Unemployed workers decide which firms to apply to (ranked queue)
@@ -649,6 +681,10 @@ Mirrors Mesa `BamModel._labor_market()`.
 """
 function _labor_market!(model)
     _event7_calc_inflation!(model)
+    # Event 7 collection: inflation after _calc_inflation (Mesa point).
+    if model.collect
+        push!(model.c_inflation, model.inflation_history[end])
+    end
     _event8_adjust_min_wage!(model)
     _event9_decide_wage_offer!(model)
     _event10_decide_firms_to_apply!(model)
@@ -1077,6 +1113,9 @@ Phase 4: run events 20-24 (production phase) in order.
   20. Firms pay wages (total_funds -= wage_bill)
   21. Workers receive wage (employed workers: income += wage)
   22. Firms run production (labor_productivity * current_labor; overwrite inventory)
+      Collection point (when collect=true): unemployment, avg_employed_wage,
+      total_production, and production_final (per-firm snapshot) after event 22,
+      matching Mesa `BamModel._production` which collects before event 23.
   23. Update production-weighted average market price (append to history)
   24. Workers update contracts (decrement periods_left; expire if == 0)
 
@@ -1086,6 +1125,34 @@ function _production!(model)
     _event20_pay_wages!(model)
     _event21_receive_wage!(model)
     _event22_run_production!(model)
+    # Event 22 collection: employment and production after run_production (Mesa point).
+    if model.collect
+        employed_count = 0
+        wage_sum = 0.0
+        for h in households(model)
+            hv = variant(h)
+            if hv.employer_id != NO_AGENT
+                employed_count += 1
+                wage_sum += hv.wage
+            end
+        end
+        n_hh = model.n_households
+        unemployment = n_hh > 0 ? 1.0 - Float64(employed_count) / n_hh : 1.0
+        avg_wage = employed_count > 0 ? wage_sum / employed_count : 0.0
+        total_prod = 0.0
+        prod_final = Float64[]
+        for a in allagents(model)
+            variantof(a) === Firm || continue
+            p = variant(a).production
+            total_prod += p
+            push!(prod_final, p)
+        end
+        push!(model.c_unemployment, unemployment)
+        push!(model.c_avg_employed_wage, avg_wage)
+        push!(model.c_total_production, total_prod)
+        # production_final is overwritten each period; last period's snapshot is used.
+        model.c_production_final = prod_final
+    end
     _event23_update_avg_mkt_price!(model)
     _event24_update_contracts!(model)
     return nothing
@@ -1788,7 +1855,7 @@ end
 # ---------------------------------------------------------------------------
 
 """
-    build_model(n_firms, n_households, n_banks, params, seed) -> StandardABM
+    build_model(n_firms, n_households, n_banks, params, seed; collect=false) -> StandardABM
 
 Construct the baseline BAM `StandardABM` (no space) with `rng = Xoshiro(seed)`,
 the `BAMProperties` economy state, and all firm/household/bank agents added with
@@ -1804,11 +1871,11 @@ Derived initial values (Mesa `BamModel.__init__`):
 `model.n_households` is set (via the properties struct) before firms are added,
 matching the Mesa ordering where the Firm init reads `n_households`.
 
-The step function is the no-op `bam_step!` for now; the real per-period
-pipeline is wired in Task 9.
+When `collect=true`, per-period collection vectors are populated during `bam_step!`
+at the same points the Mesa model collects them (Task 9).
 """
 function build_model(n_firms::Integer, n_households::Integer, n_banks::Integer,
-                     params::AbstractDict, seed::Integer)
+                     params::AbstractDict, seed::Integer; collect::Bool = false)
     # Normalise params to a concrete Dict{String,Float64} for type stability.
     p = Dict{String,Float64}(string(k) => Float64(v) for (k, v) in params)
     eps = 1e-9
@@ -1833,6 +1900,13 @@ function build_model(n_firms::Integer, n_households::Integer, n_banks::Integer,
         Float64[0.0],                   # inflation_history
         Loan[],                         # loans (empty loan book)
         false,                          # collapsed
+        collect,                        # collect flag
+        Float64[],                      # c_unemployment
+        Float64[],                      # c_avg_employed_wage
+        Float64[],                      # c_total_production
+        Float64[],                      # c_total_vacancies
+        Float64[],                      # c_inflation
+        Float64[],                      # c_production_final
     )
 
     model = StandardABM(
