@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# setup_env.sh — Build the dedicated mesa-frames virtual environment.
+# setup_env.sh - Build the dedicated mesa-frames virtual environment.
 #
 # Creates comparison/runners/mesa_frames/.venv-mf/ using Python 3.12
 # (mesa-frames requires numpy<2, which has Python 3.12 wheels available).
