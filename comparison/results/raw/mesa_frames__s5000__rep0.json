@@ -1,10 +1,32 @@
 {
+  "schema_version": "1.0",
   "run_id": "mesa_frames__s5000__rep0",
   "framework": "mesa_frames",
-  "status": "timeout",
-  "error": "wall budget exceeded",
-  "process": {
-    "wall_seconds": 120.04951458398136
+  "framework_version": "0.1.0a0",
+  "language": "python",
+  "language_version": "3.12.11",
+  "status": "ok",
+  "error": null,
+  "population": {
+    "n_firms": 5000,
+    "n_households": 25000,
+    "n_banks": 500,
+    "n_agents_total": 30500
   },
-  "environment_id": "53769ac69a22"
+  "n_periods": 1000,
+  "warmup_periods": 100,
+  "seed": 1000,
+  "timing": {
+    "init_seconds": 0.008941583015257493,
+    "run_seconds": 94.01171616598731,
+    "steady_state_per_period_seconds": 0.10445746240665256,
+    "throughput_agent_steps_per_s": 291984.8835812572
+  },
+  "outputs": null,
+  "process": {
+    "wall_seconds": 104.17389474998345,
+    "peak_rss_bytes": 167903232,
+    "startup_seconds": 10.15323700098088
+  },
+  "environment_id": "6c90c1210485"
 }

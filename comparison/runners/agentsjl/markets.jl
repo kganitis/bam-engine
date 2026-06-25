@@ -150,11 +150,10 @@ Each round:
 
 RNG alignment with Mesa: NO random draws occur in this event in either
 implementation. The applicant ranking is deterministic (`projected_fragility`
-ASC, stable). `allagents(model)` iterates in Dict (hash) order (not creation
-order), but the order-sensitive step (within-bank grant order) is resolved
-purely by the deterministic fragility sort, exactly as in Mesa, so hash-order
-iteration does not bias the outcome. First-seen bank order mirrors Mesa's
-insertion-ordered dict.
+ASC, stable). We iterate `1:model.n_firms` (id-ascending), which matches Mesa's
+insertion/id order; firm iteration order here only affects the `bank_order`
+first-seen sequence and the stable-sort tie-break on equal `projected_fragility`,
+and the gate passes.
 """
 function _run_credit_market!(model)
     eps = model.eps
@@ -170,8 +169,8 @@ function _run_credit_market!(model)
         bank_order = Int[]                       # bank ids in first-seen order
         applicants = Dict{Int,Vector{Int}}()     # bank id => firm ids (arrival order)
 
-        for a in allagents(model)
-            variantof(a) === Firm || continue
+        for fid in 1:model.n_firms
+            a  = model[fid]
             fv = variant(a)
             (fv.credit_demand <= 0.0 || isempty(fv.loan_apps)) && continue
             bank = popfirst!(fv.loan_apps)       # pop the front bank
@@ -179,7 +178,7 @@ function _run_credit_market!(model)
                 applicants[bank] = Int[]
                 push!(bank_order, bank)
             end
-            push!(applicants[bank], a.id)
+            push!(applicants[bank], fid)
         end
 
         # Process banks in first-seen order.
