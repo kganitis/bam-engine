@@ -284,10 +284,16 @@ def workers_decide_firms_to_apply(
         )
 
     # Loyalty rule: prev employer goes to position 0 for eligible workers
+    # Build a membership lookup for hiring firms; -1 (no prev employer) maps to
+    # index n_firms which stays False, so result is identical to np.isin.
+    n_firms = emp.n_vacancies.size
+    _hiring_lkp = np.zeros(n_firms + 1, dtype=bool)
+    _hiring_lkp[hiring] = True
+    _prev = wrk.employer_prev[unemp]
     loyal_mask = (
         (wrk.contract_expired[unemp] == 1)
         & (wrk.fired[unemp] == 0)
-        & np.isin(wrk.employer_prev[unemp], hiring)
+        & _hiring_lkp[np.where(_prev >= 0, _prev, n_firms)]
     )
     loyal_idx = np.where(loyal_mask)[0]
     num_loyal_workers = loyal_idx.size
