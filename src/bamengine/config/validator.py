@@ -330,6 +330,7 @@ class ConfigValidator:
         str_enum_params = [
             "job_search_method",
             "consumer_matching",
+            "goods_kernel",
         ]
         for key in str_enum_params:
             if key not in cfg:
@@ -458,6 +459,7 @@ class ConfigValidator:
         valid_enums = {
             "job_search_method": {"vacancies_only", "all_firms"},
             "consumer_matching": {"loyalty", "random"},
+            "goods_kernel": {"auto", "numba", "python"},
         }
 
         # Vector parameters (validated separately by _validate_float1d)
