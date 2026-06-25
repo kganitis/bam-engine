@@ -17,10 +17,10 @@
   "warmup_periods": 0,
   "seed": 12,
   "timing": {
-    "init_seconds": 0.0033821250253822654,
-    "run_seconds": 9.477794874983374,
-    "steady_state_per_period_seconds": 0.009477794874983373,
-    "throughput_agent_steps_per_s": 64360.96244392186
+    "init_seconds": 0.003313749999506399,
+    "run_seconds": 9.524808082991512,
+    "steady_state_per_period_seconds": 0.009524808082991512,
+    "throughput_agent_steps_per_s": 64043.285143905356
   },
   "outputs": {
     "unemployment": [
@@ -5137,9 +5137,9 @@
     ]
   },
   "process": {
-    "wall_seconds": 9.917536749999272,
-    "peak_rss_bytes": 138313728,
-    "startup_seconds": 0.4363597499905154
+    "wall_seconds": 9.938508040999295,
+    "peak_rss_bytes": 138870784,
+    "startup_seconds": 0.4103862080082763
   },
-  "environment_id": "6c90c1210485"
+  "environment_id": "2542df021ba2"
 }
