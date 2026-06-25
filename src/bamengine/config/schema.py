@@ -193,3 +193,7 @@ class Config:
     # Consumer matching strategy
     consumer_matching: str = "loyalty"
     """Consumer matching strategy: ``"loyalty"`` or ``"random"``."""
+
+    # Goods-market kernel
+    goods_kernel: str = "auto"
+    """Goods-market loop implementation: ``"auto"``, ``"numba"``, or ``"python"``."""

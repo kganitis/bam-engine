@@ -58,6 +58,30 @@ To enable DataFrame export for simulation results, install with pandas support:
 
    pip install -U bamengine[pandas]
 
+.. _install_fast_extra:
+
+To enable the optional Numba JIT kernel for the goods market (faster at scale):
+
+.. code-block:: bash
+
+   pip install -U bamengine[fast]
+
+This installs ``numba>=0.65`` and pins ``numpy<2.5`` (a Numba requirement). The
+core install is unconstrained (``numpy>=1.26``). Once installed, the kernel is
+active by default (``goods_kernel="auto"``): it compiles once per machine on the
+first run and is cached to disk for all subsequent runs and processes. Results are
+bit-identical to the pure-Python path. Measured speedup (warm cache): approximately
+1.2x at 100 firms, 2.0x at 1000 firms, and 2.4x at 5000 firms. To disable the
+kernel without uninstalling Numba, pass ``goods_kernel="python"`` to
+``Simulation.init()``.
+
+.. note::
+
+   The first run with the Numba kernel compiles and caches the JIT kernel (typically
+   a few seconds). All subsequent runs use the cached kernel with no compile cost.
+   The cache is recompiled only when the kernel source, Numba, NumPy, or CPU target
+   changes.
+
 To verify your installation:
 
 .. code-block:: bash
