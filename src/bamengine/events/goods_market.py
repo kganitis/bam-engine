@@ -380,4 +380,5 @@ class GoodsMarketRound:
             sim.prod,
             max_Z=sim.config.max_Z,
             rng=sim.rng,
+            goods_kernel=sim.config.goods_kernel,
         )

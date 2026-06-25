@@ -134,3 +134,8 @@ job_search_method: all_firms         # How workers sample firms for job applicat
 consumer_matching: loyalty           # Consumer firm selection strategy
                                      # "loyalty" = preferential attachment (largest prev producer)
                                      # "random" = pure random selection (no loyalty)
+
+goods_kernel: auto                   # Goods-market loop implementation
+                                     # "auto" = Numba if installed (bamengine[fast]), else Python
+                                     # "numba" = force Numba (error if not installed)
+                                     # "python" = force pure-Python loop (escape hatch)

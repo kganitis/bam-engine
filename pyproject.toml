@@ -53,6 +53,9 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
+# Optional Numba JIT kernel for the goods-market loop (~2x at scale)
+fast = ["numba>=0.65", "numpy<2.5"]
+
 # DataFrame export support (optional)
 pandas = ["pandas>=2.0"]
 
@@ -272,6 +275,11 @@ disable_error_code = ["call-arg"]
 # scipy and matplotlib have no type stubs
 [[tool.mypy.overrides]]
 module = ["scipy", "scipy.*", "matplotlib", "matplotlib.*"]
+ignore_missing_imports = true
+
+# numba is an optional dependency (bamengine[fast]) with no py.typed marker
+[[tool.mypy.overrides]]
+module = ["numba", "numba.*"]
 ignore_missing_imports = true
 
 # Extensions use @role/@event decorators that shadow core submodule names

@@ -17,10 +17,10 @@
   "warmup_periods": 0,
   "seed": 2,
   "timing": {
-    "run_seconds": 0.158729166,
-    "steady_state_per_period_seconds": 0.000158729166,
-    "throughput_agent_steps_per_s": 3843024.0350409197,
-    "init_seconds": 0.005767959
+    "run_seconds": 0.159167667,
+    "steady_state_per_period_seconds": 0.000159167667,
+    "throughput_agent_steps_per_s": 3832436.6468222467,
+    "init_seconds": 0.005772291
   },
   "outputs": {
     "production_final": [
@@ -5137,9 +5137,9 @@
     ]
   },
   "process": {
-    "wall_seconds": 5.889208000007784,
-    "peak_rss_bytes": 791937024,
-    "startup_seconds": 5.724710875007784
+    "wall_seconds": 5.764631208003266,
+    "peak_rss_bytes": 793870336,
+    "startup_seconds": 5.599691250003266
   },
-  "environment_id": "2542df021ba2"
+  "environment_id": "b1af1df2ce5b"
 }

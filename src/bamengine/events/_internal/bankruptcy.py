@@ -119,7 +119,10 @@ def mark_bankrupt_firms(
         )
 
     # fire all employees of bankrupt firms
-    workers_to_fire_mask = np.isin(wrk.employer, bankrupt_indices)
+    # bankrupt_mask is already computed above; map -1 (unemployed) to 0 and
+    # mask it out, so result is identical to np.isin(wrk.employer, bankrupt_indices).
+    _safe_emp = np.where(wrk.employer >= 0, wrk.employer, 0)
+    workers_to_fire_mask = bankrupt_mask[_safe_emp] & (wrk.employer >= 0)
     num_fired = np.sum(workers_to_fire_mask)
     if num_fired > 0:
         if info_enabled:
@@ -227,9 +230,12 @@ def spawn_replacement_firms(
         return
 
     # calculate survivor metrics
-    survivors = np.setdiff1d(
-        np.arange(bor.net_worth.size), exiting_indices, assume_unique=True
-    )
+    # Build a membership mask then invert; np.where on a boolean array returns
+    # indices in ascending order, matching np.setdiff1d(np.arange(N), exiting).
+    n_firms = bor.net_worth.size
+    _exiting_mask = np.zeros(n_firms, dtype=bool)
+    _exiting_mask[exiting_indices] = True
+    survivors = np.where(~_exiting_mask)[0]
     mean_net = trim_mean(bor.net_worth[survivors])
     mean_prod = trim_mean(prod.production[survivors])
     mean_wage = trim_mean(wrk.wage[wrk.employed])
@@ -309,9 +315,12 @@ def spawn_replacement_banks(
         log.info(f"  Spawning {num_exiting} new bank(s) to replace bankrupt ones.")
 
     # handle full market collapse
-    alive = np.setdiff1d(
-        np.arange(lend.equity_base.size), exiting_indices, assume_unique=True
-    )
+    # Boolean inversion of the exiting mask; np.where returns sorted unique
+    # indices, matching np.setdiff1d(np.arange(N), exiting_indices).
+    n_banks = lend.equity_base.size
+    _exiting_mask = np.zeros(n_banks, dtype=bool)
+    _exiting_mask[exiting_indices] = True
+    alive = np.where(~_exiting_mask)[0]
     if not alive.size:
         log.warning("!!! ALL BANKS ARE BANKRUPT !!! SIMULATION ENDING.")
         ec.collapsed = True

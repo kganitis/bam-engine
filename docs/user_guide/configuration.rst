@@ -264,6 +264,13 @@ Implementation Variants
      - ``"loyalty"``
      - Consumer firm selection: ``"loyalty"`` (preferential attachment) or
        ``"random"`` (no loyalty).
+   * - ``goods_kernel``
+     - ``"auto"``
+     - Goods-market loop implementation: ``"auto"`` (use Numba JIT kernel when
+       numba is installed, else pure Python), ``"numba"`` (force Numba kernel,
+       error if not installed), or ``"python"`` (force pure Python). Requires
+       ``pip install bamengine[fast]`` for the Numba path. See
+       :ref:`install_fast_extra`.
 
 Other
 ~~~~~
