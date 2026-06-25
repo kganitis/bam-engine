@@ -1,10 +1,32 @@
 {
+  "schema_version": "1.0",
   "run_id": "agentsjl__s5000__rep0",
   "framework": "agentsjl",
-  "status": "timeout",
-  "error": "wall budget exceeded",
-  "process": {
-    "wall_seconds": 120.03071525000269
+  "framework_version": "7.0.3",
+  "language": "julia",
+  "language_version": "1.12.6",
+  "status": "ok",
+  "error": null,
+  "population": {
+    "n_agents_total": 30500,
+    "n_households": 25000,
+    "n_firms": 5000,
+    "n_banks": 500
   },
-  "environment_id": "53769ac69a22"
+  "n_periods": 1000,
+  "warmup_periods": 100,
+  "seed": 1000,
+  "timing": {
+    "run_seconds": 16.731634834,
+    "steady_state_per_period_seconds": 0.018590705371111113,
+    "throughput_agent_steps_per_s": 1640604.7748675123,
+    "init_seconds": 0.006493417
+  },
+  "outputs": null,
+  "process": {
+    "wall_seconds": 22.722799750015838,
+    "peak_rss_bytes": 869367808,
+    "startup_seconds": 5.984671499015835
+  },
+  "environment_id": "6c90c1210485"
 }
