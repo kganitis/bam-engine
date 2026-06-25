@@ -26,11 +26,5 @@
   "mesa_frames__s20000__rep3": "skipped: mesa_frames capped at 10000 firms",
   "mesa_frames__s20000__rep4": "skipped: mesa_frames capped at 10000 firms",
   "mesa_frames__s20000__rep5": "skipped: mesa_frames capped at 10000 firms",
-  "mesa_frames__s20000__rep6": "skipped: mesa_frames capped at 10000 firms",
-  "agentsjl__s20000__rep1": "timeout at 20000 firms; larger sizes skipped",
-  "agentsjl__s20000__rep2": "skipped: agentsjl capped at 20000 firms",
-  "agentsjl__s20000__rep3": "skipped: agentsjl capped at 20000 firms",
-  "agentsjl__s20000__rep4": "skipped: agentsjl capped at 20000 firms",
-  "agentsjl__s20000__rep5": "skipped: agentsjl capped at 20000 firms",
-  "agentsjl__s20000__rep6": "skipped: agentsjl capped at 20000 firms"
+  "mesa_frames__s20000__rep6": "skipped: mesa_frames capped at 10000 firms"
 }
