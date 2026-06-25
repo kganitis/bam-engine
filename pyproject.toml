@@ -87,15 +87,16 @@ comparison = [
 
 # Development
 dev = [
-    "bamengine[test,lint,docs,pandas,extensions,calibration,viz]",
+    # `fast` (numba, numpy<2.5) lives in `dev` (not `test`) so the canonical
+    # dev/CI env exercises the optional Numba goods-market kernel, while
+    # `.[test]` stays numba-free (numpy resolves to the latest) for the
+    # numpy-2.5 fallback CI lane. Core install_requires stays numpy>=1.26.
+    # Remove `fast` here once numba supports numpy 2.5.
+    "bamengine[test,lint,docs,pandas,extensions,calibration,viz,fast]",
     "nox>=2024.3.2",
 ]
 test = [
-    # `fast` (numba + numpy<2.5) is included so the canonical test/CI env
-    # exercises the optional Numba goods-market kernel. Core install stays
-    # numpy>=1.26; only this dev/test env is pinned below numpy 2.5 (numba's
-    # current ceiling). Remove the pin once numba supports numpy 2.5.
-    "bamengine[pandas,extensions,calibration,viz,fast]",
+    "bamengine[pandas,extensions,calibration,viz]",
     "pytest>=8.3",
     "pytest-cov>=5.0",
     "hypothesis>=6.131.9",
@@ -126,6 +127,10 @@ dev = [
     { include-group = "test" },
     { include-group = "lint" },
     { include-group = "docs" },
+    # Canonical dev env exercises the Numba kernel (numba caps at numpy<2.5);
+    # `.[test]`/the test group stay numba-free for the numpy-2.5 fallback lane.
+    "numba>=0.65",
+    "numpy<2.5",
 ]
 test = [
     "pytest>=8.3",
@@ -135,9 +140,6 @@ test = [
     "pandas>=2.0",
     "scipy>=1.11",
     "matplotlib>=3.8",
-    # Canonical test env exercises the Numba kernel (numba caps at numpy<2.5).
-    "numba>=0.65",
-    "numpy<2.5",
 ]
 lint = [
     "ruff>=0.4",

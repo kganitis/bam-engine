@@ -55,6 +55,40 @@ jobs:
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
+  test-fallback:
+    # Default-user path: latest numpy (>=2.5) with NO numba, so the goods market
+    # uses the pure-Python fallback loop. The main `test` matrix installs `.[dev]`
+    # (numba + numpy<2.5) and exercises the JIT kernel; this lane covers the
+    # other side: latest numpy + Python fallback. The kernel bit-identity tests
+    # skip here (no numba).
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.12"
+
+    - name: Install (numba-free; numpy resolves to latest)
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[test]"
+
+    - name: Confirm fallback environment (no numba)
+      run: |
+        python -c "import numpy; print('numpy', numpy.__version__)"
+        python -c "import importlib.util, sys; sys.exit(1 if importlib.util.find_spec('numba') else 0)"
+        echo "numba absent: goods market uses the pure-Python fallback"
+
+    - name: Run tests (Python goods-kernel fallback)
+      # --no-cov: with numba absent the JIT kernel code is intentionally
+      # unexecuted, which would drop coverage below the 99% gate. Coverage is
+      # enforced by the main `test` matrix (numba present, kernel covered);
+      # this lane only verifies the numpy-2.5 + Python-fallback path works.
+      run: |
+        pytest -m "not slow and not regression and not validation" --no-cov
+
   code-quality:
     runs-on: ubuntu-latest
     steps:
