@@ -290,9 +290,11 @@ Formula (Mesa `Firm.decide_desired_production`):
   * `desired_production = expected_demand`
 
 RNG alignment with Mesa: Mesa iterates `self.firms` (insertion order = id order).
-Here we iterate over `1:n_firms` directly (firms are added first, so firm ids are
-`1:n_firms`, contiguous and stable). This event calls `rand(abmrng(model))` once
-per firm in id-ascending order, matching Mesa's per-firm draw cadence.
+Here we iterate `allagents(model)` in Dict (hash) order, which preserves the
+original gate-passing draw sequence. This event calls `rand(abmrng(model))` once
+per firm regardless of visit order, so the per-firm draw cadence matches Mesa's;
+the draws are i.i.d., so visit order does not affect the distribution (the gate
+confirms equivalence).
 """
 function _event1_zero_production_and_shock!(model)
     p_avg = model.avg_mkt_price
@@ -586,9 +588,10 @@ Formula (Mesa `Firm.decide_wage_offer`):
 
 RNG alignment with Mesa: one `rand(rng)` per firm WITH vacancies, matching
 Mesa's `self.firms` iteration where the `uniform(0, h_xi)` draw is taken only in
-the `n_vacancies > 0` branch. We iterate `1:n_firms` (id-ascending), so draw
-order matches Mesa's creation-order iteration. Firms without vacancies consume
-no draw in either implementation.
+the `n_vacancies > 0` branch. We iterate `allagents(model)` in Dict (hash) order,
+which preserves the original gate-passing draw sequence; the draws are i.i.d., so
+visit order does not affect the distribution. Firms without vacancies consume no
+draw in either implementation.
 """
 function _event9_decide_wage_offer!(model)
     h_xi = model.params["h_xi"]

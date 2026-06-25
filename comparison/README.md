@@ -19,6 +19,17 @@ Each runner plugs into the harness by registering an entry in `RUNNER_CMD`
 A runner counts in the timing results only after it passes the behavioral
 equivalence gate (Phase A).
 
+### Port fairness
+
+For a fair comparison, the competitor ports are written competently rather than
+naively: the firm-selection sampling uses a vectorized sparse k-subset draw in
+mesa-frames (`O(n_rows * k)`, not a dense `O(n_rows * n_firms)` priority matrix)
+and an `O(k)` without-replacement draw in Agents.jl (not an `O(n_firms)`
+shuffle-the-whole-pool per household). These match the uniform-k-subset
+distribution exactly, so the ports still pass the equivalence gate. The ports are
+"competently written, not maximally tuned": their caps reflect a reasonable
+implementation in each framework, not the framework's absolute ceiling.
+
 ## Install
 
 ```bash
