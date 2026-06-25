@@ -19,10 +19,11 @@ from bamengine.utils import EPS, sample_k_per_row
 
 # Optional Numba dependency: present when the user installs bamengine[fast].
 try:
-    import numba  # noqa: F401
+    import numba
 
     HAS_NUMBA = True
 except ImportError:
+    numba = None
     HAS_NUMBA = False
 
 log = logging.getLogger(__name__)
@@ -427,6 +428,101 @@ def _goods_buy_loop_py(
         budget[c] = bc
 
 
+# ---------------------------------------------------------------------------
+# Numba @njit kernel (defined only when numba is installed)
+# ---------------------------------------------------------------------------
+#
+# The kernel takes ONLY NumPy arrays + scalars so that numba.njit can
+# compile it.  The per-consumer target lists are represented as a
+# ``-1``-padded 2D int array (``targets_2d[c, :]``), one row per consumer.
+#
+# ARITHMETIC ORDER: identical to ``_goods_buy_loop_py`` above.  No
+# ``fastmath``, no reassociation.  This guarantees bit-for-bit identical
+# results when both paths use the same IEEE-754 double precision.
+#
+# IMPORT SAFETY: the ``@njit`` decorator is only applied when numba is
+# available (guarded by ``HAS_NUMBA``).  Importing this module WITHOUT
+# numba installed works fine; ``_goods_buy_loop_nb`` is simply ``None``
+# and the dispatch never reaches it.
+# ---------------------------------------------------------------------------
+
+
+def _goods_buy_loop_nb_impl(
+    buyer_order: np.ndarray,
+    targets_2d: np.ndarray,
+    prices: np.ndarray,
+    inv: np.ndarray,
+    budget: np.ndarray,
+    eps: float,
+) -> None:
+    """Inner body of the Numba goods-market kernel.
+
+    Parameters
+    ----------
+    buyer_order : np.ndarray
+        1-D int array of consumer indices in shuffled visit order.
+    targets_2d : np.ndarray
+        2-D int array of shape ``(n_consumers, max_Z)``.  Each row contains
+        firm indices for that consumer; unused slots are ``-1``.
+    prices : np.ndarray
+        1-D float64 array of per-firm prices.
+    inv : np.ndarray
+        1-D float64 array of per-firm inventory (mutated in-place).
+    budget : np.ndarray
+        1-D float64 array of per-consumer spending budget (mutated in-place).
+    eps : float
+        Epsilon threshold (same ``EPS`` constant used by the Python path).
+
+    Notes
+    -----
+    Arithmetic order is intentionally identical to ``_goods_buy_loop_py``.
+    No ``fastmath``.
+    """
+    n_slots = targets_2d.shape[1]
+    for i in range(buyer_order.shape[0]):
+        c = buyer_order[i]
+        bc = budget[c]
+        for j in range(n_slots):
+            t = targets_2d[c, j]
+            if t < 0:
+                break
+            if bc <= eps:
+                break
+            it = inv[t]
+            if it <= eps:
+                continue
+            qty = bc / prices[t]
+            if qty > it:
+                qty = it
+            bc -= qty * prices[t]
+            inv[t] = it - qty
+        budget[c] = bc
+
+
+if HAS_NUMBA:
+    _goods_buy_loop_nb = numba.njit(cache=True)(_goods_buy_loop_nb_impl)
+else:
+    _goods_buy_loop_nb = None
+
+
+def _goods_buy_loop_nb_wrapper(
+    buyer_order: np.ndarray,
+    targets_2d: np.ndarray,
+    prices: np.ndarray,
+    inv: np.ndarray,
+    budget: np.ndarray,
+) -> None:
+    """Thin wrapper that calls the compiled Numba kernel.
+
+    Callers build the padded 2D targets array once and pass it here.
+    This wrapper simply forwards to the compiled function with the ``EPS``
+    constant; it exists so the caller does not need to know about the eps
+    argument.
+    """
+    assert _goods_buy_loop_nb is not None  # only called when HAS_NUMBA
+    _goods_buy_loop_nb(buyer_order, targets_2d, prices, inv, budget, EPS)
+
+
 def _select_goods_kernel(goods_kernel: str) -> str:
     """Resolve the effective kernel name from the config value.
 
@@ -511,56 +607,52 @@ def goods_market_round(
     # Shuffle consumers — randomized order each period (RNG used HERE, not inside the loop)
     rng.shuffle(buyers)
 
-    # Python lists for the hot path: eliminates NumPy per-element overhead
-    budget = con.income_to_spend.tolist()
-    inv = prod.inventory.tolist()
-    prices = prod.price.tolist()
-    targets_list = con.shop_visits_targets.tolist()
-
-    # Dispatch to selected kernel (all routes currently call the Python function)
+    # Resolve kernel once; dispatch happens below.
     effective_kernel = _select_goods_kernel(goods_kernel)
 
+    # Snapshot pre-loop state for INFO statistics (inventory/budget deltas avoid a
+    # third divergent loop: the aggregate stats are derived AFTER the single buying
+    # pass, regardless of which kernel ran).
     if info_enabled:
-        # Accounting variant (rare; only when INFO logging is enabled).
-        # Runs the Python loop inline to collect purchase statistics.
-        total_purchases = 0
-        total_qty = 0.0
-        total_revenue = 0.0
-        for c in buyers.tolist():
-            bc = budget[c]
-            for t in targets_list[c]:
-                if t < 0:
-                    break
-                if bc <= EPS:
-                    break
-                it = inv[t]
-                if it <= EPS:
-                    continue
-                qty = bc / prices[t]
-                if qty > it:
-                    qty = it
-                spent = qty * prices[t]
-                bc -= spent
-                inv[t] = it - qty
-                total_purchases += 1
-                total_qty += qty
-                total_revenue += spent
-            budget[c] = bc
-        _ = effective_kernel  # kernel resolved but not branched in the INFO path
-    else:
-        # Hot path: dispatch to extracted loop function
-        _goods_buy_loop_py(buyers, targets_list, prices, inv, budget)
-        total_purchases = 0
-        total_qty = 0.0
-        total_revenue = 0.0
+        inv_before = prod.inventory.copy()
+        budget_before = con.income_to_spend.copy()
 
-    # Write back to NumPy arrays
-    con.income_to_spend[:] = budget
-    prod.inventory[:] = inv
-
-    if info_enabled:
-        log.info(
-            f"  {total_purchases} purchases, "
-            f"qty={total_qty:,.2f}, revenue={total_revenue:,.2f}"
+    if effective_kernel == "numba":
+        # Numba path: pass NumPy arrays directly.
+        # Build padded 2D targets array from the 2D shop_visits_targets buffer.
+        # ``con.shop_visits_targets`` is already a 2D int array with -1 sentinels
+        # (shape: n_consumers x max_Z), so we can pass it directly.
+        inv = prod.inventory.copy()
+        budget = con.income_to_spend.copy()
+        _goods_buy_loop_nb_wrapper(
+            buyers,
+            con.shop_visits_targets,
+            prod.price,
+            inv,
+            budget,
         )
+        prod.inventory[:] = inv
+        con.income_to_spend[:] = budget
+    else:
+        # Python path: use lists for hot-path performance.
+        budget_list = con.income_to_spend.tolist()
+        inv_list = prod.inventory.tolist()
+        prices_list = prod.price.tolist()
+        targets_list = con.shop_visits_targets.tolist()
+        _goods_buy_loop_py(buyers, targets_list, prices_list, inv_list, budget_list)
+        con.income_to_spend[:] = budget_list
+        prod.inventory[:] = inv_list
+
+    if info_enabled:
+        # Derive aggregate statistics from the loop outputs (inventory/budget deltas).
+        # This is the single source of truth: no third divergent loop.
+        # Note: quantity sold != -delta_inv in general when prices differ per firm,
+        # but revenue = delta_budget (spending equals budget decrease).
+        delta_inv = inv_before - prod.inventory  # per-firm inventory decrease
+        delta_budget = budget_before - con.income_to_spend  # per-consumer spending
+        total_qty = float(delta_inv.sum())
+        total_revenue = float(delta_budget.sum())
+        # Count the number of purchasing transactions is not directly recoverable
+        # from deltas alone; report qty and revenue which are exact.
+        log.info(f"  qty_sold={total_qty:,.2f}, revenue={total_revenue:,.2f}")
         log.info("--- Goods Market Round complete ---")
