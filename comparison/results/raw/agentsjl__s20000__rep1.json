@@ -1,0 +1,10 @@
+{
+  "run_id": "agentsjl__s20000__rep1",
+  "framework": "agentsjl",
+  "status": "timeout",
+  "error": "wall budget exceeded",
+  "process": {
+    "wall_seconds": 120.0706387909886
+  },
+  "environment_id": "6c90c1210485"
+}

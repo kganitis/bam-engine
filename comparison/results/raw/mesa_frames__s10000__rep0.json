@@ -1,0 +1,10 @@
+{
+  "run_id": "mesa_frames__s10000__rep0",
+  "framework": "mesa_frames",
+  "status": "timeout",
+  "error": "wall budget exceeded",
+  "process": {
+    "wall_seconds": 120.07362104099593
+  },
+  "environment_id": "6c90c1210485"
+}
