@@ -262,14 +262,21 @@ function _run_goods_market!(model)
     eps = model.eps
     rng = abmrng(model)
 
-    # Collect active buyers in Dict (hash) order (allagents iteration order), then shuffle.
-    buyers = [h for h in households(model) if variant(h).income_to_spend > eps]
+    # Collect active buyers by id-range (O(H), not O(F+H+B)), then shuffle.
+    # Household ids are the contiguous range n_firms+1 : n_firms+n_households
+    # (firms added first, banks last in build_model; in-place bankruptcy keeps ids stable).
+    hh_lo = model.n_firms + 1
+    hh_hi = model.n_firms + model.n_households
+    buyers = Int[]
+    for hid in hh_lo:hh_hi
+        variant(model[hid]).income_to_spend > eps && push!(buyers, hid)
+    end
     isempty(buyers) && return nothing
 
     shuffle!(rng, buyers)   # random service order, one call matching Mesa
 
-    for buyer in buyers
-        hv = variant(buyer)
+    for hid in buyers
+        hv = variant(model[hid])
         for firm_id in hv.shop_visits
             hv.income_to_spend <= eps && break          # budget exhausted
             fv = variant(model[firm_id])

@@ -80,19 +80,31 @@ used in benchmarks (10 000+ firms). This replaces the O(F) `copy(pool); shuffle!
 pattern used in events 10 and 27 (and the O(B) pattern in event 17 for banks).
 
 All randomness flows through `rng` (always `abmrng(model)`).
+
+Dedup uses a linear scan over the already-accepted result entries (at most k <= 5
+entries) instead of a Set{Int}. This eliminates all heap allocation from the
+sampling loop while preserving the EXACT same draw sequence: draw a candidate,
+scan the accepted prefix for a duplicate, redraw if found -- identical order to
+the former Set-membership check.
 """
 function _sample_k_from_range!(rng::AbstractRNG, lo::Int, hi::Int, k::Int)
     n = hi - lo + 1
     k = min(k, n)
     k == 0 && return Int[]
     result = Vector{Int}(undef, k)
-    seen   = Set{Int}()
-    sizehint!(seen, k)
     i = 0
     while i < k
         x = rand(rng, lo:hi)
-        if x ∉ seen
-            push!(seen, x)
+        # Linear scan over already-accepted entries (at most k <= 5). This is
+        # allocation-free and faster than a Set for such small k.
+        dup = false
+        for j in 1:i
+            if result[j] == x
+                dup = true
+                break
+            end
+        end
+        if !dup
             i += 1
             result[i] = x
         end
@@ -565,8 +577,10 @@ function _event8_adjust_min_wage!(model)
     inflation = model.inflation_history[end]
     model.min_wage *= 1.0 + inflation
     new_floor = model.min_wage
-    for h in households(model)
-        hv = variant(h)
+    hh_lo = model.n_firms + 1
+    hh_hi = model.n_firms + model.n_households
+    for hid in hh_lo:hh_hi
+        hv = variant(model[hid])
         if hv.employer_id != NO_AGENT && hv.wage < new_floor
             hv.wage = new_floor
         end
@@ -1040,8 +1054,10 @@ Formula (Mesa `Household.receive_wage`):
 No RNG.
 """
 function _event21_receive_wage!(model)
-    for h in households(model)
-        hv = variant(h)
+    hh_lo = model.n_firms + 1
+    hh_hi = model.n_firms + model.n_households
+    for hid in hh_lo:hh_hi
+        hv = variant(model[hid])
         if hv.employer_id != NO_AGENT
             hv.income += hv.wage
         end
@@ -1129,8 +1145,10 @@ Note: wage_bill is NOT recomputed here; the next period's event 12 handles it.
 No RNG. (`contract_expired=1, fired=0` => worker is loyal next period.)
 """
 function _event24_update_contracts!(model)
-    for h in households(model)
-        hv = variant(h)
+    hh_lo = model.n_firms + 1
+    hh_hi = model.n_firms + model.n_households
+    for hid in hh_lo:hh_hi
+        hv = variant(model[hid])
         hv.employer_id == NO_AGENT && continue
         hv.periods_left -= 1
         if hv.periods_left == 0
@@ -1142,7 +1160,7 @@ function _event24_update_contracts!(model)
             hv.fired            = false
             # Update the firm's employee roster and labor count.
             fv = variant(model[employer_id])
-            filter!(id -> id != h.id, fv.employee_ids)
+            filter!(id -> id != hid, fv.employee_ids)
             fv.current_labor -= 1
         end
     end
@@ -1177,8 +1195,10 @@ function _production!(model)
     if model.collect
         employed_count = 0
         wage_sum = 0.0
-        for h in households(model)
-            hv = variant(h)
+        hh_lo = model.n_firms + 1
+        hh_hi = model.n_firms + model.n_households
+        for hid in hh_lo:hh_hi
+            hv = variant(model[hid])
             if hv.employer_id != NO_AGENT
                 employed_count += 1
                 wage_sum += hv.wage
@@ -1230,19 +1250,20 @@ No RNG.
 function _event25_calc_propensity!(model)
     eps  = model.eps
     beta = model.params["beta"]
+    hh_lo = model.n_firms + 1
+    hh_hi = model.n_firms + model.n_households
 
     # Average of RAW savings across all households (floor only the final mean).
     # Matches Mesa: avg_sav = max(sum(all_savings) / len(all_savings), EPS)
     total_sav = 0.0
-    n_hh = 0
-    for h in households(model)
-        total_sav += variant(h).savings
-        n_hh += 1
+    n_hh = model.n_households
+    for hid in hh_lo:hh_hi
+        total_sav += variant(model[hid]).savings
     end
     avg_sav = n_hh > 0 ? max(total_sav / n_hh, eps) : eps
 
-    for h in households(model)
-        hv = variant(h)
+    for hid in hh_lo:hh_hi
+        hv = variant(model[hid])
         s  = max(hv.savings, 0.0)
         hv.propensity = 1.0 / (1.0 + tanh(s / avg_sav)^beta)
     end
@@ -1264,8 +1285,10 @@ Formula (Mesa `Household.decide_income_to_spend`):
 No RNG.
 """
 function _event26_decide_income_to_spend!(model)
-    for h in households(model)
-        hv = variant(h)
+    hh_lo = model.n_firms + 1
+    hh_hi = model.n_firms + model.n_households
+    for hid in hh_lo:hh_hi
+        hv = variant(model[hid])
         wealth = hv.savings + hv.income
         hv.income_to_spend = wealth * hv.propensity
         hv.savings         = wealth - hv.income_to_spend
@@ -1340,7 +1363,8 @@ function _event27_decide_firms_to_visit!(model)
         # Update loyalty: track the firm with the largest production in the
         # selected set (for the NEXT period). Computed BEFORE shopping so the
         # loyalty target reflects the pre-market production snapshot.
-        hv.largest_prod_prev_id = sample[argmax(production_of.(sample))]
+        # argmax(f, itr) returns the maximising element directly (allocation-free).
+        hv.largest_prod_prev_id = argmax(production_of, sample)
 
         hv.shop_visits = sample
     end
@@ -1360,8 +1384,10 @@ Formula (Mesa `Household.finalize_purchases`):
 No RNG.
 """
 function _event29_finalize_purchases!(model)
-    for h in households(model)
-        hv = variant(h)
+    hh_lo = model.n_firms + 1
+    hh_hi = model.n_firms + model.n_households
+    for hid in hh_lo:hh_hi
+        hv = variant(model[hid])
         hv.savings        += hv.income_to_spend
         hv.income_to_spend = 0.0
     end
@@ -1537,8 +1563,10 @@ function _event32_pay_dividends!(model)
 
     n_hh = model.n_households
     div_per_hh = n_hh > 0 ? total_dividends / n_hh : 0.0
-    for h in households(model)
-        hv = variant(h)
+    hh_lo = model.n_firms + 1
+    hh_hi = model.n_firms + model.n_households
+    for hid in hh_lo:hh_hi
+        hv = variant(model[hid])
         hv.savings   += div_per_hh
         hv.dividends  = div_per_hh
     end
@@ -1743,8 +1771,10 @@ function _event36_spawn_replacement_firms!(model, exiting_firm_ids::Vector{Int})
 
     # Employed wages from all households with employer_id != NO_AGENT and wage > 0.
     employed_wages = Float64[]
-    for h in households(model)
-        hv = variant(h)
+    hh_lo = model.n_firms + 1
+    hh_hi = model.n_firms + model.n_households
+    for hid in hh_lo:hh_hi
+        hv = variant(model[hid])
         if hv.employer_id != NO_AGENT && hv.wage > 0.0
             push!(employed_wages, hv.wage)
         end
