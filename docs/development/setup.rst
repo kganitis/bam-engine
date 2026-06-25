@@ -19,6 +19,12 @@ Clone the repository and install in development mode:
    # Install in editable mode with development dependencies
    pip install -e ".[dev]"
 
+The development environment includes the optional ``[fast]`` extra (the Numba
+goods-market kernel), which currently requires ``numpy<2.5`` (numba's ceiling),
+so the dev environment resolves to numpy 2.4.x. The core install is unconstrained
+(``numpy>=1.26``); a plain install on numpy 2.5 works and falls back to the
+pure-Python goods loop. The pin can be removed once numba supports numpy 2.5.
+
 
 Code Style
 ----------
