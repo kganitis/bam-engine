@@ -604,7 +604,7 @@ def goods_market_round(
             log.info("--- Goods Market Round complete ---")
         return
 
-    # Shuffle consumers — randomized order each period (RNG used HERE, not inside the loop)
+    # Shuffle consumers: randomized order each period (RNG used HERE, not inside the loop)
     rng.shuffle(buyers)
 
     # Resolve kernel once; dispatch happens below.
