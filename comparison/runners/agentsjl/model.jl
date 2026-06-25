@@ -931,9 +931,10 @@ Formula (Mesa `Firm.fire_workers_for_gap`):
     `current_labor -= 1`; remove id from `employee_ids`; `wage_bill -= wage`
 
 RNG alignment with Mesa: one `shuffle!(rng, employee_ids)` per firm WITH a gap,
-matching Mesa's `model.random.shuffle(employees_list)`. We iterate `1:n_firms`
-(id-ascending); each firm with a gap consumes exactly one shuffle draw, matching
-Mesa's draw cadence. Reuses the event-6 firing field pattern.
+matching Mesa's `model.random.shuffle(employees_list)`. We iterate `allagents(model)`
+in Dict (hash) order, which preserves the original gate-passing draw sequence; the
+draws are i.i.d. per firm, so visit order does not affect the distribution (the gate
+confirms equivalence). Reuses the event-6 firing field pattern.
 """
 function _event19_fire_workers_for_gap!(model)
     rng = abmrng(model)

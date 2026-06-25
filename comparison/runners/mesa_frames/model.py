@@ -53,6 +53,7 @@ def _batched_k_subset(
 
     # Rejection sampling: resample rows that contain within-row duplicates.
     # For k << n_pool duplicates are rare; convergence is typically 1-2 iters.
+    # k >= n_pool is handled above (broadcast path), so this loop always converges.
     for _ in range(1000):
         srt = np.sort(idx, axis=1)
         bad = (np.diff(srt, axis=1) == 0).any(axis=1)
@@ -60,6 +61,12 @@ def _batched_k_subset(
             break
         bad_rows = np.where(bad)[0]
         idx[bad_rows] = rng.integers(0, n_pool, size=(bad_rows.size, k))
+    else:
+        raise RuntimeError(
+            f"_batched_k_subset: rejection sampling did not converge after 1000 "
+            f"iterations (n_rows={n_rows}, n_pool={n_pool}, k={k}). "
+            f"This should be unreachable for k < n_pool."
+        )
 
     # Convert local pool indices to actual pool values (firm/bank ids).
     return pool[idx]
@@ -535,9 +542,10 @@ class BAMModel(mf.ModelDF):
 
         RNG: one batched ``_batched_k_subset`` call for ALL unemployed workers at
         once (replaces the per-worker ``rng.choice(..., replace=False)`` loop).
-        The batched draw is a uniform k-subset per row (distributionally identical
-        to the per-call ``rng.choice``); loyalty and sort ordering are applied
-        per-row after the batch draw, exactly as before.
+        The batched draw is a single vectorized operation producing a k-subset
+        per row (distributionally identical to the per-call ``rng.choice``);
+        "per-row" refers to output assignment, not draw sequencing.  Loyalty
+        and sort ordering are applied per-row after the batch draw.
         """
         max_M = int(self.p["max_M"])
         rng = self.random
@@ -744,10 +752,12 @@ class BAMModel(mf.ModelDF):
 
         RNG: one batched ``_batched_k_subset`` call for ALL demanding firms at
         once (replaces the per-firm ``rng.choice(..., replace=False)`` loop).
-        The batched draw is a uniform k-subset per row (distributionally identical
-        to the per-call ``rng.choice``); rate-ASC sort is applied per-row after.
-        Banks eligible = those with credit_supply>0 at the snapshot taken before
-        any round runs (matching the Mesa port).  No loyalty rule for credit.
+        The batched draw is a single vectorized operation producing a k-subset
+        per row (distributionally identical to the per-call ``rng.choice``);
+        "per-row" refers to output assignment, not draw sequencing.  Rate-ASC
+        sort is applied per-row after.  Banks eligible = those with
+        credit_supply>0 at the snapshot taken before any round runs (matching
+        the Mesa port).  No loyalty rule for credit.
         """
         max_H = int(self.p["max_H"])
         rng = self.random
@@ -1178,9 +1188,10 @@ class BAMModel(mf.ModelDF):
 
         RNG: one batched ``_batched_k_subset`` call for ALL active consumers at
         once (replaces the per-consumer ``rng.choice(..., replace=False)`` loop).
-        The batched draw is a uniform k-subset per row (distributionally identical
-        to the per-call ``rng.choice``); loyalty (force last slot) and price-ASC
-        sort are applied per-row after, exactly as before.
+        The batched draw is a single vectorized operation producing a k-subset
+        per row (distributionally identical to the per-call ``rng.choice``);
+        "per-row" refers to output assignment, not draw sequencing.  Loyalty
+        (force last slot) and price-ASC sort are applied per-row after.
         """
         eps = self.EPS
         max_Z = int(self.p["max_Z"])
