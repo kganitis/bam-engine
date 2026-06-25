@@ -17,6 +17,14 @@ from bamengine import Rng, logging, make_rng
 from bamengine.roles import Consumer, Producer
 from bamengine.utils import EPS, sample_k_per_row
 
+# Optional Numba dependency: present when the user installs bamengine[fast].
+try:
+    import numba  # noqa: F401
+
+    HAS_NUMBA = True
+except ImportError:
+    HAS_NUMBA = False
+
 log = logging.getLogger(__name__)
 
 
@@ -363,12 +371,100 @@ def consumers_finalize_purchases(con: Consumer) -> None:
         log.info("--- Purchase Finalization complete ---")
 
 
+def _goods_buy_loop_py(
+    buyer_order: np.ndarray,
+    targets: list[list[int]],
+    prices: list[float],
+    inv: list[float],
+    budget: list[float],
+) -> None:
+    """Pure-Python sequential buying loop (array-only signature).
+
+    This is the extracted, dispatchable inner loop of the goods market.
+    It is called by ``goods_market_round`` for the ``"python"`` kernel and as
+    the fallback for ``"auto"`` when Numba is not installed.  The Numba
+    ``@njit`` kernel (Task 2) will replicate this logic exactly.
+
+    All randomness (buyer shuffle) is resolved BEFORE this function is
+    called; the loop body is deterministic given its inputs.
+
+    Parameters
+    ----------
+    buyer_order : np.ndarray
+        1-D int array of consumer indices in shuffled visit order.
+    targets : list[list[int]]
+        Per-consumer lists of firm indices to visit (-1 sentinel = end).
+        Built from ``con.shop_visits_targets.tolist()``.
+    prices : list[float]
+        Per-firm prices. Built from ``prod.price.tolist()``.
+    inv : list[float]
+        Per-firm inventory levels (mutated in-place).
+        Built from ``prod.inventory.tolist()``.
+    budget : list[float]
+        Per-consumer remaining spending budget (mutated in-place).
+        Built from ``con.income_to_spend.tolist()``.
+
+    Notes
+    -----
+    ``inv`` and ``budget`` are mutated in-place.  The caller writes them
+    back to the NumPy arrays after this function returns.
+    """
+    for c in buyer_order.tolist():
+        bc = budget[c]
+        for t in targets[c]:
+            if t < 0:
+                break
+            if bc <= EPS:
+                break
+            it = inv[t]
+            if it <= EPS:
+                continue
+            qty = bc / prices[t]
+            if qty > it:
+                qty = it
+            bc -= qty * prices[t]
+            inv[t] = it - qty
+        budget[c] = bc
+
+
+def _select_goods_kernel(goods_kernel: str) -> str:
+    """Resolve the effective kernel name from the config value.
+
+    Parameters
+    ----------
+    goods_kernel : str
+        Config value: ``"auto"``, ``"numba"``, or ``"python"``.
+
+    Returns
+    -------
+    str
+        Either ``"numba"`` or ``"python"``.
+
+    Raises
+    ------
+    RuntimeError
+        If ``goods_kernel="numba"`` but Numba is not installed.
+    """
+    if goods_kernel == "python":
+        return "python"
+    if goods_kernel == "numba":
+        if not HAS_NUMBA:
+            raise RuntimeError(
+                "goods_kernel='numba' requires numba to be installed. "
+                "Run: pip install bamengine[fast]"
+            )
+        return "numba"
+    # "auto": use Numba if available, else Python
+    return "numba" if HAS_NUMBA else "python"
+
+
 def goods_market_round(
     con: Consumer,
     prod: Producer,
     *,
     max_Z: int,
     rng: Rng = make_rng(),
+    goods_kernel: str = "auto",
 ) -> None:
     """Sequential goods market matching.
 
@@ -390,6 +486,9 @@ def goods_market_round(
         Maximum shopping visits per consumer.
     rng : Rng
         Random generator for consumer ordering.
+    goods_kernel : str
+        Which loop implementation to use: ``"auto"``, ``"numba"``, or
+        ``"python"``.  Default ``"auto"`` selects Numba when available.
     """
     info_enabled = log.isEnabledFor(logging.INFO)
     if info_enabled:
@@ -409,24 +508,27 @@ def goods_market_round(
             log.info("--- Goods Market Round complete ---")
         return
 
-    # Shuffle consumers — randomized order each period
+    # Shuffle consumers — randomized order each period (RNG used HERE, not inside the loop)
     rng.shuffle(buyers)
-
-    total_purchases = 0
-    total_qty = 0.0
-    total_revenue = 0.0
 
     # Python lists for the hot path: eliminates NumPy per-element overhead
     budget = con.income_to_spend.tolist()
     inv = prod.inventory.tolist()
     prices = prod.price.tolist()
-    targets = con.shop_visits_targets.tolist()
+    targets_list = con.shop_visits_targets.tolist()
+
+    # Dispatch to selected kernel (all routes currently call the Python function)
+    effective_kernel = _select_goods_kernel(goods_kernel)
 
     if info_enabled:
-        # accounting variant (rare; only when INFO logging is enabled)
+        # Accounting variant (rare; only when INFO logging is enabled).
+        # Runs the Python loop inline to collect purchase statistics.
+        total_purchases = 0
+        total_qty = 0.0
+        total_revenue = 0.0
         for c in buyers.tolist():
             bc = budget[c]
-            for t in targets[c]:
+            for t in targets_list[c]:
                 if t < 0:
                     break
                 if bc <= EPS:
@@ -444,24 +546,13 @@ def goods_market_round(
                 total_qty += qty
                 total_revenue += spent
             budget[c] = bc
+        _ = effective_kernel  # kernel resolved but not branched in the INFO path
     else:
-        # hot path: no per-iteration logging branch
-        for c in buyers.tolist():
-            bc = budget[c]
-            for t in targets[c]:
-                if t < 0:
-                    break
-                if bc <= EPS:
-                    break
-                it = inv[t]
-                if it <= EPS:
-                    continue
-                qty = bc / prices[t]
-                if qty > it:
-                    qty = it
-                bc -= qty * prices[t]
-                inv[t] = it - qty
-            budget[c] = bc
+        # Hot path: dispatch to extracted loop function
+        _goods_buy_loop_py(buyers, targets_list, prices, inv, budget)
+        total_purchases = 0
+        total_qty = 0.0
+        total_revenue = 0.0
 
     # Write back to NumPy arrays
     con.income_to_spend[:] = budget
