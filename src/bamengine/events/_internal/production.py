@@ -202,10 +202,11 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
         log.info(f"  Processing contracts for {total_employed} employed workers")
 
     # validate contract consistency
+    # Single np.where pass; derive count and truthiness from the result array.
     already_expired_mask = (wrk.employed == 1) & (wrk.periods_left == 0)
-    if np.any(already_expired_mask):
-        num_already_expired = np.sum(already_expired_mask)
-        affected_worker_ids = np.where(already_expired_mask)[0]
+    affected_worker_ids = np.where(already_expired_mask)[0]
+    if affected_worker_ids.size > 0:
+        num_already_expired = affected_worker_ids.size
         log.warning(
             f"  Found {num_already_expired} employed worker(s) "
             f"with periods_left already at 0. "
@@ -222,13 +223,14 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
 
     # decrement contract periods
     mask_emp = wrk.employed == 1
-    if not np.any(mask_emp):
+    employed_ids = np.where(mask_emp)[0]
+    if employed_ids.size == 0:
         if info_enabled:
             log.info("  No employed workers found. Skipping contract updates.")
             log.info("--- Worker Contract Update complete ---")
         return
 
-    num_employed_ticking = np.sum(mask_emp)
+    num_employed_ticking = employed_ids.size
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Decrementing periods_left for {num_employed_ticking} workers")
 
@@ -236,15 +238,15 @@ def workers_update_contracts(wrk: Worker, emp: Employer) -> None:
 
     # identify contract expirations
     expired_mask = mask_emp & (wrk.periods_left == 0)
+    newly_expired_worker_ids = np.where(expired_mask)[0]
 
-    if not np.any(expired_mask):
+    if newly_expired_worker_ids.size == 0:
         if info_enabled:
             log.info("  No worker contracts expired this step.")
             log.info("--- Worker Contract Update complete ---")
         return
 
-    num_newly_expired = np.sum(expired_mask)
-    newly_expired_worker_ids = np.where(expired_mask)[0]
+    num_newly_expired = newly_expired_worker_ids.size
 
     if info_enabled:
         log.info(f"  {num_newly_expired} worker contract(s) have expired")
