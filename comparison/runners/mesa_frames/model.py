@@ -188,12 +188,63 @@ class BAMModel(mf.ModelDF):
         firms have current_labor=0; it is implemented as a Polars update for
         the general case but skip the household-side writes (those require a
         separate relationship table added in a later task).
+
+        Lazy-fusion note: events 3 (plan_price), 4 (desired_labor), and 5
+        (vacancies) are fused into one with_columns call.  Events 4 and 5 are
+        independent of event 3; event 5's desired_labor dependency is resolved
+        by composing the event-4 expression directly into the vacancies expr.
         """
         self._event1_decide_desired_production()
         self._event2_plan_breakeven_price()
-        self._event3_plan_price()
-        self._event4_decide_desired_labor()
-        self._event5_decide_vacancies()
+
+        # --- Fused events 3+4+5 ---
+        p_avg = self.avg_mkt_price
+        h_eta = float(self.p["h_eta"])
+        eps = self.EPS
+        df = self.firms.agents
+        n = len(df)
+        shocks = pl.Series("shock", self.random.uniform(0.0, h_eta, size=n))
+
+        up = (df["inventory"] == 0.0) & (df["price"] < p_avg)
+        dn = (df["inventory"] > 0.0) & (df["price"] >= p_avg)
+
+        new_price_expr = (
+            pl.when(up)
+            .then(
+                pl.max_horizontal(
+                    pl.col("price") * (1.0 + shocks),
+                    pl.col("breakeven_price"),
+                )
+            )
+            .when(dn)
+            .then(
+                pl.max_horizontal(
+                    pl.col("price") * (1.0 - shocks),
+                    pl.col("breakeven_price"),
+                )
+            )
+            .otherwise(pl.col("price"))
+        )
+
+        safe_lp = (
+            pl.when(pl.col("labor_productivity") > eps)
+            .then(pl.col("labor_productivity"))
+            .otherwise(eps)
+        )
+        desired_labor_expr = (
+            (pl.col("desired_production") / safe_lp).ceil().cast(pl.Int64)
+        )
+        vacancies_expr = pl.max_horizontal(
+            desired_labor_expr - pl.col("current_labor"),
+            pl.lit(0).cast(pl.Int64),
+        )
+
+        self.firms.agents = df.with_columns(
+            new_price_expr.alias("price"),
+            desired_labor_expr.alias("desired_labor"),
+            vacancies_expr.alias("n_vacancies"),
+        )
+
         if self.collect:
             total_vac = int(self.firms.agents["n_vacancies"].sum())
             self._c_total_vacancies.append(float(total_vac))
@@ -267,11 +318,12 @@ class BAMModel(mf.ModelDF):
             .rename({"borrower_id": "unique_id"})
         )
 
-        df = df.join(interest_by_firm, on="unique_id", how="left").with_columns(
-            pl.col("_interest_sum").fill_null(0.0).alias("_interest_sum")
-        )
+        df = df.join(interest_by_firm, on="unique_id", how="left")
 
-        breakeven = (pl.col("wage_bill") + pl.col("_interest_sum")) / pl.when(
+        # Compose fill_null into the breakeven expression (avoids a separate
+        # with_columns call for fill_null, saving one collect per period).
+        interest_sum = pl.col("_interest_sum").fill_null(0.0)
+        breakeven = (pl.col("wage_bill") + interest_sum) / pl.when(
             pl.col("desired_production") > eps
         ).then(pl.col("desired_production")).otherwise(eps)
 
@@ -379,9 +431,18 @@ class BAMModel(mf.ModelDF):
         RNG: one ``self.random.choice(..., replace=False)`` per over-staffed
         firm, in firm row order -- the same draw structure as the Mesa port's
         per-firm ``model.random.sample``.
+
+        Early-exit guard: check whether any firm is overstaffed before
+        extracting the 6 household columns (avoids 6x5000-element copies when
+        nothing fires, the common case early in the run).
         """
         fdf = self.firms.agents
         rng = self.random
+
+        # Early-exit guard: skip all household extraction if no firm is overstaffed.
+        excess_series = fdf["current_labor"] - fdf["desired_labor"]
+        if not (excess_series > 0).any():
+            return
 
         firm_ids = fdf["unique_id"].to_list()
         cur_labor = [int(c) for c in fdf["current_labor"]]
@@ -552,14 +613,6 @@ class BAMModel(mf.ModelDF):
 
         fdf = self.firms.agents
         firm_ids = fdf["unique_id"].to_numpy()
-        wage_offer = {
-            int(fid): float(wo)
-            for fid, wo in zip(
-                fdf["unique_id"].to_list(),
-                fdf["wage_offer"].to_list(),
-                strict=True,
-            )
-        }
         firm_id_set = set(int(f) for f in firm_ids)
         pool_size = len(firm_ids)
         M_eff = min(max_M, pool_size)
@@ -585,10 +638,18 @@ class BAMModel(mf.ModelDF):
             # Returns (n_unemployed, M_eff) array of firm ids (not local indices).
             batch = _batched_k_subset(rng, n_unemployed, firm_ids, M_eff)
 
+            # Vectorized sort by wage_offer DESC: build a firm_id->wage lookup
+            # array then apply np.argsort on the whole batch matrix at once.
+            max_fid = int(firm_ids.max()) + 1
+            wage_lookup = np.zeros(max_fid, dtype=np.float64)
+            wage_lookup[firm_ids] = fdf["wage_offer"].to_numpy()
+            batch_wages = wage_lookup[batch]  # (n_unemployed, M_eff)
+            # argsort DESC (stable so ties preserve original draw order).
+            sort_order = np.argsort(-batch_wages, axis=1, kind="stable")
+            sorted_batch = np.take_along_axis(batch, sort_order, axis=1)
+
             for ui, i in enumerate(unemployed_rows):
-                sample = [int(f) for f in batch[ui]]
-                # Sort by wage_offer DESC (stable on sampled order).
-                sample.sort(key=lambda fid: wage_offer[fid], reverse=True)
+                sample = sorted_batch[ui].tolist()
 
                 # Loyalty: move employer_prev to front if eligible.
                 prev = worker_emp_prev[i]
@@ -659,15 +720,50 @@ class BAMModel(mf.ModelDF):
           -> banks_decide_interest_rate -> firms_decide_credit_demand
           -> firms_calc_fragility -> firms_prepare_loan_applications
           -> run_credit_market -> firms_fire_workers_for_gap
+
+        Lazy-fusion notes:
+          - Events 13+14 are fused: both write to banks.agents with no
+            intermediate read between them.
+          - Events 15+16 are fused: fragility uses a composed credit_demand
+            expression so no intermediate collect is needed.
         """
         # Purge previous-period loans (retained through planning/labor for the
         # event-2 breakeven), matching the Mesa port clearing f.loans at the top
         # of _credit_market.
         self.loans = empty_loan_book()
-        self._event13_decide_credit_supply()
-        self._event14_decide_interest_rate()
-        self._event15_decide_credit_demand()
-        self._event16_calc_fragility()
+
+        # --- Fused events 13+14: banks compute credit_supply + interest_rate ---
+        h_phi = float(self.p["h_phi"])
+        r_bar = float(self.p["r_bar"])
+        v = float(self.p["v"])
+        bdf = self.banks.agents
+        n_banks = len(bdf)
+        opex_shocks = pl.Series(
+            "opex_shock", self.random.uniform(0.0, h_phi, size=n_banks)
+        )
+        supply_expr = pl.max_horizontal(pl.col("equity_base") / v, pl.lit(0.0))
+        self.banks.agents = bdf.with_columns(
+            supply_expr.alias("credit_supply"),
+            opex_shocks.alias("opex_shock"),
+            (r_bar * (1.0 + opex_shocks)).alias("interest_rate"),
+        )
+
+        # --- Fused events 15+16: firms compute credit_demand + fragility ---
+        max_leverage = float(self.p["max_leverage"])
+        fdf = self.firms.agents
+        credit_demand_expr = pl.max_horizontal(
+            pl.col("wage_bill") - pl.col("total_funds"), pl.lit(0.0)
+        )
+        fragility_expr = (
+            pl.when(pl.col("net_worth") > 0.0)
+            .then(credit_demand_expr / pl.col("net_worth"))
+            .otherwise(pl.lit(max_leverage))
+        )
+        self.firms.agents = fdf.with_columns(
+            credit_demand_expr.alias("credit_demand"),
+            fragility_expr.alias("projected_fragility"),
+        )
+
         self._event17_prepare_loan_applications()
         run_credit_market(self)
         self._event19_fire_workers_for_gap()
@@ -844,9 +940,18 @@ class BAMModel(mf.ModelDF):
         row order; only gap firms shuffle).  Workers of a firm are gathered as
         rows where employer==firm_id, in worker row order (mirroring the Mesa
         employees-dict insertion order, which is worker creation/row order).
+
+        Early-exit guard: check whether any firm has a financing gap before
+        extracting the 6 household columns (avoids 6x5000-element copies when
+        all firms are self-financing, the common steady-state case).
         """
         fdf = self.firms.agents
         rng = self.random
+
+        # Early-exit guard: skip all household extraction if no firm has a gap.
+        gap_series = fdf["wage_bill"] - fdf["total_funds"]
+        if not (gap_series > 0).any():
+            return
 
         firm_ids = fdf["unique_id"].to_list()
         wage_bill = [float(w) for w in fdf["wage_bill"]]
@@ -926,10 +1031,25 @@ class BAMModel(mf.ModelDF):
         Mirrors BamModel._production in mesa/model.py:
           firms_pay_wages -> workers_receive_wage -> firms_run_production
           -> _update_avg_mkt_price -> workers_update_contracts
+
+        Lazy-fusion note: events 20 (pay_wages) and 22 (run_production) both
+        write to firms.agents with only a households write (event 21) between
+        them.  They are fused into a single firms with_columns call here.
         """
-        self._event20_pay_wages()
+        # --- Fused events 20+22: firms pay wages AND compute production in one pass.
+        # Event 21 (households receive wage) is interleaved but writes only to
+        # households, so firms can accumulate both column updates without a collect.
+        fdf = self.firms.agents
+        production_expr = pl.col("labor_productivity") * pl.col("current_labor").cast(
+            pl.Float64
+        )
+        self.firms.agents = fdf.with_columns(
+            (pl.col("total_funds") - pl.col("wage_bill")).alias("total_funds"),
+            production_expr.alias("production"),
+            production_expr.alias("production_prev"),
+            production_expr.alias("inventory"),
+        )
         self._event21_receive_wage()
-        self._event22_run_production()
         if self.collect:
             hdf = self.households.agents
             fdf = self.firms.agents
@@ -1107,9 +1227,33 @@ class BAMModel(mf.ModelDF):
           consumers_calc_propensity -> consumers_decide_income_to_spend
           -> consumers_decide_firms_to_visit -> run_goods_market
           -> consumers_finalize_purchases
+
+        Lazy-fusion note: events 25 (propensity) and 26 (income_to_spend) both
+        write to households.agents.  They are fused by composing the propensity
+        expression directly into the income_to_spend expression (avg_sav scalar
+        must still be computed first, then one with_columns covers both events).
         """
-        self._event25_calc_propensity()
-        self._event26_decide_income_to_spend()
+        eps = self.EPS
+        beta = float(self.p["beta"])
+        hdf = self.households.agents
+
+        # Compute avg_sav scalar (needed before the with_columns).
+        avg_sav = max(float(hdf["savings"].mean()), eps)
+
+        # Fused events 25+26: propensity + income_to_spend + savings + income.
+        clamped_savings = pl.max_horizontal(pl.col("savings"), pl.lit(0.0))
+        propensity_expr = pl.lit(1.0) / (
+            pl.lit(1.0) + (clamped_savings / avg_sav).tanh().pow(beta)
+        )
+        wealth = pl.col("savings") + pl.col("income")
+        income_to_spend_expr = wealth * propensity_expr
+        self.households.agents = hdf.with_columns(
+            propensity_expr.alias("propensity"),
+            income_to_spend_expr.alias("income_to_spend"),
+            (wealth - income_to_spend_expr).alias("savings"),
+            pl.lit(0.0).alias("income"),
+        )
+
         self._event27_decide_firms_to_visit()
         run_goods_market(self)
         self._event29_finalize_purchases()
@@ -1200,25 +1344,11 @@ class BAMModel(mf.ModelDF):
 
         fdf = self.firms.agents
         firm_ids_arr = fdf["unique_id"].to_numpy()
-        firm_id_list = [int(f) for f in firm_ids_arr]
-        n_firms = len(firm_id_list)
+        n_firms = len(firm_ids_arr)
         Z = min(max_Z, n_firms)
 
-        price_of: dict[int, float] = dict(
-            zip(
-                fdf["unique_id"].to_list(),
-                (float(p) for p in fdf["price"]),
-                strict=True,
-            )
-        )
-        production_of: dict[int, float] = dict(
-            zip(
-                fdf["unique_id"].to_list(),
-                (float(p) for p in fdf["production"]),
-                strict=True,
-            )
-        )
-        firm_id_set: set[int] = set(firm_id_list)
+        # firm_id_set used only for the loyalty "prev in firm_id_set" check.
+        firm_id_set: set[int] = set(firm_ids_arr.tolist())
 
         hdf = self.households.agents
         n_hh = len(hdf)
@@ -1238,21 +1368,51 @@ class BAMModel(mf.ModelDF):
             # Returns (n_buyers, Z) array of firm ids.
             batch = _batched_k_subset(rng, n_buyers, firm_ids_arr, Z)
 
-            for bi, i in enumerate(buyer_rows):
-                sample = [int(f) for f in batch[bi]]
+            # Vectorized price-ASC sort: build a price lookup array indexed by
+            # firm_id, apply np.argsort on the whole batch matrix at once.
+            # For non-loyalty mode (no per-row loyalty swap before sorting),
+            # this avoids one Python list.sort per buyer.
+            # For loyalty mode: loyalty forces last slot BEFORE sorting, so the
+            # batch is not uniform - we fall back to per-row Python sort/max
+            # (cheaper than per-row numpy.array creation for small Z).
+            max_fid = int(firm_ids_arr.max()) + 1
+            price_np = fdf["price"].to_numpy()
+            prod_np = fdf["production"].to_numpy()
+            price_lookup = np.zeros(max_fid, dtype=np.float64)
+            price_lookup[firm_ids_arr] = price_np
+            # price_of/production_of dicts used by loyalty per-row sort/max.
+            price_of: dict[int, float] = dict(
+                zip(firm_ids_arr.tolist(), price_np.tolist(), strict=True)
+            )
+            production_of: dict[int, float] = dict(
+                zip(firm_ids_arr.tolist(), prod_np.tolist(), strict=True)
+            )
 
-                # Loyalty: force largest_prod_prev into last slot if not present.
+            if consumer_matching != "loyalty":
+                # Fully vectorized path: sort whole batch at once.
+                batch_prices = price_lookup[batch]  # (n_buyers, Z)
+                sort_order = np.argsort(batch_prices, axis=1, kind="stable")
+                sorted_batch = np.take_along_axis(batch, sort_order, axis=1)
+            else:
+                sorted_batch = None  # will sort per-row after loyalty
+
+            for bi, i in enumerate(buyer_rows):
                 if consumer_matching == "loyalty":
+                    sample = batch[bi].tolist()
+
+                    # Loyalty: force largest_prod_prev into last slot if not present.
                     prev = largest_prod_prev[i]
                     if prev >= 0 and prev in firm_id_set and prev not in sample:
                         sample[-1] = prev
 
-                # Sort by price ASC (cheapest first, mirroring Mesa port).
-                sample.sort(key=lambda fid: price_of[fid])
+                    # Sort by price ASC (Python sort for small Z; dict lookup faster
+                    # than per-row numpy.array creation overhead at Z=2).
+                    sample.sort(key=lambda fid: price_of[fid])
 
-                # Update loyalty BEFORE shopping: track firm with max production.
-                if consumer_matching == "loyalty":
+                    # Update loyalty BEFORE shopping: track firm with max production.
                     new_largest[i] = max(sample, key=lambda fid: production_of[fid])
+                else:
+                    sample = sorted_batch[bi].tolist()
 
                 # Store in visit queue (truncated to max_Z slots).
                 for k, fid in enumerate(sample[:max_Z]):
@@ -1403,57 +1563,77 @@ class BAMModel(mf.ModelDF):
         )
         net_profit = pl.col("gross_profit") - pl.col("_total_interest")
 
-        # Build a lookup for bank equity updates: need firm solvency + per-loan info.
-        # Capture the classification before dropping auxiliary columns.
-        firm_meta = fdf_ext.select(
-            ["unique_id", "total_funds", "net_worth", "_total_debt", "_total_principal"]
-        )
-        firm_meta_map = {
-            row["unique_id"]: row for row in firm_meta.iter_rows(named=True)
-        }
-
         self.firms.agents = fdf_ext.with_columns(
             new_total_funds.alias("total_funds"),
             net_profit.alias("net_profit"),
         ).drop(["_total_debt", "_total_interest", "_total_principal"])
 
-        # Apply bank equity updates per loan (mirrors the Mesa port's per-loan loop).
-        bank_delta: dict[int, float] = {}
-        for loan_row in loans.iter_rows(named=True):
-            fid = int(loan_row["borrower_id"])
-            bid = int(loan_row["lender_id"])
-            principal = float(loan_row["principal"])
-            rate = float(loan_row["interest_rate"])
-            interest = principal * rate
+        # Vectorized bank equity update: join loans with per-firm solvency info,
+        # compute per-loan delta, group_by lender, join onto banks.
+        # This replaces the iter_rows loop (per-loan Python iteration).
+        firm_meta = fdf_ext.select(
+            ["unique_id", "total_funds", "net_worth", "_total_debt", "_total_principal"]
+        )
 
-            meta = firm_meta_map.get(fid)
-            if meta is None:
-                continue
-            total_debt_f = float(meta["_total_debt"])
-            if total_debt_f <= eps:
-                continue
-            total_funds_f = float(meta["total_funds"])
+        loans_with_meta = loans.join(
+            firm_meta.rename({"unique_id": "borrower_id"}),
+            on="borrower_id",
+            how="left",
+        ).with_columns(
+            pl.col("_total_debt").fill_null(0.0),
+            pl.col("net_worth").fill_null(0.0),
+            pl.col("_total_principal").fill_null(0.0),
+            pl.col("total_funds").fill_null(0.0),
+        )
 
-            if (total_funds_f - total_debt_f) >= -eps:
-                # Solvent: lender earns interest.
-                bank_delta[bid] = bank_delta.get(bid, 0.0) + interest
-            else:
-                # Default: lender takes proportional loss.
-                total_principal_f = float(meta["_total_principal"])
-                nw = float(meta["net_worth"])
-                frac = principal / max(total_principal_f, eps)
-                recovery = min(max(frac * nw, 0.0), principal)
-                loss = principal - recovery
-                bank_delta[bid] = bank_delta.get(bid, 0.0) - loss
+        has_debt_loan = pl.col("_total_debt") > eps
+        is_solvent_loan = has_debt_loan & (
+            (pl.col("total_funds") - pl.col("_total_debt")) >= -eps
+        )
+        is_defaulting_loan = has_debt_loan & (
+            (pl.col("total_funds") - pl.col("_total_debt")) < -eps
+        )
 
-        if bank_delta:
-            new_equity = [
-                row["equity_base"] + bank_delta.get(int(row["unique_id"]), 0.0)
-                for row in bdf.iter_rows(named=True)
-            ]
-            self.banks.agents = bdf.with_columns(
-                pl.Series("equity_base", new_equity, dtype=pl.Float64)
+        # Per-loan delta:
+        #   solvent:    + principal * interest_rate
+        #   defaulting: - (principal - clip(frac * nw, 0, principal))
+        safe_total_principal = (
+            pl.when(pl.col("_total_principal") > eps)
+            .then(pl.col("_total_principal"))
+            .otherwise(eps)
+        )
+        frac = pl.col("principal") / safe_total_principal
+        recovery = (frac * pl.col("net_worth")).clip(0.0, pl.col("principal"))
+        loss = pl.col("principal") - recovery
+
+        loan_delta = (
+            pl.when(is_solvent_loan)
+            .then(pl.col("principal") * pl.col("interest_rate"))
+            .when(is_defaulting_loan)
+            .then(-loss)
+            .otherwise(pl.lit(0.0))
+        )
+
+        bank_deltas = (
+            loans_with_meta.with_columns(loan_delta.alias("_delta"))
+            .group_by("lender_id")
+            .agg(pl.col("_delta").sum().alias("_equity_delta"))
+        )
+
+        # Left-join onto banks (banks with no matching loans get delta 0).
+        self.banks.agents = (
+            bdf.join(
+                bank_deltas.rename({"lender_id": "unique_id"}),
+                on="unique_id",
+                how="left",
             )
+            .with_columns(
+                (pl.col("equity_base") + pl.col("_equity_delta").fill_null(0.0)).alias(
+                    "equity_base"
+                )
+            )
+            .drop("_equity_delta")
+        )
 
     def _event32_pay_dividends(self) -> None:
         """Event 32: profitable firms pay a fraction of net_profit as dividends.

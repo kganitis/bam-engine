@@ -4,7 +4,7 @@
   "status": "timeout",
   "error": "wall budget exceeded",
   "process": {
-    "wall_seconds": 120.07362104099593
+    "wall_seconds": 120.06563270799234
   },
-  "environment_id": "6c90c1210485"
+  "environment_id": "2542df021ba2"
 }

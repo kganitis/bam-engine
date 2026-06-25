@@ -22,13 +22,28 @@ equivalence gate (Phase A).
 ### Port fairness
 
 For a fair comparison, the competitor ports are written competently rather than
-naively: the firm-selection sampling uses a vectorized sparse k-subset draw in
-mesa-frames (`O(n_rows * k)`, not a dense `O(n_rows * n_firms)` priority matrix)
-and an `O(k)` without-replacement draw in Agents.jl (not an `O(n_firms)`
-shuffle-the-whole-pool per household). These match the uniform-k-subset
-distribution exactly, so the ports still pass the equivalence gate. The ports are
-"competently written, not maximally tuned": their caps reflect a reasonable
-implementation in each framework, not the framework's absolute ceiling.
+naively, then profiled to their inherent performance floor. The firm-selection
+sampling uses a vectorized sparse k-subset draw in mesa-frames (`O(n_rows * k)`,
+not a dense `O(n_rows * n_firms)` priority matrix) and an `O(k)` without-
+replacement draw in Agents.jl (not an `O(n_firms)` shuffle-the-whole-pool per
+household). Both match the uniform-k-subset distribution exactly, so the ports
+still pass the equivalence gate.
+
+Each port was then profiled to confirm its dominant cost is INHERENT rather than
+an avoidable inefficiency (see `.claude/docs/analysis/2026-06-25-port-audit-*.md`):
+
+- **mesa-frames**: additionally optimized with lazy `collect()` fusion, batch numpy
+  sort/argmax, early-exit guards, and a vectorized `group_by` bank-equity update.
+  Its remaining cost is inherent (the sequential market loops plus the per-event
+  agent-DataFrame write-backs that `AgentSetPolars` requires by design).
+- **Agents.jl**: additionally made allocation-free (no per-call `Set`) with
+  id-range household iteration. Its remaining cost is inherent (the sequential
+  goods loop plus `@multiagent` union dispatch). One residual (~7% at large N) is
+  in RNG-order-sensitive loops kept faithful for exact per-seed reproducibility.
+
+The ports are "competently written, profiled to their inherent floor": their caps
+reflect a competent implementation in each framework, not a naive one, but also
+not a maximally hand-tuned one.
 
 ## Install
 
