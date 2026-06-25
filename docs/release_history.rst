@@ -10,6 +10,16 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 
    Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.
 
+[Unreleased]
+------------
+
+Added
+~~~~~
+
+* Optional Numba JIT kernel for the goods market (``pip install bamengine[fast]``):
+  bit-identical results, approximately 2x speedup at scale, opt-in via the new
+  ``goods_kernel`` config parameter (``"auto"`` / ``"numba"`` / ``"python"``).
+
 [0.9.2] - 2026-06-23
 --------------------
 
