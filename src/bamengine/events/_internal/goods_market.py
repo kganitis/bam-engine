@@ -23,7 +23,7 @@ try:
 
     HAS_NUMBA = True
 except ImportError:
-    numba = None
+    numba = None  # type: ignore[assignment, unused-ignore]
     HAS_NUMBA = False
 
 log = logging.getLogger(__name__)
@@ -502,7 +502,7 @@ def _goods_buy_loop_nb_impl(
 if HAS_NUMBA:
     _goods_buy_loop_nb = numba.njit(cache=True)(_goods_buy_loop_nb_impl)
 else:
-    _goods_buy_loop_nb = None
+    _goods_buy_loop_nb = None  # type: ignore[assignment, unused-ignore]
 
 
 def _goods_buy_loop_nb_wrapper(
