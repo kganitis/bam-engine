@@ -1,0 +1,10 @@
+{
+  "run_id": "netlogo__s1000__rep0",
+  "framework": "netlogo",
+  "status": "timeout",
+  "error": "wall budget exceeded",
+  "process": {
+    "wall_seconds": 120.04503216600278
+  },
+  "environment_id": "56abafd77150"
+}
