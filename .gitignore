@@ -38,6 +38,10 @@ asv_benchmarks/.asv/results/*
 asv_benchmarks/env/
 asv_benchmarks/__pycache__/
 
+# JOSS paper build artifacts
+paper/paper.pdf
+paper/jats/
+
 # Analysis outputs
 analysis/output/
 

@@ -89,8 +89,9 @@ output, and inflation dynamics, firm-size skewness, and cross-correlation
 structure, so the comparison measures the same model rather than five similar
 ones. The NetLogo implementation participates as a non-blocking cross-language
 reference: it reproduces the baseline levels but diverges on parts of the
-co-movement structure. Timing jobs are single-threaded and serial, and the
-result snapshots and environment captures are committed with the repository.
+co-movement structure. All timings were collected on a single machine
+(Apple M4 Pro); jobs are single-threaded and run serially, and the result
+snapshots and environment captures are committed with the repository.
 
 At 1,000 firms (6,100 agents in total), BAM Engine simulates a period in
 about 1.5 ms: roughly 11x faster than the idiomatic Mesa port, 13x faster
@@ -106,7 +107,7 @@ the gaps reflect framework design, not implementation effort.
 
 ![Steady-state per-period wall time against total agent count, log-log. Mesa,
 mesa-frames, and NetLogo hit the per-job time budget at smaller populations
-than the array-oriented engines.\label{fig:scaling}](scaling.png)
+than the array-oriented engines (Apple M4 Pro).\label{fig:scaling}](scaling.png){ width="75%" }
 
 # Software design
 
