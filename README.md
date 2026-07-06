@@ -108,6 +108,13 @@ The trade-off is a mindset shift: you write agent rules as systems that transfor
 
 See the [User Guide](https://bam-engine.readthedocs.io/en/latest/user_guide/index.html) for a full walkthrough of the model and its architecture.
 
+## Cross-framework benchmark
+
+BAM Engine is benchmarked against Mesa, mesa-frames, Agents.jl, and NetLogo
+running the identical baseline model, with a behavioural-equivalence gate
+ensuring like-for-like comparison. See [comparison/](comparison/README.md)
+for the harness, committed results, and reproduction instructions.
+
 ## Documentation
 
 Full documentation is available at [bam-engine.readthedocs.io](https://bam-engine.readthedocs.io).

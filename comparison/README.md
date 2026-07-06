@@ -91,6 +91,32 @@ first run, so the runner warms up untimed before the timed loop and the
 compilation cost lands in `init_seconds` (timed separately). The benchmark is
 run locally.
 
+## Reproducing the benchmark (reviewers start here)
+
+The two Python-only frameworks reproduce with no extra toolchain:
+
+```bash
+pip install -e ".[comparison]"
+python -m comparison.orchestrator.run --frameworks bamengine,mesa --quick
+```
+
+`--quick` shrinks seeds/periods/sizes to a fast smoke run; drop it for the
+full matrix. Results, figures, and a Markdown report land in
+`comparison/results/`.
+
+The remaining runners need their own toolchains and are optional for
+verifying the headline claim (bamengine vs Mesa):
+
+- mesa-frames: `bash comparison/runners/mesa_frames/setup_env.sh` (dedicated
+  venv; it pins numpy\<2, see the note above)
+- Agents.jl: Julia 1.12+ then `bash comparison/runners/agentsjl/setup_env.sh`
+- NetLogo: JVM toolchain, non-blocking reference; see
+  `comparison/runners/netlogo/README.md`
+
+The committed `comparison/results/` snapshots (raw JSON per run, environment
+captures, report) are the exact source of the numbers in `paper/paper.md`, so
+every claim can be audited without re-running anything.
+
 ## Running the benchmark
 
 ```bash
