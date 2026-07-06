@@ -1,0 +1,3 @@
+# Bridge for driving NetLogo from Python (JPype-based JVM link).
+pynetlogo>=0.5
+jpype1>=1.5
