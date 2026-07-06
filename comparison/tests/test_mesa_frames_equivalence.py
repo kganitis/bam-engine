@@ -12,6 +12,7 @@ each run in parallel via ProcessPoolExecutor).
 from __future__ import annotations
 
 import concurrent.futures
+from pathlib import Path
 
 import pytest
 
@@ -27,6 +28,19 @@ from comparison.orchestrator.run import _execute_gate
 _BUDGET_S = 600.0
 _MAX_WORKERS = 8
 _BURN_IN = 500
+
+# mesa-frames runs in a dedicated venv (it pins numpy<2, incompatible with the
+# main environment). Skip the whole gate when that venv is absent, matching the
+# behaviour of the sibling mesa-frames runner tests.
+_MF_PYTHON = (
+    Path(__file__).resolve().parents[2]
+    / "comparison"
+    / "runners"
+    / "mesa_frames"
+    / ".venv-mf"
+    / "bin"
+    / "python"
+)
 
 
 def _build_requests(frameworks: list[str]) -> list[RunRequest]:
@@ -59,6 +73,9 @@ def test_mesa_frames_passes_equivalence_gate():
     Gate config: 20 seeds, 1000 periods, burn-in 500 periods, 100 firms (canonical
     BAM ratio).  Tolerance per metric: max(validation_band, 2 * std_bamengine).
     """
+    if not _MF_PYTHON.exists():
+        pytest.skip(f"mesa-frames venv not found at {_MF_PYTHON}")
+
     frameworks = ["bamengine", "mesa_frames"]
     reqs = _build_requests(frameworks)
     args = [(req, _BUDGET_S) for req in reqs]
