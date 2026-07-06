@@ -11,7 +11,7 @@ URL="https://raw.githubusercontent.com/alexplatasl/BAMmodel/master/DelliBAM_.nlo
 
 # Pinned checksum. If empty, the script prints the downloaded file's SHA-256 and
 # exits 3 so the developer can pin it on first fetch (Task 3 records the value).
-EXPECTED_SHA256="${NETLOGO_MODEL_SHA256:-}"
+EXPECTED_SHA256="${NETLOGO_MODEL_SHA256:-78f529dbe2a430566e838a045dd1e73377f91faec66feada461f12b36846f0f2}"
 
 mkdir -p "$MODEL_DIR"
 echo "Downloading Platas DelliBAM_.nlogo ..."
