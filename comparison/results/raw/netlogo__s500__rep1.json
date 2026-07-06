@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "run_id": "netlogo__s500__rep1",
+  "framework": "netlogo",
+  "framework_version": "0.5.2",
+  "language": "netlogo",
+  "language_version": "6.4.0",
+  "status": "ok",
+  "error": null,
+  "population": {
+    "n_firms": 500,
+    "n_households": 2500,
+    "n_banks": 50,
+    "n_agents_total": 3050
+  },
+  "n_periods": 1000,
+  "warmup_periods": 100,
+  "seed": 1001,
+  "timing": {
+    "init_seconds": 0.0824780419934541,
+    "run_seconds": 36.99010683299275,
+    "steady_state_per_period_seconds": 0.04110011870332528,
+    "throughput_agent_steps_per_s": 74209.03141462787
+  },
+  "outputs": null,
+  "process": {
+    "wall_seconds": 44.68064512498677,
+    "peak_rss_bytes": 749027328,
+    "startup_seconds": 7.6080602500005625
+  },
+  "environment_id": "56abafd77150"
+}
