@@ -10,6 +10,33 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 
    Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.
 
+[0.10.1] - 2026-07-07
+---------------------
+
+This patch prepares the JOSS submission: it fixes the ``[comparison]`` extra,
+adds the JOSS paper sources with a CI-built draft PDF, and adds
+reviewer-facing reproduction instructions for the cross-framework benchmark.
+
+Fixed
+~~~~~
+
+* ``pip install bamengine[comparison]`` no longer pulls ``mesa-frames`` into
+  the main environment (its ``numpy<2`` pin conflicted with the modern NumPy
+  the benchmark measures; the mesa-frames runner uses its own dedicated venv),
+  and now includes ``networkx``, which Mesa 3.5 imports at package-import time
+  but does not declare (previously the Mesa benchmark runner failed silently
+  on fresh clones).
+* The mesa-frames equivalence-gate test now skips (like its sibling tests)
+  when the optional dedicated venv is absent, instead of failing.
+
+Added
+~~~~~
+
+* JOSS paper sources under ``paper/`` and a ``draft-pdf.yml`` workflow that
+  compiles the paper on every change.
+* "Reproducing the benchmark" quickstart in ``comparison/README.md`` and a
+  cross-framework benchmark section in the README.
+
 [0.10.0] - 2026-07-06
 ---------------------
 
