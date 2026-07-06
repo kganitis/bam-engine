@@ -15,6 +15,8 @@ from __future__ import annotations
 import sys
 import traceback
 
+import numpy as np
+
 from comparison.orchestrator.contract import (
     SCHEMA_VERSION,
     STATUS_ERROR,
@@ -42,6 +44,62 @@ def _skeleton(req: RunRequest, status: str, error: object) -> RunResult:
         timing={},
         outputs=None,
     )
+
+
+def build_series(
+    raw: dict[str, list], production_final: list, n_workers: int
+) -> dict[str, list]:
+    """Derive the six comparison series from raw per-tick NetLogo reporter values.
+
+    Mirrors ``comparison/runners/bamengine/run.py::build_series`` exactly so the
+    NetLogo reference is derived identically to every other framework.
+
+    Parameters
+    ----------
+    raw : dict
+        Per-tick reporter lists (all length T): ``unemployment``,
+        ``price_inflation``, ``avg_wage``, ``real_gdp``, ``total_vacancies``.
+    production_final : list
+        Per-firm production read at the final tick.
+    n_workers : int
+        Labor-force denominator for the vacancy rate (households).
+
+    Returns
+    -------
+    dict
+        Six-series mapping, each a JSON-safe list with no NaN/inf.
+    """
+    unemployment = np.asarray(raw["unemployment"], dtype=float)
+    price_inflation = np.asarray(raw["price_inflation"], dtype=float)
+    avg_wage = np.asarray(raw["avg_wage"], dtype=float)
+    real_gdp = np.asarray(raw["real_gdp"], dtype=float)
+    total_vacancies = np.asarray(raw["total_vacancies"], dtype=float)
+
+    # Wage inflation: period-over-period growth of the average employed wage.
+    wage_inflation = np.zeros_like(avg_wage)
+    if avg_wage.size > 1:
+        prev = avg_wage[:-1]
+        safe_prev = np.where(prev != 0, prev, 1.0)
+        wage_inflation[1:] = np.where(prev != 0, avg_wage[1:] / safe_prev - 1.0, 0.0)
+
+    # Real GDP = total production; log on a strictly-positive denominator.
+    safe_gdp = np.where(real_gdp > 0, real_gdp, np.nan)
+    log_gdp = np.log(safe_gdp)
+
+    # Vacancy rate: total open vacancies over the labor force.
+    denom = float(n_workers) if n_workers > 0 else 1.0
+    vacancy_rate = total_vacancies / denom
+
+    production_final_arr = np.asarray(production_final, dtype=float)
+
+    return {
+        "unemployment": np.nan_to_num(unemployment).tolist(),
+        "price_inflation": np.nan_to_num(price_inflation).tolist(),
+        "wage_inflation": np.nan_to_num(wage_inflation).tolist(),
+        "log_gdp": np.nan_to_num(log_gdp).tolist(),
+        "vacancy_rate": np.nan_to_num(vacancy_rate).tolist(),
+        "production_final": np.nan_to_num(production_final_arr).tolist(),
+    }
 
 
 def main(request_path: str) -> None:
