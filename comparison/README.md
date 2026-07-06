@@ -56,6 +56,13 @@ dependencies (psutil, pandas, matplotlib, scipy, tabulate). The bamengine and
 Mesa runners work in this environment directly; the mesa-frames, Agents.jl, and
 NetLogo runners need the dedicated setup described below.
 
+To run the harness unit tests (`pytest comparison/tests`), also install the test
+dependencies, which the `comparison` extra does not pull in on its own:
+
+```bash
+pip install -e ".[comparison,test]"
+```
+
 ### mesa-frames runner: dedicated environment
 
 mesa-frames pins `numpy<2`, which conflicts with bamengine's `numpy>=2`. Because
