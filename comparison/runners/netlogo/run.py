@@ -28,9 +28,10 @@ from comparison.orchestrator.contract import (
     RunResult,
 )
 
-# NetLogo reporter strings, CONFIRMED against the fetched model in Task 3.
-# The breed name for firms is assumed to be ``firms``; if Task 3 found a
-# different breed, update the two ``of firms`` reporters accordingly.
+# EXPECTED NetLogo reporter strings -- these MUST be confirmed against the
+# fetched DelliBAM_.nlogo model in operator Task 3 (NOT yet verified). The
+# breed name for firms is assumed to be ``firms``; if Task 3 finds a
+# different breed, update the two ``of firms`` reporters below accordingly.
 REPORTERS = {
     "unemployment": "fn-unemployment-rate",
     "price_inflation": "annualized-inflation",
