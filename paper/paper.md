@@ -31,21 +31,9 @@ endogenous business cycles emerge from the decentralized, boundedly rational
 decisions of many individual agents [@delli_gatti_2005_fluctuations;
 @tesfatsion_2006_ace].
 
-The framework is built on an Entity-Component-System (ECS) architecture that
-follows data-oriented design principles. Agent state is not held in per-agent
-objects; instead, each behavioural facet (a "role") is a structure of parallel
-NumPy arrays [@harris_2020_numpy], and each economic process (an "event") is a
-stateless system that transforms those arrays in place. Events run in an
-explicit, YAML-configurable pipeline organised into the model's economic phases.
-This layout replaces per-agent Python loops with vectorized array operations,
-and it lets researchers reorder, reconfigure, and extend the model (adding new
-roles, events, relationships, and market mechanisms) without modifying the
-engine core. Three extensions ship with the framework and demonstrate the
-mechanism: R&D-driven endogenous growth, buffer-stock precautionary consumption,
-and profit taxation. The package depends only on NumPy and PyYAML at runtime, is
-fully type-annotated, tested under continuous integration across operating
-systems and Python versions, and documented with a tutorial-style user guide and
-runnable examples.
+BAM Engine is validated against quantitative targets from the source text and
+benchmarked against four other agent-based modeling frameworks, and it ships
+three extensions that demonstrate how the model can be varied and extended.
 
 # Statement of need
 
@@ -57,6 +45,14 @@ choices along the way. Results are therefore hard to reproduce, compare, or buil
 upon, which is the central obstacle this framework addresses: it provides a
 single, inspectable, validated reference implementation that others can run,
 audit, and modify.
+
+BAM Engine's intended users are researchers, educators, and students in
+agent-based computational economics who need a fast and modifiable reference
+implementation: to reproduce the book's results, to experiment with parameters
+and model variants, and to run the large ensembles of simulations that
+quantitative analysis demands.
+
+# State of the field
 
 General-purpose ABM frameworks ease the engineering burden but impose a
 trade-off. Object-oriented toolkits such as Mesa in Python [@kazil_2020_mesa],
@@ -79,13 +75,68 @@ experiments) and the Julia-based ABCredit engine wrapped by R-MABM
 requires a Julia runtime. To the author's knowledge, BAM Engine is the first
 vectorized, pure-Python framework for the baseline BAM model that combines a
 reusable, extensible architecture with systematic validation against the original
-text. Its intended users are researchers, educators, and students in agent-based
-computational economics who need a fast and modifiable reference implementation:
-to reproduce the book's results, to experiment with parameters and model
-variants, and to run the large ensembles of simulations that quantitative
-analysis demands.
+text.
 
-# Validation and research enabled
+To ground this comparison in measurement, the repository ships a
+cross-framework benchmark (the `comparison/` package) that runs the identical
+baseline BAM model on five frameworks: BAM Engine, Mesa [@kazil_2020_mesa],
+mesa-frames [@amer_2024_mesaframes], Agents.jl [@datseris_2022_agentsjl], and
+a pre-existing third-party NetLogo implementation [@platas_lopez_2020_bam].
+Before any timing is counted, each port must pass a behavioural-equivalence
+gate: twenty seeds compared against the BAM Engine reference on unemployment,
+output, and inflation dynamics, firm-size skewness, and cross-correlation
+structure, so the comparison measures the same model rather than five similar
+ones. The NetLogo implementation participates as a non-blocking cross-language
+reference: it reproduces the baseline levels but diverges on parts of the
+co-movement structure. Timing jobs are single-threaded and serial, and the
+result snapshots and environment captures are committed with the repository.
+
+At 1,000 firms (6,100 agents in total), BAM Engine simulates a period in
+about 1.5 ms: roughly 11x faster than the idiomatic Mesa port, 13x faster
+than mesa-frames, and 1.4x faster than the compiled Agents.jl port. At 20,000
+firms (122,000 agents), BAM Engine with the optional Numba kernel runs 3.7x
+faster than Agents.jl, while the per-agent Python frameworks do not complete
+within budget beyond 5,000 firms. The results split by execution model rather
+than by language: array-oriented engines reach the population sizes that
+ensemble studies require, and BAM Engine is the fastest of the group from 500
+firms upward (\autoref{fig:scaling}). The competitor ports are written
+competently and profiled to their inherent floors rather than left naive, so
+the gaps reflect framework design, not implementation effort.
+
+![Steady-state per-period wall time against total agent count, log-log. Mesa,
+mesa-frames, and NetLogo hit the per-job time budget at smaller populations
+than the array-oriented engines.\label{fig:scaling}](scaling.png)
+
+# Software design
+
+The framework is built on an Entity-Component-System (ECS) architecture that
+follows data-oriented design principles. Agent state is not held in per-agent
+objects; instead, each behavioural facet (a "role") is a structure of parallel
+NumPy arrays [@harris_2020_numpy], and each economic process (an "event") is a
+stateless system that transforms those arrays in place. Events run in an
+explicit, YAML-configurable pipeline organised into the model's economic phases.
+This layout replaces per-agent Python loops with vectorized array operations,
+and it lets researchers reorder, reconfigure, and extend the model (adding new
+roles, events, relationships, and market mechanisms) without modifying the
+engine core. Three extensions ship with the framework and demonstrate the
+mechanism: R&D-driven endogenous growth, buffer-stock precautionary consumption,
+and profit taxation. The package depends only on NumPy and PyYAML at runtime, is
+fully type-annotated, tested under continuous integration across operating
+systems and Python versions, and documented with a tutorial-style user guide and
+runnable examples.
+
+Two design trade-offs are worth stating. First, vectorization is applied
+selectively: the labor and credit markets use batched array matching with a
+sparse per-row sampler, while the goods market intentionally remains a
+sequential loop because its purchase-by-purchase state updates make
+vectorized approximations behaviourally wrong; an optional Numba kernel
+(`pip install bamengine[fast]`) compiles that loop instead, producing
+bit-identical results roughly twice as fast at scale. Second, the event
+pipeline is ordered explicitly in YAML rather than derived from a dependency
+graph: economic causality in the BAM model is an assumption to be inspected
+and varied, not an implementation detail to be inferred.
+
+# Research impact statement
 
 BAM Engine is validated against quantitative targets extracted from
 @delli_gatti_2011 using a two-layer scheme that pairs discrete PASS/WARN/FAIL
@@ -111,15 +162,14 @@ eliminates borrowing. These observations illustrate the mechanism-level analysis
 that a faithful, open reference implementation makes possible, and they motivate
 the model variants explored through the extension system.
 
+# AI usage disclosure
+
+(Section text finalized with the author; see Task 5.)
+
 # Acknowledgements
 
 BAM Engine was developed as part of MSc thesis research at the University of
 Piraeus. The author thanks his thesis supervisor for guidance throughout the
 project.
-
-<!-- Optional, per JOSS generative-AI guidance: if you wish to disclose tooling,
-     add a brief statement here describing how AI assistance was used and which
-     design decisions, validation methodology, and analysis remain the author's
-     own intellectual contribution. -->
 
 # References
