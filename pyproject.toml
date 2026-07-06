@@ -87,6 +87,10 @@ comparison = [
     "scipy>=1.11",
     "tabulate>=0.9",
     "mesa>=3.0",
+    # mesa 3.5+ imports mesa.discrete_space.network (hence networkx) at package
+    # import time, but declares networkx only under its own optional extras. Pin
+    # it here so `import mesa` works from a plain `.[comparison]` install.
+    "networkx>=3.0",
 ]
 
 # Development
