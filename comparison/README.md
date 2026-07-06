@@ -51,8 +51,10 @@ not a maximally hand-tuned one.
 pip install -e ".[comparison]"
 ```
 
-This installs `bamengine` plus the benchmark dependencies (psutil, pandas,
-matplotlib, scipy, tabulate).
+This installs `bamengine`, the Mesa runner (`mesa`), and the benchmark
+dependencies (psutil, pandas, matplotlib, scipy, tabulate). The bamengine and
+Mesa runners work in this environment directly; the mesa-frames, Agents.jl, and
+NetLogo runners need the dedicated setup described below.
 
 ### mesa-frames runner: dedicated environment
 

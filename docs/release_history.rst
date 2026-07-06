@@ -10,15 +10,57 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 
    Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.
 
-[Unreleased]
-------------
+[0.10.0] - 2026-07-06
+---------------------
+
+This release makes BAM Engine measurable against the wider agent-based modelling
+ecosystem. A new cross-framework benchmark suite runs the identical baseline BAM
+model on five frameworks (BAM Engine, Mesa, mesa-frames, Agents.jl, and NetLogo)
+and confirms behavioural equivalence before comparing runtime and memory. To
+back that comparison, the core simulation gained a round of vectorization work
+and an optional Numba kernel that together make BAM Engine the fastest of the
+group at scale. No breaking changes to the public API.
 
 Added
 ~~~~~
 
+**Goods-Market Numba Kernel**
+
 * Optional Numba JIT kernel for the goods market (``pip install bamengine[fast]``):
   bit-identical results, approximately 2x speedup at scale, opt-in via the new
   ``goods_kernel`` config parameter (``"auto"`` / ``"numba"`` / ``"python"``).
+
+**Cross-Framework Benchmark Suite**
+
+* New ``comparison/`` harness that runs the baseline BAM model across five
+  frameworks and compares runtime and peak memory on a common size matrix. Each
+  port passes a behavioural-equivalence gate (20 seeds) against BAM Engine before
+  its timings are reported.
+* Ports added: an idiomatic OOP **Mesa** port, a Polars-backed **mesa-frames**
+  port, an **Agents.jl** (Julia) port, and a **NetLogo** cross-language reference
+  runner via a pyNetLogo bridge.
+* Orchestrator, subprocess runner with peak-RSS sampling, central equivalence
+  metric, and an aggregate analysis/plot/report pipeline.
+
+Changed
+~~~~~~~
+
+**Performance**
+
+* Sparse ``O(N*k)`` market matching via a new ``sample_k_per_row`` sampler,
+  replacing the dense priority-matrix approach: roughly **8.8x faster at 1000
+  firms** and scaling to 20000 firms, with validation scores preserved.
+* Goods-market sequential loop and firing pass micro-optimized (bit-identical,
+  ~20-28% faster at scale); vestigial dense ``recv_job_apps`` / ``recv_loan_apps``
+  arrays removed.
+* Core hot paths switched from ``np.isin`` / ``np.setdiff1d`` to boolean masks,
+  and the contract triple-scan merged into a single pass.
+
+**Development & CI**
+
+* Canonical dev/test environment now exercises the Numba kernel (``numpy<2.5``),
+  with an added CI fallback lane on ``numpy 2.5`` (no Numba) so both code paths
+  are tested. The ``[fast]`` extra moved from the test extra to the dev extra.
 
 [0.9.2] - 2026-06-23
 --------------------

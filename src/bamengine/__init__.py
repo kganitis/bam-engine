@@ -166,7 +166,7 @@ Notes
 
 from __future__ import annotations
 
-__version__: str = "0.9.2"
+__version__: str = "0.10.0"
 
 # ============================================================================
 # Standard library imports
