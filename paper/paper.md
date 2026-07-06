@@ -14,7 +14,7 @@ authors:
 affiliations:
   - name: Department of Informatics, University of Piraeus, Greece
     index: 1
-date: 6 July 2026
+date: 7 July 2026
 bibliography: paper.bib
 ---
 
@@ -167,14 +167,13 @@ the model variants explored through the extension system.
 # AI usage disclosure
 
 BAM Engine was developed with the assistance of generative AI: Anthropic Claude
-models (Claude Sonnet and Opus families, versions 3.7 through 4.x), used through
+models (Claude Sonnet and Opus families, versions 3.7 through 4.8), used through
 the Claude Code development tool (2025-2026), assisted with code generation,
-refactoring, test authoring, documentation writing, and drafting of this paper,
-under the author's direction and continuous supervision. The author framed every
-problem, made all core design and architectural decisions (the
-entity-component-system layout, the event pipeline, the validation methodology
-and targets, the benchmark design and its behavioural-equivalence gate),
-reviewed and validated every change against the source text and the committed
+refactoring, test authoring and documentation writing under the author's direction and
+continuous supervision. The author framed every problem, made all core design and
+architectural decisions (the entity-component-system layout, the event pipeline, the
+validation methodology and targets, the benchmark design and its behavioural-equivalence
+gate), reviewed and validated every change against the source text and the committed
 test and validation suites, and takes full responsibility for the correctness,
 originality, and licensing of the software and of this manuscript.
 
