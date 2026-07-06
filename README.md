@@ -17,9 +17,9 @@
   banks making decisions and interacting in labor, credit and goods markets, letting
   macroeconomic patterns (growth, unemployment, inflation, business cycles) <b>emerge
   from the bottom up</b>, instead of assuming them with aggregate equations.
-  It is built for researchers, students, and practitioners in agent-based and
-  computational economics who need a reproducible, extensible implementation of
-  the BAM model, with validation and calibration tooling included.
+  It is built for researchers, students, and practitioners in
+  agent-based computational economics who need a reproducible, extensible
+  implementation of the BAM model, with validation and calibration tooling included.
 </p>
 
 <p align="center">
