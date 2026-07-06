@@ -1,0 +1,17 @@
+{
+  "cpu": "arm",
+  "n_cores": 12,
+  "ram_bytes": 25769803776,
+  "os": "Darwin 25.2.0",
+  "python_version": "3.13.12",
+  "bamengine_version": "0.9.2",
+  "bamengine_commit": "d17ff65",
+  "thread_env": {
+    "OMP_NUM_THREADS": null,
+    "OPENBLAS_NUM_THREADS": null,
+    "MKL_NUM_THREADS": null,
+    "POLARS_MAX_THREADS": null,
+    "JULIA_NUM_THREADS": null
+  },
+  "timestamp": "2026-07-06T10:12:34.241114+00:00"
+}

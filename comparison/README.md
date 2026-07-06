@@ -6,13 +6,13 @@ frameworks that implement the same BAM (Bottom-Up Adaptive Macroeconomics) model
 
 ## Competitor matrix
 
-| Framework   | Runner module                     | Status            |
-| ----------- | --------------------------------- | ----------------- |
-| bamengine   | `comparison/runners/bamengine/`   | complete          |
-| Mesa        | `comparison/runners/mesa/`        | complete          |
-| mesa-frames | `comparison/runners/mesa_frames/` | complete          |
-| Agents.jl   | `comparison/runners/agentsjl/`    | complete          |
-| NetLogo     | `comparison/runners/netlogo/`     | Plan E (deferred) |
+| Framework   | Runner module                     | Status   |
+| ----------- | --------------------------------- | -------- |
+| bamengine   | `comparison/runners/bamengine/`   | complete |
+| Mesa        | `comparison/runners/mesa/`        | complete |
+| mesa-frames | `comparison/runners/mesa_frames/` | complete |
+| Agents.jl   | `comparison/runners/agentsjl/`    | complete |
+| NetLogo     | `comparison/runners/netlogo/`     | complete |
 
 Each runner plugs into the harness by registering an entry in `RUNNER_CMD`
 (in `comparison/orchestrator/run.py`) and emitting a `RunResult` JSON to stdout.
@@ -153,7 +153,15 @@ speed table in `paper/paper.md`.
 
 ## NetLogo runner
 
-The Agents.jl runner is complete (see the Julia toolchain section above). The
-NetLogo runner is deferred to Plan E; it requires NetLogo headless-mode
-detection and is a separate plan item to keep each plan self-contained and
-testable on its own.
+The NetLogo runner drives the existing third-party Platas `DelliBAM_.nlogo` model
+(Platas-Lopez and Guerra-Hernandez 2020, GPL-2.0) via pyNetLogo as a
+**non-blocking cross-language reference**. Its gate result is informational: an
+independent NetLogo BAM reproduces the baseline levels (unemployment ~8%,
+inflation ~5%, Phillips-curve slope) but diverges on some co-movement structure
+(Okun, Beveridge) and firm-size skew, so it is reported beside bamengine with
+deviations noted rather than held to the blocking gate.
+
+The third-party model and the NetLogo/Java toolchain are installed locally only
+to run the comparison and removed afterward; neither is committed. See
+`comparison/runners/netlogo/README.md` for the full setup, the parameter and
+series mapping, and teardown.
