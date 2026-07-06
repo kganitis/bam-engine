@@ -21,13 +21,13 @@ bibliography: paper.bib
 # Summary
 
 BAM Engine is an open-source Python framework that implements the Bottom-up
-Adaptive Macroeconomics (BAM) model of @delli_gatti_2011, a benchmark
+Adaptive Macroeconomics (BAM) model of @delli_gatti_2011, a representative
 agent-based model from the CATS (Complex Adaptive Trivial Systems) family. The
 model populates an artificial economy with heterogeneous firms, households, and
 banks that interact across three markets: labor, credit, and consumption goods.
-Instead of imposing aggregate behaviour through representative-agent equations,
-macroeconomic regularities such as growth, unemployment, inflation, and
-endogenous business cycles emerge from the decentralized, boundedly rational
+Rather than imposing aggregate behavior through representative-agent equations,
+the model lets macroeconomic phenomena such as growth, unemployment, inflation,
+and endogenous business cycles emerge from the decentralized, boundedly rational
 decisions of many individual agents [@delli_gatti_2005_fluctuations;
 @tesfatsion_2006_ace].
 
@@ -55,9 +55,10 @@ quantitative analysis demands.
 # State of the field
 
 General-purpose ABM frameworks ease the engineering burden but impose a
-trade-off. Object-oriented toolkits such as Mesa in Python [@kazil_2020_mesa],
-NetLogo [@wilensky_1999_netlogo], and Repast [@north_2013_repast] represent each
-agent as an object and dispatch behaviour agent by agent. That design is flexible
+trade-off. Object-oriented toolkits such as Mesa in Python [@kazil_2020_mesa;
+@terhoeven_2025_mesa3], NetLogo [@wilensky_1999_netlogo], and Repast
+[@north_2013_repast] represent each agent as an object and dispatch behavior
+agent by agent. That design is flexible
 but scales poorly to the thousands of long runs needed for calibration,
 sensitivity, and robustness studies; the first-party benchmark reported below
 measures idiomatic per-agent ports of the same model running
@@ -71,8 +72,8 @@ research artifacts (C with MPI) that expose no reusable API or extension system.
 For the baseline BAM model specifically, existing implementations are limited: a
 NetLogo port (general-purpose, per-agent, not designed for large-scale
 experiments) and the Julia-based ABCredit engine wrapped by R-MABM
-[@brusatin_2024_rmabm], which targets the capital-and-credit CATS variant and
-requires a Julia runtime. To the author's knowledge, BAM Engine is the first
+[@brusatin_2024_rmabm], a reinforcement-learning variant of the CATS credit
+model that requires a Julia runtime. To the author's knowledge, BAM Engine is the first
 vectorized, pure-Python framework for the baseline BAM model that combines a
 reusable, extensible architecture with systematic validation against the original
 text.
@@ -82,7 +83,7 @@ cross-framework benchmark (the `comparison/` package) that runs the identical
 baseline BAM model on five frameworks: BAM Engine, Mesa [@kazil_2020_mesa],
 mesa-frames [@amer_2024_mesaframes], Agents.jl [@datseris_2022_agentsjl], and
 a pre-existing third-party NetLogo implementation [@platas_lopez_2020_bam].
-Before any timing is counted, each port must pass a behavioural-equivalence
+Before any timing is counted, each port must pass a behavioral-equivalence
 gate: twenty seeds compared against the BAM Engine reference on unemployment,
 output, and inflation dynamics, firm-size skewness, and cross-correlation
 structure, so the comparison measures the same model rather than five similar
@@ -111,16 +112,16 @@ than the array-oriented engines.\label{fig:scaling}](scaling.png)
 
 The framework is built on an Entity-Component-System (ECS) architecture that
 follows data-oriented design principles. Agent state is not held in per-agent
-objects; instead, each behavioural facet (a "role") is a structure of parallel
+objects; instead, each behavioral facet (a "role") is a structure of parallel
 NumPy arrays [@harris_2020_numpy], and each economic process (an "event") is a
 stateless system that transforms those arrays in place. Events run in an
-explicit, YAML-configurable pipeline organised into the model's economic phases.
+explicit, YAML-configurable pipeline organized into the model's economic phases.
 This layout replaces per-agent Python loops with vectorized array operations,
 and it lets researchers reorder, reconfigure, and extend the model (adding new
 roles, events, relationships, and market mechanisms) without modifying the
 engine core. Three extensions ship with the framework and demonstrate the
-mechanism: R&D-driven endogenous growth, buffer-stock precautionary consumption,
-and profit taxation. The package depends only on NumPy and PyYAML at runtime, is
+mechanism: R&D-driven endogenous growth [@russo_2007_industrial], buffer-stock
+precautionary consumption [@carroll_1997_buffer], and profit taxation. The package depends only on NumPy and PyYAML at runtime, is
 fully type-annotated, tested under continuous integration across operating
 systems and Python versions, and documented with a tutorial-style user guide and
 runnable examples.
@@ -129,7 +130,7 @@ Two design trade-offs are worth stating. First, vectorization is applied
 selectively: the labor and credit markets use batched array matching with a
 sparse per-row sampler, while the goods market intentionally remains a
 sequential loop because its purchase-by-purchase state updates make
-vectorized approximations behaviourally wrong; an optional Numba kernel
+vectorized approximations behaviorally incorrect; an optional Numba kernel
 (`pip install bamengine[fast]`) compiles that loop instead, producing
 bit-identical results roughly twice as fast at scale. Second, the event
 pipeline is ordered explicitly in YAML rather than derived from a dependency
@@ -146,7 +147,7 @@ the baseline scenario passes for 98.8% of seeds, the R&D growth scenario for
 97.2%, and the buffer-stock scenario for 98.8% (results committed with release
 v0.10.0). The implementation reproduces
 canonical stylized facts of the model, including a strong Okun's-law relationship
-(mean cross-correlation about -0.87), Phillips and Beveridge curves,
+(contemporaneous correlation about -0.87), Phillips and Beveridge curves,
 right-skewed firm-size distributions, and financial fragility that co-moves with
 output in a Minskyan manner. A robustness suite provides multi-seed
 internal-validity checks, univariate sensitivity analysis, and structural
