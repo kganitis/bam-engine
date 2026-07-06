@@ -74,7 +74,12 @@ calibration = ["bamengine[validation]"]
 # Visualization (lazy-imported in validation/calibration viz modules)
 viz = ["matplotlib>=3.8"]
 
-# Cross-framework benchmark suite
+# Cross-framework benchmark suite.
+# mesa-frames is intentionally NOT listed here: it pins numpy<2, which conflicts
+# with bamengine's numpy, so installing it into the main environment would break
+# the resolve (or silently downgrade numpy). Its runner uses a dedicated venv
+# built from comparison/runners/mesa_frames/requirements-mesa-frames.txt
+# (see comparison/runners/mesa_frames/setup_env.sh).
 comparison = [
     "psutil>=5.9",
     "pandas>=2.0",
@@ -82,7 +87,6 @@ comparison = [
     "scipy>=1.11",
     "tabulate>=0.9",
     "mesa>=3.0",
-    "mesa-frames",
 ]
 
 # Development
