@@ -21,8 +21,8 @@ bibliography: paper.bib
 # Summary
 
 BAM Engine is an open-source Python framework that implements the Bottom-up
-Adaptive Macroeconomics (BAM) model of @delli_gatti_2011, a representative
-agent-based model from the CATS (Complex Adaptive Trivial Systems) family. The
+Adaptive Macroeconomics (BAM) model of @delli_gatti_2011, a canonical
+agent-based macroeconomic model from the CATS (Complex Adaptive Trivial Systems) family. The
 model populates an artificial economy with heterogeneous firms, households, and
 banks that interact across three markets: labor, credit, and consumption goods.
 Rather than imposing aggregate behavior through representative-agent equations,
@@ -120,8 +120,8 @@ This layout replaces per-agent Python loops with vectorized array operations,
 and it lets researchers reorder, reconfigure, and extend the model (adding new
 roles, events, relationships, and market mechanisms) without modifying the
 engine core. Three extensions ship with the framework and demonstrate the
-mechanism: R&D-driven endogenous growth [@russo_2007_industrial], buffer-stock
-precautionary consumption [@carroll_1997_buffer], and profit taxation. The package depends only on NumPy and PyYAML at runtime, is
+mechanism: R&D-driven productivity growth [@russo_2007_industrial], buffer-stock
+consumption [@carroll_1997_buffer], and profit taxation. The package depends only on NumPy and PyYAML at runtime, is
 fully type-annotated, tested under continuous integration across operating
 systems and Python versions, and documented with a tutorial-style user guide and
 runnable examples.
@@ -147,9 +147,9 @@ the baseline scenario passes for 98.8% of seeds, the R&D growth scenario for
 97.2%, and the buffer-stock scenario for 98.8% (results committed with release
 v0.10.0). The implementation reproduces
 canonical stylized facts of the model, including a strong Okun's-law relationship
-(contemporaneous correlation about -0.87), Phillips and Beveridge curves,
+(mean correlation of about -0.87), Phillips and Beveridge curves,
 right-skewed firm-size distributions, and financial fragility that co-moves with
-output in a Minskyan manner. A robustness suite provides multi-seed
+output in a Minsky-type manner. A robustness suite provides multi-seed
 internal-validity checks, univariate sensitivity analysis, and structural
 experiments.
 
