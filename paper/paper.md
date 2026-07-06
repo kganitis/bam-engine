@@ -59,8 +59,8 @@ trade-off. Object-oriented toolkits such as Mesa in Python [@kazil_2020_mesa],
 NetLogo [@wilensky_1999_netlogo], and Repast [@north_2013_repast] represent each
 agent as an object and dispatch behaviour agent by agent. That design is flexible
 but scales poorly to the thousands of long runs needed for calibration,
-sensitivity, and robustness studies; the first-party benchmark reported under
-State of the field measures idiomatic per-agent ports of the same model running
+sensitivity, and robustness studies; the first-party benchmark reported below
+measures idiomatic per-agent ports of the same model running
 an order of magnitude slower than BAM Engine at moderate scale. The mesa-frames project
 [@amer_2024_mesaframes] independently diagnoses the same per-agent overhead and
 retrofits columnar storage onto Mesa, but it remains a general-purpose,
