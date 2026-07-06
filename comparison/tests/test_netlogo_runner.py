@@ -6,7 +6,51 @@ import sys
 from comparison.orchestrator.contract import RunRequest, RunResult
 from comparison.orchestrator.params import canonical_params, population_for
 from comparison.orchestrator.run import RUNNER_CMD
-from comparison.runners.netlogo.run import build_series
+from comparison.runners.netlogo.run import build_series, collect_run
+
+
+class _FakeLink:
+    """Minimal stand-in for a pyNetLogo NetLogoLink (no JVM).
+
+    Records commands issued, and answers reporter queries from a scripted table
+    that advances one row per 'go'. Lets us test collect_run's loop, timing dict,
+    and output derivation entirely in CI.
+    """
+
+    def __init__(self, rows, production_final):
+        self.rows = rows  # list of dicts keyed by reporter string
+        self.production_final = production_final
+        self.commands = []
+        self._tick = -1
+
+    def command(self, cmd):
+        self.commands.append(cmd)
+        if cmd == "go":
+            self._tick += 1
+
+    def report(self, rep):
+        if rep.startswith("[production-Y]"):
+            return list(self.production_final)
+        return self.rows[self._tick][rep]
+
+    def kill_workspace(self):
+        self.commands.append("__kill__")
+
+
+def _rows_for(reporters, n):
+    # Build n scripted ticks with distinct, finite values per reporter.
+    rows = []
+    for t in range(n):
+        rows.append(
+            {
+                reporters["unemployment"]: 0.1,
+                reporters["price_inflation"]: 0.02,
+                reporters["avg_wage"]: 1.0 + 0.01 * t,
+                reporters["real_gdp"]: 100.0 + t,
+                reporters["total_vacancies"]: 20.0,
+            }
+        )
+    return rows
 
 
 def _request() -> RunRequest:
@@ -96,3 +140,45 @@ def test_build_series_all_series_present_and_finite():
     ):
         assert key in out
         assert all(math.isfinite(x) for x in out[key])
+
+
+def test_collect_run_gate_mode_builds_outputs():
+    from comparison.runners.netlogo.run import REPORTERS
+
+    n = 5
+    link = _FakeLink(_rows_for(REPORTERS, n), production_final=[1.0, 2.0, 3.0])
+    req = _request()
+    req.n_periods = n
+    req.collect_outputs = True
+    timing, outputs = collect_run(link, req)
+
+    assert outputs is not None
+    assert len(outputs["unemployment"]) == n
+    assert len(outputs["production_final"]) == 3
+    for key in (
+        "init_seconds",
+        "run_seconds",
+        "steady_state_per_period_seconds",
+        "throughput_agent_steps_per_s",
+    ):
+        assert key in timing
+    # setup must have been called exactly once, and go exactly n times.
+    assert link.commands.count("setup") == 1
+    assert link.commands.count("go") == n
+
+
+def test_collect_run_timing_mode_no_outputs():
+    from comparison.runners.netlogo.run import REPORTERS
+
+    total, warmup = 8, 3
+    link = _FakeLink(_rows_for(REPORTERS, total), production_final=[1.0])
+    req = _request()
+    req.n_periods = total
+    req.warmup_periods = warmup
+    req.collect_outputs = False
+    timing, outputs = collect_run(link, req)
+
+    assert outputs is None
+    # go called total times (warmup + timed); setup once.
+    assert link.commands.count("go") == total
+    assert timing["steady_state_per_period_seconds"] > 0

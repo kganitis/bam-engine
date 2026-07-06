@@ -12,7 +12,9 @@ harness proceeds. The real run path is added in later tasks.
 
 from __future__ import annotations
 
+import contextlib
 import sys
+import time
 import traceback
 
 import numpy as np
@@ -20,9 +22,39 @@ import numpy as np
 from comparison.orchestrator.contract import (
     SCHEMA_VERSION,
     STATUS_ERROR,
+    STATUS_OK,
     STATUS_SKIPPED,
     RunRequest,
     RunResult,
+)
+
+# NetLogo reporter strings, CONFIRMED against the fetched model in Task 3.
+# The breed name for firms is assumed to be ``firms``; if Task 3 found a
+# different breed, update the two ``of firms`` reporters accordingly.
+REPORTERS = {
+    "unemployment": "fn-unemployment-rate",
+    "price_inflation": "annualized-inflation",
+    "avg_wage": "mean [wage-offered-Wb] of firms",
+    "real_gdp": "real-GDP",
+    "total_vacancies": "sum [number-of-vacancies-offered-V] of firms",
+    "production_final": "[production-Y] of firms",
+}
+
+# bamengine canonical param key -> NetLogo global. Only these economic params are
+# overridden; all others stay at Platas defaults (documented residuals).
+GLOBAL_MAP = {
+    "max_M": "labor-market-M",
+    "max_H": "credit-market-H",
+    "max_Z": "goods-market-Z",
+}
+
+# Per-tick series collected in gate mode (production_final is read once at end).
+_TICK_SERIES = (
+    "unemployment",
+    "price_inflation",
+    "avg_wage",
+    "real_gdp",
+    "total_vacancies",
 )
 
 
@@ -102,13 +134,68 @@ def build_series(
     }
 
 
+def collect_run(link, req: RunRequest) -> tuple[dict, dict | None]:
+    """Drive a loaded NetLogo model for one request; return (timing, outputs).
+
+    ``link`` must expose ``command(str)``, ``report(str)``, ``kill_workspace()``.
+    Globals and seed are set by ``main`` before ``setup``; this function issues
+    ``setup`` then the run loop. In gate mode it collects per-tick reporters and
+    a final per-firm production snapshot; in timing mode it runs an untimed
+    warmup loop then a timed loop and returns no outputs.
+    """
+    n_workers = int(req.population["n_households"])
+    n_agents = sum(int(v) for v in req.population.values())
+
+    # init timing wraps setup (model construction for this run).
+    t_init0 = time.perf_counter()
+    link.command("setup")
+    t_init1 = time.perf_counter()
+    init_seconds = t_init1 - t_init0
+
+    outputs: dict | None = None
+
+    if req.collect_outputs:
+        raw: dict[str, list] = {k: [] for k in _TICK_SERIES}
+        t_run0 = time.perf_counter()
+        for _ in range(req.n_periods):
+            link.command("go")
+            for key in _TICK_SERIES:
+                raw[key].append(float(link.report(REPORTERS[key])))
+        t_run1 = time.perf_counter()
+        run_seconds = t_run1 - t_run0
+        timed_periods = req.n_periods
+        production_final = list(link.report(REPORTERS["production_final"]))
+        outputs = build_series(raw, production_final, n_workers)
+    else:
+        warmup = max(0, req.warmup_periods)
+        timed_periods = max(1, req.n_periods - warmup)
+        for _ in range(warmup):  # untimed: absorb JVM JIT + interpreter warmup
+            link.command("go")
+        t_run0 = time.perf_counter()
+        for _ in range(timed_periods):
+            link.command("go")
+        t_run1 = time.perf_counter()
+        run_seconds = t_run1 - t_run0
+
+    steady = run_seconds / timed_periods if timed_periods else run_seconds
+    throughput = n_agents * timed_periods / run_seconds if run_seconds > 0 else 0.0
+
+    timing = {
+        "init_seconds": init_seconds,
+        "run_seconds": run_seconds,
+        "steady_state_per_period_seconds": steady,
+        "throughput_agent_steps_per_s": throughput,
+    }
+    return timing, outputs
+
+
 def main(request_path: str) -> None:
     """Run one request and print a RunResult JSON to stdout."""
     with open(request_path) as fh:
         req = RunRequest.from_json(fh.read())
 
     try:
-        import pynetlogo  # noqa: F401
+        import pynetlogo
     except ImportError:
         print(
             _skeleton(
@@ -117,12 +204,63 @@ def main(request_path: str) -> None:
         )
         return
 
-    # Real run path is implemented in Task 4. Until then, emit a clear error so a
-    # partially-installed environment does not look like a silent success.
+    import os
+    from importlib.metadata import PackageNotFoundError, version
+
     try:
-        raise NotImplementedError("NetLogo run path not yet implemented (Task 4)")
+        pynetlogo_version = version("pynetlogo")
+    except PackageNotFoundError:
+        pynetlogo_version = "unknown"
+
+    n_agents = sum(int(v) for v in req.population.values())
+    netlogo_home = os.environ.get("NETLOGO_HOME") or None
+    link = None
+    try:
+        # JVM boot + link construction is startup (captured by the orchestrator as
+        # wall - init - run), not counted in init_seconds.
+        link = pynetlogo.NetLogoLink(gui=False, netlogo_home=netlogo_home)
+        link.load_model(
+            os.path.join(os.path.dirname(__file__), "model", "DelliBAM_.nlogo")
+        )
+
+        # Set only the cleanly-mappable globals, then the seed.
+        link.command(f"set number-of-firms {int(req.population['n_firms'])}")
+        for key, nl_global in GLOBAL_MAP.items():
+            if key in req.model_params:
+                link.command(f"set {nl_global} {int(req.model_params[key])}")
+        link.command(f"random-seed {int(req.seed)}")
+
+        try:
+            netlogo_version = str(link.netlogo_version)
+        except Exception:
+            netlogo_version = "unknown"
+
+        timing, outputs = collect_run(link, req)
+
+        res = RunResult(
+            schema_version=SCHEMA_VERSION,
+            run_id=req.run_id,
+            framework="netlogo",
+            framework_version=pynetlogo_version,
+            language="netlogo",
+            language_version=netlogo_version,
+            status=STATUS_OK,
+            error=None,
+            population={**req.population, "n_agents_total": n_agents},
+            n_periods=req.n_periods,
+            warmup_periods=req.warmup_periods,
+            seed=req.seed,
+            timing=timing,
+            outputs=outputs,
+        )
     except Exception:
-        print(_skeleton(req, STATUS_ERROR, traceback.format_exc()).to_json())
+        res = _skeleton(req, STATUS_ERROR, traceback.format_exc())
+    finally:
+        if link is not None:
+            with contextlib.suppress(Exception):
+                link.kill_workspace()
+
+    print(res.to_json())
 
 
 if __name__ == "__main__":
