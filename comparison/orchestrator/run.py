@@ -44,6 +44,9 @@ _MF_PYTHON = str(
 )
 _AGENTSJL_DIR = str(_REPO_ROOT / "comparison" / "runners" / "agentsjl")
 _AGENTSJL_RUN = str(_REPO_ROOT / "comparison" / "runners" / "agentsjl" / "run.jl")
+_NETLOGO_PYTHON = str(
+    _REPO_ROOT / "comparison" / "runners" / "netlogo" / ".venv-nl" / "bin" / "python"
+)
 
 RUNNER_CMD: dict[str, list[str]] = {
     "bamengine": [sys.executable, "-m", "comparison.runners.bamengine.run"],
@@ -55,6 +58,7 @@ RUNNER_CMD: dict[str, list[str]] = {
         "--startup-file=no",
         _AGENTSJL_RUN,
     ],
+    "netlogo": [_NETLOGO_PYTHON, "-m", "comparison.runners.netlogo.run"],
 }
 
 _THREAD_ENV = {
@@ -69,13 +73,13 @@ _THREAD_ENV = {
 def _pinned_env(framework: str | None = None) -> dict:
     """Return os.environ merged with single-thread pinning vars.
 
-    For ``mesa_frames``, also injects ``PYTHONPATH=<repo root>`` so the
-    dedicated venv subprocess can import ``comparison.*`` without having
-    bamengine installed inside it.
+    For ``mesa_frames`` and ``netlogo``, also injects
+    ``PYTHONPATH=<repo root>`` so the dedicated venv subprocess can import
+    ``comparison.*`` without having bamengine installed inside it.
     """
     env = dict(os.environ)
     env.update(_THREAD_ENV)
-    if framework == "mesa_frames":
+    if framework in ("mesa_frames", "netlogo"):
         existing = env.get("PYTHONPATH", "")
         repo_root = str(_REPO_ROOT)
         env["PYTHONPATH"] = f"{repo_root}:{existing}" if existing else repo_root

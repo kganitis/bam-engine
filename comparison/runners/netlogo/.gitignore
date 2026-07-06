@@ -1,0 +1,4 @@
+# Third-party Platas model: fetched locally, never committed or pushed (GPL-2.0).
+model/
+# Dedicated venv for the pyNetLogo bridge (created at toolchain-up, removed at teardown).
+.venv-nl/
