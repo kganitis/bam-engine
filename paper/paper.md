@@ -1,25 +1,22 @@
-______________________________________________________________________
-
+---
 title: 'BAM Engine: A vectorized Python framework for the Bottom-up Adaptive Macroeconomics model'
 tags:
-
-- Python
-- agent-based modeling
-- computational economics
-- macroeconomics
-- complex adaptive systems
-- heterogeneous agents
-  authors:
-- name: Konstantinos Ganitis
-  orcid: 0000-0000-0000-0000 # TODO: replace with author's real ORCID iD
-  affiliation: 1
-  affiliations:
-- name: University of Piraeus, Greece # TODO: add department (e.g. Department of Informatics) if desired
-  index: 1
-  date: 18 June 2026
-  bibliography: paper.bib
-
-______________________________________________________________________
+  - Python
+  - agent-based modeling
+  - computational economics
+  - macroeconomics
+  - complex adaptive systems
+  - heterogeneous agents
+authors:
+  - name: Konstantinos Ganitis
+    orcid: 0000-0000-0000-0000 # TODO: replace with author's real ORCID iD
+    affiliation: 1
+affiliations:
+  - name: University of Piraeus, Greece # TODO: add department (e.g. Department of Informatics) if desired
+    index: 1
+date: 18 June 2026
+bibliography: paper.bib
+---
 
 # Summary
 
@@ -31,8 +28,8 @@ banks that interact across three markets: labor, credit, and consumption goods.
 Instead of imposing aggregate behaviour through representative-agent equations,
 macroeconomic regularities such as growth, unemployment, inflation, and
 endogenous business cycles emerge from the decentralized, boundedly rational
-decisions of many individual agents \[@delli_gatti_2005_fluctuations;
-@tesfatsion_2006_ace\].
+decisions of many individual agents [@delli_gatti_2005_fluctuations;
+@tesfatsion_2006_ace].
 
 The framework is built on an Entity-Component-System (ECS) architecture that
 follows data-oriented design principles. Agent state is not held in per-agent
