@@ -28,13 +28,15 @@ from comparison.orchestrator.contract import (
     RunResult,
 )
 
-# EXPECTED NetLogo reporter strings -- these MUST be confirmed against the
-# fetched DelliBAM_.nlogo model in operator Task 3 (NOT yet verified). The
-# breed name for firms is assumed to be ``firms``; if Task 3 finds a
-# different breed, update the two ``of firms`` reporters below accordingly.
+# NetLogo reporter strings, CONFIRMED against the fetched DelliBAM_.nlogo model
+# (Platas 2020) in operator Task 3: the firm breed is ``firms``, and firms-own
+# holds ``production-Y``, ``wage-offered-Wb``, and ``number-of-vacancies-offered-V``.
+# Note ``annualized-inflation`` returns the GROSS annual price ratio (e.g. 1.06),
+# so ``- 1`` converts it to the net YoY inflation rate to match bamengine's
+# ``Economy.inflation`` (the model's own plot uses ``(annualized-inflation - 1)``).
 REPORTERS = {
     "unemployment": "fn-unemployment-rate",
-    "price_inflation": "annualized-inflation",
+    "price_inflation": "annualized-inflation - 1",
     "avg_wage": "mean [wage-offered-Wb] of firms",
     "real_gdp": "real-GDP",
     "total_vacancies": "sum [number-of-vacancies-offered-V] of firms",
@@ -214,12 +216,27 @@ def main(request_path: str) -> None:
         pynetlogo_version = "unknown"
 
     n_agents = sum(int(v) for v in req.population.values())
+    # Environment-driven toolchain wiring (see runner README). On Apple Silicon
+    # the JVM arch must match the Python arch, so NETLOGO_JVM_PATH points jpype at
+    # a matching libjvm. NETLOGO_EXT_DIR points NetLogo at a curated extensions
+    # dir (the model needs `palette` + `array`); it must exclude the bundled `vid`
+    # extension, whose old asm-4.0.jar shadows NetLogo's asm-9.4 and breaks
+    # compilation. NETLOGO_HOME should be the dir holding the core jars
+    # (`.../lib/app` for the cross-platform NetLogo tgz).
     netlogo_home = os.environ.get("NETLOGO_HOME") or None
+    jvm_path = os.environ.get("NETLOGO_JVM_PATH") or None
+    ext_dir = os.environ.get("NETLOGO_EXT_DIR") or None
+    jvmargs = ["-Djava.awt.headless=true"]
+    if ext_dir:
+        jvmargs.append(f"-Dnetlogo.extensions.dir={ext_dir}")
+    netlogo_version = os.environ.get("NETLOGO_VERSION", "unknown")
     link = None
     try:
         # JVM boot + link construction is startup (captured by the orchestrator as
         # wall - init - run), not counted in init_seconds.
-        link = pynetlogo.NetLogoLink(gui=False, netlogo_home=netlogo_home)
+        link = pynetlogo.NetLogoLink(
+            gui=False, netlogo_home=netlogo_home, jvm_path=jvm_path, jvmargs=jvmargs
+        )
         link.load_model(
             os.path.join(os.path.dirname(__file__), "model", "DelliBAM_.nlogo")
         )
@@ -230,11 +247,6 @@ def main(request_path: str) -> None:
             if key in req.model_params:
                 link.command(f"set {nl_global} {int(req.model_params[key])}")
         link.command(f"random-seed {int(req.seed)}")
-
-        try:
-            netlogo_version = str(link.netlogo_version)
-        except Exception:
-            netlogo_version = "unknown"
 
         timing, outputs = collect_run(link, req)
 
