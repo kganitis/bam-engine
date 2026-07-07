@@ -27,7 +27,7 @@ The six output series match the Mesa and bamengine runners exactly:
   * vacancy_rate      : total_vacancies / n_households, per period
   * production_final  : per-firm production snapshot at the last period
 
-Derived from model.jl collection fields populated in bam_step! (Task 9).
+Derived from model.jl collection fields populated in bam_step!.
 """
 
 using JSON3

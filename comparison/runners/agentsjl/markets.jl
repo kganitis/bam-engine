@@ -2,13 +2,13 @@
 markets.jl - market matching routines for the Agents.jl BAM model.
 
 This file holds the labor-market matcher (event 11), the credit-market matcher
-(event 18), and the goods-market matcher (event 28, added in Task 7).
+(event 18), and the goods-market matcher (event 28).
 
 Each routine is a faithful translation of the corresponding Mesa function in
 `comparison/runners/mesa/markets.py`. The matching ALGORITHM (worker application
 order, per-round offer scan, conflict resolution = one shuffle per
 firm-with-applicants, vacancy cap, contract length) and the RNG draw points/order
-mirror the Mesa port exactly so the Task 10 equivalence gate holds. Per-seed
+mirror the Mesa port exactly so the cross-port equivalence gate holds. Per-seed
 numeric values differ across languages (different PRNG); the structure does not.
 
 All randomness flows through `abmrng(model)`.
@@ -136,7 +136,7 @@ Each round:
         (or just `credit_demand` if `max_loan_to_net_worth <= 0`); skip if `<= 0`;
       - `amount = max_grant` if it fits, else the remaining supply (PARTIAL loan
         at the boundary, clamped at 0);
-      - if `amount > EPS`: the CONTRACT rate (Flag 5) is
+      - if `amount > EPS`: the CONTRACT rate is
         `r_bar * (1 + opex_shock * min(projected_fragility, max_leverage))` -
         fragility-scaled, distinct from the bank's posted rate. Push a `Loan`
         (borrower_id, lender_id, principal=amount, rate) onto the shared loan

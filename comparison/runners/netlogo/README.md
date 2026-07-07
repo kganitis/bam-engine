@@ -1,4 +1,4 @@
-# NetLogo BAM Runner (Plan E)
+# NetLogo BAM Runner
 
 Drives the third-party Platas BAM model as a **non-blocking cross-language
 reference** in the `comparison/` benchmark. NetLogo is the most widely used ABM

@@ -38,32 +38,28 @@ from comparison.orchestrator.contract import (
     RunResult,
 )
 
-# ─── Confirmed bamengine result keys (DISCOVERY, bamengine 0.9.1) ──────────────
+# ─── Series derivation ─────────────────────────────────────────────────────────
 #
-# Verified via ``sorted(sim.collectables())`` / ``sorted(results.available())``
-# with ``log_level="ERROR"``. The brief's assumed Economy.* aggregate keys mostly
-# DO NOT exist; the six requested series are built as follows:
+# Only ``price_inflation`` maps directly to a collected economy-level series;
+# the other five series are derived from per-agent arrays collected via the
+# ``BASELINE_COLLECT`` config:
 #
-#   unemployment    : NOT an Economy key. Derived as
-#                     ``1 - mean(Worker.employed, axis=1)``. ``Worker.employed``
-#                     is a computed bool property (employer >= 0) and is only
-#                     collected via the ``BASELINE_COLLECT`` config, which also
-#                     pins its capture timing to ``firms_run_production`` (so the
-#                     last period is not inflated by post-step contract expiry
-#                     see CLAUDE.md "measurement timing"). This matches the
-#                     canonical formula in validation/robustness/internal_validity.
-#   price_inflation : ``Economy.inflation``  (exists, per-period scalar series).
-#   wage_inflation  : NOT a key. Derived from the average wage of EMPLOYED workers
-#                     per period (``Worker.wage`` masked by ``Worker.employed``),
-#                     then period-over-period growth. Mirrors internal_validity.
-#   log_gdp         : NOT a key. Derived as ``log(sum(Producer.production, axis=1))``
+#   unemployment    : ``1 - mean(Worker.employed, axis=1)``. ``Worker.employed``
+#                     is a computed bool property (employer >= 0) whose capture
+#                     timing is pinned to ``firms_run_production``, so the last
+#                     period is not inflated by post-step contract expiry. This
+#                     matches the formula in validation/robustness/internal_validity.
+#   price_inflation : ``Economy.inflation`` (per-period scalar series).
+#   wage_inflation  : average wage of EMPLOYED workers per period
+#                     (``Worker.wage`` masked by ``Worker.employed``), then
+#                     period-over-period growth. Mirrors internal_validity.
+#   log_gdp         : ``log(sum(Producer.production, axis=1))``
 #                     (real GDP = total production; matches internal_validity).
-#   vacancy_rate    : NOT an Economy key. Derived as
-#                     ``sum(Employer.n_vacancies, axis=1) / n_households``
-#                     (per-firm vacancies exist; rate uses households as the
-#                     labor-force denominator, matching internal_validity).
-#   production_final: ``Producer.production`` is (n_periods, n_firms); the final
-#                     row is the per-firm production at the last period.
+#   vacancy_rate    : ``sum(Employer.n_vacancies, axis=1) / n_households``
+#                     (households as the labor-force denominator, matching
+#                     internal_validity).
+#   production_final: final row of ``Producer.production``, i.e. the per-firm
+#                     production at the last period.
 #
 # All collected per-period arrays have shape (n_periods, n_agents); per-period
 # scalar economy series have shape (n_periods,).

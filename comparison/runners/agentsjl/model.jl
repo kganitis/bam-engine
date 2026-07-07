@@ -1,35 +1,17 @@
 """
 model.jl - Agents.jl v7 implementation of the baseline BAM model: agent types,
-economy-state properties, `build_model`, and the planning phase (events 1-6).
+economy-state properties, `build_model`, and the 37 event functions grouped
+into phase dispatchers (planning, labor market, credit market, production,
+goods market, revenue, bankruptcy and entry) run each period by `bam_step!`.
+The market matching rounds (events 11, 18, 28) live in `markets.jl`.
 
-Tasks covered so far:
-  * Task 2: agent types (`Firm`, `Household`, `Bank`), `BAMProperties`, and
-    `build_model`. The scaffold establishes the Agents.jl v7.0.3 idioms reused
-    by every later phase task.
-  * Task 3: planning-phase event functions (`_event1_zero_production!` through
-    `_event6_fire_excess_workers!`) and the `_planning!` dispatcher, plus a
-    `model_step!` skeleton (`bam_step!`) that runs only the planning phase for
-    now (later tasks fill in the remaining phases).
-  * Task 4: labor-market event functions (events 7-12) and the `_labor_market!`
-    dispatcher. The matching round (event 11) lives in `markets.jl`. `bam_step!`
-    now runs planning + labor market.
-  * Task 5: credit-market event functions (events 13-19) and the `_credit_market!`
-    dispatcher. The firm-bank matching round (event 18) lives in `markets.jl`.
-    Loans are created into the shared loan book `BAMProperties.loans`; the book
-    persists across periods and is purged at the start of `_credit_market!` (event
-    17 open), matching the Mesa port. `bam_step!` now runs planning + labor +
-    credit. The fire-on-gap step (event 19) reuses the event-6 firing pattern.
-  * Task 6: production-phase event functions (events 20-24) and `_production!`
-    dispatcher; revenue-phase event functions (events 30-32) and `_revenue!`
-    dispatcher. `bam_step!` now runs planning + labor + credit + production +
-    revenue. Loans are NOT removed in the revenue phase; the loan book is cleared
-    at the next credit-market open (event 17 purge), matching the Mesa port
-    (Flag 6). Bank equity is updated per-loan: fully-repaid lenders earn interest;
+Noteworthy behavioral choices (all matching the Mesa port):
+  * Loans are created into the shared loan book `BAMProperties.loans`; the book
+    persists across periods (so planning-phase event 2 can read the previous
+    period's interest) and is purged at the credit-market open (event 17).
+  * Bank equity is updated per-loan: fully-repaid lenders earn interest;
     defaulting lenders take a proportional loss against pre-update net_worth.
-  * Task 7: goods-market event functions (events 25-27, 29) and `_goods_market!`
-    dispatcher. The sequential shopping loop (event 28) lives in `markets.jl`.
-    `bam_step!` now runs planning + labor + credit + production + goods + revenue.
-    Consumer propensity uses a tanh-based formula; firm selection uses
+  * Consumer propensity uses a tanh-based formula; firm selection uses
     shuffle-and-take sampling (same pattern as events 10 and 17) with loyalty
     tracking via integer ids and price-ASC sorting (MergeSort for stability).
 
@@ -46,7 +28,7 @@ Relationship encoding (type stability):
   * A Household's employer is stored as an integer agent id (`employer_id`). The
     sentinel `NO_AGENT = 0` means unemployed (Agents.jl ids start at 1).
   * Loans live in a single shared book `BAMProperties.loans`; each `Loan` records
-    both `borrower_id` and `lender_id`. Credit-market tasks filter this vector by
+    both `borrower_id` and `lender_id`. Credit-market events filter this vector by
     those ids.
 
 Field names and initial values mirror the Mesa reference in
@@ -56,7 +38,7 @@ Field names and initial values mirror the Mesa reference in
 using Agents
 using Random
 
-# Market-matching routines (labor market here; credit/goods added in later tasks).
+# Market-matching routines (labor, credit, and goods matching rounds).
 include(joinpath(@__DIR__, "markets.jl"))
 
 # Sentinel for "no agent" (unemployed worker, no previous employer, no loyalty
@@ -270,7 +252,7 @@ mutable struct BAMProperties
     inflation_history::Vector{Float64}
     loans::Vector{Loan}
     collapsed::Bool
-    # Collection fields (Task 9: per-period series)
+    # Collection fields (per-period series)
     collect::Bool
     c_unemployment::Vector{Float64}
     c_avg_employed_wage::Vector{Float64}
@@ -403,8 +385,8 @@ end
     _event4_decide_desired_labor!(model)
 
 Event 4 (firms_decide_desired_labor): set `desired_labor` as the ceiling of
-`desired_production / labor_productivity`. The `ceil` ratchet is load-bearing
-(see model reference Flag 1).
+`desired_production / labor_productivity`. The `ceil` ratchet is load-bearing:
+integer hiring targets quantize labor demand and shape the model's dynamics.
 
 Formula (Mesa `Firm.decide_desired_labor`):
   * `desired_labor = ceil(Int, desired_production / max(labor_productivity, EPS))`
@@ -800,7 +782,7 @@ Formula (Mesa `Bank.decide_interest_rate`):
   * `opex_shock ~ U(0, h_phi)` per bank (one draw per bank in agent order)
   * `interest_rate = r_bar * (1 + opex_shock)`
 
-This is the POSTED rate (Flag 5): it ranks banks during application preparation.
+This is the POSTED rate: it ranks banks during application preparation.
 The CONTRACT rate charged on an actual loan is fragility-scaled and computed in
 event 18 (see `_run_credit_market!`).
 
@@ -1073,8 +1055,8 @@ and updates production_prev.
 
 Formula (Mesa `Firm.run_production`):
   * `production = labor_productivity * current_labor`
-  * `production_prev = production`   (unconditional every period; Flag 2)
-  * `inventory = production`         (OVERWRITE, not accumulate; Flag 4)
+  * `production_prev = production`   (unconditional every period)
+  * `inventory = production`         (OVERWRITE, not accumulate)
 
 No RNG.
 """
@@ -1098,7 +1080,7 @@ Formula (Mesa `BamModel._update_avg_mkt_price`):
   * weighted_sum = sum(price * production for firms with production >= 1e-3)
   * total_prod   = sum(production for firms with production >= 1e-3)
   * new_price = weighted_sum / total_prod  if total_prod > 0  else 0.0
-  * if new_price > 0: avg_mkt_price = new_price  (else keep previous; Flag 10)
+  * if new_price > 0: avg_mkt_price = new_price  (else keep previous)
   * append avg_mkt_price to avg_mkt_price_history
 
 No RNG.
@@ -1117,7 +1099,7 @@ function _event23_update_avg_mkt_price!(model)
     if new_price > 0.0
         model.avg_mkt_price = new_price
     end
-    # else: keep previous avg_mkt_price (Flag 10)
+    # else: keep previous avg_mkt_price
     push!(model.avg_mkt_price_history, model.avg_mkt_price)
     return nothing
 end
@@ -1436,11 +1418,9 @@ Formula (Mesa `Firm.collect_revenue`):
   * `total_funds += revenue`
   * `gross_profit = revenue - wage_bill`
 
-Note: `inventory` is NOT decremented here; it is updated by the goods market
-(events 25-29, Task 7). At the start of this task, goods market is not yet
-implemented, so revenue collection uses production as the sole measure of
-quantity sold (inventory was set to `production` in event 22, so qty_sold = 0
-until goods market runs). This is the correct formula per the Mesa source.
+Note: `inventory` is NOT decremented here; the goods market (events 25-29)
+depletes it during shopping, so `qty_sold = production - inventory` is the
+quantity actually sold this period. This matches the Mesa source.
 No RNG.
 """
 function _event30_collect_revenue!(model)
@@ -1468,7 +1448,7 @@ Formula (Mesa `Firm.validate_debt`):
   * if `total_debt > EPS`:
     - SOLVENT (`total_funds - total_debt >= -EPS`):
         `total_funds -= total_debt`
-        per loan: `bank.equity_base += loan.interest`  (Flag 7: interest only on
+        per loan: `bank.equity_base += loan.interest`  (interest only on
         fully-repaid loans; lenders earn nothing on defaulted loans)
     - DEFAULT (`total_funds - total_debt < -EPS`):
         `total_funds = 0.0`
@@ -1476,13 +1456,13 @@ Formula (Mesa `Firm.validate_debt`):
                   `recovery = clamp(frac * net_worth, 0.0, loan.principal)`
                   `loss = loan.principal - recovery`
                   `bank.equity_base -= loss`
-        (uses CURRENT pre-update `net_worth`; Flag 7)
+        (uses CURRENT pre-update `net_worth`)
   * ALL firms (regardless of debt): `net_profit = gross_profit - total_interest`
 
 Loan settlement timing: loans are NOT removed from `model.loans` here. The loan
 book persists so planning-phase event 2 (next period) can read prior interest.
 The book is cleared at the start of the next `_credit_market!` (`_purge_loans!`).
-This matches Mesa and the model-reference Flag 6.
+This matches the Mesa port.
 
 No RNG.
 """
@@ -1501,7 +1481,7 @@ function _event31_validate_debt!(model)
 
         if total_debt > eps
             if fv.total_funds - total_debt >= -eps
-                # Full repayment: deduct debt; each lender earns interest (Flag 7).
+                # Full repayment: deduct debt; each lender earns interest.
                 fv.total_funds -= total_debt
                 for l in firm_loans
                     bv = variant(model[l.lender_id])
@@ -1509,7 +1489,7 @@ function _event31_validate_debt!(model)
                 end
             else
                 # Default: zero out cash; proportional recovery against pre-update NW.
-                nw = fv.net_worth   # pre-update net_worth (Flag 7)
+                nw = fv.net_worth   # pre-update net_worth
                 fv.total_funds = 0.0
                 for l in firm_loans
                     frac     = l.principal / max(total_principal, eps)
@@ -1531,7 +1511,7 @@ end
     _event32_pay_dividends!(model)
 
 Event 32 (firms_pay_dividends): distribute dividends from profitable firms to
-all households equally (Flag 8).
+all households equally.
 
 Formula (Mesa `BamModel._pay_dividends`):
   * per firm: `retained = net_profit`
@@ -1543,7 +1523,7 @@ Formula (Mesa `BamModel._pay_dividends`):
   * `div_per_hh = total_dividends / n_households`
   * per household: `savings += div_per_hh`; `dividends = div_per_hh`
 
-Note: `net_worth` is NOT updated here (event 33 in Task 8 handles that).
+Note: `net_worth` is NOT updated here (event 33 handles that).
 No RNG.
 """
 function _event32_pay_dividends!(model)
@@ -1942,7 +1922,7 @@ Derived initial values (Mesa `BamModel.__init__`):
 matching the Mesa ordering where the Firm init reads `n_households`.
 
 When `collect=true`, per-period collection vectors are populated during `bam_step!`
-at the same points the Mesa model collects them (Task 9).
+at the same points the Mesa model collects them.
 """
 function build_model(n_firms::Integer, n_households::Integer, n_banks::Integer,
                      params::AbstractDict, seed::Integer; collect::Bool = false)
@@ -2025,7 +2005,7 @@ function build_model(n_firms::Integer, n_households::Integer, n_banks::Integer,
 end
 
 # ---------------------------------------------------------------------------
-# Convenience iterators by kind (used by later phase tasks)
+# Convenience iterators by kind (used by the phase dispatchers)
 # ---------------------------------------------------------------------------
 
 "Return an iterator over all `Firm`-variant agents."

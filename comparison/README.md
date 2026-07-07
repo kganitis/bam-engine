@@ -30,7 +30,7 @@ household). Both match the uniform-k-subset distribution exactly, so the ports
 still pass the equivalence gate.
 
 Each port was then profiled to confirm its dominant cost is INHERENT rather than
-an avoidable inefficiency (see `.claude/docs/analysis/2026-06-25-port-audit-*.md`):
+an avoidable inefficiency:
 
 - **mesa-frames**: additionally optimized with lazy `collect()` fusion, batch numpy
   sort/argmax, early-exit guards, and a vectorized `group_by` bank-equity update.

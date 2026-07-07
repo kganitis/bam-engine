@@ -7,7 +7,7 @@ file whose path is ``sys.argv[1]`` (contract in
 
 The pyNetLogo import is guarded: when the toolchain is absent (for example in
 CI), the runner emits a ``status = "skipped"`` RunResult and the rest of the
-harness proceeds. The real run path is added in later tasks.
+harness proceeds.
 """
 
 from __future__ import annotations
@@ -28,8 +28,8 @@ from comparison.orchestrator.contract import (
     RunResult,
 )
 
-# NetLogo reporter strings, CONFIRMED against the fetched DelliBAM_.nlogo model
-# (Platas 2020) in operator Task 3: the firm breed is ``firms``, and firms-own
+# NetLogo reporter strings, confirmed against the fetched DelliBAM_.nlogo model
+# (Platas 2020): the firm breed is ``firms``, and firms-own
 # holds ``production-Y``, ``wage-offered-Wb``, and ``number-of-vacancies-offered-V``.
 # Note ``annualized-inflation`` returns the GROSS annual price ratio (e.g. 1.06),
 # so ``- 1`` converts it to the net YoY inflation rate to match bamengine's

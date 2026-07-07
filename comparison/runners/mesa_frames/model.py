@@ -185,9 +185,9 @@ class BAMModel(mf.ModelDF):
         to the Mesa port's decide_desired_production / plan_price sequence.
 
         Event 6 (fire_excess_workers) is a no-op here because at t=0 all
-        firms have current_labor=0; it is implemented as a Polars update for
-        the general case but skip the household-side writes (those require a
-        separate relationship table added in a later task).
+        firms have current_labor=0; the general case, including the
+        household-side writes through the columnar employer relationship,
+        is implemented in _event6_fire_excess_workers.
 
         Lazy-fusion note: events 3 (plan_price), 4 (desired_labor), and 5
         (vacancies) are fused into one with_columns call.  Events 4 and 5 are
@@ -272,7 +272,7 @@ class BAMModel(mf.ModelDF):
         n = len(df)
         shocks = pl.Series("shock", self.random.uniform(0.0, h_rho, size=n))
 
-        # Condition masks (SPEC event 1: complement of event 3 conditions).
+        # Condition masks (event 1: complement of event 3 conditions).
         up = (df["inventory"] == 0.0) & (df["price"] >= p_avg)
         dn = (df["inventory"] > 0.0) & (df["price"] < p_avg)
 
@@ -1153,7 +1153,7 @@ class BAMModel(mf.ModelDF):
             employer.employees.pop(self); employer.current_labor -= 1
 
         contract_expired=True + fired=False marks the worker as loyal next period.
-        wage_bill is NOT recomputed after contract expiry (matches spec event 24 note).
+        wage_bill is NOT recomputed after contract expiry (matches the Mesa port).
 
         Firm-side: current_labor decremented for each expiry.
         """
@@ -1471,9 +1471,9 @@ class BAMModel(mf.ModelDF):
           self.total_funds += revenue
           self.gross_profit = revenue - self.wage_bill
 
-        After event 22, inventory == production (full overwrite), so qty_sold starts
-        at 0 until the goods market (Task 7) depletes inventory.  The formula is
-        faithfully translated; revenue is non-zero once Task 7 is implemented.
+        After event 22, inventory == production (full overwrite); the goods
+        market (events 25-29) then depletes inventory, so qty_sold is the
+        quantity actually sold this period.
 
         No RNG.
         """
@@ -1506,7 +1506,7 @@ class BAMModel(mf.ModelDF):
           net_profit = gross_profit - total_interest   # ALL firms
 
         Notes:
-        - Uses CURRENT (pre-update) net_worth for recovery (spec flag 7).
+        - Uses CURRENT (pre-update) net_worth for recovery.
         - Banks book interest ONLY on fully-repaid loans.
         - Loans are retained in the table here; purged at next credit market open.
         - self.loans refers to the columnar self.model.loans in the mesa-frames port.
@@ -1652,7 +1652,7 @@ class BAMModel(mf.ModelDF):
           for h in self.households:
             h.savings += div_per_hh; h.dividends = div_per_hh
 
-        Only profitable firms (net_profit > 0) pay dividends (spec flag 8).
+        Only profitable firms (net_profit > 0) pay dividends.
         div_per_hh is split EQUALLY across ALL households.
         No RNG.
         """
@@ -1749,7 +1749,7 @@ class BAMModel(mf.ModelDF):
             # Matches the Mesa port: employer=None (here -1), employer_prev=None
             # (here -1), wage=0, periods_left=0, contract_expired=False, fired=False.
             # Note: bankruptcy firing uses -1 for employer_prev (not the firm id) --
-            # matches the Mesa port exactly (spec event 34).
+            # matches the Mesa port exactly (event 34).
             fired_mask = pl.Series(
                 "mask",
                 [int(e) in exiting_firm_ids for e in hdf["employer"].to_list()],

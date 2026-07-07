@@ -77,7 +77,7 @@ class TestBAMModelInit:
         assert model.period == 0
 
     def test_firms_initial_values(self):
-        """Firm columns should match spec section 3 initial conditions."""
+        """Firm columns should match the Mesa port's initial conditions."""
         model = make_model()
         df = model.firms.agents
         lp = DEFAULT_PARAMS["labor_productivity"]
@@ -649,10 +649,11 @@ class TestCreditMarket:
     def _forced_gap_credit_market(self, seed: int = 42):
         """Run the credit phase with funds forced to 0 so firms must borrow.
 
-        Until the production phase (Task 6) deducts wages, firms keep their large
-        initial net worth and never have a financing gap in normal stepping.  To
-        exercise the loan-creation path and its invariants directly, we zero
-        total_funds for all firms right before the credit demand step.
+        This helper steps only planning and the labor market before the credit
+        phase, so wages are never deducted and firms keep their large initial
+        net worth (no financing gap arises naturally).  To exercise the
+        loan-creation path and its invariants directly, we zero total_funds
+        for all firms right before the credit demand step.
         """
         from comparison.runners.mesa_frames.model import empty_loan_book
 
@@ -984,7 +985,7 @@ class TestProductionAndRevenue:
         assert (hdf["dividends"] >= 0.0).all()
 
     def test_dividends_equal_across_households(self):
-        """Event 32: div_per_hh is EQUAL for all households (spec flag 8)."""
+        """Event 32: div_per_hh is EQUAL for all households."""
         model = self._run_through_production()
         model._revenue()
         hdf = model.households.agents

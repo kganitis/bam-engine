@@ -3,7 +3,7 @@
 Each class is an AgentSetPolars subclass whose columns mirror the attributes of
 the corresponding Mesa agent class in comparison/runners/mesa/agents.py one-to-one.
 Pointer/object attributes from the Mesa port (employer, loan_apps, etc.) are omitted
-here; they are handled via separate relationship tables in later tasks.
+here; they are handled via separate relationship tables on the model.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ class Firms(mf.AgentSetPolars):
 
     Columns mirror Firm.__init__ in comparison/runners/mesa/agents.py.
     Object-valued attributes (loan_apps, loans, employees) are excluded and
-    handled in later tasks.
+    handled via relationship tables on the model.
     """
 
     def __init__(
@@ -133,7 +133,7 @@ class Households(mf.AgentSetPolars):
     The job-application queue (Mesa port's per-worker ``job_apps`` list) is
     stored as a fixed-width ``-1``-padded matrix of ``max_M`` columns
     ``job_app_0 .. job_app_{max_M-1}`` plus a ``job_app_head`` index, matching
-    the application-queue pattern in the model reference (SPEC section 6).
+    the Mesa port's application-queue pattern in columnar form.
 
     The goods-market visit queue (Mesa port's per-consumer ``shop_visits`` list)
     is stored as a fixed-width ``-1``-padded matrix of ``max_Z`` columns

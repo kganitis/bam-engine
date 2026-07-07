@@ -527,7 +527,7 @@ include(joinpath(@__DIR__, "..", "model.jl"))
             @test fv.production_prev == fv.production
         end
 
-        # --- Event 22: inventory == production (overwrite, Flag 4) ---
+        # --- Event 22: inventory == production (overwrite) ---
         for a in allagents(model)
             variantof(a) === Firm || continue
             fv = variant(a)
@@ -843,8 +843,7 @@ include(joinpath(@__DIR__, "..", "model.jl"))
 
     @testset "event 2 reads prior-period loan interest" begin
         # Directly verify _event2_plan_breakeven_price! reads the shared loan book
-        # by borrower_id (Flag 6: planning-phase breakeven uses last period's
-        # interest).
+        # by borrower_id (planning-phase breakeven uses last period's interest).
         params = Dict{String,Float64}(
             "labor_productivity"  => 0.50,
             "price_init"          => 0.50,

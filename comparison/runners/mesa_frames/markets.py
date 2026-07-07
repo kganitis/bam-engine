@@ -4,7 +4,7 @@ These mirror the Mesa port's market helpers in
 ``comparison/runners/mesa/markets.py`` one-to-one, preserving the matching
 algorithm, the per-round queue-pop semantics, the priority/ordering rules, and
 crucially the RNG draw points and their order so that the mesa-frames port is
-structurally equivalent to the Mesa port (Task 10 equivalence gate).
+structurally equivalent to the Mesa port (cross-port equivalence gate).
 """
 
 from __future__ import annotations
