@@ -145,12 +145,12 @@ Optional flags:
 
 ### Phase A: Behavioral equivalence gate (parallel)
 
-Each framework runs a fixed set of gate jobs (multiple seeds at the canonical
-BAM population). Output time-series are compared against the `bamengine`
-reference using five metrics (GDP autocorrelation, unemployment autocorrelation,
-inflation autocorrelation, firm-size Pareto shape, cross-correlation structure).
-A framework must pass all metrics within pre-defined half-width tolerances before
-its timing results are counted.
+Each framework runs a fixed set of gate jobs (twenty seeds at the canonical
+100-firm BAM population, 1,000 periods). Output time-series are compared against
+the `bamengine` reference using six metrics, computed after a 500-period burn-in:
+mean unemployment level, mean inflation level, firm-size distribution skewness,
+and the Phillips, Okun, and Beveridge correlations. Each metric's tolerance is
+`max(validation-band half-width, 2 x std of the bamengine reference across seeds)`; a framework must pass all six before its timing results are counted.
 
 The gate runs the jobs in parallel via `ProcessPoolExecutor`.
 
