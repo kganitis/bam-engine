@@ -167,7 +167,8 @@ docs = [
 ]
 
 [project.urls]
-homepage = "https://bam-engine.readthedocs.io/"
+homepage = "https://bamengine.org"
+documentation = "https://bam-engine.readthedocs.io/"
 source = "https://github.com/kganitis/bam-engine"
 tracker = "https://github.com/kganitis/bam-engine/issues"
 changelog = "https://bam-engine.readthedocs.io/en/latest/release_history.html"
