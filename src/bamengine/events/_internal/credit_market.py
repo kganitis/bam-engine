@@ -20,6 +20,7 @@ from bamengine.utils import (
     EPS,
     _flatten_and_shuffle_groups,
     grouped_cumsum,
+    sample_k_per_row,
     select_top_k_indices_sorted,
 )
 
@@ -246,19 +247,20 @@ def firms_prepare_loan_applications(
             log.info("--- Loan Application Preparation complete ---")
         return
 
-    # Sample H random lending banks per borrower (vectorized)
+    # Sample H_eff distinct lending banks per borrower (vectorized).
     H_eff = min(max_H, lenders.size)
     if info_enabled:
         log.info(f"  Effective applications per borrower (H_eff): {H_eff}")
-    # Generate one random score per (borrower, lender) pair, then pick the H_eff
-    # smallest per row via argpartition — equivalent to sampling without replacement
-    if H_eff == lenders.size:
-        # All lenders selected — no need to sample
-        sample = np.broadcast_to(lenders, (borrowers.size, lenders.size)).copy()
-    else:
-        rand_scores = rng.random((borrowers.size, lenders.size))
-        top_indices = np.argpartition(rand_scores, H_eff, axis=1)[:, :H_eff]
-        sample = lenders[top_indices]
+    # Draw H_eff distinct lenders per borrower in O(borrowers * H_eff) WITHOUT
+    # materializing a dense (borrowers, lenders) score matrix. This is
+    # distributionally identical to assigning each lender an iid uniform priority
+    # and taking the top H_eff (a uniform random H_eff-subset). The old dense
+    # `rng.random((borrowers, lenders))` + argpartition was O(borrowers * lenders),
+    # i.e. O(n_firms^2) since lenders scale with firms, which dominated peak RSS
+    # at large populations. ``sample_k_per_row`` also handles H_eff == lenders.size
+    # (returns every lender per row), so no special-case branch is needed.
+    local = sample_k_per_row(rng, borrowers.size, lenders.size, H_eff)
+    sample = lenders[local]
     if log.isEnabledFor(logging.DEBUG):
         log.debug(f"  Initial random bank sample (first 10 borrowers):\n{sample[:10]}")
 
