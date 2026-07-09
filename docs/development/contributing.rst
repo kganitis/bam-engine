@@ -4,28 +4,29 @@ Contributing & Docstrings
 Contributing
 ------------
 
-.. note::
+Contributions are welcome: bug fixes, documentation, tests, performance work,
+and new extensions. Small, self-contained fixes can go straight to a pull
+request. For larger or model-behavior changes (anything that could change the
+public API or shift results against the validation targets), please open an
+issue on `GitHub <https://github.com/kganitis/bam-engine/issues>`_ first to
+align on the approach.
 
-   This project is currently not accepting external contributions as it is part
-   of ongoing thesis work. Once the thesis is submitted, contribution guidelines
-   will be published.
-
-For bug reports and feature requests, please open an issue on
-`GitHub <https://github.com/kganitis/bam-engine/issues>`_.
+See `CONTRIBUTING.md
+<https://github.com/kganitis/bam-engine/blob/main/CONTRIBUTING.md>`_ for the
+full guidelines, quality bar, and code of conduct.
 
 
 Pull Request Guidelines
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-When contributions are open:
-
 1. Fork the repository
-2. Create a feature branch (``git checkout -b feature/my-feature``)
+2. Create a feature branch off ``main`` (``git checkout -b feature/my-feature``)
 3. Make changes and add tests
-4. Run the full test suite (``pytest``)
+4. Run the full test suite (``pytest``); keep coverage at 99%
 5. Run code quality checks (``ruff format . && ruff check --fix . && mypy``)
-6. Commit with a descriptive message
-7. Push and open a pull request
+6. Ensure all randomness goes through ``sim.rng`` for reproducibility
+7. Commit with a descriptive message
+8. Push and open a pull request against ``main``, linking the related issue
 
 
 Docstring Style

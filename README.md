@@ -141,7 +141,7 @@ pytest
 ruff format . && ruff check --fix . && mypy
 ```
 
-This project is part of ongoing MSc thesis research at the University of Piraeus, Greece. Code contributions will be welcome after thesis submission. In the meantime, bug reports, feedback, and documentation suggestions are appreciated via the [issue tracker](https://github.com/kganitis/bam-engine/issues).
+Contributions are welcome. Bug fixes, documentation, tests, performance work, and new extensions are all appreciated. For substantial or model-behavior changes, please [open an issue](https://github.com/kganitis/bam-engine/issues) first to discuss the approach. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guidelines and quality bar.
 
 See the [Development Guide](https://bam-engine.readthedocs.io/en/latest/development/index.html) for more on testing, linting, benchmarking, and contributing.
 
