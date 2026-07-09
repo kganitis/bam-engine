@@ -270,7 +270,7 @@ Implementation Variants
        numba is installed, else pure Python), ``"numba"`` (force Numba kernel,
        error if not installed), or ``"python"`` (force pure Python). Requires
        ``pip install bamengine[fast]`` for the Numba path. See
-       :ref:`install_fast_extra`.
+       :ref:`installing the Numba extra <install_fast_extra>`.
 
 Other
 ~~~~~

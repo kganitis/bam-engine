@@ -10,6 +10,30 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 
    Pre-1.0 releases (0.x.x) may introduce breaking changes between minor versions.
 
+[0.10.2] - 2026-07-09
+---------------------
+
+This patch makes memory scale near-linearly at large populations. The credit
+market previously built a dense ``(borrowers x lenders)`` scratch matrix to
+sample each firm's candidate banks; because the number of banks grows with the
+number of firms, that allocation was ``O(n_firms^2)`` and dominated peak memory
+at scale. Replacing it with the existing sparse sampler cuts peak RSS at 20,000
+firms from about 553 MB to about 211 MB and removes the super-linear knee, while
+leaving steady-state runtime and the model's statistical behaviour unchanged.
+
+Changed
+~~~~~~~
+
+**Performance**
+
+* Credit-market loan-application sampling no longer materialises a dense
+  ``(borrowers x lenders)`` random-score matrix (``O(n_firms^2)`` because the
+  number of lenders scales with the number of firms). It now uses the same
+  ``O(borrowers x H)`` sparse without-replacement draw already used by the labor
+  and goods markets. Peak RSS at 20,000 firms drops from about 553 MB to about
+  211 MB and memory scaling becomes near-linear; steady-state runtime is
+  unchanged.
+
 [0.10.1] - 2026-07-07
 ---------------------
 
