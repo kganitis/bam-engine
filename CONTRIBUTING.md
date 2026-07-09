@@ -26,7 +26,7 @@ little coordination goes a long way.
 - **Documentation feedback**: spotted an error, unclear explanation, or missing
   topic? Let us know via an issue.
 - **Testing & reporting**: run simulations and report unexpected behavior.
-- **Questions & discussions**: ask on the issue tracker.
+- **Questions & discussions**: ask on [GitHub Discussions](https://github.com/kganitis/bam-engine/discussions).
 - **Spread the word**: star the repository or share the project with colleagues.
 
 ## Development setup
