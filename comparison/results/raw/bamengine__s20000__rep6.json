@@ -25,7 +25,7 @@
   "outputs": null,
   "process": {
     "wall_seconds": 22.72143287496874,
-    "peak_rss_bytes": 559267840,
+    "peak_rss_bytes": 211075072,
     "startup_seconds": 2.6376151249860413
   },
   "environment_id": "56abafd77150"
