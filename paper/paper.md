@@ -83,29 +83,31 @@ baseline BAM model on five frameworks: BAM Engine, Mesa [@kazil_2020_mesa],
 mesa-frames [@amer_2024_mesaframes], Agents.jl [@datseris_2022_agentsjl], and
 a pre-existing third-party NetLogo implementation [@platas_lopez_2020_bam].
 Before any timing is counted, each port must pass a behavioral-equivalence
-gate: twenty seeds compared against the BAM Engine reference on unemployment,
-output, and inflation dynamics, firm-size skewness, and cross-correlation
-structure, so the comparison measures the same model rather than five similar
-ones. The NetLogo implementation participates as a non-blocking cross-language
-reference: it reproduces the baseline levels but diverges on parts of the
-co-movement structure. All timings were collected on a single machine
-(Apple M4 Pro); jobs are single-threaded and run serially, and the result
-snapshots, environment captures, and port-fairness methodology are committed
-with the repository.
+gate: twenty seeds compared against the BAM Engine reference on six metrics
+computed after a 500-period burn-in (mean unemployment and inflation levels,
+firm-size skewness, and the Phillips, Okun, and Beveridge correlations), so the
+comparison measures the same model rather than five similar ones. The NetLogo
+implementation participates as a non-blocking cross-language reference: a
+separate third-party port, taken as is, that deviates on several of these
+metrics. All timings were collected on a single machine (Apple M4 Pro); jobs
+are single-threaded and run serially, and the result snapshots, environment
+captures, and port-fairness methodology are committed with the repository.
 
 At 1,000 firms (6,100 agents in total), BAM Engine simulates a period in
 about 1.5 ms: roughly 11x faster than the idiomatic Mesa port, 13x faster
 than mesa-frames, and 1.4x faster than the compiled Agents.jl port. At 20,000
 firms (122,000 agents), BAM Engine with the optional Numba kernel runs 3.7x
-faster than Agents.jl, while the per-agent Python frameworks do not complete
-within budget beyond 5,000 firms. The results split by execution model rather
-than by language: array-oriented engines reach the population sizes that
-ensemble studies require, and BAM Engine is the fastest of the group from 500
-firms upward (\autoref{fig:scaling}).
+faster than Agents.jl, while Mesa and mesa-frames do not complete within budget
+beyond 5,000 firms. The results split by execution model rather
+than by language: the ports that reach the population sizes ensemble studies
+require are those that escape the interpreted per-agent loop, either by
+compiling it outright (Agents.jl) or by vectorizing the model and compiling the
+loops that resist vectorization (BAM Engine). BAM Engine is the fastest of
+the group from 500 firms upward (\autoref{fig:scaling}).
 
 ![Steady-state per-period wall time against total agent count, log-log. Mesa,
 mesa-frames, and NetLogo hit the per-job time budget at smaller populations
-than the array-oriented engines (Apple M4 Pro).\label{fig:scaling}](scaling.png){ width="75%" }
+than BAM Engine and the compiled Agents.jl port (Apple M4 Pro).\label{fig:scaling}](scaling.png){ width="75%" }
 
 # Software design
 
