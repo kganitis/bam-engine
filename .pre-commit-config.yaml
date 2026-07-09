@@ -79,4 +79,4 @@ repos:
         additional_dependencies:
           - mdformat-gfm
           - mdformat-black
-        exclude: ^(RELEASE_HISTORY\.md|docs/|paper/)
+        exclude: ^(RELEASE_HISTORY\.md|docs/|paper/|\.github/ISSUE_TEMPLATE/)

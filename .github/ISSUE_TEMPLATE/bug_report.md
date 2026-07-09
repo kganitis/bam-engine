@@ -1,6 +1,9 @@
-______________________________________________________________________
-
-## name: Bug report about: Report a problem with BAM Engine title: "[Bug] " labels: bug
+---
+name: Bug report
+about: Report a problem with BAM Engine
+title: "[Bug] "
+labels: bug
+---
 
 ## Description
 

@@ -1,6 +1,9 @@
-______________________________________________________________________
-
-## name: Feature request about: Suggest a new capability, extension, or improvement title: "[Feature] " labels: enhancement
+---
+name: Feature request
+about: Suggest a new capability, extension, or improvement
+title: "[Feature] "
+labels: enhancement
+---
 
 ## Motivation
 
