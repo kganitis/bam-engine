@@ -7,15 +7,20 @@ on:
       - 'benchmarks/results/*.json'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   check-validation:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v7
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
 
     - name: Set up Python
-      uses: actions/setup-python@v7
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
       with:
         python-version: "3.12"
 
@@ -92,19 +97,21 @@ jobs:
 
     steps:
       - name: Checkout bam-engine
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: bam-engine
+          persist-credentials: false
 
       - name: Checkout bamengine.org
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: kganitis/bamengine.org
           token: ${{ secrets.WEBSITE_DEPLOY_TOKEN }}
           path: bamengine.org
+          persist-credentials: true  # Needed by "Commit and push"
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
 
