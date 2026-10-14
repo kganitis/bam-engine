@@ -217,7 +217,7 @@ def _validate_float1d(
         If array has wrong shape or length.
     """
     if np.isscalar(arr):
-        return float(arr)  # type: ignore[arg-type]
+        return float(arr)  # type: ignore[arg-type, unused-ignore]
     arr = np.asarray(arr)
     if arr.ndim != 1 or arr.shape[0] != expected_len:
         raise ValueError(

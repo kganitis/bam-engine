@@ -80,3 +80,9 @@ repos:
           - mdformat-gfm
           - mdformat-black
         exclude: ^(RELEASE_HISTORY\.md|docs/|paper/|\.github/ISSUE_TEMPLATE/)
+
+  # GitHub Actions security linting
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    rev: v1.30.1
+    hooks:
+      - id: zizmor
