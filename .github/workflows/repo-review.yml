@@ -28,6 +28,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: scientific-python/repo-review@648550baee153feb816412240c03c510822ef871 # v1.2.2
+      - uses: scientific-python/repo-review@91fa00fc79af75f7931c18f2c3f1aca660ca7b1c # v1.3.0
         with:
           plugins: sp-repo-review
